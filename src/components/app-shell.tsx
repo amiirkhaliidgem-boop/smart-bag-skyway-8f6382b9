@@ -131,7 +131,7 @@ function SidebarBrand({ onClose }: { onClose?: () => void }) {
         <Plane className="h-5 w-5" />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-bold tracking-tight leading-none">SBE</p>
+        <p className="text-sm font-bold tracking-tight leading-none">IAB</p>
         <p className="text-[11px] text-sidebar-foreground/60 mt-1">Smart Baggage Ecosystem</p>
       </div>
       {onClose && (
