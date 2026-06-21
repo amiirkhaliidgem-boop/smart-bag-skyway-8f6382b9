@@ -9,10 +9,16 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TrackingRouteImport } from './routes/tracking'
 import { Route as StorageRouteImport } from './routes/storage'
 import { Route as LostFoundRouteImport } from './routes/lost-found'
 import { Route as IndexRouteImport } from './routes/index'
 
+const TrackingRoute = TrackingRouteImport.update({
+  id: '/tracking',
+  path: '/tracking',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const StorageRoute = StorageRouteImport.update({
   id: '/storage',
   path: '/storage',
@@ -33,34 +39,45 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/lost-found': typeof LostFoundRoute
   '/storage': typeof StorageRoute
+  '/tracking': typeof TrackingRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/lost-found': typeof LostFoundRoute
   '/storage': typeof StorageRoute
+  '/tracking': typeof TrackingRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/lost-found': typeof LostFoundRoute
   '/storage': typeof StorageRoute
+  '/tracking': typeof TrackingRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/lost-found' | '/storage'
+  fullPaths: '/' | '/lost-found' | '/storage' | '/tracking'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/lost-found' | '/storage'
-  id: '__root__' | '/' | '/lost-found' | '/storage'
+  to: '/' | '/lost-found' | '/storage' | '/tracking'
+  id: '__root__' | '/' | '/lost-found' | '/storage' | '/tracking'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   LostFoundRoute: typeof LostFoundRoute
   StorageRoute: typeof StorageRoute
+  TrackingRoute: typeof TrackingRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/tracking': {
+      id: '/tracking'
+      path: '/tracking'
+      fullPath: '/tracking'
+      preLoaderRoute: typeof TrackingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/storage': {
       id: '/storage'
       path: '/storage'
@@ -89,6 +106,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   LostFoundRoute: LostFoundRoute,
   StorageRoute: StorageRoute,
+  TrackingRoute: TrackingRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
