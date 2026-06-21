@@ -6,12 +6,12 @@ import {
   Search,
   Truck,
   BarChart3,
-  Plane,
   Menu,
   X,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import iabLogo from "@/assets/iab-logo.jpeg.asset.json";
 
 const navItems = [
   { to: "/", label: "Executive Dashboard", icon: LayoutDashboard, exact: true },
@@ -88,7 +88,8 @@ export function AppShell() {
       )}
 
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="h-14 border-b border-border bg-card flex items-center px-4 gap-3 sticky top-0 z-30">
+        <header className="h-14 border-b border-border bg-card flex items-center px-4 gap-3 sticky top-0 z-30 relative">
+          <span className="absolute left-0 right-0 bottom-0 h-[2px] bg-gradient-to-r from-primary via-accent to-primary" />
           <button
             type="button"
             onClick={() => setMobileOpen(true)}
@@ -98,9 +99,11 @@ export function AppShell() {
             <Menu className="h-5 w-5" />
           </button>
           <div className="flex items-center gap-2 min-w-0">
-            <div className="hidden sm:flex h-7 w-7 rounded-md bg-primary text-primary-foreground items-center justify-center">
-              <Plane className="h-4 w-4" />
-            </div>
+            <img
+              src={iabLogo.url}
+              alt="IAB"
+              className="hidden sm:block h-8 w-8 rounded-md object-contain bg-white ring-1 ring-border p-0.5"
+            />
             <div className="min-w-0">
               <p className="text-xs text-muted-foreground leading-none">Cairo International Airport</p>
               <p className="text-sm font-semibold truncate">Smart Baggage Ecosystem</p>
@@ -111,7 +114,7 @@ export function AppShell() {
               <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
               System Online
             </div>
-            <div className="h-8 w-8 rounded-full bg-primary text-primary-foreground grid place-items-center text-xs font-semibold">
+            <div className="h-8 w-8 rounded-full bg-accent text-accent-foreground grid place-items-center text-xs font-semibold">
               OP
             </div>
           </div>
@@ -126,9 +129,10 @@ export function AppShell() {
 
 function SidebarBrand({ onClose }: { onClose?: () => void }) {
   return (
-    <div className="h-16 px-5 flex items-center gap-3 border-b border-sidebar-border">
-      <div className="h-9 w-9 rounded-lg bg-sidebar-primary text-sidebar-primary-foreground grid place-items-center shadow">
-        <Plane className="h-5 w-5" />
+    <div className="relative h-16 px-5 flex items-center gap-3 border-b border-sidebar-border">
+      <span className="absolute left-0 right-0 bottom-0 h-[2px] bg-gradient-to-r from-transparent via-sidebar-primary to-transparent" />
+      <div className="h-10 w-10 rounded-lg bg-white grid place-items-center shadow ring-1 ring-sidebar-border overflow-hidden">
+        <img src={iabLogo.url} alt="IAB" className="h-9 w-9 object-contain" />
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-bold tracking-tight leading-none">IAB</p>
