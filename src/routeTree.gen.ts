@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as TrackingRouteImport } from './routes/tracking'
 import { Route as StorageRouteImport } from './routes/storage'
 import { Route as LostFoundRouteImport } from './routes/lost-found'
+import { Route as DeliveryRouteImport } from './routes/delivery'
 import { Route as IndexRouteImport } from './routes/index'
 
 const TrackingRoute = TrackingRouteImport.update({
@@ -29,6 +30,11 @@ const LostFoundRoute = LostFoundRouteImport.update({
   path: '/lost-found',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DeliveryRoute = DeliveryRouteImport.update({
+  id: '/delivery',
+  path: '/delivery',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -37,12 +43,14 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/delivery': typeof DeliveryRoute
   '/lost-found': typeof LostFoundRoute
   '/storage': typeof StorageRoute
   '/tracking': typeof TrackingRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/delivery': typeof DeliveryRoute
   '/lost-found': typeof LostFoundRoute
   '/storage': typeof StorageRoute
   '/tracking': typeof TrackingRoute
@@ -50,20 +58,22 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/delivery': typeof DeliveryRoute
   '/lost-found': typeof LostFoundRoute
   '/storage': typeof StorageRoute
   '/tracking': typeof TrackingRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/lost-found' | '/storage' | '/tracking'
+  fullPaths: '/' | '/delivery' | '/lost-found' | '/storage' | '/tracking'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/lost-found' | '/storage' | '/tracking'
-  id: '__root__' | '/' | '/lost-found' | '/storage' | '/tracking'
+  to: '/' | '/delivery' | '/lost-found' | '/storage' | '/tracking'
+  id: '__root__' | '/' | '/delivery' | '/lost-found' | '/storage' | '/tracking'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  DeliveryRoute: typeof DeliveryRoute
   LostFoundRoute: typeof LostFoundRoute
   StorageRoute: typeof StorageRoute
   TrackingRoute: typeof TrackingRoute
@@ -92,6 +102,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LostFoundRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/delivery': {
+      id: '/delivery'
+      path: '/delivery'
+      fullPath: '/delivery'
+      preLoaderRoute: typeof DeliveryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -104,6 +121,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  DeliveryRoute: DeliveryRoute,
   LostFoundRoute: LostFoundRoute,
   StorageRoute: StorageRoute,
   TrackingRoute: TrackingRoute,
