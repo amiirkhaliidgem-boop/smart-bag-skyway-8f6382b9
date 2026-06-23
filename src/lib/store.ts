@@ -14,6 +14,8 @@ export type DeliveryStatus =
   | "Out For Delivery"
   | "Delivered";
 
+export type OtpStatus = "Pending" | "Sent" | "Verified" | "Failed";
+
 export interface BaggageCase {
   bagId: string;
   passengerName: string;
@@ -37,6 +39,9 @@ export interface Delivery {
   address: string;
   status: DeliveryStatus;
   driver: string;
+  eta: string;
+  otpStatus: OtpStatus;
+  otpCode: string;
 }
 
 interface State {
@@ -44,7 +49,7 @@ interface State {
   deliveries: Delivery[];
 }
 
-const STORAGE_KEY = "sbe-state-v1";
+const STORAGE_KEY = "sbe-state-v2";
 
 const driverPool = [
   "Ahmed Mostafa",
@@ -179,6 +184,9 @@ const seedDeliveries: Delivery[] = [
     address: "14 Road 9, Maadi, Cairo",
     status: "Out For Delivery",
     driver: "Ahmed Mostafa",
+    eta: "2026-06-23T19:30:00Z",
+    otpStatus: "Sent",
+    otpCode: "481923",
   },
   {
     deliveryId: "DEL-50013",
@@ -187,6 +195,9 @@ const seedDeliveries: Delivery[] = [
     address: "27 El-Nasr St, Nasr City, Cairo",
     status: "Assigned",
     driver: "Karim El-Sayed",
+    eta: "2026-06-23T21:00:00Z",
+    otpStatus: "Pending",
+    otpCode: "302145",
   },
   {
     deliveryId: "DEL-50014",
@@ -195,6 +206,9 @@ const seedDeliveries: Delivery[] = [
     address: "8 Mohamed Mazhar, Zamalek, Cairo",
     status: "Pending",
     driver: "—",
+    eta: "2026-06-24T10:00:00Z",
+    otpStatus: "Pending",
+    otpCode: "775612",
   },
   {
     deliveryId: "DEL-50011",
@@ -203,6 +217,9 @@ const seedDeliveries: Delivery[] = [
     address: "55 El-Tahrir, Dokki, Giza",
     status: "Delivered",
     driver: "Youssef Hassan",
+    eta: "2026-06-19T16:40:00Z",
+    otpStatus: "Verified",
+    otpCode: "910044",
   },
 ];
 
