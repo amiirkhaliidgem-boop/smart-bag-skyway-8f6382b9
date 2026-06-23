@@ -40,7 +40,6 @@ const STATUS_COLORS: Record<CaseStatus, string> = {
   Located: "#f59e0b",
   Stored: "#3b82f6",
   "Ready For Delivery": "#8b5cf6",
-  "Picked Up": "#14b8a6",
   "Out For Delivery": "#06b6d4",
   Delivered: "#10b981",
 };
