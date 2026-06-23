@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as TrackingRouteImport } from './routes/tracking'
 import { Route as StorageRouteImport } from './routes/storage'
 import { Route as ReportsRouteImport } from './routes/reports'
+import { Route as QrScanRouteImport } from './routes/qr-scan'
 import { Route as LostFoundRouteImport } from './routes/lost-found'
 import { Route as DeliveryRouteImport } from './routes/delivery'
 import { Route as IndexRouteImport } from './routes/index'
@@ -29,6 +30,11 @@ const StorageRoute = StorageRouteImport.update({
 const ReportsRoute = ReportsRouteImport.update({
   id: '/reports',
   path: '/reports',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const QrScanRoute = QrScanRouteImport.update({
+  id: '/qr-scan',
+  path: '/qr-scan',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LostFoundRoute = LostFoundRouteImport.update({
@@ -51,6 +57,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/delivery': typeof DeliveryRoute
   '/lost-found': typeof LostFoundRoute
+  '/qr-scan': typeof QrScanRoute
   '/reports': typeof ReportsRoute
   '/storage': typeof StorageRoute
   '/tracking': typeof TrackingRoute
@@ -59,6 +66,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/delivery': typeof DeliveryRoute
   '/lost-found': typeof LostFoundRoute
+  '/qr-scan': typeof QrScanRoute
   '/reports': typeof ReportsRoute
   '/storage': typeof StorageRoute
   '/tracking': typeof TrackingRoute
@@ -68,6 +76,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/delivery': typeof DeliveryRoute
   '/lost-found': typeof LostFoundRoute
+  '/qr-scan': typeof QrScanRoute
   '/reports': typeof ReportsRoute
   '/storage': typeof StorageRoute
   '/tracking': typeof TrackingRoute
@@ -78,16 +87,25 @@ export interface FileRouteTypes {
     | '/'
     | '/delivery'
     | '/lost-found'
+    | '/qr-scan'
     | '/reports'
     | '/storage'
     | '/tracking'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/delivery' | '/lost-found' | '/reports' | '/storage' | '/tracking'
+  to:
+    | '/'
+    | '/delivery'
+    | '/lost-found'
+    | '/qr-scan'
+    | '/reports'
+    | '/storage'
+    | '/tracking'
   id:
     | '__root__'
     | '/'
     | '/delivery'
     | '/lost-found'
+    | '/qr-scan'
     | '/reports'
     | '/storage'
     | '/tracking'
@@ -97,6 +115,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DeliveryRoute: typeof DeliveryRoute
   LostFoundRoute: typeof LostFoundRoute
+  QrScanRoute: typeof QrScanRoute
   ReportsRoute: typeof ReportsRoute
   StorageRoute: typeof StorageRoute
   TrackingRoute: typeof TrackingRoute
@@ -123,6 +142,13 @@ declare module '@tanstack/react-router' {
       path: '/reports'
       fullPath: '/reports'
       preLoaderRoute: typeof ReportsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/qr-scan': {
+      id: '/qr-scan'
+      path: '/qr-scan'
+      fullPath: '/qr-scan'
+      preLoaderRoute: typeof QrScanRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/lost-found': {
@@ -153,6 +179,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DeliveryRoute: DeliveryRoute,
   LostFoundRoute: LostFoundRoute,
+  QrScanRoute: QrScanRoute,
   ReportsRoute: ReportsRoute,
   StorageRoute: StorageRoute,
   TrackingRoute: TrackingRoute,
