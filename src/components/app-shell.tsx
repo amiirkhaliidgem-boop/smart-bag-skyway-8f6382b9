@@ -8,19 +8,52 @@ import {
   BarChart3,
   Menu,
   X,
+  QrCode,
+  Map,
+  Headphones,
+  Star,
+  UserCog,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import iabLogo from "@/assets/iab-logo.jpeg.asset.json";
 
-const navItems = [
-  { to: "/", label: "Executive Dashboard", icon: LayoutDashboard, exact: true },
-  { to: "/lost-found", label: "Lost & Found", icon: PackageSearch },
-  { to: "/storage", label: "Storage Control", icon: Warehouse },
-  { to: "/tracking", label: "Passenger Tracking", icon: Search },
-  { to: "/delivery", label: "Delivery Management", icon: Truck },
-  { to: "/reports", label: "Reports", icon: BarChart3 },
+const navSections: {
+  label: string;
+  items: { to: string; label: string; icon: typeof LayoutDashboard; exact?: boolean }[];
+}[] = [
+  {
+    label: "Operations",
+    items: [
+      { to: "/", label: "Executive Dashboard", icon: LayoutDashboard, exact: true },
+      { to: "/lost-found", label: "Lost & Found", icon: PackageSearch },
+      { to: "/storage", label: "Storage Control", icon: Warehouse },
+      { to: "/qr-scan", label: "QR Scan", icon: QrCode },
+    ],
+  },
+  {
+    label: "Delivery",
+    items: [
+      { to: "/delivery", label: "Delivery Management", icon: Truck },
+      { to: "/driver-portal", label: "Driver Portal", icon: UserCog },
+      { to: "/route-tracking", label: "Route Tracking", icon: Map },
+    ],
+  },
+  {
+    label: "Customer",
+    items: [
+      { to: "/tracking", label: "Passenger Tracking", icon: Search },
+      { to: "/contact-center", label: "Contact Center", icon: Headphones },
+      { to: "/feedback", label: "Feedback", icon: Star },
+    ],
+  },
+  {
+    label: "Insights",
+    items: [{ to: "/reports", label: "Reports", icon: BarChart3 }],
+  },
 ];
+
+const navItems = navSections.flatMap((s) => s.items);
 
 export function AppShell() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -34,22 +67,31 @@ export function AppShell() {
       {/* Desktop sidebar */}
       <aside className="hidden lg:flex w-64 shrink-0 flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border">
         <SidebarBrand />
-        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-          {navItems.map((item) => (
-            <Link
-              key={item.to}
-              to={item.to}
-              onClick={() => setMobileOpen(false)}
-              className={cn(
-                "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
-                isActive(item.to, item.exact)
-                  ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-sm"
-                  : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-              )}
-            >
-              <item.icon className="h-4 w-4 shrink-0" />
-              <span className="truncate">{item.label}</span>
-            </Link>
+        <nav className="flex-1 px-3 py-4 space-y-5 overflow-y-auto">
+          {navSections.map((section) => (
+            <div key={section.label}>
+              <p className="px-3 mb-1 text-[10px] uppercase tracking-wider text-sidebar-foreground/50 font-semibold">
+                {section.label}
+              </p>
+              <div className="space-y-1">
+                {section.items.map((item) => (
+                  <Link
+                    key={item.to}
+                    to={item.to}
+                    onClick={() => setMobileOpen(false)}
+                    className={cn(
+                      "flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors",
+                      isActive(item.to, item.exact)
+                        ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-sm"
+                        : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                    )}
+                  >
+                    <item.icon className="h-4 w-4 shrink-0" />
+                    <span className="truncate">{item.label}</span>
+                  </Link>
+                ))}
+              </div>
+            </div>
           ))}
         </nav>
         <SidebarFooter />
@@ -64,22 +106,31 @@ export function AppShell() {
           />
           <aside className="absolute left-0 top-0 bottom-0 w-72 bg-sidebar text-sidebar-foreground flex flex-col">
             <SidebarBrand onClose={() => setMobileOpen(false)} />
-            <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-              {navItems.map((item) => (
-                <Link
-                  key={item.to}
-                  to={item.to}
-                  onClick={() => setMobileOpen(false)}
-                  className={cn(
-                    "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium",
-                    isActive(item.to, item.exact)
-                      ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                      : "hover:bg-sidebar-accent",
-                  )}
-                >
-                  <item.icon className="h-4 w-4" />
-                  {item.label}
-                </Link>
+            <nav className="flex-1 px-3 py-4 space-y-5 overflow-y-auto">
+              {navSections.map((section) => (
+                <div key={section.label}>
+                  <p className="px-3 mb-1 text-[10px] uppercase tracking-wider text-sidebar-foreground/50 font-semibold">
+                    {section.label}
+                  </p>
+                  <div className="space-y-1">
+                    {section.items.map((item) => (
+                      <Link
+                        key={item.to}
+                        to={item.to}
+                        onClick={() => setMobileOpen(false)}
+                        className={cn(
+                          "flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium",
+                          isActive(item.to, item.exact)
+                            ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                            : "hover:bg-sidebar-accent",
+                        )}
+                      >
+                        <item.icon className="h-4 w-4" />
+                        {item.label}
+                      </Link>
+                    ))}
+                  </div>
+                </div>
               ))}
             </nav>
             <SidebarFooter />
