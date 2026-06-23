@@ -40,12 +40,15 @@ const STATUS_COLORS: Record<CaseStatus, string> = {
   Located: "#f59e0b",
   Stored: "#3b82f6",
   "Ready For Delivery": "#8b5cf6",
+  "Picked Up": "#14b8a6",
   "Out For Delivery": "#06b6d4",
   Delivered: "#10b981",
 };
 
 function Index() {
   const cases = useStore((s) => s.cases);
+  const deliveries = useStore((s) => s.deliveries);
+  const feedback = useStore((s) => s.feedback);
 
   const total = cases.length;
   const open = cases.filter((c) => c.status !== "Delivered").length;
@@ -56,6 +59,13 @@ function Index() {
   ).length;
   const ready = cases.filter((c) => c.status === "Ready For Delivery").length;
   const delivered = cases.filter((c) => c.status === "Delivered").length;
+  const deliveredDeliveries = deliveries.filter((d) => d.status === "Delivered").length;
+  const deliverySuccess = deliveries.length
+    ? Math.round((deliveredDeliveries / deliveries.length) * 100)
+    : 0;
+  const csat = feedback.length
+    ? feedback.reduce((s, f) => s + f.rating, 0) / feedback.length
+    : 0;
 
   const resolutionHours = (() => {
     const resolved = cases.filter((c) => c.resolvedAt);
@@ -98,6 +108,8 @@ function Index() {
       trend: -3,
       color: "text-indigo-600",
     },
+    { label: "CSAT", value: `${csat.toFixed(1)}/5`, icon: TrendingUp, trend: +1, color: "text-rose-600" },
+    { label: "Delivery Success", value: `${deliverySuccess}%`, icon: PackageCheck, trend: +3, color: "text-emerald-600" },
   ];
 
   return (
