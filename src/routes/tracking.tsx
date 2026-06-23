@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { StatusBadge } from "@/components/status-badge";
-import { Search, MapPin, Package, Truck, CheckCircle2, AlertCircle } from "lucide-react";
+import { Search, MapPin, Package, Truck, CheckCircle2, AlertCircle, Clock } from "lucide-react";
 
 export const Route = createFileRoute("/tracking")({
   head: () => ({
@@ -28,6 +28,7 @@ const TIMELINE = [
 
 function TrackingPage() {
   const cases = useStore((s) => s.cases);
+  const deliveries = useStore((s) => s.deliveries);
   const [pir, setPir] = useState("");
   const [result, setResult] = useState<BaggageCase | null | undefined>(undefined);
 
@@ -42,6 +43,9 @@ function TrackingPage() {
   const stepIndex = result
     ? TIMELINE.findIndex((t) => t.key === result.status)
     : -1;
+  const delivery = result
+    ? deliveries.find((d) => d.bagId === result.bagId)
+    : undefined;
 
   return (
     <div className="space-y-6 max-w-3xl mx-auto">
@@ -112,6 +116,17 @@ function TrackingPage() {
                 }
               />
             </div>
+
+            {delivery && (
+              <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
+                <p className="text-xs uppercase tracking-wider text-muted-foreground mb-2">Delivery</p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+                  <div className="flex items-center gap-2"><Truck className="h-4 w-4 text-primary" /> {delivery.driver}</div>
+                  <div className="flex items-center gap-2"><MapPin className="h-4 w-4 text-primary" /> {delivery.driverLocation?.label ?? "Awaiting pickup"}</div>
+                  <div className="flex items-center gap-2"><Clock className="h-4 w-4 text-primary" /> ETA {new Date(delivery.eta).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</div>
+                </div>
+              </div>
+            )}
 
             <div>
               <p className="text-xs text-muted-foreground uppercase tracking-wider mb-4">Progress</p>

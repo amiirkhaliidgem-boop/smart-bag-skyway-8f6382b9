@@ -11,10 +11,49 @@ export type CaseStatus =
 export type DeliveryStatus =
   | "Pending"
   | "Assigned"
+  | "Picked Up"
   | "Out For Delivery"
   | "Delivered";
 
 export type OtpStatus = "Pending" | "Sent" | "Verified" | "Failed";
+
+export type Priority = "Low" | "Normal" | "High" | "VIP";
+
+export type CallDirection = "Inbound" | "Outbound" | "No Answer" | "Callback Required";
+
+export interface CallLog {
+  id: string;
+  bagId?: string;
+  pirNumber?: string;
+  passengerName: string;
+  phone: string;
+  agent: string;
+  direction: CallDirection;
+  durationSec: number;
+  notes: string;
+  at: string;
+}
+
+export interface WhatsAppMessage {
+  id: string;
+  passengerName: string;
+  phone: string;
+  pirNumber?: string;
+  lastMessage: string;
+  unread: number;
+  at: string;
+  thread: { from: "Passenger" | "Agent"; text: string; at: string }[];
+}
+
+export interface Feedback {
+  id: string;
+  bagId: string;
+  passengerName: string;
+  resolved: boolean;
+  rating: number; // 1-5
+  comments: string;
+  at: string;
+}
 
 export interface BaggageCase {
   bagId: string;
@@ -37,19 +76,27 @@ export interface Delivery {
   bagId: string;
   passengerName: string;
   address: string;
+  mobile: string;
+  pirNumber: string;
+  priority: Priority;
   status: DeliveryStatus;
   driver: string;
   eta: string;
   otpStatus: OtpStatus;
   otpCode: string;
+  driverLocation?: { lat: number; lng: number; label: string };
+  destination?: { lat: number; lng: number; label: string };
 }
 
 interface State {
   cases: BaggageCase[];
   deliveries: Delivery[];
+  callLogs: CallLog[];
+  whatsapp: WhatsAppMessage[];
+  feedback: Feedback[];
 }
 
-const STORAGE_KEY = "sbe-state-v2";
+const STORAGE_KEY = "sbe-state-v4";
 
 const driverPool = [
   "Ahmed Mostafa",
@@ -182,44 +229,183 @@ const seedDeliveries: Delivery[] = [
     bagId: "BAG-100234",
     passengerName: "Hassan El-Shenawy",
     address: "14 Road 9, Maadi, Cairo",
+    mobile: "+20 100 998 2210",
+    pirNumber: "CAILH40118",
+    priority: "VIP",
     status: "Out For Delivery",
     driver: "Ahmed Mostafa",
     eta: "2026-06-23T19:30:00Z",
     otpStatus: "Sent",
     otpCode: "481923",
+    driverLocation: { lat: 30.058, lng: 31.245, label: "Salah Salem, Cairo" },
+    destination: { lat: 29.96, lng: 31.258, label: "Maadi, Cairo" },
   },
   {
     deliveryId: "DEL-50013",
     bagId: "BAG-100232",
     passengerName: "Tarek Abdelrahman",
     address: "27 El-Nasr St, Nasr City, Cairo",
+    mobile: "+20 122 884 7710",
+    pirNumber: "CAITK13902",
+    priority: "High",
     status: "Assigned",
     driver: "Karim El-Sayed",
     eta: "2026-06-23T21:00:00Z",
     otpStatus: "Pending",
     otpCode: "302145",
+    destination: { lat: 30.05, lng: 31.34, label: "Nasr City, Cairo" },
   },
   {
     deliveryId: "DEL-50014",
     bagId: "BAG-100238",
     passengerName: "Omar Khaled",
     address: "8 Mohamed Mazhar, Zamalek, Cairo",
+    mobile: "+20 111 220 9988",
+    pirNumber: "CAIBA22907",
+    priority: "Normal",
     status: "Pending",
     driver: "—",
     eta: "2026-06-24T10:00:00Z",
     otpStatus: "Pending",
     otpCode: "775612",
+    destination: { lat: 30.063, lng: 31.219, label: "Zamalek, Cairo" },
   },
   {
     deliveryId: "DEL-50011",
     bagId: "BAG-100231",
     passengerName: "Mariam Hossam",
     address: "55 El-Tahrir, Dokki, Giza",
+    mobile: "+20 100 234 5512",
+    pirNumber: "CAIMS12045",
+    priority: "Normal",
     status: "Delivered",
     driver: "Youssef Hassan",
     eta: "2026-06-19T16:40:00Z",
     otpStatus: "Verified",
     otpCode: "910044",
+    destination: { lat: 30.038, lng: 31.211, label: "Dokki, Giza" },
+  },
+];
+
+const seedCallLogs: CallLog[] = [
+  {
+    id: "CL-9001",
+    bagId: "BAG-100236",
+    pirNumber: "CAIQR88410",
+    passengerName: "Sherif Mounir",
+    phone: "+20 122 100 4477",
+    agent: "Sara Mahmoud",
+    direction: "Inbound",
+    durationSec: 312,
+    notes: "Passenger requesting update on missing bag. Promised callback within 2h.",
+    at: "2026-06-23T08:14:00Z",
+  },
+  {
+    id: "CL-9002",
+    bagId: "BAG-100234",
+    pirNumber: "CAILH40118",
+    passengerName: "Hassan El-Shenawy",
+    phone: "+20 100 998 2210",
+    agent: "Mohamed Reda",
+    direction: "Outbound",
+    durationSec: 184,
+    notes: "Confirmed delivery window 19:00–20:30, OTP sent via SMS.",
+    at: "2026-06-23T14:02:00Z",
+  },
+  {
+    id: "CL-9003",
+    bagId: "BAG-100232",
+    pirNumber: "CAITK13902",
+    passengerName: "Tarek Abdelrahman",
+    phone: "+20 122 884 7710",
+    agent: "Sara Mahmoud",
+    direction: "Callback Required",
+    durationSec: 0,
+    notes: "Voicemail left. Customer to confirm delivery address.",
+    at: "2026-06-23T15:20:00Z",
+  },
+  {
+    id: "CL-9004",
+    passengerName: "Yara Magdy",
+    phone: "+20 100 442 1009",
+    agent: "Hadeer Samir",
+    direction: "No Answer",
+    durationSec: 0,
+    notes: "First attempt — no answer. Retry scheduled.",
+    at: "2026-06-23T16:48:00Z",
+  },
+];
+
+const seedWhatsapp: WhatsAppMessage[] = [
+  {
+    id: "WA-7001",
+    passengerName: "Hassan El-Shenawy",
+    phone: "+20 100 998 2210",
+    pirNumber: "CAILH40118",
+    lastMessage: "Driver is 10 min away. Please share OTP at handover.",
+    unread: 0,
+    at: "2026-06-23T18:40:00Z",
+    thread: [
+      { from: "Passenger", text: "Hi, any update on my bag?", at: "2026-06-23T14:00:00Z" },
+      { from: "Agent", text: "Hello Mr. Hassan, your bag is out for delivery now.", at: "2026-06-23T14:05:00Z" },
+      { from: "Agent", text: "Driver is 10 min away. Please share OTP at handover.", at: "2026-06-23T18:40:00Z" },
+    ],
+  },
+  {
+    id: "WA-7002",
+    passengerName: "Layla Ibrahim",
+    phone: "+20 111 552 0991",
+    pirNumber: "CAIEK77120",
+    lastMessage: "We located your bag in Zone A. Scheduling delivery tomorrow.",
+    unread: 2,
+    at: "2026-06-23T11:22:00Z",
+    thread: [
+      { from: "Passenger", text: "Where is my luggage??", at: "2026-06-23T10:01:00Z" },
+      { from: "Agent", text: "We located your bag in Zone A. Scheduling delivery tomorrow.", at: "2026-06-23T11:22:00Z" },
+    ],
+  },
+  {
+    id: "WA-7003",
+    passengerName: "Nour Adel",
+    phone: "+20 109 332 1145",
+    pirNumber: "CAIAF66302",
+    lastMessage: "Thanks! Received the bag in good condition.",
+    unread: 0,
+    at: "2026-06-22T20:11:00Z",
+    thread: [
+      { from: "Agent", text: "Your bag has been delivered. Please confirm receipt.", at: "2026-06-22T19:50:00Z" },
+      { from: "Passenger", text: "Thanks! Received the bag in good condition.", at: "2026-06-22T20:11:00Z" },
+    ],
+  },
+];
+
+const seedFeedback: Feedback[] = [
+  {
+    id: "FB-3001",
+    bagId: "BAG-100231",
+    passengerName: "Mariam Hossam",
+    resolved: true,
+    rating: 5,
+    comments: "Excellent service. Driver was punctual and very polite.",
+    at: "2026-06-19T17:10:00Z",
+  },
+  {
+    id: "FB-3002",
+    bagId: "BAG-100237",
+    passengerName: "Dina Saad",
+    resolved: true,
+    rating: 4,
+    comments: "Slight delay but communication was clear. Thank you.",
+    at: "2026-06-20T13:00:00Z",
+  },
+  {
+    id: "FB-3003",
+    bagId: "BAG-100234",
+    passengerName: "Hassan El-Shenawy",
+    resolved: false,
+    rating: 3,
+    comments: "Delivery still in progress at time of survey.",
+    at: "2026-06-23T19:00:00Z",
   },
 ];
 
@@ -227,14 +413,24 @@ let state: State = load();
 const listeners = new Set<() => void>();
 
 function load(): State {
+  const defaults: State = {
+    cases: seedCases,
+    deliveries: seedDeliveries,
+    callLogs: seedCallLogs,
+    whatsapp: seedWhatsapp,
+    feedback: seedFeedback,
+  };
   if (typeof window === "undefined") {
-    return { cases: seedCases, deliveries: seedDeliveries };
+    return defaults;
   }
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw) as State;
+    if (raw) {
+      const parsed = JSON.parse(raw) as Partial<State>;
+      return { ...defaults, ...parsed };
+    }
   } catch {}
-  return { cases: seedCases, deliveries: seedDeliveries };
+  return defaults;
 }
 
 function persist() {
@@ -255,10 +451,17 @@ function subscribe(l: () => void) {
 }
 
 export function useStore<T>(selector: (s: State) => T): T {
+  const fallback: State = {
+    cases: seedCases,
+    deliveries: seedDeliveries,
+    callLogs: seedCallLogs,
+    whatsapp: seedWhatsapp,
+    feedback: seedFeedback,
+  };
   return useSyncExternalStore(
     subscribe,
     () => selector(state),
-    () => selector({ cases: seedCases, deliveries: seedDeliveries }),
+    () => selector(fallback),
   );
 }
 
@@ -326,6 +529,7 @@ export function updateDelivery(deliveryId: string, patch: Partial<Delivery>) {
     const map: Record<DeliveryStatus, CaseStatus | null> = {
       Pending: null,
       Assigned: "Ready For Delivery",
+      "Picked Up": "Out For Delivery",
       "Out For Delivery": "Out For Delivery",
       Delivered: "Delivered",
     };
@@ -349,6 +553,30 @@ export function updateDelivery(deliveryId: string, patch: Partial<Delivery>) {
     }
   }
   emit();
+}
+
+export function addFeedback(input: Omit<Feedback, "id" | "at">) {
+  const next =
+    state.feedback.reduce((max, f) => {
+      const n = parseInt(f.id.replace("FB-", ""), 10);
+      return Number.isFinite(n) && n > max ? n : max;
+    }, 3000) + 1;
+  const f: Feedback = { ...input, id: `FB-${next}`, at: new Date().toISOString() };
+  state = { ...state, feedback: [f, ...state.feedback] };
+  emit();
+  return f;
+}
+
+export function addCallLog(input: Omit<CallLog, "id" | "at">) {
+  const next =
+    state.callLogs.reduce((max, l) => {
+      const n = parseInt(l.id.replace("CL-", ""), 10);
+      return Number.isFinite(n) && n > max ? n : max;
+    }, 9000) + 1;
+  const log: CallLog = { ...input, id: `CL-${next}`, at: new Date().toISOString() };
+  state = { ...state, callLogs: [log, ...state.callLogs] };
+  emit();
+  return log;
 }
 
 export { driverPool };
