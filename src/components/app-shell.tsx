@@ -53,7 +53,6 @@ const navSections: {
   },
 ];
 
-const navItems = navSections.flatMap((s) => s.items);
 
 export function AppShell() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
