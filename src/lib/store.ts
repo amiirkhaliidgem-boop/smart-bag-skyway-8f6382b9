@@ -451,18 +451,12 @@ function subscribe(l: () => void) {
 }
 
 export function useStore<T>(selector: (s: State) => T): T {
-  const fallback: State = {
-    cases: seedCases,
-    deliveries: seedDeliveries,
-    callLogs: seedCallLogs,
-    whatsapp: seedWhatsapp,
-    feedback: seedFeedback,
-  };
-  return useSyncExternalStore(
+  const snapshot = useSyncExternalStore(
     subscribe,
-    () => selector(state),
-    () => selector(fallback),
+    () => state,
+    () => state,
   );
+  return selector(snapshot);
 }
 
 export function getState() {
