@@ -1,0 +1,496 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { useMemo, useState } from "react";
+import {
+  useStore,
+  createTestNotification,
+  setNotificationStatus,
+  type NotificationEvent,
+} from "@/lib/store";
+import { WORKFLOW_LABELS, WORKFLOW_STATUSES, type WorkflowStatus } from "@/lib/workflow/statuses";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Bell, Send, MessageSquare, Mail, Smartphone, Loader2, CheckCircle2, AlertTriangle, Clock } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+import type { NotificationChannel } from "@/lib/notifications/templates";
+
+export const Route = createFileRoute("/notifications")({
+  head: () => ({
+    meta: [
+      { title: "Notification Center — IAB Smart Baggage" },
+      { name: "description", content: "Central log and preview of every workflow-driven passenger notification." },
+    ],
+  }),
+  component: NotificationCenter,
+});
+
+const CHANNEL_META: Record<NotificationChannel, { label: string; icon: typeof Mail }> = {
+  sms: { label: "SMS", icon: Smartphone },
+  whatsapp: { label: "WhatsApp", icon: MessageSquare },
+  email: { label: "Email", icon: Mail },
+  push: { label: "Push", icon: Bell },
+};
+
+function NotificationCenter() {
+  const notifications = useStore((s) => s.notifications);
+  const deliveries = useStore((s) => s.deliveries);
+
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [channelFilter, setChannelFilter] = useState<string>("all");
+  const [dateFilter, setDateFilter] = useState<string>("");
+  const [passengerFilter, setPassengerFilter] = useState<string>("");
+  const [deliveryFilter, setDeliveryFilter] = useState<string>("");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  // Test form
+  const [testDelivery, setTestDelivery] = useState<string>(deliveries[0]?.deliveryId ?? "");
+  const [testChannel, setTestChannel] = useState<NotificationChannel>("sms");
+  const [testWorkflow, setTestWorkflow] = useState<WorkflowStatus>("OUT_FOR_DELIVERY");
+
+  const filtered = useMemo(() => {
+    return notifications.filter((n) => {
+      if (statusFilter !== "all" && n.status_ !== statusFilter) return false;
+      if (channelFilter !== "all" && n.channel !== channelFilter) return false;
+      if (dateFilter && !n.createdAt.startsWith(dateFilter)) return false;
+      if (
+        passengerFilter &&
+        !(n.passengerName ?? "").toLowerCase().includes(passengerFilter.toLowerCase())
+      )
+        return false;
+      if (deliveryFilter && !n.deliveryId.toLowerCase().includes(deliveryFilter.toLowerCase()))
+        return false;
+      return true;
+    });
+  }, [notifications, statusFilter, channelFilter, dateFilter, passengerFilter, deliveryFilter]);
+
+  const selected =
+    notifications.find((n) => n.id === selectedId) ??
+    filtered[0] ??
+    notifications[0] ??
+    null;
+
+  // Group English / Arabic pair by (deliveryId, channel, status, createdAt window) for preview.
+  const previewPair = useMemo(() => {
+    if (!selected) return null;
+    const en =
+      selected.locale === "en"
+        ? selected
+        : notifications.find(
+            (n) =>
+              n.deliveryId === selected.deliveryId &&
+              n.channel === selected.channel &&
+              n.status === selected.status &&
+              n.locale === "en",
+          );
+    const ar =
+      selected.locale === "ar"
+        ? selected
+        : notifications.find(
+            (n) =>
+              n.deliveryId === selected.deliveryId &&
+              n.channel === selected.channel &&
+              n.status === selected.status &&
+              n.locale === "ar",
+          );
+    return { en, ar };
+  }, [selected, notifications]);
+
+  const counts = useMemo(() => {
+    return {
+      total: notifications.length,
+      queued: notifications.filter((n) => n.status_ === "queued").length,
+      sending: notifications.filter((n) => n.status_ === "sending").length,
+      sent: notifications.filter((n) => n.status_ === "sent").length,
+      failed: notifications.filter((n) => n.status_ === "failed").length,
+    };
+  }, [notifications]);
+
+  function simulateSend(events: NotificationEvent[]) {
+    events.forEach((e, i) => {
+      setTimeout(() => setNotificationStatus(e.id, "sending"), 400 + i * 120);
+      setTimeout(() => setNotificationStatus(e.id, "sent"), 1600 + i * 120);
+    });
+  }
+
+  function sendTest() {
+    const events = createTestNotification({
+      deliveryId: testDelivery,
+      channel: testChannel,
+      workflowStatus: testWorkflow,
+      operator: "Ops Console",
+    });
+    if (!events.length) {
+      toast.error("No template available for that combination");
+      return;
+    }
+    toast.success(`Queued ${events.length} test notification${events.length > 1 ? "s" : ""}`);
+    setSelectedId(events[0].id);
+    simulateSend(events);
+  }
+
+  function resend(n: NotificationEvent) {
+    setNotificationStatus(n.id, "queued");
+    simulateSend([n]);
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2">
+            <Bell className="h-7 w-7 text-primary" />
+            Notification Center
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Central log of every passenger notification generated by the Workflow Engine.
+            Ready for SMS / WhatsApp / Email / Push provider integration.
+          </p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <Kpi label="Total" value={counts.total} icon={Bell} />
+        <Kpi label="Queued" value={counts.queued} icon={Clock} tone="warning" />
+        <Kpi label="Sending" value={counts.sending} icon={Loader2} tone="info" spin={counts.sending > 0} />
+        <Kpi label="Sent" value={counts.sent} icon={CheckCircle2} tone="success" />
+        <Kpi label="Failed" value={counts.failed} icon={AlertTriangle} tone="danger" />
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Send className="h-4 w-4" />
+            Send Test Notification
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-3 md:grid-cols-5">
+          <div className="space-y-1">
+            <Label className="text-xs">Delivery</Label>
+            <Select value={testDelivery} onValueChange={setTestDelivery}>
+              <SelectTrigger><SelectValue placeholder="Select delivery" /></SelectTrigger>
+              <SelectContent>
+                {deliveries.map((d) => (
+                  <SelectItem key={d.deliveryId} value={d.deliveryId}>
+                    {d.deliveryId} — {d.passengerName}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Channel</Label>
+            <Select value={testChannel} onValueChange={(v) => setTestChannel(v as NotificationChannel)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {(Object.keys(CHANNEL_META) as NotificationChannel[]).map((c) => (
+                  <SelectItem key={c} value={c}>{CHANNEL_META[c].label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1 md:col-span-2">
+            <Label className="text-xs">Workflow Status</Label>
+            <Select value={testWorkflow} onValueChange={(v) => setTestWorkflow(v as WorkflowStatus)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {WORKFLOW_STATUSES.map((s) => (
+                  <SelectItem key={s} value={s}>{WORKFLOW_LABELS[s].en}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex items-end">
+            <Button className="w-full" onClick={sendTest}>
+              <Send className="h-4 w-4 mr-2" /> Send Test
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Filters</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-3 md:grid-cols-5">
+          <div className="space-y-1">
+            <Label className="text-xs">Status</Label>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="queued">Queued</SelectItem>
+                <SelectItem value="sending">Sending</SelectItem>
+                <SelectItem value="sent">Sent</SelectItem>
+                <SelectItem value="failed">Failed</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Channel</Label>
+            <Select value={channelFilter} onValueChange={setChannelFilter}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                {(Object.keys(CHANNEL_META) as NotificationChannel[]).map((c) => (
+                  <SelectItem key={c} value={c}>{CHANNEL_META[c].label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Date</Label>
+            <Input type="date" value={dateFilter} onChange={(e) => setDateFilter(e.target.value)} />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Passenger</Label>
+            <Input placeholder="Name" value={passengerFilter} onChange={(e) => setPassengerFilter(e.target.value)} />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Delivery ID</Label>
+            <Input placeholder="DEL-..." value={deliveryFilter} onChange={(e) => setDeliveryFilter(e.target.value)} />
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
+        <Card className="min-w-0">
+          <CardHeader className="flex-row items-center justify-between">
+            <CardTitle className="text-base">Events ({filtered.length})</CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="max-h-[520px] overflow-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/50 text-xs uppercase text-muted-foreground sticky top-0">
+                  <tr>
+                    <th className="text-left px-3 py-2 font-medium">Passenger</th>
+                    <th className="text-left px-3 py-2 font-medium">PIR / Delivery</th>
+                    <th className="text-left px-3 py-2 font-medium">Channel</th>
+                    <th className="text-left px-3 py-2 font-medium">Trigger</th>
+                    <th className="text-left px-3 py-2 font-medium">Status</th>
+                    <th className="text-left px-3 py-2 font-medium">Time</th>
+                    <th className="text-right px-3 py-2 font-medium">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.length === 0 && (
+                    <tr>
+                      <td colSpan={7} className="text-center py-10 text-sm text-muted-foreground">
+                        No notifications match the current filters.
+                      </td>
+                    </tr>
+                  )}
+                  {filtered.map((n) => {
+                    const ChIcon = CHANNEL_META[n.channel].icon;
+                    const active = selected?.id === n.id;
+                    return (
+                      <tr
+                        key={n.id}
+                        onClick={() => setSelectedId(n.id)}
+                        className={cn(
+                          "border-t border-border cursor-pointer hover:bg-muted/40 transition-colors",
+                          active && "bg-primary/5",
+                        )}
+                      >
+                        <td className="px-3 py-2">
+                          <div className="font-medium truncate">{n.passengerName ?? "—"}</div>
+                          <div className="text-[11px] text-muted-foreground">{n.to}</div>
+                        </td>
+                        <td className="px-3 py-2">
+                          <div className="font-mono text-xs">{n.pirNumber ?? "—"}</div>
+                          <div className="text-[11px] text-muted-foreground font-mono">{n.deliveryId}</div>
+                        </td>
+                        <td className="px-3 py-2">
+                          <span className="inline-flex items-center gap-1.5 text-xs">
+                            <ChIcon className="h-3.5 w-3.5" />
+                            {CHANNEL_META[n.channel].label}
+                          </span>
+                          <div className="text-[11px] text-muted-foreground uppercase">{n.locale}</div>
+                        </td>
+                        <td className="px-3 py-2 text-xs">{WORKFLOW_LABELS[n.status]?.en ?? n.status}</td>
+                        <td className="px-3 py-2">
+                          <StatusPill status={n.status_} />
+                        </td>
+                        <td className="px-3 py-2 text-xs whitespace-nowrap">
+                          {new Date(n.sentAt ?? n.createdAt).toLocaleTimeString("en-GB", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                          <div className="text-[11px] text-muted-foreground">
+                            {n.operator ?? "system"}
+                          </div>
+                        </td>
+                        <td className="px-3 py-2 text-right">
+                          {(n.status_ === "failed" || n.status_ === "sent") && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                resend(n);
+                              }}
+                            >
+                              Resend
+                            </Button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="min-w-0">
+          <CardHeader>
+            <CardTitle className="text-base">Message Preview</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {!selected && (
+              <p className="text-sm text-muted-foreground">
+                Select a notification to preview the exact bilingual message that will be sent.
+              </p>
+            )}
+            {selected && (
+              <>
+                <div className="rounded-md border border-border bg-muted/30 p-3 text-xs space-y-1">
+                  <Row k="Notification ID" v={selected.id} mono />
+                  <Row k="Passenger" v={selected.passengerName ?? "—"} />
+                  <Row k="PIR Number" v={selected.pirNumber ?? "—"} mono />
+                  <Row k="Delivery ID" v={selected.deliveryId} mono />
+                  <Row k="Channel" v={CHANNEL_META[selected.channel].label} />
+                  <Row k="Trigger" v={WORKFLOW_LABELS[selected.status]?.en ?? selected.status} />
+                  <Row k="Operator" v={selected.operator ?? "system"} />
+                  <Row
+                    k="Time"
+                    v={new Date(selected.sentAt ?? selected.createdAt).toLocaleString("en-GB")}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">
+                      English
+                    </p>
+                    {previewPair?.en && <StatusPill status={previewPair.en.status_} />}
+                  </div>
+                  <div className="rounded-md border border-border p-3 text-sm bg-card whitespace-pre-wrap">
+                    {previewPair?.en?.message.body ?? "— No English template —"}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">
+                      العربية
+                    </p>
+                    {previewPair?.ar && <StatusPill status={previewPair.ar.status_} />}
+                  </div>
+                  <div
+                    dir="rtl"
+                    lang="ar"
+                    className="rounded-md border border-border p-3 text-sm bg-card whitespace-pre-wrap"
+                  >
+                    {previewPair?.ar?.message.body ?? "— لا يوجد قالب عربي —"}
+                  </div>
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+function Row({ k, v, mono }: { k: string; v: string; mono?: boolean }) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <span className="text-muted-foreground">{k}</span>
+      <span className={cn("text-right truncate", mono && "font-mono")}>{v}</span>
+    </div>
+  );
+}
+
+function StatusPill({ status }: { status: NotificationEvent["status_"] }) {
+  const map: Record<NotificationEvent["status_"], { label: string; cls: string; icon: typeof Clock; spin?: boolean }> = {
+    queued: {
+      label: "Queued",
+      cls: "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30",
+      icon: Clock,
+    },
+    sending: {
+      label: "Sending",
+      cls: "bg-sky-500/15 text-sky-700 dark:text-sky-300 border-sky-500/30",
+      icon: Loader2,
+      spin: true,
+    },
+    sent: {
+      label: "Sent",
+      cls: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30",
+      icon: CheckCircle2,
+    },
+    failed: {
+      label: "Failed",
+      cls: "bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/30",
+      icon: AlertTriangle,
+    },
+  };
+  const m = map[status];
+  const Icon = m.icon;
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium transition-all",
+        m.cls,
+      )}
+    >
+      <Icon className={cn("h-3 w-3", m.spin && "animate-spin")} />
+      {m.label}
+    </span>
+  );
+}
+
+function Kpi({
+  label,
+  value,
+  icon: Icon,
+  tone,
+  spin,
+}: {
+  label: string;
+  value: number | string;
+  icon: typeof Bell;
+  tone?: "success" | "warning" | "info" | "danger";
+  spin?: boolean;
+}) {
+  const toneCls =
+    tone === "success"
+      ? "text-emerald-600 dark:text-emerald-400"
+      : tone === "warning"
+        ? "text-amber-600 dark:text-amber-400"
+        : tone === "info"
+          ? "text-sky-600 dark:text-sky-400"
+          : tone === "danger"
+            ? "text-rose-600 dark:text-rose-400"
+            : "text-primary";
+  return (
+    <div className="rounded-xl border border-border bg-card p-4">
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-muted-foreground">{label}</p>
+        <Icon className={cn("h-4 w-4", toneCls, spin && "animate-spin")} />
+      </div>
+      <p className="text-2xl font-bold tabular-nums mt-1">{value}</p>
+    </div>
+  );
+}
