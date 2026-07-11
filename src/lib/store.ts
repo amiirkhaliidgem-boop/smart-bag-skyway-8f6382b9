@@ -650,6 +650,9 @@ function enqueueNotifications(deliveryId: string, status: WorkflowStatus) {
         message: msg,
         createdAt: new Date().toISOString(),
         status_: "queued",
+        passengerName: d.passengerName,
+        pirNumber: d.pirNumber,
+        operator: "Workflow Engine",
       });
     }
   }
