@@ -142,6 +142,44 @@ function ReportsPage() {
           </div>
         </CardContent>
       </Card>
+
+      {incidents.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Recent Quality Incidents</CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/60 text-xs uppercase tracking-wider text-muted-foreground">
+                  <tr>
+                    <th className="text-left px-4 py-3 font-medium">ID</th>
+                    <th className="text-left px-4 py-3 font-medium">Category</th>
+                    <th className="text-left px-4 py-3 font-medium">Passenger</th>
+                    <th className="text-left px-4 py-3 font-medium">Driver</th>
+                    <th className="text-left px-4 py-3 font-medium">Severity</th>
+                    <th className="text-left px-4 py-3 font-medium">Reported</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {incidents.slice(0, 8).map((i) => (
+                    <tr key={i.id}>
+                      <td className="px-4 py-3 font-mono text-xs">{i.id}</td>
+                      <td className="px-4 py-3">{i.category}</td>
+                      <td className="px-4 py-3">{i.passengerName}</td>
+                      <td className="px-4 py-3">{i.driver}</td>
+                      <td className="px-4 py-3">{i.severity}</td>
+                      <td className="px-4 py-3 text-xs text-muted-foreground">
+                        {new Date(i.at).toLocaleString()}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
