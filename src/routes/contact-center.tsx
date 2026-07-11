@@ -12,6 +12,7 @@ import {
   Smile,
   ClipboardList,
   Users,
+  ShieldAlert,
 } from "lucide-react";
 
 export const Route = createFileRoute("/contact-center")({
@@ -24,6 +25,7 @@ function ContactCenterPage() {
   const calls = useStore((s) => s.callLogs);
   const whatsapp = useStore((s) => s.whatsapp);
   const feedback = useStore((s) => s.feedback);
+  const incidents = useStore((s) => s.qualityIncidents);
 
   const openCases = cases.filter((c) => c.status !== "Delivered").length;
   const closedCases = cases.filter((c) => c.status === "Delivered").length;
@@ -43,6 +45,7 @@ function ContactCenterPage() {
     { label: "WhatsApp Chats", value: waConversations, icon: MessageCircle, tone: "indigo" },
     { label: "CSAT", value: `${csat.toFixed(1)}/5`, icon: Smile, tone: "rose" },
     { label: "Pending Follow-ups", value: pendingFollowups, icon: PhoneMissed, tone: "amber" },
+    { label: "Quality Incidents", value: incidents.length, icon: ShieldAlert, tone: "rose" },
   ];
   const tones: Record<string, string> = {
     primary: "bg-primary/10 text-primary",
@@ -79,6 +82,9 @@ function ContactCenterPage() {
         <TabsList>
           <TabsTrigger value="calls">Call Log</TabsTrigger>
           <TabsTrigger value="whatsapp">WhatsApp</TabsTrigger>
+          <TabsTrigger value="incidents">
+            Quality Incidents{incidents.length ? ` (${incidents.length})` : ""}
+          </TabsTrigger>
           <TabsTrigger value="timeline">Communication Timeline</TabsTrigger>
         </TabsList>
 
@@ -126,6 +132,74 @@ function ContactCenterPage() {
 
         <TabsContent value="whatsapp" className="mt-4">
           <WhatsAppView conversations={whatsapp} />
+        </TabsContent>
+
+        <TabsContent value="incidents" className="mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <ShieldAlert className="h-4 w-4 text-rose-600" />
+                Quality Incidents
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              {incidents.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-10">
+                  No quality incidents reported. Passenger-flagged issues from the
+                  Passenger Portal will appear here.
+                </p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted/60 text-xs uppercase tracking-wider text-muted-foreground">
+                      <tr>
+                        <th className="text-left px-4 py-3 font-medium">ID</th>
+                        <th className="text-left px-4 py-3 font-medium">Category</th>
+                        <th className="text-left px-4 py-3 font-medium">Severity</th>
+                        <th className="text-left px-4 py-3 font-medium">Passenger</th>
+                        <th className="text-left px-4 py-3 font-medium">Driver</th>
+                        <th className="text-left px-4 py-3 font-medium">Bag</th>
+                        <th className="text-left px-4 py-3 font-medium">Reported</th>
+                        <th className="text-left px-4 py-3 font-medium">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {incidents.map((i) => (
+                        <tr key={i.id} className="hover:bg-muted/40">
+                          <td className="px-4 py-3 font-mono text-xs">{i.id}</td>
+                          <td className="px-4 py-3">{i.category}</td>
+                          <td className="px-4 py-3">
+                            <span
+                              className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium ${
+                                i.severity === "High"
+                                  ? "bg-rose-100 text-rose-700"
+                                  : i.severity === "Medium"
+                                    ? "bg-amber-100 text-amber-700"
+                                    : "bg-slate-100 text-slate-700"
+                              }`}
+                            >
+                              {i.severity}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3">{i.passengerName}</td>
+                          <td className="px-4 py-3">{i.driver}</td>
+                          <td className="px-4 py-3 font-mono text-xs">{i.bagId}</td>
+                          <td className="px-4 py-3 text-xs text-muted-foreground">
+                            {new Date(i.at).toLocaleString()}
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-100 text-amber-700">
+                              {i.status}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="timeline" className="mt-4">
