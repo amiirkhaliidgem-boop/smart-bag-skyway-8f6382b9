@@ -1,6 +1,19 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { useStore, type WhatsAppMessage, addCallLog, createTestNotification } from "@/lib/store";
+import {
+  useStore,
+  type WhatsAppMessage,
+  type BaggageCase,
+  type Delivery,
+  type WorkflowRecord,
+  type CallLog,
+  type Feedback,
+  type QualityIncident,
+  type NotificationEvent,
+  addCallLog,
+  createTestNotification,
+} from "@/lib/store";
+import type { AuditEntry } from "@/lib/audit/log";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -425,15 +438,15 @@ function WhatsAppView({ conversations }: { conversations: WhatsAppMessage[] }) {
 // ---------- Conversations View ----------
 
 type ConversationsProps = {
-  cases: ReturnType<typeof useStore.getState>["cases"];
-  deliveries: ReturnType<typeof useStore.getState>["deliveries"];
-  workflow: ReturnType<typeof useStore.getState>["workflow"];
-  calls: ReturnType<typeof useStore.getState>["callLogs"];
+  cases: BaggageCase[];
+  deliveries: Delivery[];
+  workflow: WorkflowRecord[];
+  calls: CallLog[];
   whatsapp: WhatsAppMessage[];
-  feedback: ReturnType<typeof useStore.getState>["feedback"];
-  incidents: ReturnType<typeof useStore.getState>["qualityIncidents"];
-  notifications: ReturnType<typeof useStore.getState>["notifications"];
-  audit: ReturnType<typeof useStore.getState>["audit"];
+  feedback: Feedback[];
+  incidents: QualityIncident[];
+  notifications: NotificationEvent[];
+  audit: AuditEntry[];
 };
 
 function ConversationsView(p: ConversationsProps) {
