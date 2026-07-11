@@ -15,6 +15,7 @@ import {
   UserCog,
   Send,
   Bell,
+  Activity,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -53,6 +54,7 @@ const navSections: {
   {
     label: "Insights",
     items: [
+      { to: "/timeline", label: "Activity Timeline", icon: Activity },
       { to: "/notifications", label: "Notification Center", icon: Bell },
       { to: "/reports", label: "Reports", icon: BarChart3 },
     ],
