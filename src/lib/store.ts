@@ -55,6 +55,19 @@ export interface Feedback {
   at: string;
 }
 
+export interface QualityIncident {
+  id: string;
+  bagId: string;
+  deliveryId?: string;
+  passengerName: string;
+  driver: string;
+  category: "Possible Misconduct" | "Damaged Baggage" | "Late Delivery" | "Other";
+  severity: "High" | "Medium" | "Low";
+  status: "Open" | "Under Review" | "Resolved";
+  description: string;
+  at: string;
+}
+
 export interface BaggageCase {
   bagId: string;
   passengerName: string;
@@ -94,9 +107,10 @@ interface State {
   callLogs: CallLog[];
   whatsapp: WhatsAppMessage[];
   feedback: Feedback[];
+  qualityIncidents: QualityIncident[];
 }
 
-const STORAGE_KEY = "sbe-state-v4";
+const STORAGE_KEY = "sbe-state-v5";
 
 const driverPool = [
   "Ahmed Mostafa",
