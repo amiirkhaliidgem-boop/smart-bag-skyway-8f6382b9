@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as WorkflowMonitorRouteImport } from './routes/workflow-monitor'
 import { Route as TrackingRouteImport } from './routes/tracking'
 import { Route as TimelineRouteImport } from './routes/timeline'
 import { Route as StorageRouteImport } from './routes/storage'
@@ -26,6 +27,11 @@ import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PassengerTokenRouteImport } from './routes/passenger.$token'
 
+const WorkflowMonitorRoute = WorkflowMonitorRouteImport.update({
+  id: '/workflow-monitor',
+  path: '/workflow-monitor',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TrackingRoute = TrackingRouteImport.update({
   id: '/tracking',
   path: '/tracking',
@@ -123,6 +129,7 @@ export interface FileRoutesByFullPath {
   '/storage': typeof StorageRoute
   '/timeline': typeof TimelineRoute
   '/tracking': typeof TrackingRoute
+  '/workflow-monitor': typeof WorkflowMonitorRoute
   '/passenger/$token': typeof PassengerTokenRoute
 }
 export interface FileRoutesByTo {
@@ -141,6 +148,7 @@ export interface FileRoutesByTo {
   '/storage': typeof StorageRoute
   '/timeline': typeof TimelineRoute
   '/tracking': typeof TrackingRoute
+  '/workflow-monitor': typeof WorkflowMonitorRoute
   '/passenger/$token': typeof PassengerTokenRoute
 }
 export interface FileRoutesById {
@@ -160,6 +168,7 @@ export interface FileRoutesById {
   '/storage': typeof StorageRoute
   '/timeline': typeof TimelineRoute
   '/tracking': typeof TrackingRoute
+  '/workflow-monitor': typeof WorkflowMonitorRoute
   '/passenger/$token': typeof PassengerTokenRoute
 }
 export interface FileRouteTypes {
@@ -180,6 +189,7 @@ export interface FileRouteTypes {
     | '/storage'
     | '/timeline'
     | '/tracking'
+    | '/workflow-monitor'
     | '/passenger/$token'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -198,6 +208,7 @@ export interface FileRouteTypes {
     | '/storage'
     | '/timeline'
     | '/tracking'
+    | '/workflow-monitor'
     | '/passenger/$token'
   id:
     | '__root__'
@@ -216,6 +227,7 @@ export interface FileRouteTypes {
     | '/storage'
     | '/timeline'
     | '/tracking'
+    | '/workflow-monitor'
     | '/passenger/$token'
   fileRoutesById: FileRoutesById
 }
@@ -235,10 +247,18 @@ export interface RootRouteChildren {
   StorageRoute: typeof StorageRoute
   TimelineRoute: typeof TimelineRoute
   TrackingRoute: typeof TrackingRoute
+  WorkflowMonitorRoute: typeof WorkflowMonitorRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/workflow-monitor': {
+      id: '/workflow-monitor'
+      path: '/workflow-monitor'
+      fullPath: '/workflow-monitor'
+      preLoaderRoute: typeof WorkflowMonitorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/tracking': {
       id: '/tracking'
       path: '/tracking'
@@ -382,6 +402,7 @@ const rootRouteChildren: RootRouteChildren = {
   StorageRoute: StorageRoute,
   TimelineRoute: TimelineRoute,
   TrackingRoute: TrackingRoute,
+  WorkflowMonitorRoute: WorkflowMonitorRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
