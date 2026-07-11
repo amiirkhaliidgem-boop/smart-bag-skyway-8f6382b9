@@ -16,6 +16,13 @@ import {
   Send,
   Bell,
   Activity,
+  ShieldCheck,
+  Users as UsersIcon,
+  KeySquare,
+  Building2,
+  MapPin,
+  UsersRound,
+  ScrollText,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -23,7 +30,14 @@ import iabLogo from "@/assets/iab-logo.jpeg.asset.json";
 
 const navSections: {
   label: string;
-  items: { to: string; label: string; icon: typeof LayoutDashboard; exact?: boolean }[];
+  items: {
+    to: string;
+    label: string;
+    icon: typeof LayoutDashboard;
+    exact?: boolean;
+    search?: Record<string, string>;
+    matchSearchKey?: string;
+  }[];
 }[] = [
   {
     label: "Operations",
@@ -59,15 +73,42 @@ const navSections: {
       { to: "/reports", label: "Reports", icon: BarChart3 },
     ],
   },
+  {
+    label: "Administration",
+    items: [
+      { to: "/admin", label: "Users", icon: UsersIcon, search: { section: "users" }, matchSearchKey: "users" },
+      { to: "/admin", label: "Roles", icon: ShieldCheck, search: { section: "roles" }, matchSearchKey: "roles" },
+      { to: "/admin", label: "Permissions", icon: KeySquare, search: { section: "permissions" }, matchSearchKey: "permissions" },
+      { to: "/admin", label: "Departments", icon: Building2, search: { section: "departments" }, matchSearchKey: "departments" },
+      { to: "/admin", label: "Stations", icon: MapPin, search: { section: "stations" }, matchSearchKey: "stations" },
+      { to: "/admin", label: "Teams", icon: UsersRound, search: { section: "teams" }, matchSearchKey: "teams" },
+      { to: "/admin", label: "Activity Logs", icon: ScrollText, search: { section: "activity" }, matchSearchKey: "activity" },
+    ],
+  },
 ];
 
 
 export function AppShell() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const currentSection = useRouterState({
+    select: (s) => (s.location.search as { section?: string })?.section,
+  });
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const isActive = (to: string, exact?: boolean) =>
-    exact ? pathname === to : pathname === to || pathname.startsWith(to + "/");
+  const isActive = (
+    to: string,
+    exact?: boolean,
+    matchSearchKey?: string,
+  ) => {
+    const pathMatch = exact
+      ? pathname === to
+      : pathname === to || pathname.startsWith(to + "/");
+    if (!pathMatch) return false;
+    if (!matchSearchKey) return true;
+    // For sub-nav items that share a route, match on the `section` search param.
+    const current = currentSection ?? "users"; // /admin defaults to users
+    return current === matchSearchKey;
+  };
 
   return (
     <div className="flex min-h-screen w-full bg-background text-foreground">
@@ -83,12 +124,13 @@ export function AppShell() {
               <div className="space-y-1">
                 {section.items.map((item) => (
                   <Link
-                    key={item.to}
+                    key={`${item.to}-${item.label}`}
                     to={item.to}
+                    search={item.search as never}
                     onClick={() => setMobileOpen(false)}
                     className={cn(
                       "flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors",
-                      isActive(item.to, item.exact)
+                      isActive(item.to, item.exact, item.matchSearchKey)
                         ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-sm"
                         : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
                     )}
@@ -122,12 +164,13 @@ export function AppShell() {
                   <div className="space-y-1">
                     {section.items.map((item) => (
                       <Link
-                        key={item.to}
+                        key={`${item.to}-${item.label}`}
                         to={item.to}
+                        search={item.search as never}
                         onClick={() => setMobileOpen(false)}
                         className={cn(
                           "flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium",
-                          isActive(item.to, item.exact)
+                          isActive(item.to, item.exact, item.matchSearchKey)
                             ? "bg-sidebar-primary text-sidebar-primary-foreground"
                             : "hover:bg-sidebar-accent",
                         )}
