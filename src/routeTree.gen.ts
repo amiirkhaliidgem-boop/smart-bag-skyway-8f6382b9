@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TrackingRouteImport } from './routes/tracking'
+import { Route as TimelineRouteImport } from './routes/timeline'
 import { Route as StorageRouteImport } from './routes/storage'
 import { Route as RouteTrackingRouteImport } from './routes/route-tracking'
 import { Route as ReportsRouteImport } from './routes/reports'
@@ -27,6 +28,11 @@ import { Route as PassengerTokenRouteImport } from './routes/passenger.$token'
 const TrackingRoute = TrackingRouteImport.update({
   id: '/tracking',
   path: '/tracking',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TimelineRoute = TimelineRouteImport.update({
+  id: '/timeline',
+  path: '/timeline',
   getParentRoute: () => rootRouteImport,
 } as any)
 const StorageRoute = StorageRouteImport.update({
@@ -108,6 +114,7 @@ export interface FileRoutesByFullPath {
   '/reports': typeof ReportsRoute
   '/route-tracking': typeof RouteTrackingRoute
   '/storage': typeof StorageRoute
+  '/timeline': typeof TimelineRoute
   '/tracking': typeof TrackingRoute
   '/passenger/$token': typeof PassengerTokenRoute
 }
@@ -124,6 +131,7 @@ export interface FileRoutesByTo {
   '/reports': typeof ReportsRoute
   '/route-tracking': typeof RouteTrackingRoute
   '/storage': typeof StorageRoute
+  '/timeline': typeof TimelineRoute
   '/tracking': typeof TrackingRoute
   '/passenger/$token': typeof PassengerTokenRoute
 }
@@ -141,6 +149,7 @@ export interface FileRoutesById {
   '/reports': typeof ReportsRoute
   '/route-tracking': typeof RouteTrackingRoute
   '/storage': typeof StorageRoute
+  '/timeline': typeof TimelineRoute
   '/tracking': typeof TrackingRoute
   '/passenger/$token': typeof PassengerTokenRoute
 }
@@ -159,6 +168,7 @@ export interface FileRouteTypes {
     | '/reports'
     | '/route-tracking'
     | '/storage'
+    | '/timeline'
     | '/tracking'
     | '/passenger/$token'
   fileRoutesByTo: FileRoutesByTo
@@ -175,6 +185,7 @@ export interface FileRouteTypes {
     | '/reports'
     | '/route-tracking'
     | '/storage'
+    | '/timeline'
     | '/tracking'
     | '/passenger/$token'
   id:
@@ -191,6 +202,7 @@ export interface FileRouteTypes {
     | '/reports'
     | '/route-tracking'
     | '/storage'
+    | '/timeline'
     | '/tracking'
     | '/passenger/$token'
   fileRoutesById: FileRoutesById
@@ -208,6 +220,7 @@ export interface RootRouteChildren {
   ReportsRoute: typeof ReportsRoute
   RouteTrackingRoute: typeof RouteTrackingRoute
   StorageRoute: typeof StorageRoute
+  TimelineRoute: typeof TimelineRoute
   TrackingRoute: typeof TrackingRoute
 }
 
@@ -218,6 +231,13 @@ declare module '@tanstack/react-router' {
       path: '/tracking'
       fullPath: '/tracking'
       preLoaderRoute: typeof TrackingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/timeline': {
+      id: '/timeline'
+      path: '/timeline'
+      fullPath: '/timeline'
+      preLoaderRoute: typeof TimelineRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/storage': {
@@ -339,6 +359,7 @@ const rootRouteChildren: RootRouteChildren = {
   ReportsRoute: ReportsRoute,
   RouteTrackingRoute: RouteTrackingRoute,
   StorageRoute: StorageRoute,
+  TimelineRoute: TimelineRoute,
   TrackingRoute: TrackingRoute,
 }
 export const routeTree = rootRouteImport
