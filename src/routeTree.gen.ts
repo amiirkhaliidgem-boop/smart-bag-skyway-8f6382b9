@@ -13,6 +13,7 @@ import { Route as WorkflowMonitorRouteImport } from './routes/workflow-monitor'
 import { Route as TrackingRouteImport } from './routes/tracking'
 import { Route as TimelineRouteImport } from './routes/timeline'
 import { Route as StorageRouteImport } from './routes/storage'
+import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as RouteTrackingRouteImport } from './routes/route-tracking'
 import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as QrScanRouteImport } from './routes/qr-scan'
@@ -48,6 +49,11 @@ const TimelineRoute = TimelineRouteImport.update({
 const StorageRoute = StorageRouteImport.update({
   id: '/storage',
   path: '/storage',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RouteTrackingRoute = RouteTrackingRouteImport.update({
@@ -147,6 +153,7 @@ export interface FileRoutesByFullPath {
   '/qr-scan': typeof QrScanRoute
   '/reports': typeof ReportsRoute
   '/route-tracking': typeof RouteTrackingRoute
+  '/settings': typeof SettingsRoute
   '/storage': typeof StorageRoute
   '/timeline': typeof TimelineRoute
   '/tracking': typeof TrackingRoute
@@ -169,6 +176,7 @@ export interface FileRoutesByTo {
   '/qr-scan': typeof QrScanRoute
   '/reports': typeof ReportsRoute
   '/route-tracking': typeof RouteTrackingRoute
+  '/settings': typeof SettingsRoute
   '/storage': typeof StorageRoute
   '/timeline': typeof TimelineRoute
   '/tracking': typeof TrackingRoute
@@ -192,6 +200,7 @@ export interface FileRoutesById {
   '/qr-scan': typeof QrScanRoute
   '/reports': typeof ReportsRoute
   '/route-tracking': typeof RouteTrackingRoute
+  '/settings': typeof SettingsRoute
   '/storage': typeof StorageRoute
   '/timeline': typeof TimelineRoute
   '/tracking': typeof TrackingRoute
@@ -216,6 +225,7 @@ export interface FileRouteTypes {
     | '/qr-scan'
     | '/reports'
     | '/route-tracking'
+    | '/settings'
     | '/storage'
     | '/timeline'
     | '/tracking'
@@ -238,6 +248,7 @@ export interface FileRouteTypes {
     | '/qr-scan'
     | '/reports'
     | '/route-tracking'
+    | '/settings'
     | '/storage'
     | '/timeline'
     | '/tracking'
@@ -260,6 +271,7 @@ export interface FileRouteTypes {
     | '/qr-scan'
     | '/reports'
     | '/route-tracking'
+    | '/settings'
     | '/storage'
     | '/timeline'
     | '/tracking'
@@ -283,6 +295,7 @@ export interface RootRouteChildren {
   QrScanRoute: typeof QrScanRoute
   ReportsRoute: typeof ReportsRoute
   RouteTrackingRoute: typeof RouteTrackingRoute
+  SettingsRoute: typeof SettingsRoute
   StorageRoute: typeof StorageRoute
   TimelineRoute: typeof TimelineRoute
   TrackingRoute: typeof TrackingRoute
@@ -317,6 +330,13 @@ declare module '@tanstack/react-router' {
       path: '/storage'
       fullPath: '/storage'
       preLoaderRoute: typeof StorageRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/route-tracking': {
@@ -462,6 +482,7 @@ const rootRouteChildren: RootRouteChildren = {
   QrScanRoute: QrScanRoute,
   ReportsRoute: ReportsRoute,
   RouteTrackingRoute: RouteTrackingRoute,
+  SettingsRoute: SettingsRoute,
   StorageRoute: StorageRoute,
   TimelineRoute: TimelineRoute,
   TrackingRoute: TrackingRoute,

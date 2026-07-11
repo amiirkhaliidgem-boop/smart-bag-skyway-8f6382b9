@@ -1,8 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
-import { useStore, type WhatsAppMessage } from "@/lib/store";
+import { useMemo, useState } from "react";
+import { useStore, type WhatsAppMessage, addCallLog, createTestNotification } from "@/lib/store";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+import { WORKFLOW_LABELS } from "@/lib/workflow/statuses";
 import {
   PhoneIncoming,
   PhoneOutgoing,
@@ -14,6 +18,13 @@ import {
   Users,
   ShieldAlert,
   Send,
+  Mail,
+  Copy,
+  RefreshCw,
+  ShieldCheck,
+  UserPlus,
+  ArrowUpRight,
+  Search,
 } from "lucide-react";
 
 export const Route = createFileRoute("/contact-center")({
@@ -28,6 +39,9 @@ function ContactCenterPage() {
   const feedback = useStore((s) => s.feedback);
   const incidents = useStore((s) => s.qualityIncidents);
   const notifications = useStore((s) => s.notifications);
+  const deliveries = useStore((s) => s.deliveries);
+  const workflow = useStore((s) => s.workflow);
+  const audit = useStore((s) => s.audit);
 
   const openCases = cases.filter((c) => c.status !== "Delivered").length;
   const closedCases = cases.filter((c) => c.status === "Delivered").length;
@@ -80,8 +94,9 @@ function ContactCenterPage() {
         ))}
       </div>
 
-      <Tabs defaultValue="calls">
+      <Tabs defaultValue="conversations">
         <TabsList>
+          <TabsTrigger value="conversations">Conversations</TabsTrigger>
           <TabsTrigger value="calls">Call Log</TabsTrigger>
           <TabsTrigger value="whatsapp">WhatsApp</TabsTrigger>
           <TabsTrigger value="incidents">
@@ -92,6 +107,20 @@ function ContactCenterPage() {
           </TabsTrigger>
           <TabsTrigger value="timeline">Communication Timeline</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="conversations" className="mt-4">
+          <ConversationsView
+            cases={cases}
+            deliveries={deliveries}
+            workflow={workflow}
+            calls={calls}
+            whatsapp={whatsapp}
+            feedback={feedback}
+            incidents={incidents}
+            notifications={notifications}
+            audit={audit}
+          />
+        </TabsContent>
 
         <TabsContent value="calls" className="mt-4">
           <Card>
