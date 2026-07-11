@@ -19,6 +19,7 @@ import { Route as QrScanRouteImport } from './routes/qr-scan'
 import { Route as PassengerRouteImport } from './routes/passenger'
 import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as LostFoundRouteImport } from './routes/lost-found'
+import { Route as IntegrationsRouteImport } from './routes/integrations'
 import { Route as FeedbackRouteImport } from './routes/feedback'
 import { Route as ExportCenterRouteImport } from './routes/export-center'
 import { Route as DriverPortalRouteImport } from './routes/driver-portal'
@@ -78,6 +79,11 @@ const LostFoundRoute = LostFoundRouteImport.update({
   path: '/lost-found',
   getParentRoute: () => rootRouteImport,
 } as any)
+const IntegrationsRoute = IntegrationsRouteImport.update({
+  id: '/integrations',
+  path: '/integrations',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const FeedbackRoute = FeedbackRouteImport.update({
   id: '/feedback',
   path: '/feedback',
@@ -127,6 +133,7 @@ export interface FileRoutesByFullPath {
   '/driver-portal': typeof DriverPortalRoute
   '/export-center': typeof ExportCenterRoute
   '/feedback': typeof FeedbackRoute
+  '/integrations': typeof IntegrationsRoute
   '/lost-found': typeof LostFoundRoute
   '/notifications': typeof NotificationsRoute
   '/passenger': typeof PassengerRouteWithChildren
@@ -147,6 +154,7 @@ export interface FileRoutesByTo {
   '/driver-portal': typeof DriverPortalRoute
   '/export-center': typeof ExportCenterRoute
   '/feedback': typeof FeedbackRoute
+  '/integrations': typeof IntegrationsRoute
   '/lost-found': typeof LostFoundRoute
   '/notifications': typeof NotificationsRoute
   '/passenger': typeof PassengerRouteWithChildren
@@ -168,6 +176,7 @@ export interface FileRoutesById {
   '/driver-portal': typeof DriverPortalRoute
   '/export-center': typeof ExportCenterRoute
   '/feedback': typeof FeedbackRoute
+  '/integrations': typeof IntegrationsRoute
   '/lost-found': typeof LostFoundRoute
   '/notifications': typeof NotificationsRoute
   '/passenger': typeof PassengerRouteWithChildren
@@ -190,6 +199,7 @@ export interface FileRouteTypes {
     | '/driver-portal'
     | '/export-center'
     | '/feedback'
+    | '/integrations'
     | '/lost-found'
     | '/notifications'
     | '/passenger'
@@ -210,6 +220,7 @@ export interface FileRouteTypes {
     | '/driver-portal'
     | '/export-center'
     | '/feedback'
+    | '/integrations'
     | '/lost-found'
     | '/notifications'
     | '/passenger'
@@ -230,6 +241,7 @@ export interface FileRouteTypes {
     | '/driver-portal'
     | '/export-center'
     | '/feedback'
+    | '/integrations'
     | '/lost-found'
     | '/notifications'
     | '/passenger'
@@ -251,6 +263,7 @@ export interface RootRouteChildren {
   DriverPortalRoute: typeof DriverPortalRoute
   ExportCenterRoute: typeof ExportCenterRoute
   FeedbackRoute: typeof FeedbackRoute
+  IntegrationsRoute: typeof IntegrationsRoute
   LostFoundRoute: typeof LostFoundRoute
   NotificationsRoute: typeof NotificationsRoute
   PassengerRoute: typeof PassengerRouteWithChildren
@@ -335,6 +348,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LostFoundRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/integrations': {
+      id: '/integrations'
+      path: '/integrations'
+      fullPath: '/integrations'
+      preLoaderRoute: typeof IntegrationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/feedback': {
       id: '/feedback'
       path: '/feedback'
@@ -414,6 +434,7 @@ const rootRouteChildren: RootRouteChildren = {
   DriverPortalRoute: DriverPortalRoute,
   ExportCenterRoute: ExportCenterRoute,
   FeedbackRoute: FeedbackRoute,
+  IntegrationsRoute: IntegrationsRoute,
   LostFoundRoute: LostFoundRoute,
   NotificationsRoute: NotificationsRoute,
   PassengerRoute: PassengerRouteWithChildren,
