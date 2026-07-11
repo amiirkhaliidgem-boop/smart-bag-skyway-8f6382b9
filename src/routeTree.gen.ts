@@ -25,6 +25,7 @@ import { Route as ExportCenterRouteImport } from './routes/export-center'
 import { Route as DriverPortalRouteImport } from './routes/driver-portal'
 import { Route as DeliveryRouteImport } from './routes/delivery'
 import { Route as ContactCenterRouteImport } from './routes/contact-center'
+import { Route as ApiStatusRouteImport } from './routes/api-status'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PassengerTokenRouteImport } from './routes/passenger.$token'
@@ -109,6 +110,11 @@ const ContactCenterRoute = ContactCenterRouteImport.update({
   path: '/contact-center',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiStatusRoute = ApiStatusRouteImport.update({
+  id: '/api-status',
+  path: '/api-status',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminRoute = AdminRouteImport.update({
   id: '/admin',
   path: '/admin',
@@ -128,6 +134,7 @@ const PassengerTokenRoute = PassengerTokenRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/api-status': typeof ApiStatusRoute
   '/contact-center': typeof ContactCenterRoute
   '/delivery': typeof DeliveryRoute
   '/driver-portal': typeof DriverPortalRoute
@@ -149,6 +156,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/api-status': typeof ApiStatusRoute
   '/contact-center': typeof ContactCenterRoute
   '/delivery': typeof DeliveryRoute
   '/driver-portal': typeof DriverPortalRoute
@@ -171,6 +179,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/api-status': typeof ApiStatusRoute
   '/contact-center': typeof ContactCenterRoute
   '/delivery': typeof DeliveryRoute
   '/driver-portal': typeof DriverPortalRoute
@@ -194,6 +203,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/admin'
+    | '/api-status'
     | '/contact-center'
     | '/delivery'
     | '/driver-portal'
@@ -215,6 +225,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/admin'
+    | '/api-status'
     | '/contact-center'
     | '/delivery'
     | '/driver-portal'
@@ -236,6 +247,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/admin'
+    | '/api-status'
     | '/contact-center'
     | '/delivery'
     | '/driver-portal'
@@ -258,6 +270,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
+  ApiStatusRoute: typeof ApiStatusRoute
   ContactCenterRoute: typeof ContactCenterRoute
   DeliveryRoute: typeof DeliveryRoute
   DriverPortalRoute: typeof DriverPortalRoute
@@ -390,6 +403,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ContactCenterRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api-status': {
+      id: '/api-status'
+      path: '/api-status'
+      fullPath: '/api-status'
+      preLoaderRoute: typeof ApiStatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin': {
       id: '/admin'
       path: '/admin'
@@ -429,6 +449,7 @@ const PassengerRouteWithChildren = PassengerRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
+  ApiStatusRoute: ApiStatusRoute,
   ContactCenterRoute: ContactCenterRoute,
   DeliveryRoute: DeliveryRoute,
   DriverPortalRoute: DriverPortalRoute,
