@@ -15,6 +15,7 @@ import { Route as RouteTrackingRouteImport } from './routes/route-tracking'
 import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as QrScanRouteImport } from './routes/qr-scan'
 import { Route as PassengerRouteImport } from './routes/passenger'
+import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as LostFoundRouteImport } from './routes/lost-found'
 import { Route as FeedbackRouteImport } from './routes/feedback'
 import { Route as DriverPortalRouteImport } from './routes/driver-portal'
@@ -51,6 +52,11 @@ const QrScanRoute = QrScanRouteImport.update({
 const PassengerRoute = PassengerRouteImport.update({
   id: '/passenger',
   path: '/passenger',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NotificationsRoute = NotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LostFoundRoute = LostFoundRouteImport.update({
@@ -96,6 +102,7 @@ export interface FileRoutesByFullPath {
   '/driver-portal': typeof DriverPortalRoute
   '/feedback': typeof FeedbackRoute
   '/lost-found': typeof LostFoundRoute
+  '/notifications': typeof NotificationsRoute
   '/passenger': typeof PassengerRouteWithChildren
   '/qr-scan': typeof QrScanRoute
   '/reports': typeof ReportsRoute
@@ -111,6 +118,7 @@ export interface FileRoutesByTo {
   '/driver-portal': typeof DriverPortalRoute
   '/feedback': typeof FeedbackRoute
   '/lost-found': typeof LostFoundRoute
+  '/notifications': typeof NotificationsRoute
   '/passenger': typeof PassengerRouteWithChildren
   '/qr-scan': typeof QrScanRoute
   '/reports': typeof ReportsRoute
@@ -127,6 +135,7 @@ export interface FileRoutesById {
   '/driver-portal': typeof DriverPortalRoute
   '/feedback': typeof FeedbackRoute
   '/lost-found': typeof LostFoundRoute
+  '/notifications': typeof NotificationsRoute
   '/passenger': typeof PassengerRouteWithChildren
   '/qr-scan': typeof QrScanRoute
   '/reports': typeof ReportsRoute
@@ -144,6 +153,7 @@ export interface FileRouteTypes {
     | '/driver-portal'
     | '/feedback'
     | '/lost-found'
+    | '/notifications'
     | '/passenger'
     | '/qr-scan'
     | '/reports'
@@ -159,6 +169,7 @@ export interface FileRouteTypes {
     | '/driver-portal'
     | '/feedback'
     | '/lost-found'
+    | '/notifications'
     | '/passenger'
     | '/qr-scan'
     | '/reports'
@@ -174,6 +185,7 @@ export interface FileRouteTypes {
     | '/driver-portal'
     | '/feedback'
     | '/lost-found'
+    | '/notifications'
     | '/passenger'
     | '/qr-scan'
     | '/reports'
@@ -190,6 +202,7 @@ export interface RootRouteChildren {
   DriverPortalRoute: typeof DriverPortalRoute
   FeedbackRoute: typeof FeedbackRoute
   LostFoundRoute: typeof LostFoundRoute
+  NotificationsRoute: typeof NotificationsRoute
   PassengerRoute: typeof PassengerRouteWithChildren
   QrScanRoute: typeof QrScanRoute
   ReportsRoute: typeof ReportsRoute
@@ -240,6 +253,13 @@ declare module '@tanstack/react-router' {
       path: '/passenger'
       fullPath: '/passenger'
       preLoaderRoute: typeof PassengerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/notifications': {
+      id: '/notifications'
+      path: '/notifications'
+      fullPath: '/notifications'
+      preLoaderRoute: typeof NotificationsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/lost-found': {
@@ -313,6 +333,7 @@ const rootRouteChildren: RootRouteChildren = {
   DriverPortalRoute: DriverPortalRoute,
   FeedbackRoute: FeedbackRoute,
   LostFoundRoute: LostFoundRoute,
+  NotificationsRoute: NotificationsRoute,
   PassengerRoute: PassengerRouteWithChildren,
   QrScanRoute: QrScanRoute,
   ReportsRoute: ReportsRoute,
@@ -323,13 +344,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
