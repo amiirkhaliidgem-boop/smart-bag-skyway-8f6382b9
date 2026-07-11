@@ -109,7 +109,11 @@ export interface NotificationEvent {
   to: string;
   message: RenderedMessage;
   createdAt: string;
-  status_: "queued" | "sent" | "failed";
+  status_: "queued" | "sending" | "sent" | "failed";
+  passengerName?: string;
+  pirNumber?: string;
+  operator?: string;
+  sentAt?: string;
 }
 
 export interface BaggageCase {
