@@ -49,7 +49,9 @@ export const Route = createFileRoute("/passenger")({
 
 type Stage = "track" | "feedback" | "done";
 
-function PassengerPortal() {
+export function PassengerPortal({
+  deliveryIdOverride,
+}: { deliveryIdOverride?: string } = {}) {
   const deliveries = useStore((s) => s.deliveries);
   const cases = useStore((s) => s.cases);
 
@@ -66,7 +68,8 @@ function PassengerPortal() {
   );
 
   const [selectedId, setSelectedId] = useState(
-    active.find((d) => d.status === "Out For Delivery")?.deliveryId ??
+    deliveryIdOverride ??
+      active.find((d) => d.status === "Out For Delivery")?.deliveryId ??
       active[0]?.deliveryId ??
       "",
   );
@@ -86,7 +89,7 @@ function PassengerPortal() {
     <div className="-mx-4 -my-4 sm:-mx-6 sm:-my-6 lg:-mx-8 lg:-my-8 min-h-[calc(100vh-3.5rem)] bg-[#f5f7fb]">
       <PortalHeader />
       <div className="mx-auto w-full max-w-4xl px-4 sm:px-6 py-6 space-y-5">
-        {active.length > 1 && (
+        {active.length > 1 && !deliveryIdOverride && (
           <DemoSwitcher
             active={active}
             selectedId={delivery.deliveryId}

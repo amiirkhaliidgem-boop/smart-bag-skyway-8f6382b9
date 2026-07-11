@@ -13,6 +13,7 @@ import {
   ClipboardList,
   Users,
   ShieldAlert,
+  Send,
 } from "lucide-react";
 
 export const Route = createFileRoute("/contact-center")({
@@ -26,6 +27,7 @@ function ContactCenterPage() {
   const whatsapp = useStore((s) => s.whatsapp);
   const feedback = useStore((s) => s.feedback);
   const incidents = useStore((s) => s.qualityIncidents);
+  const notifications = useStore((s) => s.notifications);
 
   const openCases = cases.filter((c) => c.status !== "Delivered").length;
   const closedCases = cases.filter((c) => c.status === "Delivered").length;
@@ -85,6 +87,9 @@ function ContactCenterPage() {
           <TabsTrigger value="incidents">
             Quality Incidents{incidents.length ? ` (${incidents.length})` : ""}
           </TabsTrigger>
+          <TabsTrigger value="outbox">
+            Notification Outbox{notifications.length ? ` (${notifications.length})` : ""}
+          </TabsTrigger>
           <TabsTrigger value="timeline">Communication Timeline</TabsTrigger>
         </TabsList>
 
@@ -132,6 +137,56 @@ function ContactCenterPage() {
 
         <TabsContent value="whatsapp" className="mt-4">
           <WhatsAppView conversations={whatsapp} />
+        </TabsContent>
+
+        <TabsContent value="outbox" className="mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Send className="h-4 w-4 text-primary" />
+                Notification Outbox
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              {notifications.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-10">
+                  No outbound messages yet. SMS/WhatsApp notifications triggered by workflow
+                  transitions will queue here.
+                </p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted/60 text-xs uppercase tracking-wider text-muted-foreground">
+                      <tr>
+                        <th className="text-left px-4 py-3 font-medium">Channel</th>
+                        <th className="text-left px-4 py-3 font-medium">Locale</th>
+                        <th className="text-left px-4 py-3 font-medium">To</th>
+                        <th className="text-left px-4 py-3 font-medium">Trigger</th>
+                        <th className="text-left px-4 py-3 font-medium">Message</th>
+                        <th className="text-left px-4 py-3 font-medium">Sent</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {notifications.map((n) => (
+                        <tr key={n.id} className="hover:bg-muted/40">
+                          <td className="px-4 py-3 text-xs uppercase font-semibold">{n.channel}</td>
+                          <td className="px-4 py-3 text-xs uppercase">{n.locale}</td>
+                          <td className="px-4 py-3 font-mono text-xs">{n.to}</td>
+                          <td className="px-4 py-3 font-mono text-[10px]">{n.status}</td>
+                          <td className="px-4 py-3 text-xs text-muted-foreground max-w-md">
+                            {n.message.body}
+                          </td>
+                          <td className="px-4 py-3 text-xs text-muted-foreground">
+                            {new Date(n.createdAt).toLocaleString()}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="incidents" className="mt-4">

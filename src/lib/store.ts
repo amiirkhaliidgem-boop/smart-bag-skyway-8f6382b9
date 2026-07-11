@@ -1,4 +1,23 @@
 import { useSyncExternalStore } from "react";
+import {
+  WORKFLOW_STATUSES,
+  type WorkflowStatus,
+  canTransition,
+} from "./workflow/statuses";
+import {
+  toCaseStatus,
+  toDeliveryStatus,
+  fromDeliveryStatus,
+} from "./workflow/mapping";
+import {
+  renderTemplate,
+  type NotificationChannel,
+  type TemplateContext,
+  type RenderedMessage,
+} from "./notifications/templates";
+import { generateTrackingToken } from "./passenger/tokens";
+import type { AuditEntry } from "./audit/log";
+import type { Role } from "./roles/roles";
 
 export type CaseStatus =
   | "Missing"
@@ -68,6 +87,31 @@ export interface QualityIncident {
   at: string;
 }
 
+export interface WorkflowRecord {
+  deliveryId: string;
+  bagId: string;
+  status: WorkflowStatus;
+  token: string;
+  history: {
+    status: WorkflowStatus;
+    at: string;
+    actor: string;
+    role?: Role;
+  }[];
+}
+
+export interface NotificationEvent {
+  id: string;
+  deliveryId: string;
+  status: WorkflowStatus;
+  channel: NotificationChannel;
+  locale: "en" | "ar";
+  to: string;
+  message: RenderedMessage;
+  createdAt: string;
+  status_: "queued" | "sent" | "failed";
+}
+
 export interface BaggageCase {
   bagId: string;
   passengerName: string;
@@ -108,9 +152,12 @@ interface State {
   whatsapp: WhatsAppMessage[];
   feedback: Feedback[];
   qualityIncidents: QualityIncident[];
+  workflow: WorkflowRecord[];
+  notifications: NotificationEvent[];
+  audit: AuditEntry[];
 }
 
-const STORAGE_KEY = "sbe-state-v5";
+const STORAGE_KEY = "sbe-state-v6";
 
 const driverPool = [
   "Ahmed Mostafa",
@@ -426,6 +473,33 @@ const seedFeedback: Feedback[] = [
 let state: State = load();
 const listeners = new Set<() => void>();
 
+function defaults(): State {
+  const workflow: WorkflowRecord[] = seedDeliveries.map((d) => ({
+    deliveryId: d.deliveryId,
+    bagId: d.bagId,
+    status: fromDeliveryStatus(d.status),
+    token: `${d.deliveryId.toLowerCase().replace(/[^a-z0-9]/g, "")}-demo${d.deliveryId.slice(-4)}`,
+    history: [
+      {
+        status: fromDeliveryStatus(d.status),
+        at: new Date().toISOString(),
+        actor: "system",
+      },
+    ],
+  }));
+  return {
+    cases: seedCases,
+    deliveries: seedDeliveries,
+    callLogs: seedCallLogs,
+    whatsapp: seedWhatsapp,
+    feedback: seedFeedback,
+    qualityIncidents: [],
+    workflow,
+    notifications: [],
+    audit: [],
+  };
+}
+
 function load(): State {
   const defaults: State = {
     cases: seedCases,
@@ -434,18 +508,47 @@ function load(): State {
     whatsapp: seedWhatsapp,
     feedback: seedFeedback,
     qualityIncidents: [],
+    workflow: [],
+    notifications: [],
+    audit: [],
   };
-  if (typeof window === "undefined") {
-    return defaults;
-  }
+  // Always start from defaults on both server and client so SSR HTML
+  // matches the first client render. localStorage is merged in after
+  // hydration via `hydrateFromStorage()` scheduled below.
+  return defaults;
+}
+
+let hydratedFromStorage = false;
+function hydrateFromStorage() {
+  if (hydratedFromStorage || typeof window === "undefined") return;
+  hydratedFromStorage = true;
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw) as Partial<State>;
-      return { ...defaults, ...parsed };
+    if (!raw) {
+      // Prime the workflow records for existing seed deliveries.
+      state = defaults();
+      emit();
+      return;
     }
+    const parsed = JSON.parse(raw) as Partial<State>;
+    const base = defaults();
+    state = {
+      ...base,
+      ...parsed,
+      // Guarantee workflow / notifications / audit are seeded when
+      // older localStorage snapshots don't include them.
+      workflow:
+        parsed.workflow && parsed.workflow.length ? parsed.workflow : base.workflow,
+      notifications: parsed.notifications ?? base.notifications,
+      audit: parsed.audit ?? base.audit,
+    };
+    emit();
   } catch {}
-  return defaults;
+}
+
+if (typeof window !== "undefined") {
+  // Defer to after React's initial hydration so HTML doesn't mismatch.
+  setTimeout(hydrateFromStorage, 0);
 }
 
 function persist() {
@@ -473,6 +576,161 @@ export function useStore<T>(selector: (s: State) => T): T {
   );
   return selector(snapshot);
 }
+
+export function getWorkflow(deliveryId: string): WorkflowRecord | undefined {
+  return state.workflow.find((w) => w.deliveryId === deliveryId);
+}
+
+export function findByToken(token: string): WorkflowRecord | undefined {
+  return state.workflow.find((w) => w.token === token);
+}
+
+// ---------- Workflow Engine ----------
+function ensureWorkflow(deliveryId: string): WorkflowRecord {
+  let rec = state.workflow.find((w) => w.deliveryId === deliveryId);
+  if (rec) return rec;
+  const d = state.deliveries.find((x) => x.deliveryId === deliveryId);
+  if (!d) throw new Error(`No delivery ${deliveryId}`);
+  rec = {
+    deliveryId,
+    bagId: d.bagId,
+    status: fromDeliveryStatus(d.status),
+    token: generateTrackingToken(deliveryId),
+    history: [
+      {
+        status: fromDeliveryStatus(d.status),
+        at: new Date().toISOString(),
+        actor: "system",
+      },
+    ],
+  };
+  state = { ...state, workflow: [...state.workflow, rec] };
+  return rec;
+}
+
+function pushAudit(entry: Omit<AuditEntry, "id" | "at">) {
+  const id = `AUD-${state.audit.length + 1}`;
+  const full: AuditEntry = {
+    ...entry,
+    id,
+    at: new Date().toISOString(),
+  };
+  state = { ...state, audit: [full, ...state.audit] };
+}
+
+function enqueueNotifications(deliveryId: string, status: WorkflowStatus) {
+  const d = state.deliveries.find((x) => x.deliveryId === deliveryId);
+  if (!d) return;
+  const rec = state.workflow.find((w) => w.deliveryId === deliveryId);
+  const ctx: TemplateContext = {
+    passengerName: d.passengerName,
+    pirNumber: d.pirNumber,
+    driverName: d.driver,
+    eta: new Date(d.eta).toLocaleString("en-GB"),
+    otp: d.otpCode,
+    trackingUrl: rec ? `/passenger/${rec.token}` : undefined,
+  };
+  const channels: NotificationChannel[] = ["sms", "whatsapp"];
+  const events: NotificationEvent[] = [];
+  for (const channel of channels) {
+    for (const locale of ["en", "ar"] as const) {
+      const msg = renderTemplate(status, channel, locale, ctx);
+      if (!msg) continue;
+      events.push({
+        id: `NTF-${state.notifications.length + events.length + 1}`,
+        deliveryId,
+        status,
+        channel,
+        locale,
+        to: d.mobile,
+        message: msg,
+        createdAt: new Date().toISOString(),
+        status_: "queued",
+      });
+    }
+  }
+  if (events.length) {
+    state = { ...state, notifications: [...events, ...state.notifications] };
+    for (const e of events) {
+      pushAudit({
+        action: "notification.dispatch",
+        actor: "system",
+        entityType: "notification",
+        entityId: e.id,
+        note: `${e.channel}/${e.locale} → ${e.to}`,
+      });
+    }
+  }
+}
+
+export function transitionWorkflow(
+  deliveryId: string,
+  next: WorkflowStatus,
+  opts: { actor?: string; role?: Role; force?: boolean } = {},
+) {
+  ensureWorkflow(deliveryId);
+  const current = state.workflow.find((w) => w.deliveryId === deliveryId)!;
+  if (!opts.force && !canTransition(current.status, next)) return current;
+  const from = current.status;
+  const updated: WorkflowRecord = {
+    ...current,
+    status: next,
+    history: [
+      ...current.history,
+      {
+        status: next,
+        at: new Date().toISOString(),
+        actor: opts.actor ?? "system",
+        role: opts.role,
+      },
+    ],
+  };
+  state = {
+    ...state,
+    workflow: state.workflow.map((w) => (w.deliveryId === deliveryId ? updated : w)),
+  };
+  // Mirror to legacy Delivery/Case shapes so existing UI keeps working.
+  const legacyD = toDeliveryStatus(next);
+  const legacyC = toCaseStatus(next);
+  state = {
+    ...state,
+    deliveries: state.deliveries.map((d) =>
+      d.deliveryId === deliveryId ? { ...d, status: legacyD } : d,
+    ),
+  };
+  const d = state.deliveries.find((x) => x.deliveryId === deliveryId);
+  if (d) {
+    state = {
+      ...state,
+      cases: state.cases.map((c) =>
+        c.bagId === d.bagId
+          ? {
+              ...c,
+              status: legacyC,
+              resolvedAt:
+                legacyC === "Delivered"
+                  ? c.resolvedAt ?? new Date().toISOString()
+                  : c.resolvedAt,
+            }
+          : c,
+      ),
+    };
+  }
+  pushAudit({
+    action: "workflow.transition",
+    actor: opts.actor ?? "system",
+    role: opts.role,
+    entityType: "delivery",
+    entityId: deliveryId,
+    fromStatus: from,
+    toStatus: next,
+  });
+  enqueueNotifications(deliveryId, next);
+  emit();
+  return updated;
+}
+
+export { WORKFLOW_STATUSES };
 
 export function getState() {
   return state;

@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useStore, type CaseStatus } from "@/lib/store";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { WORKFLOW_STATUSES, WORKFLOW_LABELS } from "@/lib/workflow/statuses";
 import {
   Luggage,
   AlertCircle,
@@ -65,6 +66,15 @@ function Index() {
   const csat = feedback.length
     ? feedback.reduce((s, f) => s + f.rating, 0) / feedback.length
     : 0;
+  const workflow = useStore((s) => s.workflow);
+  const incidents = useStore((s) => s.qualityIncidents);
+  const openIncidents = incidents.filter((i) => i.status !== "Resolved").length;
+
+  const funnel = WORKFLOW_STATUSES.map((status) => ({
+    status,
+    label: WORKFLOW_LABELS[status].en,
+    count: workflow.filter((w) => w.status === status).length,
+  }));
 
   const resolutionHours = (() => {
     const resolved = cases.filter((c) => c.resolvedAt);
@@ -109,6 +119,7 @@ function Index() {
     },
     { label: "CSAT", value: `${csat.toFixed(1)}/5`, icon: TrendingUp, trend: +1, color: "text-rose-600" },
     { label: "Delivery Success", value: `${deliverySuccess}%`, icon: PackageCheck, trend: +3, color: "text-emerald-600" },
+    { label: "Open Incidents", value: openIncidents, icon: AlertCircle, trend: 0, color: "text-rose-600" },
   ];
 
   return (
@@ -223,6 +234,32 @@ function Index() {
                 <Bar dataKey="count" fill="#1e40af" radius={[0, 6, 6, 0]} />
               </BarChart>
             </ResponsiveContainer>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Delivery Workflow Funnel</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2">
+            {funnel.map((f) => {
+              const max = Math.max(1, ...funnel.map((x) => x.count));
+              const pct = (f.count / max) * 100;
+              return (
+                <div key={f.status} className="flex items-center gap-3">
+                  <div className="w-40 text-xs text-muted-foreground truncate">{f.label}</div>
+                  <div className="flex-1 h-3 rounded-full bg-muted overflow-hidden">
+                    <div
+                      className="h-full bg-primary rounded-full transition-all"
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                  <div className="w-8 text-right text-xs font-semibold tabular-nums">{f.count}</div>
+                </div>
+              );
+            })}
           </div>
         </CardContent>
       </Card>

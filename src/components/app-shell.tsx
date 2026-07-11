@@ -13,7 +13,7 @@ import {
   Headphones,
   Star,
   UserCog,
-  UserCircle,
+  Send,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -44,7 +44,7 @@ const navSections: {
     label: "Customer",
     items: [
       { to: "/tracking", label: "Passenger Tracking", icon: Search },
-      { to: "/passenger", label: "Passenger Portal", icon: UserCircle },
+      { to: "/passenger", label: "Send Tracking Link", icon: Send },
       { to: "/contact-center", label: "Contact Center", icon: Headphones },
       { to: "/feedback", label: "Feedback", icon: Star },
     ],
