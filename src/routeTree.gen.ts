@@ -9,23 +9,33 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as WorkflowMonitorRouteImport } from './routes/workflow-monitor'
 import { Route as TrackingRouteImport } from './routes/tracking'
 import { Route as TimelineRouteImport } from './routes/timeline'
 import { Route as StorageRouteImport } from './routes/storage'
+import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as RouteTrackingRouteImport } from './routes/route-tracking'
 import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as QrScanRouteImport } from './routes/qr-scan'
 import { Route as PassengerRouteImport } from './routes/passenger'
 import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as LostFoundRouteImport } from './routes/lost-found'
+import { Route as IntegrationsRouteImport } from './routes/integrations'
 import { Route as FeedbackRouteImport } from './routes/feedback'
+import { Route as ExportCenterRouteImport } from './routes/export-center'
 import { Route as DriverPortalRouteImport } from './routes/driver-portal'
 import { Route as DeliveryRouteImport } from './routes/delivery'
 import { Route as ContactCenterRouteImport } from './routes/contact-center'
+import { Route as ApiStatusRouteImport } from './routes/api-status'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PassengerTokenRouteImport } from './routes/passenger.$token'
 
+const WorkflowMonitorRoute = WorkflowMonitorRouteImport.update({
+  id: '/workflow-monitor',
+  path: '/workflow-monitor',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TrackingRoute = TrackingRouteImport.update({
   id: '/tracking',
   path: '/tracking',
@@ -39,6 +49,11 @@ const TimelineRoute = TimelineRouteImport.update({
 const StorageRoute = StorageRouteImport.update({
   id: '/storage',
   path: '/storage',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RouteTrackingRoute = RouteTrackingRouteImport.update({
@@ -71,9 +86,19 @@ const LostFoundRoute = LostFoundRouteImport.update({
   path: '/lost-found',
   getParentRoute: () => rootRouteImport,
 } as any)
+const IntegrationsRoute = IntegrationsRouteImport.update({
+  id: '/integrations',
+  path: '/integrations',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const FeedbackRoute = FeedbackRouteImport.update({
   id: '/feedback',
   path: '/feedback',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ExportCenterRoute = ExportCenterRouteImport.update({
+  id: '/export-center',
+  path: '/export-center',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DriverPortalRoute = DriverPortalRouteImport.update({
@@ -89,6 +114,11 @@ const DeliveryRoute = DeliveryRouteImport.update({
 const ContactCenterRoute = ContactCenterRouteImport.update({
   id: '/contact-center',
   path: '/contact-center',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiStatusRoute = ApiStatusRouteImport.update({
+  id: '/api-status',
+  path: '/api-status',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminRoute = AdminRouteImport.update({
@@ -110,56 +140,71 @@ const PassengerTokenRoute = PassengerTokenRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/api-status': typeof ApiStatusRoute
   '/contact-center': typeof ContactCenterRoute
   '/delivery': typeof DeliveryRoute
   '/driver-portal': typeof DriverPortalRoute
+  '/export-center': typeof ExportCenterRoute
   '/feedback': typeof FeedbackRoute
+  '/integrations': typeof IntegrationsRoute
   '/lost-found': typeof LostFoundRoute
   '/notifications': typeof NotificationsRoute
   '/passenger': typeof PassengerRouteWithChildren
   '/qr-scan': typeof QrScanRoute
   '/reports': typeof ReportsRoute
   '/route-tracking': typeof RouteTrackingRoute
+  '/settings': typeof SettingsRoute
   '/storage': typeof StorageRoute
   '/timeline': typeof TimelineRoute
   '/tracking': typeof TrackingRoute
+  '/workflow-monitor': typeof WorkflowMonitorRoute
   '/passenger/$token': typeof PassengerTokenRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/api-status': typeof ApiStatusRoute
   '/contact-center': typeof ContactCenterRoute
   '/delivery': typeof DeliveryRoute
   '/driver-portal': typeof DriverPortalRoute
+  '/export-center': typeof ExportCenterRoute
   '/feedback': typeof FeedbackRoute
+  '/integrations': typeof IntegrationsRoute
   '/lost-found': typeof LostFoundRoute
   '/notifications': typeof NotificationsRoute
   '/passenger': typeof PassengerRouteWithChildren
   '/qr-scan': typeof QrScanRoute
   '/reports': typeof ReportsRoute
   '/route-tracking': typeof RouteTrackingRoute
+  '/settings': typeof SettingsRoute
   '/storage': typeof StorageRoute
   '/timeline': typeof TimelineRoute
   '/tracking': typeof TrackingRoute
+  '/workflow-monitor': typeof WorkflowMonitorRoute
   '/passenger/$token': typeof PassengerTokenRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/api-status': typeof ApiStatusRoute
   '/contact-center': typeof ContactCenterRoute
   '/delivery': typeof DeliveryRoute
   '/driver-portal': typeof DriverPortalRoute
+  '/export-center': typeof ExportCenterRoute
   '/feedback': typeof FeedbackRoute
+  '/integrations': typeof IntegrationsRoute
   '/lost-found': typeof LostFoundRoute
   '/notifications': typeof NotificationsRoute
   '/passenger': typeof PassengerRouteWithChildren
   '/qr-scan': typeof QrScanRoute
   '/reports': typeof ReportsRoute
   '/route-tracking': typeof RouteTrackingRoute
+  '/settings': typeof SettingsRoute
   '/storage': typeof StorageRoute
   '/timeline': typeof TimelineRoute
   '/tracking': typeof TrackingRoute
+  '/workflow-monitor': typeof WorkflowMonitorRoute
   '/passenger/$token': typeof PassengerTokenRoute
 }
 export interface FileRouteTypes {
@@ -167,78 +212,105 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/admin'
+    | '/api-status'
     | '/contact-center'
     | '/delivery'
     | '/driver-portal'
+    | '/export-center'
     | '/feedback'
+    | '/integrations'
     | '/lost-found'
     | '/notifications'
     | '/passenger'
     | '/qr-scan'
     | '/reports'
     | '/route-tracking'
+    | '/settings'
     | '/storage'
     | '/timeline'
     | '/tracking'
+    | '/workflow-monitor'
     | '/passenger/$token'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/admin'
+    | '/api-status'
     | '/contact-center'
     | '/delivery'
     | '/driver-portal'
+    | '/export-center'
     | '/feedback'
+    | '/integrations'
     | '/lost-found'
     | '/notifications'
     | '/passenger'
     | '/qr-scan'
     | '/reports'
     | '/route-tracking'
+    | '/settings'
     | '/storage'
     | '/timeline'
     | '/tracking'
+    | '/workflow-monitor'
     | '/passenger/$token'
   id:
     | '__root__'
     | '/'
     | '/admin'
+    | '/api-status'
     | '/contact-center'
     | '/delivery'
     | '/driver-portal'
+    | '/export-center'
     | '/feedback'
+    | '/integrations'
     | '/lost-found'
     | '/notifications'
     | '/passenger'
     | '/qr-scan'
     | '/reports'
     | '/route-tracking'
+    | '/settings'
     | '/storage'
     | '/timeline'
     | '/tracking'
+    | '/workflow-monitor'
     | '/passenger/$token'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
+  ApiStatusRoute: typeof ApiStatusRoute
   ContactCenterRoute: typeof ContactCenterRoute
   DeliveryRoute: typeof DeliveryRoute
   DriverPortalRoute: typeof DriverPortalRoute
+  ExportCenterRoute: typeof ExportCenterRoute
   FeedbackRoute: typeof FeedbackRoute
+  IntegrationsRoute: typeof IntegrationsRoute
   LostFoundRoute: typeof LostFoundRoute
   NotificationsRoute: typeof NotificationsRoute
   PassengerRoute: typeof PassengerRouteWithChildren
   QrScanRoute: typeof QrScanRoute
   ReportsRoute: typeof ReportsRoute
   RouteTrackingRoute: typeof RouteTrackingRoute
+  SettingsRoute: typeof SettingsRoute
   StorageRoute: typeof StorageRoute
   TimelineRoute: typeof TimelineRoute
   TrackingRoute: typeof TrackingRoute
+  WorkflowMonitorRoute: typeof WorkflowMonitorRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/workflow-monitor': {
+      id: '/workflow-monitor'
+      path: '/workflow-monitor'
+      fullPath: '/workflow-monitor'
+      preLoaderRoute: typeof WorkflowMonitorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/tracking': {
       id: '/tracking'
       path: '/tracking'
@@ -258,6 +330,13 @@ declare module '@tanstack/react-router' {
       path: '/storage'
       fullPath: '/storage'
       preLoaderRoute: typeof StorageRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/route-tracking': {
@@ -302,11 +381,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LostFoundRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/integrations': {
+      id: '/integrations'
+      path: '/integrations'
+      fullPath: '/integrations'
+      preLoaderRoute: typeof IntegrationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/feedback': {
       id: '/feedback'
       path: '/feedback'
       fullPath: '/feedback'
       preLoaderRoute: typeof FeedbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/export-center': {
+      id: '/export-center'
+      path: '/export-center'
+      fullPath: '/export-center'
+      preLoaderRoute: typeof ExportCenterRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/driver-portal': {
@@ -328,6 +421,13 @@ declare module '@tanstack/react-router' {
       path: '/contact-center'
       fullPath: '/contact-center'
       preLoaderRoute: typeof ContactCenterRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api-status': {
+      id: '/api-status'
+      path: '/api-status'
+      fullPath: '/api-status'
+      preLoaderRoute: typeof ApiStatusRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin': {
@@ -369,30 +469,25 @@ const PassengerRouteWithChildren = PassengerRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
+  ApiStatusRoute: ApiStatusRoute,
   ContactCenterRoute: ContactCenterRoute,
   DeliveryRoute: DeliveryRoute,
   DriverPortalRoute: DriverPortalRoute,
+  ExportCenterRoute: ExportCenterRoute,
   FeedbackRoute: FeedbackRoute,
+  IntegrationsRoute: IntegrationsRoute,
   LostFoundRoute: LostFoundRoute,
   NotificationsRoute: NotificationsRoute,
   PassengerRoute: PassengerRouteWithChildren,
   QrScanRoute: QrScanRoute,
   ReportsRoute: ReportsRoute,
   RouteTrackingRoute: RouteTrackingRoute,
+  SettingsRoute: SettingsRoute,
   StorageRoute: StorageRoute,
   TimelineRoute: TimelineRoute,
   TrackingRoute: TrackingRoute,
+  WorkflowMonitorRoute: WorkflowMonitorRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
