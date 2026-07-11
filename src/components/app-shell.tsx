@@ -90,7 +90,9 @@ const navSections: {
 
 export function AppShell() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const searchStr = useRouterState({ select: (s) => s.location.searchStr });
+  const currentSection = useRouterState({
+    select: (s) => (s.location.search as { section?: string })?.section,
+  });
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const isActive = (
@@ -104,8 +106,7 @@ export function AppShell() {
     if (!pathMatch) return false;
     if (!matchSearchKey) return true;
     // For sub-nav items that share a route, match on the `section` search param.
-    const params = new URLSearchParams(searchStr ?? "");
-    const current = params.get("section") ?? "users"; // /admin defaults to users
+    const current = currentSection ?? "users"; // /admin defaults to users
     return current === matchSearchKey;
   };
 
