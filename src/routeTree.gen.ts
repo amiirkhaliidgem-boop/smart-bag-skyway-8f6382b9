@@ -20,6 +20,7 @@ import { Route as PassengerRouteImport } from './routes/passenger'
 import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as LostFoundRouteImport } from './routes/lost-found'
 import { Route as FeedbackRouteImport } from './routes/feedback'
+import { Route as ExportCenterRouteImport } from './routes/export-center'
 import { Route as DriverPortalRouteImport } from './routes/driver-portal'
 import { Route as DeliveryRouteImport } from './routes/delivery'
 import { Route as ContactCenterRouteImport } from './routes/contact-center'
@@ -82,6 +83,11 @@ const FeedbackRoute = FeedbackRouteImport.update({
   path: '/feedback',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ExportCenterRoute = ExportCenterRouteImport.update({
+  id: '/export-center',
+  path: '/export-center',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DriverPortalRoute = DriverPortalRouteImport.update({
   id: '/driver-portal',
   path: '/driver-portal',
@@ -119,6 +125,7 @@ export interface FileRoutesByFullPath {
   '/contact-center': typeof ContactCenterRoute
   '/delivery': typeof DeliveryRoute
   '/driver-portal': typeof DriverPortalRoute
+  '/export-center': typeof ExportCenterRoute
   '/feedback': typeof FeedbackRoute
   '/lost-found': typeof LostFoundRoute
   '/notifications': typeof NotificationsRoute
@@ -138,6 +145,7 @@ export interface FileRoutesByTo {
   '/contact-center': typeof ContactCenterRoute
   '/delivery': typeof DeliveryRoute
   '/driver-portal': typeof DriverPortalRoute
+  '/export-center': typeof ExportCenterRoute
   '/feedback': typeof FeedbackRoute
   '/lost-found': typeof LostFoundRoute
   '/notifications': typeof NotificationsRoute
@@ -158,6 +166,7 @@ export interface FileRoutesById {
   '/contact-center': typeof ContactCenterRoute
   '/delivery': typeof DeliveryRoute
   '/driver-portal': typeof DriverPortalRoute
+  '/export-center': typeof ExportCenterRoute
   '/feedback': typeof FeedbackRoute
   '/lost-found': typeof LostFoundRoute
   '/notifications': typeof NotificationsRoute
@@ -179,6 +188,7 @@ export interface FileRouteTypes {
     | '/contact-center'
     | '/delivery'
     | '/driver-portal'
+    | '/export-center'
     | '/feedback'
     | '/lost-found'
     | '/notifications'
@@ -198,6 +208,7 @@ export interface FileRouteTypes {
     | '/contact-center'
     | '/delivery'
     | '/driver-portal'
+    | '/export-center'
     | '/feedback'
     | '/lost-found'
     | '/notifications'
@@ -217,6 +228,7 @@ export interface FileRouteTypes {
     | '/contact-center'
     | '/delivery'
     | '/driver-portal'
+    | '/export-center'
     | '/feedback'
     | '/lost-found'
     | '/notifications'
@@ -237,6 +249,7 @@ export interface RootRouteChildren {
   ContactCenterRoute: typeof ContactCenterRoute
   DeliveryRoute: typeof DeliveryRoute
   DriverPortalRoute: typeof DriverPortalRoute
+  ExportCenterRoute: typeof ExportCenterRoute
   FeedbackRoute: typeof FeedbackRoute
   LostFoundRoute: typeof LostFoundRoute
   NotificationsRoute: typeof NotificationsRoute
@@ -329,6 +342,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FeedbackRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/export-center': {
+      id: '/export-center'
+      path: '/export-center'
+      fullPath: '/export-center'
+      preLoaderRoute: typeof ExportCenterRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/driver-portal': {
       id: '/driver-portal'
       path: '/driver-portal'
@@ -392,6 +412,7 @@ const rootRouteChildren: RootRouteChildren = {
   ContactCenterRoute: ContactCenterRoute,
   DeliveryRoute: DeliveryRoute,
   DriverPortalRoute: DriverPortalRoute,
+  ExportCenterRoute: ExportCenterRoute,
   FeedbackRoute: FeedbackRoute,
   LostFoundRoute: LostFoundRoute,
   NotificationsRoute: NotificationsRoute,
