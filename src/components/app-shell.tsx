@@ -14,6 +14,7 @@ import {
   Star,
   UserCog,
   Send,
+  Bell,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -51,7 +52,10 @@ const navSections: {
   },
   {
     label: "Insights",
-    items: [{ to: "/reports", label: "Reports", icon: BarChart3 }],
+    items: [
+      { to: "/notifications", label: "Notification Center", icon: Bell },
+      { to: "/reports", label: "Reports", icon: BarChart3 },
+    ],
   },
 ];
 
