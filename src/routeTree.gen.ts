@@ -14,6 +14,7 @@ import { Route as StorageRouteImport } from './routes/storage'
 import { Route as RouteTrackingRouteImport } from './routes/route-tracking'
 import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as QrScanRouteImport } from './routes/qr-scan'
+import { Route as PassengerRouteImport } from './routes/passenger'
 import { Route as LostFoundRouteImport } from './routes/lost-found'
 import { Route as FeedbackRouteImport } from './routes/feedback'
 import { Route as DriverPortalRouteImport } from './routes/driver-portal'
@@ -44,6 +45,11 @@ const ReportsRoute = ReportsRouteImport.update({
 const QrScanRoute = QrScanRouteImport.update({
   id: '/qr-scan',
   path: '/qr-scan',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PassengerRoute = PassengerRouteImport.update({
+  id: '/passenger',
+  path: '/passenger',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LostFoundRoute = LostFoundRouteImport.update({
@@ -84,6 +90,7 @@ export interface FileRoutesByFullPath {
   '/driver-portal': typeof DriverPortalRoute
   '/feedback': typeof FeedbackRoute
   '/lost-found': typeof LostFoundRoute
+  '/passenger': typeof PassengerRoute
   '/qr-scan': typeof QrScanRoute
   '/reports': typeof ReportsRoute
   '/route-tracking': typeof RouteTrackingRoute
@@ -97,6 +104,7 @@ export interface FileRoutesByTo {
   '/driver-portal': typeof DriverPortalRoute
   '/feedback': typeof FeedbackRoute
   '/lost-found': typeof LostFoundRoute
+  '/passenger': typeof PassengerRoute
   '/qr-scan': typeof QrScanRoute
   '/reports': typeof ReportsRoute
   '/route-tracking': typeof RouteTrackingRoute
@@ -111,6 +119,7 @@ export interface FileRoutesById {
   '/driver-portal': typeof DriverPortalRoute
   '/feedback': typeof FeedbackRoute
   '/lost-found': typeof LostFoundRoute
+  '/passenger': typeof PassengerRoute
   '/qr-scan': typeof QrScanRoute
   '/reports': typeof ReportsRoute
   '/route-tracking': typeof RouteTrackingRoute
@@ -126,6 +135,7 @@ export interface FileRouteTypes {
     | '/driver-portal'
     | '/feedback'
     | '/lost-found'
+    | '/passenger'
     | '/qr-scan'
     | '/reports'
     | '/route-tracking'
@@ -139,6 +149,7 @@ export interface FileRouteTypes {
     | '/driver-portal'
     | '/feedback'
     | '/lost-found'
+    | '/passenger'
     | '/qr-scan'
     | '/reports'
     | '/route-tracking'
@@ -152,6 +163,7 @@ export interface FileRouteTypes {
     | '/driver-portal'
     | '/feedback'
     | '/lost-found'
+    | '/passenger'
     | '/qr-scan'
     | '/reports'
     | '/route-tracking'
@@ -166,6 +178,7 @@ export interface RootRouteChildren {
   DriverPortalRoute: typeof DriverPortalRoute
   FeedbackRoute: typeof FeedbackRoute
   LostFoundRoute: typeof LostFoundRoute
+  PassengerRoute: typeof PassengerRoute
   QrScanRoute: typeof QrScanRoute
   ReportsRoute: typeof ReportsRoute
   RouteTrackingRoute: typeof RouteTrackingRoute
@@ -208,6 +221,13 @@ declare module '@tanstack/react-router' {
       path: '/qr-scan'
       fullPath: '/qr-scan'
       preLoaderRoute: typeof QrScanRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/passenger': {
+      id: '/passenger'
+      path: '/passenger'
+      fullPath: '/passenger'
+      preLoaderRoute: typeof PassengerRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/lost-found': {
@@ -262,6 +282,7 @@ const rootRouteChildren: RootRouteChildren = {
   DriverPortalRoute: DriverPortalRoute,
   FeedbackRoute: FeedbackRoute,
   LostFoundRoute: LostFoundRoute,
+  PassengerRoute: PassengerRoute,
   QrScanRoute: QrScanRoute,
   ReportsRoute: ReportsRoute,
   RouteTrackingRoute: RouteTrackingRoute,

@@ -55,6 +55,19 @@ export interface Feedback {
   at: string;
 }
 
+export interface QualityIncident {
+  id: string;
+  bagId: string;
+  deliveryId?: string;
+  passengerName: string;
+  driver: string;
+  category: "Possible Misconduct" | "Damaged Baggage" | "Late Delivery" | "Other";
+  severity: "High" | "Medium" | "Low";
+  status: "Open" | "Under Review" | "Resolved";
+  description: string;
+  at: string;
+}
+
 export interface BaggageCase {
   bagId: string;
   passengerName: string;
@@ -94,9 +107,10 @@ interface State {
   callLogs: CallLog[];
   whatsapp: WhatsAppMessage[];
   feedback: Feedback[];
+  qualityIncidents: QualityIncident[];
 }
 
-const STORAGE_KEY = "sbe-state-v4";
+const STORAGE_KEY = "sbe-state-v5";
 
 const driverPool = [
   "Ahmed Mostafa",
@@ -419,6 +433,7 @@ function load(): State {
     callLogs: seedCallLogs,
     whatsapp: seedWhatsapp,
     feedback: seedFeedback,
+    qualityIncidents: [],
   };
   if (typeof window === "undefined") {
     return defaults;
@@ -571,6 +586,27 @@ export function addCallLog(input: Omit<CallLog, "id" | "at">) {
   state = { ...state, callLogs: [log, ...state.callLogs] };
   emit();
   return log;
+}
+
+export function addQualityIncident(
+  input: Omit<QualityIncident, "id" | "at">,
+) {
+  const next =
+    state.qualityIncidents.reduce((max, i) => {
+      const n = parseInt(i.id.replace("QI-", ""), 10);
+      return Number.isFinite(n) && n > max ? n : max;
+    }, 4000) + 1;
+  const incident: QualityIncident = {
+    ...input,
+    id: `QI-${next}`,
+    at: new Date().toISOString(),
+  };
+  state = {
+    ...state,
+    qualityIncidents: [incident, ...state.qualityIncidents],
+  };
+  emit();
+  return incident;
 }
 
 export { driverPool };
