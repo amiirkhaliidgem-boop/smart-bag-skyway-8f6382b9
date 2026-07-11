@@ -337,7 +337,7 @@ function buildEvents(
       id: `EV-NTF-${n.id}`,
       at: n.createdAt,
       title: `${n.channel.toUpperCase()} Notification (${n.locale.toUpperCase()})`,
-      description: `${n.message.title ?? "Notification"} → ${n.to}`,
+      description: `${n.message.subject ?? n.message.body.slice(0, 80)} → ${n.to}`,
       user: n.operator ?? "Notification Engine",
       role: "Delivery Coordinator",
       module: "Notifications",
