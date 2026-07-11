@@ -26,6 +26,25 @@ export const Route = createFileRoute("/reports")({
 
 function ReportsPage() {
   const cases = useStore((s) => s.cases);
+  const feedback = useStore((s) => s.feedback);
+  const incidents = useStore((s) => s.qualityIncidents);
+  const deliveries = useStore((s) => s.deliveries);
+
+  const delivered = deliveries.filter((d) => d.status === "Delivered").length;
+  const successRate = deliveries.length
+    ? Math.round((delivered / deliveries.length) * 100)
+    : 0;
+  const csat = feedback.length
+    ? (feedback.reduce((s, f) => s + f.rating, 0) / feedback.length).toFixed(1)
+    : "0.0";
+
+  const kpis = [
+    { label: "Total Cases", value: cases.length, tone: "text-primary" },
+    { label: "Delivered", value: delivered, tone: "text-emerald-600" },
+    { label: "Delivery Success", value: `${successRate}%`, tone: "text-emerald-600" },
+    { label: "CSAT", value: `${csat}/5`, tone: "text-amber-600" },
+    { label: "Quality Incidents", value: incidents.length, tone: "text-rose-600" },
+  ];
 
   const byDate = Object.entries(
     cases.reduce<Record<string, { date: string; opened: number; resolved: number }>>(
@@ -57,6 +76,21 @@ function ReportsPage() {
         <p className="text-sm text-muted-foreground mt-1">
           Historical trends across the baggage operation.
         </p>
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        {kpis.map((k) => (
+          <Card key={k.label}>
+            <CardContent className="p-4">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                {k.label}
+              </p>
+              <p className={`mt-1 text-2xl font-bold tabular-nums ${k.tone}`}>
+                {k.value}
+              </p>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
       <Card>
