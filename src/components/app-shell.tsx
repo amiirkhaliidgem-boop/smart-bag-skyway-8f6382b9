@@ -90,10 +90,24 @@ const navSections: {
 
 export function AppShell() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const searchStr = useRouterState({ select: (s) => s.location.searchStr });
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const isActive = (to: string, exact?: boolean) =>
-    exact ? pathname === to : pathname === to || pathname.startsWith(to + "/");
+  const isActive = (
+    to: string,
+    exact?: boolean,
+    matchSearchKey?: string,
+  ) => {
+    const pathMatch = exact
+      ? pathname === to
+      : pathname === to || pathname.startsWith(to + "/");
+    if (!pathMatch) return false;
+    if (!matchSearchKey) return true;
+    // For sub-nav items that share a route, match on the `section` search param.
+    const params = new URLSearchParams(searchStr ?? "");
+    const current = params.get("section") ?? "users"; // /admin defaults to users
+    return current === matchSearchKey;
+  };
 
   return (
     <div className="flex min-h-screen w-full bg-background text-foreground">
@@ -109,12 +123,13 @@ export function AppShell() {
               <div className="space-y-1">
                 {section.items.map((item) => (
                   <Link
-                    key={item.to}
+                    key={`${item.to}-${item.label}`}
                     to={item.to}
+                    search={item.search as never}
                     onClick={() => setMobileOpen(false)}
                     className={cn(
                       "flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors",
-                      isActive(item.to, item.exact)
+                      isActive(item.to, item.exact, item.matchSearchKey)
                         ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-sm"
                         : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
                     )}
@@ -148,12 +163,13 @@ export function AppShell() {
                   <div className="space-y-1">
                     {section.items.map((item) => (
                       <Link
-                        key={item.to}
+                        key={`${item.to}-${item.label}`}
                         to={item.to}
+                        search={item.search as never}
                         onClick={() => setMobileOpen(false)}
                         className={cn(
                           "flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium",
-                          isActive(item.to, item.exact)
+                          isActive(item.to, item.exact, item.matchSearchKey)
                             ? "bg-sidebar-primary text-sidebar-primary-foreground"
                             : "hover:bg-sidebar-accent",
                         )}
