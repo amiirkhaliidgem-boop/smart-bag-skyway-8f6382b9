@@ -784,6 +784,7 @@ export function addDelivery(input: Omit<Delivery, "deliveryId">) {
 }
 
 export function updateDelivery(deliveryId: string, patch: Partial<Delivery>) {
+  const prev = state.deliveries.find((x) => x.deliveryId === deliveryId);
   state = {
     ...state,
     deliveries: state.deliveries.map((d) =>
@@ -820,6 +821,13 @@ export function updateDelivery(deliveryId: string, patch: Partial<Delivery>) {
     }
   }
   emit();
+  // Feed the central workflow engine when the delivery status changed so
+  // notifications, audit, and passenger portal timeline stay in sync.
+  if (prev && d && prev.status !== d.status) {
+    transitionWorkflow(deliveryId, fromDeliveryStatus(d.status), {
+      actor: patch.driver ?? "system",
+    });
+  }
 }
 
 export function addFeedback(input: Omit<Feedback, "id" | "at">) {
