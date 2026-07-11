@@ -16,6 +16,13 @@ import {
   Send,
   Bell,
   Activity,
+  ShieldCheck,
+  Users as UsersIcon,
+  KeySquare,
+  Building2,
+  MapPin,
+  UsersRound,
+  ScrollText,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -23,7 +30,14 @@ import iabLogo from "@/assets/iab-logo.jpeg.asset.json";
 
 const navSections: {
   label: string;
-  items: { to: string; label: string; icon: typeof LayoutDashboard; exact?: boolean }[];
+  items: {
+    to: string;
+    label: string;
+    icon: typeof LayoutDashboard;
+    exact?: boolean;
+    search?: Record<string, string>;
+    matchSearchKey?: string;
+  }[];
 }[] = [
   {
     label: "Operations",
@@ -57,6 +71,18 @@ const navSections: {
       { to: "/timeline", label: "Activity Timeline", icon: Activity },
       { to: "/notifications", label: "Notification Center", icon: Bell },
       { to: "/reports", label: "Reports", icon: BarChart3 },
+    ],
+  },
+  {
+    label: "Administration",
+    items: [
+      { to: "/admin", label: "Users", icon: UsersIcon, search: { section: "users" }, matchSearchKey: "users" },
+      { to: "/admin", label: "Roles", icon: ShieldCheck, search: { section: "roles" }, matchSearchKey: "roles" },
+      { to: "/admin", label: "Permissions", icon: KeySquare, search: { section: "permissions" }, matchSearchKey: "permissions" },
+      { to: "/admin", label: "Departments", icon: Building2, search: { section: "departments" }, matchSearchKey: "departments" },
+      { to: "/admin", label: "Stations", icon: MapPin, search: { section: "stations" }, matchSearchKey: "stations" },
+      { to: "/admin", label: "Teams", icon: UsersRound, search: { section: "teams" }, matchSearchKey: "teams" },
+      { to: "/admin", label: "Activity Logs", icon: ScrollText, search: { section: "activity" }, matchSearchKey: "activity" },
     ],
   },
 ];
