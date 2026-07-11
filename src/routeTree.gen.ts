@@ -21,6 +21,7 @@ import { Route as DriverPortalRouteImport } from './routes/driver-portal'
 import { Route as DeliveryRouteImport } from './routes/delivery'
 import { Route as ContactCenterRouteImport } from './routes/contact-center'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as PassengerTokenRouteImport } from './routes/passenger.$token'
 
 const TrackingRoute = TrackingRouteImport.update({
   id: '/tracking',
@@ -82,6 +83,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PassengerTokenRoute = PassengerTokenRouteImport.update({
+  id: '/$token',
+  path: '/$token',
+  getParentRoute: () => PassengerRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -90,12 +96,13 @@ export interface FileRoutesByFullPath {
   '/driver-portal': typeof DriverPortalRoute
   '/feedback': typeof FeedbackRoute
   '/lost-found': typeof LostFoundRoute
-  '/passenger': typeof PassengerRoute
+  '/passenger': typeof PassengerRouteWithChildren
   '/qr-scan': typeof QrScanRoute
   '/reports': typeof ReportsRoute
   '/route-tracking': typeof RouteTrackingRoute
   '/storage': typeof StorageRoute
   '/tracking': typeof TrackingRoute
+  '/passenger/$token': typeof PassengerTokenRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -104,12 +111,13 @@ export interface FileRoutesByTo {
   '/driver-portal': typeof DriverPortalRoute
   '/feedback': typeof FeedbackRoute
   '/lost-found': typeof LostFoundRoute
-  '/passenger': typeof PassengerRoute
+  '/passenger': typeof PassengerRouteWithChildren
   '/qr-scan': typeof QrScanRoute
   '/reports': typeof ReportsRoute
   '/route-tracking': typeof RouteTrackingRoute
   '/storage': typeof StorageRoute
   '/tracking': typeof TrackingRoute
+  '/passenger/$token': typeof PassengerTokenRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -119,12 +127,13 @@ export interface FileRoutesById {
   '/driver-portal': typeof DriverPortalRoute
   '/feedback': typeof FeedbackRoute
   '/lost-found': typeof LostFoundRoute
-  '/passenger': typeof PassengerRoute
+  '/passenger': typeof PassengerRouteWithChildren
   '/qr-scan': typeof QrScanRoute
   '/reports': typeof ReportsRoute
   '/route-tracking': typeof RouteTrackingRoute
   '/storage': typeof StorageRoute
   '/tracking': typeof TrackingRoute
+  '/passenger/$token': typeof PassengerTokenRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -141,6 +150,7 @@ export interface FileRouteTypes {
     | '/route-tracking'
     | '/storage'
     | '/tracking'
+    | '/passenger/$token'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -155,6 +165,7 @@ export interface FileRouteTypes {
     | '/route-tracking'
     | '/storage'
     | '/tracking'
+    | '/passenger/$token'
   id:
     | '__root__'
     | '/'
@@ -169,6 +180,7 @@ export interface FileRouteTypes {
     | '/route-tracking'
     | '/storage'
     | '/tracking'
+    | '/passenger/$token'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -178,7 +190,7 @@ export interface RootRouteChildren {
   DriverPortalRoute: typeof DriverPortalRoute
   FeedbackRoute: typeof FeedbackRoute
   LostFoundRoute: typeof LostFoundRoute
-  PassengerRoute: typeof PassengerRoute
+  PassengerRoute: typeof PassengerRouteWithChildren
   QrScanRoute: typeof QrScanRoute
   ReportsRoute: typeof ReportsRoute
   RouteTrackingRoute: typeof RouteTrackingRoute
@@ -272,8 +284,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/passenger/$token': {
+      id: '/passenger/$token'
+      path: '/$token'
+      fullPath: '/passenger/$token'
+      preLoaderRoute: typeof PassengerTokenRouteImport
+      parentRoute: typeof PassengerRoute
+    }
   }
 }
+
+interface PassengerRouteChildren {
+  PassengerTokenRoute: typeof PassengerTokenRoute
+}
+
+const PassengerRouteChildren: PassengerRouteChildren = {
+  PassengerTokenRoute: PassengerTokenRoute,
+}
+
+const PassengerRouteWithChildren = PassengerRoute._addFileChildren(
+  PassengerRouteChildren,
+)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
@@ -282,7 +313,7 @@ const rootRouteChildren: RootRouteChildren = {
   DriverPortalRoute: DriverPortalRoute,
   FeedbackRoute: FeedbackRoute,
   LostFoundRoute: LostFoundRoute,
-  PassengerRoute: PassengerRoute,
+  PassengerRoute: PassengerRouteWithChildren,
   QrScanRoute: QrScanRoute,
   ReportsRoute: ReportsRoute,
   RouteTrackingRoute: RouteTrackingRoute,
