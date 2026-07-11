@@ -23,6 +23,11 @@ import {
   MapPin,
   UsersRound,
   ScrollText,
+  GitBranch,
+  Download,
+  Plug,
+  Radio,
+  Settings as SettingsIcon,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -43,34 +48,41 @@ const navSections: {
     label: "Operations",
     items: [
       { to: "/", label: "Executive Dashboard", icon: LayoutDashboard, exact: true },
+    ],
+  },
+  {
+    label: "Baggage Operations",
+    items: [
       { to: "/lost-found", label: "Lost & Found", icon: PackageSearch },
       { to: "/storage", label: "Storage Control", icon: Warehouse },
       { to: "/qr-scan", label: "QR Scan", icon: QrCode },
-    ],
-  },
-  {
-    label: "Delivery",
-    items: [
       { to: "/delivery", label: "Delivery Management", icon: Truck },
       { to: "/driver-portal", label: "Driver Portal", icon: UserCog },
-      { to: "/route-tracking", label: "Route Tracking", icon: Map },
     ],
   },
   {
-    label: "Customer",
+    label: "Passenger Experience",
     items: [
       { to: "/tracking", label: "Passenger Tracking", icon: Search },
-      { to: "/passenger", label: "Send Tracking Link", icon: Send },
       { to: "/contact-center", label: "Contact Center", icon: Headphones },
       { to: "/feedback", label: "Feedback", icon: Star },
     ],
   },
   {
-    label: "Insights",
+    label: "Operations Center",
     items: [
-      { to: "/timeline", label: "Activity Timeline", icon: Activity },
+      { to: "/workflow-monitor", label: "Workflow Monitor", icon: GitBranch },
       { to: "/notifications", label: "Notification Center", icon: Bell },
+      { to: "/timeline", label: "Activity Timeline", icon: Activity },
+      { to: "/route-tracking", label: "Route Tracking", icon: Map },
+      { to: "/passenger", label: "Send Tracking Link", icon: Send },
+    ],
+  },
+  {
+    label: "Reporting",
+    items: [
       { to: "/reports", label: "Reports", icon: BarChart3 },
+      { to: "/export-center", label: "Export Center", icon: Download },
     ],
   },
   {
@@ -82,6 +94,14 @@ const navSections: {
       { to: "/admin", label: "Departments", icon: Building2, search: { section: "departments" }, matchSearchKey: "departments" },
       { to: "/admin", label: "Stations", icon: MapPin, search: { section: "stations" }, matchSearchKey: "stations" },
       { to: "/admin", label: "Teams", icon: UsersRound, search: { section: "teams" }, matchSearchKey: "teams" },
+    ],
+  },
+  {
+    label: "System",
+    items: [
+      { to: "/integrations", label: "Integrations", icon: Plug },
+      { to: "/api-status", label: "API Status", icon: Radio },
+      { to: "/settings", label: "Settings", icon: SettingsIcon },
       { to: "/admin", label: "Activity Logs", icon: ScrollText, search: { section: "activity" }, matchSearchKey: "activity" },
     ],
   },
