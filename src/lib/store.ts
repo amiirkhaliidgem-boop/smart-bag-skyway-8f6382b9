@@ -975,6 +975,56 @@ export function updateLfStatus(
     entityId: bagId,
     note: `${current} → ${next}${opts.note ? ` · ${opts.note}` : ""}`,
   });
+  // ---- Enterprise ownership hand-off ----
+  // When the case reaches "Ready for Delivery" and no delivery record has
+  // been created yet, bootstrap one automatically so Delivery Management
+  // takes over ownership. Reuses the SAME bagId, PIR, passenger, address,
+  // and priority — no duplicate records, no copied state. The Workflow
+  // Engine mirror below then generates the tracking token and pushes the
+  // status through the shared engine.
+  if (next === "Ready for Delivery") {
+    const already = state.deliveries.find((d) => d.bagId === bagId);
+    if (!already) {
+      const cc = state.cases.find((x) => x.bagId === bagId);
+      if (cc) {
+        const addr =
+          cc.delivery?.fullAddress ??
+          [
+            cc.delivery?.building,
+            cc.delivery?.street,
+            cc.delivery?.district,
+            cc.delivery?.city,
+            cc.delivery?.governorate,
+            cc.delivery?.country,
+          ]
+            .filter(Boolean)
+            .join(", ");
+        const otp = String(Math.floor(100000 + Math.random() * 900000));
+        const eta = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+        addDelivery({
+          bagId,
+          passengerName: cc.passengerName,
+          address: addr || "—",
+          mobile: cc.contact,
+          pirNumber: cc.pirNumber,
+          priority: cc.priority ?? cc.internal?.casePriority ?? "Normal",
+          status: "Pending",
+          driver: "—",
+          eta,
+          otpStatus: "Pending",
+          otpCode: otp,
+        });
+        pushAudit({
+          action: "delivery.bootstrap",
+          actor: opts.actor ?? "system",
+          role: opts.role,
+          entityType: "case",
+          entityId: bagId,
+          note: "Delivery order created — ownership handed to Delivery Management",
+        });
+      }
+    }
+  }
   // Mirror to Workflow Engine when a delivery exists for this bag.
   const linkedDelivery = state.deliveries.find((d) => d.bagId === bagId);
   if (linkedDelivery) {
