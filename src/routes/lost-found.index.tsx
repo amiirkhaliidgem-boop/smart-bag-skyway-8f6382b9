@@ -56,7 +56,7 @@ import { toast } from "sonner";
 import { ImportExportButtons } from "@/components/io/import-export-buttons";
 import { lostFoundSchema } from "@/lib/io/registry";
 
-export const Route = createFileRoute("/lost-found")({
+export const Route = createFileRoute("/lost-found/")({
   head: () => ({
     meta: [
       { title: "Lost & Found — IAB Smart Baggage Ecosystem" },
