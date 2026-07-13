@@ -731,7 +731,6 @@ function OverviewPassenger({ c, full }: { c: BaggageCase; full?: boolean }) {
       <KV k="Mobile 1" v={c.contact} />
       <KV k="Mobile 2" v={c.passenger?.mobile2} />
       <KV k="Email" v={c.email} />
-      <KV k="Preferred Language" v={c.passenger?.preferredLanguage?.toUpperCase()} />
     </InfoCard>
   );
 }
@@ -741,53 +740,67 @@ function OverviewFlight({ c }: { c: BaggageCase; full?: boolean }) {
       <KV k="Airline" v={c.flight?.airline} />
       <KV k="Flight No." v={c.flightNumber} mono />
       <KV k="Flight Date" v={c.arrivalDate} />
-      <KV k="Arrival Time" v={c.flight?.arrivalTime} />
       <KV k="Origin" v={c.flight?.originAirport} mono />
       <KV k="Destination" v={c.flight?.destinationAirport} mono />
-      <KV k="Terminal" v={c.flight?.terminal} />
-      <KV k="Belt" v={c.flight?.arrivalBelt} />
     </InfoCard>
   );
 }
 function OverviewBaggage({ c }: { c: BaggageCase; full?: boolean }) {
+  const tags = c.baggage?.bagTags && c.baggage.bagTags.length > 0
+    ? c.baggage.bagTags
+    : (c.bagTagNumber ? [c.bagTagNumber] : []);
   return (
     <InfoCard title="Baggage">
-      <KV k="Bag Tag" v={c.bagTagNumber} mono />
       <KV k="Number Of Bags" v={c.baggage?.numberOfBags?.toString()} />
       <KV k="Weight" v={c.baggage?.weightKg ? `${c.baggage.weightKg} kg` : undefined} />
-      <KV k="Brand" v={c.baggage?.brand} />
       <KV k="Color" v={c.baggage?.color} />
       <KV k="Type" v={c.baggage?.type} />
-      <KV k="Size" v={c.baggage?.size} />
       <KV k="Distinctive Marks" v={c.baggage?.distinctiveMarks} />
       <KV k="VIP" v={c.baggage?.vipPassenger ? "Yes" : undefined} />
       <KV k="Rush" v={c.baggage?.rushDelivery ? "Yes" : undefined} />
       <KV k="Fragile" v={c.baggage?.fragile ? "Yes" : undefined} />
+      <div className="col-span-full pt-2 border-t mt-1">
+        <p className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1">
+          Bag Tags ({tags.length})
+        </p>
+        {tags.length ? (
+          <div className="flex flex-wrap gap-1.5">
+            {tags.map((t, i) => (
+              <span
+                key={i}
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded border bg-muted/40 font-mono text-xs"
+              >
+                <span className="text-[10px] text-muted-foreground">#{i + 1}</span>
+                {t}
+              </span>
+            ))}
+          </div>
+        ) : (
+          <p className="text-muted-foreground italic text-xs">No bag tags recorded.</p>
+        )}
+      </div>
     </InfoCard>
   );
 }
 function OverviewDelivery({ c, full }: { c: BaggageCase; full?: boolean }) {
+  const legacyAddress = [
+    c.delivery?.building, c.delivery?.street, c.delivery?.district,
+    c.delivery?.city, c.delivery?.governorate, c.delivery?.country,
+  ].filter(Boolean).join(", ");
+  const address = c.delivery?.fullAddress || legacyAddress;
   return (
     <InfoCard title="Delivery Address" className={full ? "" : ""}>
       <KV k="Method" v={c.delivery?.method} />
-      <KV k="Country" v={c.delivery?.country} />
-      <KV k="Governorate" v={c.delivery?.governorate} />
-      <KV k="City" v={c.delivery?.city} />
-      <KV k="District" v={c.delivery?.district} />
-      <KV k="Street" v={c.delivery?.street} />
-      <KV k="Building" v={c.delivery?.building} />
-      <KV k="Floor / Apt" v={[c.delivery?.floor, c.delivery?.apartment].filter(Boolean).join(" / ")} />
-      <KV k="Landmark" v={c.delivery?.nearestLandmark} />
-      <KV k="Preferred Time" v={c.delivery?.preferredDeliveryTime} />
-      {c.delivery?.googleMapsLink && (
-        <div className="col-span-2 mt-1">
-          <a href={c.delivery.googleMapsLink} target="_blank" rel="noreferrer"
-            className="text-primary text-xs inline-flex items-center gap-1 hover:underline">
-            <MapPin className="h-3.5 w-3.5" /> Open in Google Maps
-            <ExternalLink className="h-3 w-3" />
-          </a>
-        </div>
-      )}
+      <div className="col-span-full pt-1">
+        <p className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1 flex items-center gap-1.5">
+          <MapPin className="h-3.5 w-3.5" /> Full Delivery Address
+        </p>
+        {address ? (
+          <p className="text-sm whitespace-pre-line">{address}</p>
+        ) : (
+          <p className="text-muted-foreground italic text-xs">No address recorded.</p>
+        )}
+      </div>
     </InfoCard>
   );
 }
