@@ -128,6 +128,7 @@ function DeliveryPage() {
                   <th className="text-left px-4 py-3 font-medium">ETA</th>
                   <th className="text-left px-4 py-3 font-medium">Status</th>
                   <th className="text-left px-4 py-3 font-medium">OTP</th>
+                  <th className="text-left px-4 py-3 font-medium">Passenger</th>
                   <th className="text-right px-4 py-3 font-medium">Actions</th>
                 </tr>
               </thead>
@@ -137,7 +138,7 @@ function DeliveryPage() {
                 ))}
                 {deliveries.length === 0 && (
                   <tr>
-                    <td colSpan={9} className="px-4 py-12 text-center text-sm text-muted-foreground">
+                    <td colSpan={10} className="px-4 py-12 text-center text-sm text-muted-foreground">
                       No deliveries scheduled.
                     </td>
                   </tr>
