@@ -35,7 +35,7 @@ export interface FieldDef {
   unique?: boolean;
 }
 
-export interface DatasetSchema<TRecord = Record<string, unknown>> {
+export interface DatasetSchema {
   /** Stable module id (e.g. "lost-found"). */
   id: string;
   /** Display name shown in the Import/Export Center. */
@@ -47,10 +47,10 @@ export interface DatasetSchema<TRecord = Record<string, unknown>> {
   /** Field definitions. Order defines template + export column order. */
   fields: FieldDef[];
   /** Reads current records from the store (for export + duplicate detection). */
-  read: () => TRecord[];
+  read: () => Record<string, unknown>[];
   /** Applies validated rows to the store. MUST route through workflow/audit
    *  when the module has workflow semantics. */
-  apply: (rows: TRecord[], ctx: ApplyContext) => ApplyResult;
+  apply: (rows: Record<string, unknown>[], ctx: ApplyContext) => ApplyResult;
 }
 
 export interface ApplyContext {
