@@ -18,6 +18,7 @@ import {
   deriveLfFromCase,
   nextLfStatus,
   canTransitionLf,
+  LF_STATUS_ORDER,
   type LFStatus,
 } from "@/lib/lost-found/statuses";
 import { LfStatusBadge } from "@/components/lf-status-badge";
@@ -95,6 +96,11 @@ function CaseDetailsPage() {
   const wf = linkedDelivery
     ? workflow.find((w) => w.deliveryId === linkedDelivery.deliveryId)
     : undefined;
+  // Ownership hand-off: once the case reaches Ready for Delivery, Delivery
+  // Management owns the case and L&F can only view it. Status controls
+  // become read-only here.
+  const deliveryOwned =
+    LF_STATUS_ORDER[lfs] >= LF_STATUS_ORDER["Ready for Delivery"];
 
   const relatedNotifications = notifications.filter(
     (n) => n.pirNumber === c.pirNumber || n.deliveryId === linkedDelivery?.deliveryId,
@@ -114,6 +120,10 @@ function CaseDetailsPage() {
   );
 
   function advance() {
+    if (deliveryOwned) {
+      toast.info("This case is owned by Delivery Management. Update status there.");
+      return;
+    }
     const next = nextLfStatus(lfs);
     if (!next) {
       toast.info("Case is already at the final status.");
@@ -125,6 +135,11 @@ function CaseDetailsPage() {
 
   function changeStatus(target: LFStatus, force = false, note?: string) {
     if (target === lfs) {
+      setChangeOpen(false);
+      return;
+    }
+    if (deliveryOwned && !force) {
+      toast.info("This case is owned by Delivery Management. Update status there.");
       setChangeOpen(false);
       return;
     }
@@ -237,10 +252,21 @@ function CaseDetailsPage() {
               <Button variant="outline" onClick={() => setEditOpen(true)} className="gap-1.5">
                 <Pencil className="h-4 w-4" /> Edit PIR
               </Button>
-              <Button variant="outline" onClick={() => setChangeOpen(true)} className="gap-1.5">
+              <Button
+                variant="outline"
+                onClick={() => setChangeOpen(true)}
+                className="gap-1.5"
+                disabled={deliveryOwned}
+                title={deliveryOwned ? "Owned by Delivery Management" : undefined}
+              >
                 Change Status
               </Button>
-              <Button onClick={advance} className="gap-1.5">
+              <Button
+                onClick={advance}
+                className="gap-1.5"
+                disabled={deliveryOwned || !nextLfStatus(lfs)}
+                title={deliveryOwned ? "Owned by Delivery Management" : undefined}
+              >
                 Advance <ChevronRight className="h-4 w-4" />
               </Button>
               <DropdownMenu>
@@ -295,7 +321,25 @@ function CaseDetailsPage() {
             <p className="text-[11px] uppercase tracking-wider text-muted-foreground mb-2">
               Case Lifecycle
             </p>
-            <LfStatusStepper current={lfs} onSelect={(s) => changeStatus(s)} />
+            <LfStatusStepper
+              current={lfs}
+              onSelect={deliveryOwned ? undefined : (s) => changeStatus(s)}
+            />
+            {deliveryOwned && (
+              <div className="mt-3 rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-800 flex items-center gap-2">
+                <Truck className="h-3.5 w-3.5" />
+                This case has been handed over to Delivery Management. Status
+                updates from Ready for Delivery onward are controlled there.
+                {linkedDelivery && (
+                  <Link
+                    to="/delivery"
+                    className="ml-auto font-semibold text-sky-900 hover:underline inline-flex items-center gap-1"
+                  >
+                    Open Delivery <ExternalLink className="h-3 w-3" />
+                  </Link>
+                )}
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -687,7 +731,6 @@ function OverviewPassenger({ c, full }: { c: BaggageCase; full?: boolean }) {
       <KV k="Mobile 1" v={c.contact} />
       <KV k="Mobile 2" v={c.passenger?.mobile2} />
       <KV k="Email" v={c.email} />
-      <KV k="Preferred Language" v={c.passenger?.preferredLanguage?.toUpperCase()} />
     </InfoCard>
   );
 }
@@ -697,53 +740,67 @@ function OverviewFlight({ c }: { c: BaggageCase; full?: boolean }) {
       <KV k="Airline" v={c.flight?.airline} />
       <KV k="Flight No." v={c.flightNumber} mono />
       <KV k="Flight Date" v={c.arrivalDate} />
-      <KV k="Arrival Time" v={c.flight?.arrivalTime} />
       <KV k="Origin" v={c.flight?.originAirport} mono />
       <KV k="Destination" v={c.flight?.destinationAirport} mono />
-      <KV k="Terminal" v={c.flight?.terminal} />
-      <KV k="Belt" v={c.flight?.arrivalBelt} />
     </InfoCard>
   );
 }
 function OverviewBaggage({ c }: { c: BaggageCase; full?: boolean }) {
+  const tags = c.baggage?.bagTags && c.baggage.bagTags.length > 0
+    ? c.baggage.bagTags
+    : (c.bagTagNumber ? [c.bagTagNumber] : []);
   return (
     <InfoCard title="Baggage">
-      <KV k="Bag Tag" v={c.bagTagNumber} mono />
       <KV k="Number Of Bags" v={c.baggage?.numberOfBags?.toString()} />
       <KV k="Weight" v={c.baggage?.weightKg ? `${c.baggage.weightKg} kg` : undefined} />
-      <KV k="Brand" v={c.baggage?.brand} />
       <KV k="Color" v={c.baggage?.color} />
       <KV k="Type" v={c.baggage?.type} />
-      <KV k="Size" v={c.baggage?.size} />
       <KV k="Distinctive Marks" v={c.baggage?.distinctiveMarks} />
       <KV k="VIP" v={c.baggage?.vipPassenger ? "Yes" : undefined} />
       <KV k="Rush" v={c.baggage?.rushDelivery ? "Yes" : undefined} />
       <KV k="Fragile" v={c.baggage?.fragile ? "Yes" : undefined} />
+      <div className="col-span-full pt-2 border-t mt-1">
+        <p className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1">
+          Bag Tags ({tags.length})
+        </p>
+        {tags.length ? (
+          <div className="flex flex-wrap gap-1.5">
+            {tags.map((t, i) => (
+              <span
+                key={i}
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded border bg-muted/40 font-mono text-xs"
+              >
+                <span className="text-[10px] text-muted-foreground">#{i + 1}</span>
+                {t}
+              </span>
+            ))}
+          </div>
+        ) : (
+          <p className="text-muted-foreground italic text-xs">No bag tags recorded.</p>
+        )}
+      </div>
     </InfoCard>
   );
 }
 function OverviewDelivery({ c, full }: { c: BaggageCase; full?: boolean }) {
+  const legacyAddress = [
+    c.delivery?.building, c.delivery?.street, c.delivery?.district,
+    c.delivery?.city, c.delivery?.governorate, c.delivery?.country,
+  ].filter(Boolean).join(", ");
+  const address = c.delivery?.fullAddress || legacyAddress;
   return (
     <InfoCard title="Delivery Address" className={full ? "" : ""}>
       <KV k="Method" v={c.delivery?.method} />
-      <KV k="Country" v={c.delivery?.country} />
-      <KV k="Governorate" v={c.delivery?.governorate} />
-      <KV k="City" v={c.delivery?.city} />
-      <KV k="District" v={c.delivery?.district} />
-      <KV k="Street" v={c.delivery?.street} />
-      <KV k="Building" v={c.delivery?.building} />
-      <KV k="Floor / Apt" v={[c.delivery?.floor, c.delivery?.apartment].filter(Boolean).join(" / ")} />
-      <KV k="Landmark" v={c.delivery?.nearestLandmark} />
-      <KV k="Preferred Time" v={c.delivery?.preferredDeliveryTime} />
-      {c.delivery?.googleMapsLink && (
-        <div className="col-span-2 mt-1">
-          <a href={c.delivery.googleMapsLink} target="_blank" rel="noreferrer"
-            className="text-primary text-xs inline-flex items-center gap-1 hover:underline">
-            <MapPin className="h-3.5 w-3.5" /> Open in Google Maps
-            <ExternalLink className="h-3 w-3" />
-          </a>
-        </div>
-      )}
+      <div className="col-span-full pt-1">
+        <p className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1 flex items-center gap-1.5">
+          <MapPin className="h-3.5 w-3.5" /> Full Delivery Address
+        </p>
+        {address ? (
+          <p className="text-sm whitespace-pre-line">{address}</p>
+        ) : (
+          <p className="text-muted-foreground italic text-xs">No address recorded.</p>
+        )}
+      </div>
     </InfoCard>
   );
 }
