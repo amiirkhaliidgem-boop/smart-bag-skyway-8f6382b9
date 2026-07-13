@@ -352,17 +352,22 @@ export function PirWizard({
           const Icon = s.icon;
           const done = i < step;
           const active = i === step;
+          const locked = i > step;
           return (
             <button
               key={s.key}
               type="button"
-              onClick={() => setStep(i)}
+              onClick={() => goToStep(i)}
+              disabled={locked}
               className={cn(
                 "flex items-center gap-1.5 rounded-md px-2.5 py-1.5 border text-xs whitespace-nowrap transition-colors",
                 active && "bg-primary text-primary-foreground border-primary font-semibold",
                 done && "bg-emerald-50 text-emerald-700 border-emerald-200",
                 !active && !done && "bg-muted/40 text-muted-foreground border-transparent",
+                locked && "opacity-60 cursor-not-allowed",
               )}
+              aria-disabled={locked}
+              title={locked ? "Complete the previous steps first" : undefined}
             >
               <span className={cn(
                 "inline-flex items-center justify-center h-5 w-5 rounded-full text-[10px] font-bold",
@@ -370,7 +375,7 @@ export function PirWizard({
                 done && "bg-emerald-600 text-white",
                 !active && !done && "bg-muted text-muted-foreground",
               )}>
-                {done ? <CheckCircle2 className="h-3.5 w-3.5" /> : i + 1}
+                {done ? <CheckCircle2 className="h-3.5 w-3.5" /> : locked ? <Lock className="h-3 w-3" /> : i + 1}
               </span>
               <Icon className="h-3.5 w-3.5" />
               {s.label}
@@ -393,42 +398,32 @@ export function PirWizard({
             <Fld label="Mobile Number 1" required><Input value={form.mobile} onChange={(e) => set("mobile", e.target.value)} /></Fld>
             <Fld label="Mobile Number 2"><Input value={form.mobile2} onChange={(e) => set("mobile2", e.target.value)} /></Fld>
             <Fld label="Email"><Input type="email" value={form.email} onChange={(e) => set("email", e.target.value)} /></Fld>
-            <Fld label="Preferred Language">
-              <Select value={form.preferredLanguage} onValueChange={(v) => set("preferredLanguage", v as F["preferredLanguage"])}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="en">English</SelectItem>
-                  <SelectItem value="ar">Arabic</SelectItem>
-                  <SelectItem value="fr">French</SelectItem>
-                </SelectContent>
-              </Select>
-            </Fld>
           </Grid>
         )}
 
         {step === 1 && (
           <Grid>
-            <Fld label="Airline"><Input value={form.airline} onChange={(e) => set("airline", e.target.value)} placeholder="e.g. MS" /></Fld>
+            <Fld label="Airline" required><Input value={form.airline} onChange={(e) => set("airline", e.target.value)} placeholder="e.g. MS" /></Fld>
             <Fld label="Flight Number" required><Input value={form.flightNumber} onChange={(e) => set("flightNumber", e.target.value)} /></Fld>
             <Fld label="Flight Date" required><Input type="date" value={form.flightDate} onChange={(e) => set("flightDate", e.target.value)} /></Fld>
-            <Fld label="Arrival Time"><Input type="time" value={form.arrivalTime} onChange={(e) => set("arrivalTime", e.target.value)} /></Fld>
-            <Fld label="Origin (IATA)"><Input maxLength={3} value={form.originAirport} onChange={(e) => set("originAirport", e.target.value.toUpperCase())} /></Fld>
-            <Fld label="Destination (IATA)"><Input maxLength={3} value={form.destinationAirport} onChange={(e) => set("destinationAirport", e.target.value.toUpperCase())} /></Fld>
-            <Fld label="Terminal"><Input value={form.terminal} onChange={(e) => set("terminal", e.target.value)} /></Fld>
-            <Fld label="Arrival Belt"><Input value={form.arrivalBelt} onChange={(e) => set("arrivalBelt", e.target.value)} /></Fld>
+            <Fld label="Origin"><Input maxLength={3} value={form.originAirport} onChange={(e) => set("originAirport", e.target.value.toUpperCase())} placeholder="e.g. JFK" /></Fld>
+            <Fld label="Destination"><Input maxLength={3} value={form.destinationAirport} onChange={(e) => set("destinationAirport", e.target.value.toUpperCase())} placeholder="e.g. CAI" /></Fld>
           </Grid>
         )}
 
         {step === 2 && (
           <Grid>
             <Fld label="PIR Number" required><Input value={form.pirNumber} onChange={(e) => set("pirNumber", e.target.value)} /></Fld>
-            <Fld label="Bag Tag Number" required><Input value={form.bagTagNumber} onChange={(e) => set("bagTagNumber", e.target.value)} /></Fld>
-            <Fld label="Number Of Bags"><Input type="number" min={1} value={form.numberOfBags} onChange={(e) => set("numberOfBags", e.target.value)} /></Fld>
+            <Fld label="Number Of Bags" required>
+              <Input
+                type="number"
+                min={1}
+                max={50}
+                value={form.numberOfBags}
+                onChange={(e) => setNumberOfBags(e.target.value)}
+              />
+            </Fld>
             <Fld label="Weight (kg)"><Input type="number" step="0.1" value={form.weightKg} onChange={(e) => set("weightKg", e.target.value)} /></Fld>
-            <Fld label="Brand"><Input value={form.brand} onChange={(e) => set("brand", e.target.value)} /></Fld>
-            <Fld label="Color"><Input value={form.color} onChange={(e) => set("color", e.target.value)} /></Fld>
-            <Fld label="Type"><Input value={form.type} onChange={(e) => set("type", e.target.value)} placeholder="Hardshell / Softshell" /></Fld>
-            <Fld label="Size"><Input value={form.size} onChange={(e) => set("size", e.target.value)} placeholder="Cabin / Medium / Large" /></Fld>
             <Fld label="Priority">
               <Select value={form.priority} onValueChange={(v) => set("priority", v as Priority)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
@@ -439,19 +434,42 @@ export function PirWizard({
                 </SelectContent>
               </Select>
             </Fld>
+            <Fld label="Color"><Input value={form.color} onChange={(e) => set("color", e.target.value)} /></Fld>
+            <Fld label="Type"><Input value={form.type} onChange={(e) => set("type", e.target.value)} placeholder="Hardshell / Softshell" /></Fld>
             <Fld label="Distinctive Marks" wide><Textarea rows={2} value={form.distinctiveMarks} onChange={(e) => set("distinctiveMarks", e.target.value)} /></Fld>
+            <div className="sm:col-span-3 space-y-2 pt-1">
+              <Label className="font-semibold">
+                Bag Tags <span className="text-rose-500">*</span>
+                <span className="ml-2 text-xs font-normal text-muted-foreground">
+                  One tag per bag — every field is required.
+                </span>
+              </Label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                {form.bagTags.map((tag, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <span className="inline-flex items-center justify-center h-8 w-8 rounded-md border bg-muted text-xs font-semibold shrink-0">
+                      #{i + 1}
+                    </span>
+                    <Input
+                      value={tag}
+                      onChange={(e) => setBagTag(i, e.target.value)}
+                      placeholder={`Bag Tag ${i + 1}`}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
             <div className="sm:col-span-3 flex flex-wrap gap-4 pt-1">
               <Toggle label="VIP Passenger" checked={form.vipPassenger} onChange={(v) => set("vipPassenger", v)} />
               <Toggle label="Rush Delivery" checked={form.rushDelivery} onChange={(v) => set("rushDelivery", v)} />
               <Toggle label="Fragile" checked={form.fragile} onChange={(v) => set("fragile", v)} />
             </div>
-            <Fld label="Assigned Officer" wide><Input value={form.assignedOfficer} onChange={(e) => set("assignedOfficer", e.target.value)} placeholder="e.g. A. Hassan" /></Fld>
             <Fld label="Internal Notes" wide><Textarea rows={2} value={form.internalNotes} onChange={(e) => set("internalNotes", e.target.value)} /></Fld>
           </Grid>
         )}
 
         {step === 3 && (
-          <Grid>
+          <div className="space-y-4">
             <Fld label="Delivery Method">
               <Select value={form.method} onValueChange={(v) => set("method", v as DeliveryMethod)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
@@ -461,57 +479,30 @@ export function PirWizard({
                 </SelectContent>
               </Select>
             </Fld>
-            <Fld label="Country"><Input value={form.country} onChange={(e) => set("country", e.target.value)} /></Fld>
-            <Fld label="Governorate"><Input value={form.governorate} onChange={(e) => set("governorate", e.target.value)} /></Fld>
-            <Fld label="City"><Input value={form.city} onChange={(e) => set("city", e.target.value)} /></Fld>
-            <Fld label="District"><Input value={form.district} onChange={(e) => set("district", e.target.value)} /></Fld>
-            <Fld label="Street"><Input value={form.street} onChange={(e) => set("street", e.target.value)} /></Fld>
-            <Fld label="Building"><Input value={form.building} onChange={(e) => set("building", e.target.value)} /></Fld>
-            <Fld label="Floor"><Input value={form.floor} onChange={(e) => set("floor", e.target.value)} /></Fld>
-            <Fld label="Apartment"><Input value={form.apartment} onChange={(e) => set("apartment", e.target.value)} /></Fld>
-            <Fld label="Nearest Landmark"><Input value={form.nearestLandmark} onChange={(e) => set("nearestLandmark", e.target.value)} /></Fld>
-            <Fld label="Google Maps Link"><Input value={form.googleMapsLink} onChange={(e) => set("googleMapsLink", e.target.value)} placeholder="https://maps.google.com/…" /></Fld>
-            <Fld label="Preferred Delivery Time"><Input value={form.preferredDeliveryTime} onChange={(e) => set("preferredDeliveryTime", e.target.value)} placeholder="e.g. 19:00 – 21:00" /></Fld>
-          </Grid>
-        )}
-
-        {step === 4 && (
-          <div className="space-y-4">
-            {mode === "edit" && caseData?.documents?.length ? (
-              <div className="rounded-md border p-3">
-                <p className="text-xs uppercase tracking-wider text-muted-foreground mb-2">
-                  Already attached
-                </p>
-                <ul className="divide-y">
-                  {caseData.documents.map((d) => (
-                    <li key={d.id} className="py-2 flex items-center gap-3 text-sm">
-                      <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
-                      <div className="min-w-0 flex-1">
-                        <div className="truncate">{d.name}</div>
-                        <div className="text-xs text-muted-foreground">{d.type}</div>
-                      </div>
-                      <Button variant="ghost" size="sm" className="h-8"
-                        onClick={() => { removeCaseDocument(caseData.bagId, d.id); toast.success("Document removed"); }}
-                      >
-                        <Trash2 className="h-4 w-4 text-rose-500" />
-                      </Button>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ) : null}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <Doc label="Passport Copy" value={form.passportCopy} onChange={(v) => set("passportCopy", v)} />
-              <Doc label="Arrival Stamp" value={form.arrivalStamp} onChange={(v) => set("arrivalStamp", v)} />
-              <Doc label="Authorization Letter" value={form.authLetter} onChange={(v) => set("authLetter", v)} />
-              <Doc label="Other Documents" value={form.otherDoc} onChange={(v) => set("otherDoc", v)} />
+            <div className="space-y-1.5">
+              <Label className="font-semibold">
+                Full Delivery Address <span className="text-rose-500">*</span>
+              </Label>
+              <Textarea
+                rows={6}
+                value={form.fullAddress}
+                onChange={(e) => set("fullAddress", e.target.value)}
+                placeholder={
+                  "Country, governorate, city, district, street, building, floor, apartment, landmark…\n" +
+                  "Include any details the driver needs to locate the passenger."
+                }
+              />
+              <p className="text-xs text-muted-foreground">
+                This address is passed to Delivery Management once the case reaches
+                Ready for Delivery.
+              </p>
             </div>
           </div>
         )}
 
-        {step === 5 && (
+        {step === 4 && (
           <div className="space-y-4 text-sm">
-            <ReviewGroup title="Passenger">
+            <ReviewGroup title="Passenger" onEdit={() => setStep(0)}>
               <ReviewKV k="Full Name" v={passengerName()} />
               <ReviewKV k="Nationality" v={form.nationality} />
               <ReviewKV k="Passport" v={form.passportNumber} />
@@ -519,23 +510,25 @@ export function PirWizard({
               <ReviewKV k="Mobile" v={form.mobile} />
               <ReviewKV k="Email" v={form.email} />
             </ReviewGroup>
-            <ReviewGroup title="Flight">
+            <ReviewGroup title="Flight" onEdit={() => setStep(1)}>
               <ReviewKV k="Airline / Flight" v={[form.airline, form.flightNumber].filter(Boolean).join(" ")} />
-              <ReviewKV k="Date / Time" v={[form.flightDate, form.arrivalTime].filter(Boolean).join(" ")} />
+              <ReviewKV k="Date" v={form.flightDate} />
               <ReviewKV k="Route" v={`${form.originAirport || "—"} → ${form.destinationAirport || "CAI"}`} />
             </ReviewGroup>
-            <ReviewGroup title="Baggage">
-              <ReviewKV k="PIR / Tag" v={`${form.pirNumber} · ${form.bagTagNumber}`} />
+            <ReviewGroup title="Baggage" onEdit={() => setStep(2)}>
+              <ReviewKV k="PIR Number" v={form.pirNumber} />
+              <ReviewKV k="Number Of Bags" v={form.numberOfBags} />
+              <ReviewKV k="Bag Tags" v={form.bagTags.filter(Boolean).join(", ")} />
               <ReviewKV k="Description" v={description()} />
               <ReviewKV k="Priority" v={form.priority} />
             </ReviewGroup>
-            <ReviewGroup title="Delivery">
+            <ReviewGroup title="Delivery" onEdit={() => setStep(3)}>
               <ReviewKV k="Method" v={form.method} />
-              <ReviewKV k="Address" v={[form.building, form.street, form.district, form.city, form.governorate, form.country].filter(Boolean).join(", ")} />
+              <ReviewKV k="Full Address" v={form.fullAddress} />
             </ReviewGroup>
             {!canSubmit && (
               <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
-                Complete the required fields before submitting: names, mobile, flight number, PIR, and bag tag.
+                Complete every required field before submitting.
               </div>
             )}
           </div>
