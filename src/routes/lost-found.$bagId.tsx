@@ -18,6 +18,7 @@ import {
   deriveLfFromCase,
   nextLfStatus,
   canTransitionLf,
+  LF_STATUS_ORDER,
   type LFStatus,
 } from "@/lib/lost-found/statuses";
 import { LfStatusBadge } from "@/components/lf-status-badge";
@@ -95,6 +96,11 @@ function CaseDetailsPage() {
   const wf = linkedDelivery
     ? workflow.find((w) => w.deliveryId === linkedDelivery.deliveryId)
     : undefined;
+  // Ownership hand-off: once the case reaches Ready for Delivery, Delivery
+  // Management owns the case and L&F can only view it. Status controls
+  // become read-only here.
+  const deliveryOwned =
+    LF_STATUS_ORDER[lfs] >= LF_STATUS_ORDER["Ready for Delivery"];
 
   const relatedNotifications = notifications.filter(
     (n) => n.pirNumber === c.pirNumber || n.deliveryId === linkedDelivery?.deliveryId,
@@ -114,6 +120,10 @@ function CaseDetailsPage() {
   );
 
   function advance() {
+    if (deliveryOwned) {
+      toast.info("This case is owned by Delivery Management. Update status there.");
+      return;
+    }
     const next = nextLfStatus(lfs);
     if (!next) {
       toast.info("Case is already at the final status.");
@@ -125,6 +135,11 @@ function CaseDetailsPage() {
 
   function changeStatus(target: LFStatus, force = false, note?: string) {
     if (target === lfs) {
+      setChangeOpen(false);
+      return;
+    }
+    if (deliveryOwned && !force) {
+      toast.info("This case is owned by Delivery Management. Update status there.");
       setChangeOpen(false);
       return;
     }
