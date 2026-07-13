@@ -252,10 +252,21 @@ function CaseDetailsPage() {
               <Button variant="outline" onClick={() => setEditOpen(true)} className="gap-1.5">
                 <Pencil className="h-4 w-4" /> Edit PIR
               </Button>
-              <Button variant="outline" onClick={() => setChangeOpen(true)} className="gap-1.5">
+              <Button
+                variant="outline"
+                onClick={() => setChangeOpen(true)}
+                className="gap-1.5"
+                disabled={deliveryOwned}
+                title={deliveryOwned ? "Owned by Delivery Management" : undefined}
+              >
                 Change Status
               </Button>
-              <Button onClick={advance} className="gap-1.5">
+              <Button
+                onClick={advance}
+                className="gap-1.5"
+                disabled={deliveryOwned || !nextLfStatus(lfs)}
+                title={deliveryOwned ? "Owned by Delivery Management" : undefined}
+              >
                 Advance <ChevronRight className="h-4 w-4" />
               </Button>
               <DropdownMenu>
@@ -310,7 +321,25 @@ function CaseDetailsPage() {
             <p className="text-[11px] uppercase tracking-wider text-muted-foreground mb-2">
               Case Lifecycle
             </p>
-            <LfStatusStepper current={lfs} onSelect={(s) => changeStatus(s)} />
+            <LfStatusStepper
+              current={lfs}
+              onSelect={deliveryOwned ? undefined : (s) => changeStatus(s)}
+            />
+            {deliveryOwned && (
+              <div className="mt-3 rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-800 flex items-center gap-2">
+                <Truck className="h-3.5 w-3.5" />
+                This case has been handed over to Delivery Management. Status
+                updates from Ready for Delivery onward are controlled there.
+                {linkedDelivery && (
+                  <Link
+                    to="/delivery"
+                    className="ml-auto font-semibold text-sky-900 hover:underline inline-flex items-center gap-1"
+                  >
+                    Open Delivery <ExternalLink className="h-3 w-3" />
+                  </Link>
+                )}
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
