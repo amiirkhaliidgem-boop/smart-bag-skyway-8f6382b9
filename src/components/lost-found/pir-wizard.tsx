@@ -269,23 +269,23 @@ export function PirWizard({
 
   function buildDocuments(): CaseDocument[] {
     const now = new Date().toISOString();
-    const items: (CaseDocument | false)[] = [
-      form.passportCopy && {
+    const items: (CaseDocument | "" | false)[] = [
+      form.passportCopy ? {
         id: `DOC-${Date.now()}-1`, type: "Passport Copy" as const,
         name: form.passportCopy, uploadedAt: now, uploadedBy: form.createdBy,
-      },
-      form.arrivalStamp && {
+      } : "",
+      form.arrivalStamp ? {
         id: `DOC-${Date.now()}-2`, type: "Arrival Stamp" as const,
         name: form.arrivalStamp, uploadedAt: now, uploadedBy: form.createdBy,
-      },
-      form.authLetter && {
+      } : "",
+      form.authLetter ? {
         id: `DOC-${Date.now()}-3`, type: "Authorization Letter" as const,
         name: form.authLetter, uploadedAt: now, uploadedBy: form.createdBy,
-      },
-      form.otherDoc && {
+      } : "",
+      form.otherDoc ? {
         id: `DOC-${Date.now()}-4`, type: "Other" as const,
         name: form.otherDoc, uploadedAt: now, uploadedBy: form.createdBy,
-      },
+      } : "",
     ];
     return items.filter(Boolean) as CaseDocument[];
   }
