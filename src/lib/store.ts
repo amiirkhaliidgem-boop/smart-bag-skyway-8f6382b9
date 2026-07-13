@@ -18,6 +18,8 @@ import {
 import { generateTrackingToken } from "./passenger/tokens";
 import type { AuditEntry, ImportAuditEntry } from "./audit/log";
 import type { Role } from "./roles/roles";
+import type { LFStatus } from "./lost-found/statuses";
+import { LF_TO_WORKFLOW, canTransitionLf } from "./lost-found/statuses";
 
 export type CaseStatus =
   | "Missing"
@@ -37,6 +39,75 @@ export type DeliveryStatus =
 export type OtpStatus = "Pending" | "Sent" | "Verified" | "Failed";
 
 export type Priority = "Low" | "Normal" | "High" | "VIP";
+
+export type DeliveryMethod = "Home Delivery" | "Airport Pickup";
+
+export interface CaseDocument {
+  id: string;
+  type: "Passport Copy" | "Arrival Stamp" | "Authorization Letter" | "Other";
+  name: string;
+  uploadedAt: string;
+  uploadedBy?: string;
+  sizeKb?: number;
+}
+
+export interface CasePassenger {
+  firstName?: string;
+  middleName?: string;
+  lastName?: string;
+  nationality?: string;
+  passportNumber?: string;
+  pnr?: string;
+  ticketNumber?: string;
+  mobile2?: string;
+  preferredLanguage?: "en" | "ar" | "fr";
+}
+
+export interface CaseFlight {
+  airline?: string;
+  arrivalTime?: string;
+  originAirport?: string;
+  destinationAirport?: string;
+  terminal?: string;
+  arrivalBelt?: string;
+}
+
+export interface CaseBaggage {
+  numberOfBags?: number;
+  weightKg?: number;
+  brand?: string;
+  color?: string;
+  type?: string;
+  size?: string;
+  distinctiveMarks?: string;
+  vipPassenger?: boolean;
+  rushDelivery?: boolean;
+  fragile?: boolean;
+}
+
+export interface CaseDelivery {
+  method?: DeliveryMethod;
+  country?: string;
+  governorate?: string;
+  city?: string;
+  district?: string;
+  street?: string;
+  building?: string;
+  floor?: string;
+  apartment?: string;
+  nearestLandmark?: string;
+  googleMapsLink?: string;
+  preferredDeliveryTime?: string;
+}
+
+export interface CaseInternal {
+  assignedOfficer?: string;
+  station?: string;
+  department?: string;
+  internalNotes?: string;
+  casePriority?: Priority;
+  createdBy?: string;
+}
 
 export type CallDirection = "Inbound" | "Outbound" | "No Answer" | "Callback Required";
 
@@ -130,6 +201,22 @@ export interface BaggageCase {
   storage: { zone: string; shelf: string; position: string } | null;
   createdAt: string;
   resolvedAt?: string;
+  // ---- Enterprise L&F extensions (all optional; legacy seeds keep working)
+  lfStatus?: LFStatus;
+  priority?: Priority;
+  passenger?: CasePassenger;
+  flight?: CaseFlight;
+  baggage?: CaseBaggage;
+  delivery?: CaseDelivery;
+  internal?: CaseInternal;
+  documents?: CaseDocument[];
+  lfHistory?: {
+    status: LFStatus;
+    at: string;
+    actor: string;
+    note?: string;
+  }[];
+  updatedAt?: string;
 }
 
 export interface Delivery {
