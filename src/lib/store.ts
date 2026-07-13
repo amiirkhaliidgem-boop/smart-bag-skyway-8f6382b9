@@ -680,6 +680,17 @@ export function findByToken(token: string): WorkflowRecord | undefined {
   return state.workflow.find((w) => w.token === token);
 }
 
+// Returns the passenger tracking token for a delivery, bootstrapping the
+// workflow record on first access if it does not yet exist. Used by the
+// internal Passenger Portal preview inside Delivery Management. Does not
+// change status, emit notifications, or write audit.
+export function ensurePassengerToken(deliveryId: string): string | undefined {
+  const d = state.deliveries.find((x) => x.deliveryId === deliveryId);
+  if (!d) return undefined;
+  const rec = ensureWorkflow(deliveryId);
+  return rec.token;
+}
+
 // ---------- Workflow Engine ----------
 function ensureWorkflow(deliveryId: string): WorkflowRecord {
   let rec = state.workflow.find((w) => w.deliveryId === deliveryId);
