@@ -420,3 +420,97 @@ function NewDeliveryDialog({ onClose }: { onClose: () => void }) {
     </DialogContent>
   );
 }
+
+function PassengerActions({ d }: { d: Delivery }) {
+  function withToken(action: (token: string, url: string) => void) {
+    const token = ensurePassengerToken(d.deliveryId);
+    if (!token) {
+      toast.error("Tracking token unavailable for this delivery");
+      return;
+    }
+    const origin =
+      typeof window !== "undefined" ? window.location.origin : "";
+    const url = `${origin}/passenger/${token}`;
+    action(token, url);
+  }
+
+  function previewPortal() {
+    withToken((token) => {
+      if (typeof window !== "undefined") {
+        window.open(`/passenger/${token}`, "_blank", "noopener");
+      }
+    });
+  }
+
+  function copyTrackingLink() {
+    withToken(async (_token, url) => {
+      try {
+        if (navigator.clipboard?.writeText) {
+          await navigator.clipboard.writeText(url);
+        } else {
+          const ta = document.createElement("textarea");
+          ta.value = url;
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand("copy");
+          document.body.removeChild(ta);
+        }
+        toast.success("Tracking link copied");
+      } catch {
+        toast.error("Failed to copy link");
+      }
+    });
+  }
+
+  function sendSms() {
+    withToken(() => {
+      const events = createTestNotification({
+        deliveryId: d.deliveryId,
+        channel: "sms",
+        operator: "Delivery Desk",
+      });
+      toast.success(events.length ? "SMS queued" : "SMS template unavailable");
+    });
+  }
+
+  function sendWhatsApp() {
+    withToken(() => {
+      const events = createTestNotification({
+        deliveryId: d.deliveryId,
+        channel: "whatsapp",
+        operator: "Delivery Desk",
+      });
+      toast.success(
+        events.length ? "WhatsApp queued" : "WhatsApp template unavailable",
+      );
+    });
+  }
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button size="sm" variant="ghost" className="h-8 gap-1 px-2">
+          <ExternalLink className="h-3.5 w-3.5" />
+          <span className="hidden md:inline">Portal</span>
+          <MoreHorizontal className="h-3.5 w-3.5" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="w-56">
+        <DropdownMenuLabel>Passenger Experience</DropdownMenuLabel>
+        <DropdownMenuItem onClick={previewPortal}>
+          <ExternalLink className="h-4 w-4" /> Preview Passenger Portal
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={copyTrackingLink}>
+          <LinkIcon className="h-4 w-4" /> Copy Tracking Link
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={sendSms}>
+          <Send className="h-4 w-4" /> Send SMS
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={sendWhatsApp}>
+          <MessageCircle className="h-4 w-4" /> Send WhatsApp
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
