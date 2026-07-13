@@ -185,9 +185,12 @@ export function PirWizard({
       form.firstName.trim() &&
       form.lastName.trim() &&
       form.pirNumber.trim() &&
-      form.bagTagNumber.trim() &&
+      form.bagTags.length > 0 &&
+      form.bagTags.every((t) => t.trim()) &&
       form.flightNumber.trim() &&
-      form.mobile.trim(),
+      form.mobile.trim() &&
+      form.airline.trim() &&
+      form.fullAddress.trim(),
     [form],
   );
 
@@ -197,14 +200,41 @@ export function PirWizard({
       if (!form.mobile.trim()) return "Mobile number is required.";
     }
     if (i === 1) {
+      if (!form.airline.trim()) return "Airline is required.";
       if (!form.flightNumber.trim()) return "Flight number is required.";
       if (!form.flightDate) return "Flight date is required.";
     }
     if (i === 2) {
-      if (!form.pirNumber.trim() || !form.bagTagNumber.trim())
-        return "PIR number and bag tag are required.";
+      if (!form.pirNumber.trim()) return "PIR number is required.";
+      const n = Number(form.numberOfBags);
+      if (!Number.isFinite(n) || n < 1) return "Number of bags must be at least 1.";
+      if (form.bagTags.length !== n) return "Bag tags must match the number of bags.";
+      if (form.bagTags.some((t) => !t.trim())) return "Every bag tag is required.";
+    }
+    if (i === 3) {
+      if (!form.fullAddress.trim()) return "Full delivery address is required.";
     }
     return null;
+  }
+
+  // Sequential-only navigation. Users can step back to any completed step
+  // but cannot jump forward without passing validation on every step in
+  // between — matches the enterprise PIR intake flow.
+  function goToStep(target: number) {
+    if (target === step) return;
+    if (target < step) {
+      setStep(target);
+      return;
+    }
+    for (let i = step; i < target; i++) {
+      const err = validateStep(i);
+      if (err) {
+        toast.error(err);
+        setStep(i);
+        return;
+      }
+    }
+    setStep(target);
   }
 
   function next() {
@@ -222,43 +252,37 @@ export function PirWizard({
       .map((s) => s.trim()).filter(Boolean).join(" ");
   }
   function description(): string {
-    return [form.color, form.brand, form.type, form.size, form.distinctiveMarks]
+    return [form.color, form.type, form.distinctiveMarks]
       .filter(Boolean).join(" — ");
   }
 
-  function buildDocuments(): CaseDocument[] {
-    const now = new Date().toISOString();
-    const items: (CaseDocument | "" | false)[] = [
-      form.passportCopy ? {
-        id: `DOC-${Date.now()}-1`, type: "Passport Copy" as const,
-        name: form.passportCopy, uploadedAt: now, uploadedBy: form.createdBy,
-      } : "",
-      form.arrivalStamp ? {
-        id: `DOC-${Date.now()}-2`, type: "Arrival Stamp" as const,
-        name: form.arrivalStamp, uploadedAt: now, uploadedBy: form.createdBy,
-      } : "",
-      form.authLetter ? {
-        id: `DOC-${Date.now()}-3`, type: "Authorization Letter" as const,
-        name: form.authLetter, uploadedAt: now, uploadedBy: form.createdBy,
-      } : "",
-      form.otherDoc ? {
-        id: `DOC-${Date.now()}-4`, type: "Other" as const,
-        name: form.otherDoc, uploadedAt: now, uploadedBy: form.createdBy,
-      } : "",
-    ];
-    return items.filter(Boolean) as CaseDocument[];
+  // Keep bagTags length in sync with numberOfBags.
+  function setNumberOfBags(raw: string) {
+    const n = Math.max(1, Math.min(50, Math.floor(Number(raw) || 1)));
+    setForm((f) => {
+      const tags = Array.from({ length: n }, (_, i) => f.bagTags[i] ?? "");
+      return { ...f, numberOfBags: String(n), bagTags: tags };
+    });
+  }
+  function setBagTag(index: number, value: string) {
+    setForm((f) => {
+      const tags = [...f.bagTags];
+      tags[index] = value;
+      return { ...f, bagTags: tags };
+    });
   }
 
   function submit() {
     if (!canSubmit) {
-      toast.error("Please complete required fields in Passenger, Flight, and Baggage steps.");
+      toast.error("Please complete every required field before submitting.");
       return;
     }
+    const cleanTags = form.bagTags.map((t) => t.trim()).filter(Boolean);
     const commonPatch: Partial<BaggageCase> = {
       passengerName: passengerName(),
       flightNumber: form.flightNumber,
       pirNumber: form.pirNumber,
-      bagTagNumber: form.bagTagNumber,
+      bagTagNumber: cleanTags[0] ?? "",
       arrivalDate: form.flightDate,
       contact: form.mobile,
       email: form.email,
@@ -268,29 +292,25 @@ export function PirWizard({
         firstName: form.firstName, middleName: form.middleName, lastName: form.lastName,
         nationality: form.nationality, passportNumber: form.passportNumber,
         pnr: form.pnr, ticketNumber: form.ticketNumber, mobile2: form.mobile2,
-        preferredLanguage: form.preferredLanguage,
       },
       flight: {
-        airline: form.airline, arrivalTime: form.arrivalTime,
+        airline: form.airline,
         originAirport: form.originAirport, destinationAirport: form.destinationAirport,
-        terminal: form.terminal, arrivalBelt: form.arrivalBelt,
       },
       baggage: {
         numberOfBags: Number(form.numberOfBags) || 1,
         weightKg: Number(form.weightKg) || undefined,
-        brand: form.brand, color: form.color, type: form.type, size: form.size,
+        color: form.color, type: form.type,
+        bagTags: cleanTags,
         distinctiveMarks: form.distinctiveMarks,
         vipPassenger: form.vipPassenger, rushDelivery: form.rushDelivery, fragile: form.fragile,
       },
       delivery: {
-        method: form.method, country: form.country, governorate: form.governorate,
-        city: form.city, district: form.district, street: form.street,
-        building: form.building, floor: form.floor, apartment: form.apartment,
-        nearestLandmark: form.nearestLandmark, googleMapsLink: form.googleMapsLink,
-        preferredDeliveryTime: form.preferredDeliveryTime,
+        method: form.method,
+        fullAddress: form.fullAddress.trim(),
       },
       internal: {
-        assignedOfficer: form.assignedOfficer, station: form.station,
+        station: form.station,
         department: form.department, internalNotes: form.internalNotes,
         casePriority: form.casePriority, createdBy: form.createdBy,
       },
@@ -301,16 +321,11 @@ export function PirWizard({
         actor: form.createdBy || "Ops Console",
         note: `Case edited · PIR ${form.pirNumber}`,
       });
-      for (const d of buildDocuments()) {
-        addCaseDocument(caseData.bagId, {
-          type: d.type, name: d.name, uploadedBy: d.uploadedBy,
-        });
-      }
       toast.success(`Case ${caseData.pirNumber} updated`);
     } else {
       const created = addCase({
         ...commonPatch as Omit<BaggageCase, "bagId" | "status" | "storage" | "createdAt">,
-        documents: buildDocuments(),
+        documents: [],
         initialLfStatus: "Open",
       });
       toast.success(`Case registered · ${created.pirNumber} · ${created.bagId}`);
