@@ -27,7 +27,6 @@ import { Route as DriverPortalRouteImport } from './routes/driver-portal'
 import { Route as DeliveryRouteImport } from './routes/delivery'
 import { Route as DataIoRouteImport } from './routes/data-io'
 import { Route as ContactCenterRouteImport } from './routes/contact-center'
-import { Route as DataIoRouteImport } from './routes/data-io'
 import { Route as ApiStatusRouteImport } from './routes/api-status'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
@@ -121,6 +120,11 @@ const DataIoRoute = DataIoRouteImport.update({
 const ContactCenterRoute = ContactCenterRouteImport.update({
   id: '/contact-center',
   path: '/contact-center',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DataIoRoute = DataIoRouteImport.update({
+  id: '/data-io',
+  path: '/data-io',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiStatusRoute = ApiStatusRouteImport.update({
