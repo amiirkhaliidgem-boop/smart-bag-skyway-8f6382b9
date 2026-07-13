@@ -67,3 +67,29 @@ export function nextLfStatus(current: LFStatus): LFStatus | null {
 export function canTransitionLf(from: LFStatus, to: LFStatus): boolean {
   return LF_STATUS_ORDER[to] > LF_STATUS_ORDER[from];
 }
+
+// Legacy CaseStatus → LFStatus mapping used to promote pre-existing cases
+// (that pre-date the enterprise lifecycle) to the new canonical status.
+import type { CaseStatus } from "../store";
+export function deriveLfFromCase(c: {
+  lfStatus?: LFStatus;
+  status: CaseStatus;
+}): LFStatus {
+  if (c.lfStatus) return c.lfStatus;
+  switch (c.status) {
+    case "Missing":
+      return "Open";
+    case "Located":
+      return "Located";
+    case "Stored":
+      return "Ready for Delivery";
+    case "Ready For Delivery":
+      return "Ready for Delivery";
+    case "Out For Delivery":
+      return "Out for Delivery";
+    case "Delivered":
+      return "Delivered";
+    default:
+      return "Open";
+  }
+}
