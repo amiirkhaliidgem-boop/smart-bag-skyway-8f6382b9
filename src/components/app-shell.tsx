@@ -111,7 +111,6 @@ const navSections: {
       { to: "/integrations", label: "Integrations", icon: Plug },
       { to: "/api-status", label: "API Status", icon: Radio },
       { to: "/settings", label: "Settings", icon: SettingsIcon },
-      { to: "/admin", label: "Activity Logs", icon: ScrollText, search: { section: "activity" }, matchSearchKey: "activity" },
     ],
   },
 ];
