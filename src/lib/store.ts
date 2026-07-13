@@ -16,7 +16,7 @@ import {
   type RenderedMessage,
 } from "./notifications/templates";
 import { generateTrackingToken } from "./passenger/tokens";
-import type { AuditEntry } from "./audit/log";
+import type { AuditEntry, ImportAuditEntry } from "./audit/log";
 import type { Role } from "./roles/roles";
 
 export type CaseStatus =
@@ -159,6 +159,7 @@ interface State {
   workflow: WorkflowRecord[];
   notifications: NotificationEvent[];
   audit: AuditEntry[];
+  ioAudit: ImportAuditEntry[];
 }
 
 const STORAGE_KEY = "sbe-state-v6";
@@ -501,6 +502,7 @@ function defaults(): State {
     workflow,
     notifications: [],
     audit: [],
+    ioAudit: [],
   };
 }
 
@@ -515,6 +517,7 @@ function load(): State {
     workflow: [],
     notifications: [],
     audit: [],
+    ioAudit: [],
   };
   // Always start from defaults on both server and client so SSR HTML
   // matches the first client render. localStorage is merged in after
@@ -545,6 +548,7 @@ function hydrateFromStorage() {
         parsed.workflow && parsed.workflow.length ? parsed.workflow : base.workflow,
       notifications: parsed.notifications ?? base.notifications,
       audit: parsed.audit ?? base.audit,
+      ioAudit: parsed.ioAudit ?? base.ioAudit,
     };
     emit();
   } catch {}
@@ -883,6 +887,19 @@ export function addQualityIncident(
 }
 
 export { driverPool };
+
+// ---------- Import/Export audit ----------
+export function logIoAudit(entry: Omit<ImportAuditEntry, "id" | "at">) {
+  const id = `IO-${state.ioAudit.length + 1}`;
+  const full: ImportAuditEntry = {
+    ...entry,
+    id,
+    at: new Date().toISOString(),
+  };
+  state = { ...state, ioAudit: [full, ...state.ioAudit] };
+  emit();
+  return full;
+}
 
 // ---------- Notification helpers ----------
 export function setNotificationStatus(

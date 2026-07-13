@@ -27,6 +27,7 @@ import {
   Download,
   Plug,
   Radio,
+  ArrowRightLeft,
   Settings as SettingsIcon,
 } from "lucide-react";
 import { useState } from "react";
@@ -83,6 +84,7 @@ const navSections: {
     items: [
       { to: "/reports", label: "Reports", icon: BarChart3 },
       { to: "/export-center", label: "Export Center", icon: Download },
+      { to: "/data-io", label: "Import / Export", icon: ArrowRightLeft },
     ],
   },
   {

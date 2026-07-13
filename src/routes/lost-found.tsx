@@ -17,6 +17,8 @@ import {
 import { StatusBadge } from "@/components/status-badge";
 import { Search, Plus } from "lucide-react";
 import { toast } from "sonner";
+import { ImportExportButtons } from "@/components/io/import-export-buttons";
+import { lostFoundSchema } from "@/lib/io/registry";
 
 export const Route = createFileRoute("/lost-found")({
   head: () => ({
@@ -53,14 +55,22 @@ function LostFoundPage() {
             Register new PIR cases and search the central baggage registry.
           </p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
+        <div className="flex items-center gap-2">
+          <ImportExportButtons
+            schema={lostFoundSchema}
+            rows={filtered as unknown as Record<string, unknown>[]}
+            scope={query ? "filtered" : "all"}
+            size="default"
+          />
+          <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             <Button className="gap-2">
               <Plus className="h-4 w-4" /> Register New Case
             </Button>
           </DialogTrigger>
           <NewCaseDialog onClose={() => setOpen(false)} />
-        </Dialog>
+          </Dialog>
+        </div>
       </div>
 
       <Card>
