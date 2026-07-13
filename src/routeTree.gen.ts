@@ -19,6 +19,7 @@ import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as QrScanRouteImport } from './routes/qr-scan'
 import { Route as PassengerRouteImport } from './routes/passenger'
 import { Route as NotificationsRouteImport } from './routes/notifications'
+import { Route as LostFoundRouteImport } from './routes/lost-found'
 import { Route as IntegrationsRouteImport } from './routes/integrations'
 import { Route as FeedbackRouteImport } from './routes/feedback'
 import { Route as ExportCenterRouteImport } from './routes/export-center'
@@ -79,6 +80,11 @@ const PassengerRoute = PassengerRouteImport.update({
 const NotificationsRoute = NotificationsRouteImport.update({
   id: '/notifications',
   path: '/notifications',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LostFoundRoute = LostFoundRouteImport.update({
+  id: '/lost-found',
+  path: '/lost-found',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IntegrationsRoute = IntegrationsRouteImport.update({
@@ -148,6 +154,7 @@ export interface FileRoutesByFullPath {
   '/export-center': typeof ExportCenterRoute
   '/feedback': typeof FeedbackRoute
   '/integrations': typeof IntegrationsRoute
+  '/lost-found': typeof LostFoundRoute
   '/notifications': typeof NotificationsRoute
   '/passenger': typeof PassengerRouteWithChildren
   '/qr-scan': typeof QrScanRoute
@@ -171,6 +178,7 @@ export interface FileRoutesByTo {
   '/export-center': typeof ExportCenterRoute
   '/feedback': typeof FeedbackRoute
   '/integrations': typeof IntegrationsRoute
+  '/lost-found': typeof LostFoundRoute
   '/notifications': typeof NotificationsRoute
   '/passenger': typeof PassengerRouteWithChildren
   '/qr-scan': typeof QrScanRoute
@@ -195,6 +203,7 @@ export interface FileRoutesById {
   '/export-center': typeof ExportCenterRoute
   '/feedback': typeof FeedbackRoute
   '/integrations': typeof IntegrationsRoute
+  '/lost-found': typeof LostFoundRoute
   '/notifications': typeof NotificationsRoute
   '/passenger': typeof PassengerRouteWithChildren
   '/qr-scan': typeof QrScanRoute
@@ -220,6 +229,7 @@ export interface FileRouteTypes {
     | '/export-center'
     | '/feedback'
     | '/integrations'
+    | '/lost-found'
     | '/notifications'
     | '/passenger'
     | '/qr-scan'
@@ -243,6 +253,7 @@ export interface FileRouteTypes {
     | '/export-center'
     | '/feedback'
     | '/integrations'
+    | '/lost-found'
     | '/notifications'
     | '/passenger'
     | '/qr-scan'
@@ -266,6 +277,7 @@ export interface FileRouteTypes {
     | '/export-center'
     | '/feedback'
     | '/integrations'
+    | '/lost-found'
     | '/notifications'
     | '/passenger'
     | '/qr-scan'
@@ -290,6 +302,7 @@ export interface RootRouteChildren {
   ExportCenterRoute: typeof ExportCenterRoute
   FeedbackRoute: typeof FeedbackRoute
   IntegrationsRoute: typeof IntegrationsRoute
+  LostFoundRoute: typeof LostFoundRoute
   NotificationsRoute: typeof NotificationsRoute
   PassengerRoute: typeof PassengerRouteWithChildren
   QrScanRoute: typeof QrScanRoute
@@ -372,6 +385,13 @@ declare module '@tanstack/react-router' {
       path: '/notifications'
       fullPath: '/notifications'
       preLoaderRoute: typeof NotificationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lost-found': {
+      id: '/lost-found'
+      path: '/lost-found'
+      fullPath: '/lost-found'
+      preLoaderRoute: typeof LostFoundRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/integrations': {
@@ -477,6 +497,7 @@ const rootRouteChildren: RootRouteChildren = {
   ExportCenterRoute: ExportCenterRoute,
   FeedbackRoute: FeedbackRoute,
   IntegrationsRoute: IntegrationsRoute,
+  LostFoundRoute: LostFoundRoute,
   NotificationsRoute: NotificationsRoute,
   PassengerRoute: PassengerRouteWithChildren,
   QrScanRoute: QrScanRoute,
