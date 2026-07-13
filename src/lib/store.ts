@@ -83,6 +83,11 @@ export interface CaseBaggage {
   vipPassenger?: boolean;
   rushDelivery?: boolean;
   fragile?: boolean;
+  // Enterprise: one bag tag per physical bag. Length should match
+  // numberOfBags. Legacy cases without this array fall back to
+  // BaggageCase.bagTagNumber (single-tag). Kept optional for backward
+  // compatibility with pre-existing seeds and imports.
+  bagTags?: string[];
 }
 
 export interface CaseDelivery {
@@ -98,6 +103,11 @@ export interface CaseDelivery {
   nearestLandmark?: string;
   googleMapsLink?: string;
   preferredDeliveryTime?: string;
+  // Enterprise: single free-form delivery address captured by the L&F
+  // wizard. When present this is the authoritative address used to
+  // bootstrap Delivery Management. Legacy structured fields remain for
+  // backward compatibility.
+  fullAddress?: string;
 }
 
 export interface CaseInternal {
