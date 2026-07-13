@@ -437,6 +437,10 @@ export function useAdminStore<T>(selector: (s: AdminState) => T): T {
   return selector(snapshot);
 }
 
+export function getAdminState(): AdminState {
+  return state;
+}
+
 function nextActivityId() {
   const max = state.activity.reduce((m, a) => {
     const n = parseInt(a.id.replace("AA-", ""), 10);
