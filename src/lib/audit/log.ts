@@ -8,6 +8,7 @@ export type AuditAction =
   | "incident.update"
   | "delivery.assign"
   | "delivery.update"
+  | "delivery.bootstrap"
   | "case.create"
   | "case.update";
   
