@@ -256,6 +256,9 @@ function DeliveryRow({ d }: { d: Delivery }) {
           {d.otpStatus}
         </span>
       </td>
+      <td className="px-4 py-3">
+        <PassengerActions d={d} />
+      </td>
       <td className="px-4 py-3 text-right">
         <Dialog open={otpOpen} onOpenChange={setOtpOpen}>
           <DialogTrigger asChild>
