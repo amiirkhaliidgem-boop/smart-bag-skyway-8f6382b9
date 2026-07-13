@@ -18,6 +18,8 @@ import {
 import { generateTrackingToken } from "./passenger/tokens";
 import type { AuditEntry, ImportAuditEntry } from "./audit/log";
 import type { Role } from "./roles/roles";
+import type { LFStatus } from "./lost-found/statuses";
+import { LF_TO_WORKFLOW, canTransitionLf } from "./lost-found/statuses";
 
 export type CaseStatus =
   | "Missing"
@@ -37,6 +39,75 @@ export type DeliveryStatus =
 export type OtpStatus = "Pending" | "Sent" | "Verified" | "Failed";
 
 export type Priority = "Low" | "Normal" | "High" | "VIP";
+
+export type DeliveryMethod = "Home Delivery" | "Airport Pickup";
+
+export interface CaseDocument {
+  id: string;
+  type: "Passport Copy" | "Arrival Stamp" | "Authorization Letter" | "Other";
+  name: string;
+  uploadedAt: string;
+  uploadedBy?: string;
+  sizeKb?: number;
+}
+
+export interface CasePassenger {
+  firstName?: string;
+  middleName?: string;
+  lastName?: string;
+  nationality?: string;
+  passportNumber?: string;
+  pnr?: string;
+  ticketNumber?: string;
+  mobile2?: string;
+  preferredLanguage?: "en" | "ar" | "fr";
+}
+
+export interface CaseFlight {
+  airline?: string;
+  arrivalTime?: string;
+  originAirport?: string;
+  destinationAirport?: string;
+  terminal?: string;
+  arrivalBelt?: string;
+}
+
+export interface CaseBaggage {
+  numberOfBags?: number;
+  weightKg?: number;
+  brand?: string;
+  color?: string;
+  type?: string;
+  size?: string;
+  distinctiveMarks?: string;
+  vipPassenger?: boolean;
+  rushDelivery?: boolean;
+  fragile?: boolean;
+}
+
+export interface CaseDelivery {
+  method?: DeliveryMethod;
+  country?: string;
+  governorate?: string;
+  city?: string;
+  district?: string;
+  street?: string;
+  building?: string;
+  floor?: string;
+  apartment?: string;
+  nearestLandmark?: string;
+  googleMapsLink?: string;
+  preferredDeliveryTime?: string;
+}
+
+export interface CaseInternal {
+  assignedOfficer?: string;
+  station?: string;
+  department?: string;
+  internalNotes?: string;
+  casePriority?: Priority;
+  createdBy?: string;
+}
 
 export type CallDirection = "Inbound" | "Outbound" | "No Answer" | "Callback Required";
 
@@ -130,6 +201,22 @@ export interface BaggageCase {
   storage: { zone: string; shelf: string; position: string } | null;
   createdAt: string;
   resolvedAt?: string;
+  // ---- Enterprise L&F extensions (all optional; legacy seeds keep working)
+  lfStatus?: LFStatus;
+  priority?: Priority;
+  passenger?: CasePassenger;
+  flight?: CaseFlight;
+  baggage?: CaseBaggage;
+  delivery?: CaseDelivery;
+  internal?: CaseInternal;
+  documents?: CaseDocument[];
+  lfHistory?: {
+    status: LFStatus;
+    at: string;
+    actor: string;
+    note?: string;
+  }[];
+  updatedAt?: string;
 }
 
 export interface Delivery {
@@ -748,21 +835,38 @@ export function getState() {
 }
 
 export function addCase(
-  input: Omit<BaggageCase, "bagId" | "status" | "storage" | "createdAt">,
+  input: Omit<BaggageCase, "bagId" | "status" | "storage" | "createdAt"> & {
+    initialLfStatus?: LFStatus;
+  },
 ) {
   const nextNum =
     state.cases.reduce((max, c) => {
       const n = parseInt(c.bagId.replace("BAG-", ""), 10);
       return Number.isFinite(n) && n > max ? n : max;
     }, 100000) + 1;
+  const now = new Date().toISOString();
+  const lfStatus: LFStatus = input.initialLfStatus ?? "Open";
   const newCase: BaggageCase = {
     ...input,
     bagId: `BAG-${nextNum}`,
     status: "Missing",
     storage: null,
-    createdAt: new Date().toISOString(),
+    createdAt: now,
+    updatedAt: now,
+    lfStatus,
+    documents: input.documents ?? [],
+    lfHistory: [
+      { status: lfStatus, at: now, actor: input.internal?.createdBy ?? "system", note: "Case created" },
+    ],
   };
   state = { ...state, cases: [newCase, ...state.cases] };
+  pushAudit({
+    action: "case.create",
+    actor: newCase.internal?.createdBy ?? "system",
+    entityType: "case",
+    entityId: newCase.bagId,
+    note: `PIR ${newCase.pirNumber} — ${newCase.passengerName}`,
+  });
   emit();
   return newCase;
 }
@@ -770,7 +874,125 @@ export function addCase(
 export function updateCase(bagId: string, patch: Partial<BaggageCase>) {
   state = {
     ...state,
-    cases: state.cases.map((c) => (c.bagId === bagId ? { ...c, ...patch } : c)),
+    cases: state.cases.map((c) =>
+      c.bagId === bagId ? { ...c, ...patch, updatedAt: new Date().toISOString() } : c,
+    ),
+  };
+  emit();
+}
+
+// ---------- Lost & Found status engine ----------
+// Update the canonical L&F status on a case, append to lfHistory, write an
+// audit entry, and mirror into the central Workflow Engine when a matching
+// delivery record exists so timeline / notifications / dashboard stay
+// consistent without duplicating state.
+export function updateLfStatus(
+  bagId: string,
+  next: LFStatus,
+  opts: { actor?: string; role?: Role; note?: string; force?: boolean } = {},
+) {
+  const c = state.cases.find((x) => x.bagId === bagId);
+  if (!c) return;
+  const current = c.lfStatus ?? "Open";
+  if (!opts.force && current !== next && !canTransitionLf(current, next)) return;
+  const now = new Date().toISOString();
+  state = {
+    ...state,
+    cases: state.cases.map((x) =>
+      x.bagId === bagId
+        ? {
+            ...x,
+            lfStatus: next,
+            updatedAt: now,
+            lfHistory: [
+              ...(x.lfHistory ?? []),
+              { status: next, at: now, actor: opts.actor ?? "system", note: opts.note },
+            ],
+            resolvedAt:
+              next === "Delivered" || next === "Closed"
+                ? x.resolvedAt ?? now
+                : x.resolvedAt,
+          }
+        : x,
+    ),
+  };
+  pushAudit({
+    action: "case.update",
+    actor: opts.actor ?? "system",
+    role: opts.role,
+    entityType: "case",
+    entityId: bagId,
+    note: `${current} → ${next}${opts.note ? ` · ${opts.note}` : ""}`,
+  });
+  // Mirror to Workflow Engine when a delivery exists for this bag.
+  const linkedDelivery = state.deliveries.find((d) => d.bagId === bagId);
+  if (linkedDelivery) {
+    const wf = LF_TO_WORKFLOW[next];
+    if (wf) {
+      // transitionWorkflow already handles legacy sync, audit, notifications.
+      try {
+        transitionWorkflow(linkedDelivery.deliveryId, wf, {
+          actor: opts.actor,
+          role: opts.role,
+        });
+      } catch {
+        /* no-op */
+      }
+    }
+  }
+  emit();
+}
+
+export function addCaseDocument(
+  bagId: string,
+  doc: Omit<CaseDocument, "id" | "uploadedAt">,
+) {
+  const c = state.cases.find((x) => x.bagId === bagId);
+  if (!c) return;
+  const id = `DOC-${Date.now()}`;
+  const full: CaseDocument = {
+    ...doc,
+    id,
+    uploadedAt: new Date().toISOString(),
+  };
+  state = {
+    ...state,
+    cases: state.cases.map((x) =>
+      x.bagId === bagId
+        ? { ...x, documents: [...(x.documents ?? []), full], updatedAt: full.uploadedAt }
+        : x,
+    ),
+  };
+  pushAudit({
+    action: "case.update",
+    actor: doc.uploadedBy ?? "system",
+    entityType: "case",
+    entityId: bagId,
+    note: `Document uploaded — ${doc.type}: ${doc.name}`,
+  });
+  emit();
+  return full;
+}
+
+export function removeCaseDocument(bagId: string, docId: string) {
+  state = {
+    ...state,
+    cases: state.cases.map((x) =>
+      x.bagId === bagId
+        ? { ...x, documents: (x.documents ?? []).filter((d) => d.id !== docId) }
+        : x,
+    ),
+  };
+  emit();
+}
+
+export function bulkUpdateCases(bagIds: string[], patch: Partial<BaggageCase>) {
+  const now = new Date().toISOString();
+  state = {
+    ...state,
+    cases: state.cases.map((c) =>
+      bagIds.includes(c.bagId) ? { ...c, ...patch, updatedAt: now } : c,
+    ),
   };
   emit();
 }
