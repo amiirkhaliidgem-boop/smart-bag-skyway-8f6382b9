@@ -122,11 +122,6 @@ const ContactCenterRoute = ContactCenterRouteImport.update({
   path: '/contact-center',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DataIoRoute = DataIoRouteImport.update({
-  id: '/data-io',
-  path: '/data-io',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiStatusRoute = ApiStatusRouteImport.update({
   id: '/api-status',
   path: '/api-status',
