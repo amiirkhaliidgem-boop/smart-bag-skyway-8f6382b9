@@ -329,12 +329,45 @@ function NewDeliveryDialog({ onClose }: { onClose: () => void }) {
     ),
   );
   const [bagId, setBagId] = useState(readyCases[0]?.bagId ?? "");
-  const [address, setAddress] = useState("");
+  const selected = readyCases.find((x) => x.bagId === bagId);
+
+  // Derive the authoritative address from the shared L&F case. Prefer the
+  // wizard's single free-form fullAddress; fall back to legacy structured
+  // fields for backward compatibility.
+  function deriveAddress(c: typeof selected): string {
+    if (!c) return "";
+    const d = c.delivery;
+    if (!d) return "";
+    if (d.fullAddress && d.fullAddress.trim()) return d.fullAddress;
+    return [
+      d.building,
+      d.street,
+      d.district,
+      d.city,
+      d.governorate,
+      d.country,
+    ]
+      .filter(Boolean)
+      .join(", ");
+  }
+
+  const [address, setAddress] = useState(() => deriveAddress(selected));
+  const [addressTouched, setAddressTouched] = useState(false);
   const [driver, setDriver] = useState(driverPool[0]);
   const [eta, setEta] = useState(() => {
     const t = new Date(Date.now() + 4 * 60 * 60 * 1000);
     return t.toISOString().slice(0, 16);
   });
+
+  // Re-prefill the address whenever the operator selects a different case,
+  // unless they've manually edited it in this session.
+  function onBagChange(next: string) {
+    setBagId(next);
+    if (!addressTouched) {
+      const c = readyCases.find((x) => x.bagId === next);
+      setAddress(deriveAddress(c));
+    }
+  }
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -376,7 +409,7 @@ function NewDeliveryDialog({ onClose }: { onClose: () => void }) {
           <select
             className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
             value={bagId}
-            onChange={(e) => setBagId(e.target.value)}
+            onChange={(e) => onBagChange(e.target.value)}
           >
             {readyCases.length === 0 && <option value="">No eligible bags</option>}
             {readyCases.map((c) => (
@@ -386,14 +419,50 @@ function NewDeliveryDialog({ onClose }: { onClose: () => void }) {
             ))}
           </select>
         </div>
+        {selected && (
+          <div className="rounded-md border bg-muted/40 p-3 text-xs space-y-1">
+            <div className="flex justify-between gap-4">
+              <span className="text-muted-foreground">Passenger</span>
+              <span className="font-medium text-foreground">{selected.passengerName}</span>
+            </div>
+            <div className="flex justify-between gap-4">
+              <span className="text-muted-foreground">Mobile</span>
+              <span className="font-mono">{selected.contact || "—"}</span>
+            </div>
+            <div className="flex justify-between gap-4">
+              <span className="text-muted-foreground">Delivery Method</span>
+              <span>{selected.delivery?.method ?? "Home Delivery"}</span>
+            </div>
+            <div className="flex justify-between gap-4">
+              <span className="text-muted-foreground">PIR</span>
+              <span className="font-mono">{selected.pirNumber}</span>
+            </div>
+            {selected.internal?.internalNotes && (
+              <div className="pt-1 border-t mt-1">
+                <p className="text-muted-foreground mb-0.5">Internal Notes</p>
+                <p className="text-foreground whitespace-pre-wrap">{selected.internal.internalNotes}</p>
+              </div>
+            )}
+            <p className="pt-1 text-[10px] text-muted-foreground">
+              Prefilled from PIR · same case, no duplicate record.
+            </p>
+          </div>
+        )}
         <div className="space-y-1.5">
           <Label>Delivery Address</Label>
-          <Input
+          <textarea
+            className="min-h-[72px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
             value={address}
-            onChange={(e) => setAddress(e.target.value)}
+            onChange={(e) => {
+              setAddress(e.target.value);
+              setAddressTouched(true);
+            }}
             placeholder="Street, district, governorate"
             required
           />
+          <p className="text-[11px] text-muted-foreground">
+            Prefilled from the PIR. Edit only if the passenger provided a correction.
+          </p>
         </div>
         <div className="space-y-1.5">
           <Label>Estimated Arrival</Label>
