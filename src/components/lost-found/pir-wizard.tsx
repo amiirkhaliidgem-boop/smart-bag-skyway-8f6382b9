@@ -2,12 +2,9 @@ import { useMemo, useState } from "react";
 import {
   addCase,
   editCase,
-  addCaseDocument,
-  removeCaseDocument,
   type BaggageCase,
   type Priority,
   type DeliveryMethod,
-  type CaseDocument,
 } from "@/lib/store";
 import {
   DialogContent,
@@ -33,12 +30,11 @@ import {
   Plane,
   Luggage,
   Truck,
-  FileText,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
-  Trash2,
   Upload,
+  Lock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -55,45 +51,24 @@ type F = {
   mobile: string;
   mobile2: string;
   email: string;
-  preferredLanguage: "en" | "ar" | "fr";
   airline: string;
   flightNumber: string;
   flightDate: string;
-  arrivalTime: string;
   originAirport: string;
   destinationAirport: string;
-  terminal: string;
-  arrivalBelt: string;
   pirNumber: string;
-  bagTagNumber: string;
   numberOfBags: string;
+  bagTags: string[];
   weightKg: string;
-  brand: string;
   color: string;
   type: string;
-  size: string;
   distinctiveMarks: string;
   priority: Priority;
   vipPassenger: boolean;
   rushDelivery: boolean;
   fragile: boolean;
   method: DeliveryMethod;
-  country: string;
-  governorate: string;
-  city: string;
-  district: string;
-  street: string;
-  building: string;
-  floor: string;
-  apartment: string;
-  nearestLandmark: string;
-  googleMapsLink: string;
-  preferredDeliveryTime: string;
-  passportCopy: string;
-  arrivalStamp: string;
-  authLetter: string;
-  otherDoc: string;
-  assignedOfficer: string;
+  fullAddress: string;
   station: string;
   department: string;
   internalNotes: string;
@@ -105,18 +80,16 @@ function empty(): F {
   return {
     firstName: "", middleName: "", lastName: "", nationality: "",
     passportNumber: "", pnr: "", ticketNumber: "", mobile: "", mobile2: "",
-    email: "", preferredLanguage: "en",
+    email: "",
     airline: "", flightNumber: "",
-    flightDate: new Date().toISOString().slice(0, 10), arrivalTime: "",
-    originAirport: "", destinationAirport: "CAI", terminal: "", arrivalBelt: "",
-    pirNumber: "", bagTagNumber: "", numberOfBags: "1", weightKg: "",
-    brand: "", color: "", type: "", size: "", distinctiveMarks: "",
+    flightDate: new Date().toISOString().slice(0, 10),
+    originAirport: "", destinationAirport: "CAI",
+    pirNumber: "", numberOfBags: "1", bagTags: [""], weightKg: "",
+    color: "", type: "", distinctiveMarks: "",
     priority: "Normal", vipPassenger: false, rushDelivery: false, fragile: false,
-    method: "Home Delivery", country: "Egypt", governorate: "", city: "",
-    district: "", street: "", building: "", floor: "", apartment: "",
-    nearestLandmark: "", googleMapsLink: "", preferredDeliveryTime: "",
-    passportCopy: "", arrivalStamp: "", authLetter: "", otherDoc: "",
-    assignedOfficer: "", station: "CAI - Cairo International Airport",
+    method: "Home Delivery",
+    fullAddress: "",
+    station: "CAI - Cairo International Airport",
     department: "Lost & Found", internalNotes: "", casePriority: "Normal",
     createdBy: "Ops Console",
   };
@@ -138,6 +111,14 @@ function fromCase(c: BaggageCase): F {
     lastName = parts.length > 1 ? parts[parts.length - 1] : "";
     middleName = parts.slice(1, -1).join(" ");
   }
+  const legacyAddress = [
+    d.building, d.street, d.district, d.city, d.governorate, d.country,
+  ].filter(Boolean).join(", ");
+  const nBags = Number(b.numberOfBags ?? 1) || 1;
+  const existingTags = b.bagTags && b.bagTags.length > 0
+    ? b.bagTags
+    : (c.bagTagNumber ? [c.bagTagNumber] : [""]);
+  const bagTags = Array.from({ length: nBags }, (_, idx) => existingTags[idx] ?? "");
   return {
     firstName, middleName, lastName,
     nationality: p.nationality ?? "",
@@ -147,45 +128,24 @@ function fromCase(c: BaggageCase): F {
     mobile: c.contact ?? "",
     mobile2: p.mobile2 ?? "",
     email: c.email ?? "",
-    preferredLanguage: (p.preferredLanguage as F["preferredLanguage"]) ?? "en",
     airline: fl.airline ?? "",
     flightNumber: c.flightNumber ?? "",
     flightDate: c.arrivalDate ?? new Date().toISOString().slice(0, 10),
-    arrivalTime: fl.arrivalTime ?? "",
     originAirport: fl.originAirport ?? "",
     destinationAirport: fl.destinationAirport ?? "CAI",
-    terminal: fl.terminal ?? "",
-    arrivalBelt: fl.arrivalBelt ?? "",
     pirNumber: c.pirNumber ?? "",
-    bagTagNumber: c.bagTagNumber ?? "",
-    numberOfBags: String(b.numberOfBags ?? 1),
+    numberOfBags: String(nBags),
+    bagTags,
     weightKg: b.weightKg ? String(b.weightKg) : "",
-    brand: b.brand ?? "",
     color: b.color ?? "",
     type: b.type ?? "",
-    size: b.size ?? "",
     distinctiveMarks: b.distinctiveMarks ?? "",
     priority: c.priority ?? "Normal",
     vipPassenger: !!b.vipPassenger,
     rushDelivery: !!b.rushDelivery,
     fragile: !!b.fragile,
     method: d.method ?? "Home Delivery",
-    country: d.country ?? "Egypt",
-    governorate: d.governorate ?? "",
-    city: d.city ?? "",
-    district: d.district ?? "",
-    street: d.street ?? "",
-    building: d.building ?? "",
-    floor: d.floor ?? "",
-    apartment: d.apartment ?? "",
-    nearestLandmark: d.nearestLandmark ?? "",
-    googleMapsLink: d.googleMapsLink ?? "",
-    preferredDeliveryTime: d.preferredDeliveryTime ?? "",
-    passportCopy: "",
-    arrivalStamp: "",
-    authLetter: "",
-    otherDoc: "",
-    assignedOfficer: i.assignedOfficer ?? "",
+    fullAddress: d.fullAddress ?? legacyAddress,
     station: i.station ?? "CAI - Cairo International Airport",
     department: i.department ?? "Lost & Found",
     internalNotes: i.internalNotes ?? "",
@@ -199,7 +159,6 @@ const STEPS = [
   { key: "flight", label: "Flight", icon: Plane },
   { key: "baggage", label: "Baggage", icon: Luggage },
   { key: "delivery", label: "Delivery", icon: Truck },
-  { key: "documents", label: "Documents", icon: FileText },
   { key: "review", label: "Review", icon: CheckCircle2 },
 ] as const;
 
