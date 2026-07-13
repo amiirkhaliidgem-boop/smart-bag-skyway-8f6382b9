@@ -881,6 +881,36 @@ export function updateCase(bagId: string, patch: Partial<BaggageCase>) {
   emit();
 }
 
+// Enterprise edit: apply a patch, write an audit entry and (optionally) a
+// lfHistory breadcrumb so Activity Timeline reflects the modification.
+// Keeps Workflow Status unchanged unless the caller included lfStatus in the
+// patch — status changes MUST still go through updateLfStatus / the Workflow
+// Engine. Additive; leaves existing consumers of updateCase intact.
+export function editCase(
+  bagId: string,
+  patch: Partial<BaggageCase>,
+  opts: { actor?: string; role?: Role; note?: string } = {},
+) {
+  const before = state.cases.find((x) => x.bagId === bagId);
+  if (!before) return;
+  const now = new Date().toISOString();
+  state = {
+    ...state,
+    cases: state.cases.map((c) =>
+      c.bagId === bagId ? { ...c, ...patch, updatedAt: now } : c,
+    ),
+  };
+  pushAudit({
+    action: "case.update",
+    actor: opts.actor ?? "system",
+    role: opts.role,
+    entityType: "case",
+    entityId: bagId,
+    note: opts.note ?? "Case edited",
+  });
+  emit();
+}
+
 // ---------- Lost & Found status engine ----------
 // Update the canonical L&F status on a case, append to lfHistory, write an
 // audit entry, and mirror into the central Workflow Engine when a matching
