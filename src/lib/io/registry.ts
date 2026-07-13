@@ -1,9 +1,4 @@
-import {
-  addCase,
-  getState,
-  type BaggageCase,
-  type CaseStatus,
-} from "@/lib/store";
+import { addCase, getState, type CaseStatus } from "@/lib/store";
 import type { DatasetSchema, FieldDef } from "./types";
 
 // Priority mirrors delivery Priority type but decoupled here to keep the
@@ -43,17 +38,17 @@ const lostFoundFields: FieldDef[] = [
   { key: "remarks", label: "Remarks", type: "string", example: "Silver Delsey cabin trolley" },
 ];
 
-export const lostFoundSchema: DatasetSchema<BaggageCase> = {
+export const lostFoundSchema: DatasetSchema = {
   id: "lost-found",
   label: "Lost & Found",
   description: "PIR baggage cases — passenger, flight, tag, and status.",
   templateVersion: "1.0",
   fields: lostFoundFields,
-  read: () => getState().cases,
-  apply: (rows) => {
+  read: () => getState().cases as unknown as Record<string, unknown>[],
+  apply: (rows: Record<string, unknown>[]) => {
     const ids: string[] = [];
     let created = 0;
-    for (const raw of rows as Record<string, unknown>[]) {
+    for (const raw of rows) {
       const first = String(raw.passengerFirstName ?? "").trim();
       const last = String(raw.passengerLastName ?? "").trim();
       const description = [raw.bagColor, raw.bagType, raw.remarks]
@@ -78,13 +73,13 @@ export const lostFoundSchema: DatasetSchema<BaggageCase> = {
 
 // ---------------- Read-only / export-first datasets ----------------
 // Import for these will be wired in later phases via `apply`.
-function readOnly<T>(
+function readOnly(
   id: string,
   label: string,
   description: string,
   fields: FieldDef[],
-  read: () => T[],
-): DatasetSchema<T> {
+  read: () => Record<string, unknown>[],
+): DatasetSchema {
   return {
     id,
     label,
@@ -220,25 +215,8 @@ export const passengerTrackingSchema = readOnly(
   () => getState().workflow as unknown[] as Record<string, unknown>[],
 );
 
-import { useAdminStore } from "@/lib/admin/data";
-import type { AdminState } from "@/lib/admin/data";
-
-// The admin store isn't hydrated via getState; grab a stable read via the
-// same store internals through the exported hook's snapshot.
-function adminSnapshot(): AdminState {
-  // useAdminStore is a hook, but the underlying `state` isn't exported.
-  // We rely on the framework only calling read() at export time, from
-  // components. As a pragmatic bridge, we access an internal accessor
-  // provided by the admin module.
-  return (globalThis as { __adminState__?: AdminState }).__adminState__ ??
-    (useAdminStore as unknown as { getSnapshot?: () => AdminState }).getSnapshot?.() ?? {
-      users: [],
-      departments: [],
-      stations: [],
-      teams: [],
-      activity: [],
-    };
-}
+import { getAdminState } from "@/lib/admin/data";
+function adminSnapshot() { return getAdminState(); }
 
 export const usersSchema = readOnly(
   "users",
@@ -309,8 +287,8 @@ export const reportsSchema = readOnly(
   () => getState().cases as unknown[] as Record<string, unknown>[],
 );
 
-export const IO_REGISTRY: DatasetSchema<Record<string, unknown>>[] = [
-  lostFoundSchema as unknown as DatasetSchema<Record<string, unknown>>,
+export const IO_REGISTRY: DatasetSchema[] = [
+  lostFoundSchema,
   storageSchema,
   deliverySchema,
   driverSchema,
