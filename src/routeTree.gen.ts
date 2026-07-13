@@ -149,7 +149,6 @@ export interface FileRoutesByFullPath {
   '/api-status': typeof ApiStatusRoute
   '/contact-center': typeof ContactCenterRoute
   '/data-io': typeof DataIoRoute
-  '/data-io': typeof DataIoRoute
   '/delivery': typeof DeliveryRoute
   '/driver-portal': typeof DriverPortalRoute
   '/export-center': typeof ExportCenterRoute
@@ -173,7 +172,6 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRoute
   '/api-status': typeof ApiStatusRoute
   '/contact-center': typeof ContactCenterRoute
-  '/data-io': typeof DataIoRoute
   '/data-io': typeof DataIoRoute
   '/delivery': typeof DeliveryRoute
   '/driver-portal': typeof DriverPortalRoute
@@ -199,7 +197,6 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/api-status': typeof ApiStatusRoute
   '/contact-center': typeof ContactCenterRoute
-  '/data-io': typeof DataIoRoute
   '/data-io': typeof DataIoRoute
   '/delivery': typeof DeliveryRoute
   '/driver-portal': typeof DriverPortalRoute
@@ -227,7 +224,6 @@ export interface FileRouteTypes {
     | '/api-status'
     | '/contact-center'
     | '/data-io'
-    | '/data-io'
     | '/delivery'
     | '/driver-portal'
     | '/export-center'
@@ -252,7 +248,6 @@ export interface FileRouteTypes {
     | '/api-status'
     | '/contact-center'
     | '/data-io'
-    | '/data-io'
     | '/delivery'
     | '/driver-portal'
     | '/export-center'
@@ -276,7 +271,6 @@ export interface FileRouteTypes {
     | '/admin'
     | '/api-status'
     | '/contact-center'
-    | '/data-io'
     | '/data-io'
     | '/delivery'
     | '/driver-portal'
@@ -447,13 +441,6 @@ declare module '@tanstack/react-router' {
       path: '/contact-center'
       fullPath: '/contact-center'
       preLoaderRoute: typeof ContactCenterRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/data-io': {
-      id: '/data-io'
-      path: '/data-io'
-      fullPath: '/data-io'
-      preLoaderRoute: typeof DataIoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api-status': {
