@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import {
   useStore,
   updateCase,
@@ -123,7 +123,7 @@ function CaseDetailsPage() {
     toast.success(`Status moved to ${next}`);
   }
 
-  function changeStatus(target: LFStatus, force = false) {
+  function changeStatus(target: LFStatus, force = false, note?: string) {
     if (target === lfs) {
       setChangeOpen(false);
       return;
@@ -132,7 +132,7 @@ function CaseDetailsPage() {
       toast.error("Backward transitions require the Change Status dialog with override.");
       return;
     }
-    updateLfStatus(c!.bagId, target, { actor: "Ops Console", force });
+    updateLfStatus(c!.bagId, target, { actor: "Ops Console", force, note });
     toast.success(`Status updated to ${target}`);
     setChangeOpen(false);
   }
@@ -563,7 +563,7 @@ function CaseDetailsPage() {
       <Dialog open={changeOpen} onOpenChange={setChangeOpen}>
         <ChangeStatusDialog
           current={lfs}
-          onConfirm={(target, force) => changeStatus(target, force)}
+          onConfirm={(target, force, note) => changeStatus(target, force, note)}
           onClose={() => setChangeOpen(false)}
         />
       </Dialog>
@@ -593,7 +593,7 @@ function ChangeStatusDialog({
   current, onConfirm, onClose,
 }: {
   current: LFStatus;
-  onConfirm: (target: LFStatus, force: boolean) => void;
+  onConfirm: (target: LFStatus, force: boolean, note?: string) => void;
   onClose: () => void;
 }) {
   const [target, setTarget] = useState<LFStatus>(nextLfStatus(current) ?? current);
@@ -640,13 +640,7 @@ function ChangeStatusDialog({
         <Button variant="outline" onClick={onClose}>Cancel</Button>
         <Button
           disabled={backward}
-          onClick={() => {
-            if (note.trim()) {
-              // Use updateLfStatus directly to capture the note in history.
-              updateLfStatus("__dummy__", target); // no-op guard removed by below
-            }
-            onConfirm(target, force);
-          }}
+          onClick={() => onConfirm(target, force, note.trim() || undefined)}
         >
           Confirm
         </Button>
