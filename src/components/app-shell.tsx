@@ -9,11 +9,9 @@ import {
   Menu,
   X,
   QrCode,
-  Map,
   Headphones,
   Star,
   UserCog,
-  Send,
   Bell,
   Activity,
   ShieldCheck,
@@ -22,9 +20,7 @@ import {
   Building2,
   MapPin,
   UsersRound,
-  ScrollText,
   GitBranch,
-  Download,
   Plug,
   Radio,
   ArrowRightLeft,
@@ -55,10 +51,20 @@ const navSections: {
     label: "Baggage Operations",
     items: [
       { to: "/lost-found", label: "Lost & Found", icon: PackageSearch },
-      { to: "/storage", label: "Storage Control", icon: Warehouse },
-      { to: "/qr-scan", label: "QR Scan", icon: QrCode },
+    ],
+  },
+  {
+    label: "Delivery Operations",
+    items: [
       { to: "/delivery", label: "Delivery Management", icon: Truck },
       { to: "/driver-portal", label: "Driver Portal", icon: UserCog },
+    ],
+  },
+  {
+    label: "Warehouse Operations",
+    items: [
+      { to: "/storage", label: "Storage Control", icon: Warehouse },
+      { to: "/qr-scan", label: "QR Scan", icon: QrCode },
     ],
   },
   {
@@ -75,15 +81,12 @@ const navSections: {
       { to: "/workflow-monitor", label: "Workflow Monitor", icon: GitBranch },
       { to: "/notifications", label: "Notification Center", icon: Bell },
       { to: "/timeline", label: "Activity Timeline", icon: Activity },
-      { to: "/route-tracking", label: "Route Tracking", icon: Map },
-      { to: "/passenger", label: "Send Tracking Link", icon: Send },
     ],
   },
   {
     label: "Reporting",
     items: [
       { to: "/reports", label: "Reports", icon: BarChart3 },
-      { to: "/export-center", label: "Export Center", icon: Download },
       { to: "/data-io", label: "Import / Export", icon: ArrowRightLeft },
     ],
   },
@@ -104,7 +107,6 @@ const navSections: {
       { to: "/integrations", label: "Integrations", icon: Plug },
       { to: "/api-status", label: "API Status", icon: Radio },
       { to: "/settings", label: "Settings", icon: SettingsIcon },
-      { to: "/admin", label: "Activity Logs", icon: ScrollText, search: { section: "activity" }, matchSearchKey: "activity" },
     ],
   },
 ];
