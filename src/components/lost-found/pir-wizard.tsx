@@ -585,21 +585,23 @@ function Toggle({
   );
 }
 
-function Doc({
-  label, value, onChange,
-}: { label: string; value: string; onChange: (v: string) => void }) {
-  return (
-    <div className="rounded-md border border-dashed p-3 space-y-2 bg-muted/20">
-      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{label}</p>
-      <Input placeholder="File reference (name / URL)" value={value} onChange={(e) => onChange(e.target.value)} />
-    </div>
-  );
-}
-
-function ReviewGroup({ title, children }: { title: string; children: React.ReactNode }) {
+function ReviewGroup({
+  title, children, onEdit,
+}: { title: string; children: React.ReactNode; onEdit?: () => void }) {
   return (
     <div className="rounded-md border p-3">
-      <p className="text-xs uppercase tracking-wider text-muted-foreground mb-2">{title}</p>
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-xs uppercase tracking-wider text-muted-foreground">{title}</p>
+        {onEdit && (
+          <button
+            type="button"
+            onClick={onEdit}
+            className="text-xs text-primary hover:underline"
+          >
+            Edit
+          </button>
+        )}
+      </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5">{children}</div>
     </div>
   );
