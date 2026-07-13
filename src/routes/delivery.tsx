@@ -186,11 +186,13 @@ function formatEta(iso: string) {
   try {
     const d = new Date(iso);
     if (Number.isNaN(d.getTime())) return "—";
-    return d.toLocaleString(undefined, {
+    // Force UTC to avoid SSR/client timezone hydration mismatches.
+    return d.toLocaleString("en-US", {
       month: "short",
       day: "numeric",
       hour: "2-digit",
       minute: "2-digit",
+      timeZone: "UTC",
     });
   } catch {
     return "—";
