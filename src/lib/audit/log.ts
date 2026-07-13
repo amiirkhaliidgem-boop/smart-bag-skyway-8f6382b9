@@ -10,6 +10,24 @@ export type AuditAction =
   | "delivery.update"
   | "case.create"
   | "case.update";
+  
+export type IoAuditAction = "import.commit" | "export.run";
+
+export interface ImportAuditEntry {
+  id: string;
+  action: IoAuditAction;
+  actor: string;
+  moduleId: string;
+  moduleLabel: string;
+  fileName?: string;
+  totalRows?: number;
+  accepted?: number;
+  rejected?: number;
+  warnings?: number;
+  duplicates?: number;
+  format?: string;
+  at: string;
+}
 
 export interface AuditEntry {
   id: string;
