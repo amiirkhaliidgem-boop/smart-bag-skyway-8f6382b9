@@ -888,6 +888,19 @@ export function addQualityIncident(
 
 export { driverPool };
 
+// ---------- Import/Export audit ----------
+export function logIoAudit(entry: Omit<ImportAuditEntry, "id" | "at">) {
+  const id = `IO-${state.ioAudit.length + 1}`;
+  const full: ImportAuditEntry = {
+    ...entry,
+    id,
+    at: new Date().toISOString(),
+  };
+  state = { ...state, ioAudit: [full, ...state.ioAudit] };
+  emit();
+  return full;
+}
+
 // ---------- Notification helpers ----------
 export function setNotificationStatus(
   id: string,
