@@ -153,7 +153,7 @@ export function ImportDialog({ schema, open, onOpenChange, actor = "Operator", o
         )}
 
         {phase === "done" && result && report && (
-          <SummaryView schema={schema} report={report} created={result.created} />
+          <SummaryView schema={schema} report={report} result={result} />
         )}
 
         <input
@@ -326,7 +326,21 @@ function PreviewRow({ row, schema }: { row: ParsedRow; schema: DatasetSchema }) 
   );
 }
 
-function SummaryView({ schema, report, created }: { schema: DatasetSchema; report: ValidationReport; created: number }) {
+function SummaryView({
+  schema,
+  report,
+  result,
+}: {
+  schema: DatasetSchema;
+  report: ValidationReport;
+  result: { created: number; updated?: number; skipped?: number; warnings?: number; ids: string[] };
+}) {
+  const created = result.created;
+  const updated = result.updated ?? 0;
+  const warnings = result.warnings ?? 0;
+  const skipped = result.skipped ?? 0;
+  const rejected = report.rejectedRows;
+  const clean = Math.max(0, created - warnings);
   return (
     <div className="py-4 space-y-4">
       <div className="flex items-start gap-3 rounded-lg border border-emerald-300 bg-emerald-50 dark:bg-emerald-950/30 p-4">
@@ -334,17 +348,22 @@ function SummaryView({ schema, report, created }: { schema: DatasetSchema; repor
         <div>
           <p className="font-semibold">Import complete</p>
           <p className="text-sm text-muted-foreground">
-            {created} record(s) added to {schema.label}. Every record has been routed through the Workflow Engine,
-            Timeline, and Audit Log.
+            {created + updated} record(s) processed for {schema.label}. Every record was routed through
+            the Workflow Engine, Timeline, and Audit Log. Cases with missing optional data were created
+            as “Incomplete” and can be completed later — airport operations never stop for missing data.
           </p>
         </div>
       </div>
-      <dl className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
-        <Item label="File" value={report.fileName} />
-        <Item label="Total rows" value={report.totalRows} />
-        <Item label="Accepted" value={report.acceptedRows} />
-        <Item label="Rejected" value={report.rejectedRows} />
+      <dl className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-sm">
+        <Item label="Imported Successfully" value={clean} />
+        <Item label="Imported with Warnings" value={warnings} />
+        <Item label="Updated Existing" value={updated} />
+        <Item label="Skipped" value={skipped} />
+        <Item label="Rejected" value={rejected} />
       </dl>
+      <p className="text-xs text-muted-foreground">
+        File: <span className="font-medium">{report.fileName}</span> · Total rows: {report.totalRows}
+      </p>
       <p className="text-xs text-muted-foreground flex items-center gap-1">
         <Copy className="h-3 w-3" /> Audit reference logged under Activity Timeline → Import events.
       </p>
