@@ -43,7 +43,9 @@ export function ImportDialog({ schema, open, onOpenChange, actor = "Operator", o
   const [progress, setProgress] = useState(0);
   const [file, setFile] = useState<File | null>(null);
   const [report, setReport] = useState<ValidationReport | null>(null);
-  const [result, setResult] = useState<{ created: number; ids: string[] } | null>(null);
+  const [result, setResult] = useState<
+    { created: number; updated: number; skipped: number; warnings: number; ids: string[] } | null
+  >(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const reset = () => {
@@ -107,10 +109,19 @@ export function ImportDialog({ schema, open, onOpenChange, actor = "Operator", o
       duplicates: report.duplicateRows,
     });
     setProgress(100);
-    setResult({ created: res.created, ids: res.ids });
+    setResult({
+      created: res.created,
+      updated: res.updated ?? 0,
+      skipped: res.skipped ?? 0,
+      warnings: res.warnings ?? 0,
+      ids: res.ids,
+    });
     setPhase("done");
     onImported?.({ created: res.created, ids: res.ids });
-    toast.success(`${schema.label}: ${res.created} record(s) imported`);
+    const total = res.created + (res.updated ?? 0);
+    toast.success(`${schema.label}: ${total} record(s) processed`, {
+      description: `${res.created} created · ${res.updated ?? 0} updated`,
+    });
   };
 
   return (
