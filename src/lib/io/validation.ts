@@ -9,14 +9,50 @@ export const KNOWN_AIRPORTS = new Set([
 ]);
 
 export const KNOWN_AIRLINES = new Set([
+  // Full-service carriers
   "MS", "TK", "EK", "QR", "EY", "SV", "LH", "BA", "AF", "KL", "LX", "IB",
-  "AZ", "RJ", "ME", "PC", "W6", "FZ", "OS", "TP",
+  "AZ", "RJ", "ME", "PC", "OS", "TP", "AY", "SN", "SK", "AC", "UA", "AA",
+  "DL", "VS", "IR", "GF", "KU", "OM", "WY", "UL", "AI", "EI", "TG", "SQ",
+  "CX", "JL", "NH", "OZ", "KE", "CA", "MU", "CZ", "ET", "KQ", "MK", "SA",
+  // Low-cost & regional (incl. Air Arabia G9, flydubai FZ, Wizz W6, etc.)
+  "G9", "FZ", "W6", "XY", "NP", "3O", "AH", "HR", "J9", "IX", "6E", "SG",
+  "FR", "U2", "VY", "PC", "XQ", "TO", "HV", "DY", "D8", "BT",
 ]);
 
 const RX_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const RX_PHONE = /^\+?[0-9][0-9 ()-]{6,20}$/;
-const RX_DATE = /^\d{4}-\d{2}-\d{2}$/;
 const RX_DATETIME = /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(:\d{2})?(Z|[+-]\d{2}:?\d{2})?$/;
+
+// Flexible date parser. Real-world CSVs from Excel/Numbers arrive in many
+// formats — the operator should never be blocked because Excel reformatted a
+// column on save. We accept the most common formats and normalise to
+// canonical YYYY-MM-DD before storing.
+function parseFlexibleDate(input: string): string | null {
+  const s = input.trim();
+  if (!s) return null;
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const build = (y: number, m: number, d: number) => {
+    if (m < 1 || m > 12 || d < 1 || d > 31) return null;
+    const dt = new Date(Date.UTC(y, m - 1, d));
+    if (dt.getUTCFullYear() !== y || dt.getUTCMonth() !== m - 1 || dt.getUTCDate() !== d) return null;
+    return `${y}-${pad(m)}-${pad(d)}`;
+  };
+  let m: RegExpMatchArray | null;
+  if ((m = s.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$/))) {
+    return build(+m[1], +m[2], +m[3]);
+  }
+  if ((m = s.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/))) {
+    const a = +m[1], b = +m[2];
+    // Prefer DD/MM/YYYY (used across EU/MENA); fall back to MM/DD/YYYY
+    return build(+m[3], b, a) ?? build(+m[3], a, b);
+  }
+  if ((m = s.match(/^(\d{1,2})\s+([A-Za-z]{3,})\s+(\d{4})$/))) {
+    const months = ["jan","feb","mar","apr","may","jun","jul","aug","sep","oct","nov","dec"];
+    const idx = months.indexOf(m[2].slice(0, 3).toLowerCase());
+    if (idx >= 0) return build(+m[3], idx + 1, +m[1]);
+  }
+  return null;
+}
 
 export function validateField(
   field: FieldDef,
@@ -46,9 +82,19 @@ export function validateField(
     case "boolean":
       value = /^(true|yes|1|y)$/i.test(trimmed);
       break;
-    case "date":
-      if (!RX_DATE.test(trimmed)) issues.push({ field: field.key, level: "error", message: `${field.label} must be YYYY-MM-DD.` });
+    case "date": {
+      const iso = parseFlexibleDate(trimmed);
+      if (!iso) {
+        issues.push({
+          field: field.key,
+          level: "error",
+          message: `${field.label} could not be parsed. Use YYYY-MM-DD, DD/MM/YYYY, or "18 Jun 2026".`,
+        });
+      } else {
+        value = iso;
+      }
       break;
+    }
     case "datetime":
       if (!RX_DATETIME.test(trimmed)) issues.push({ field: field.key, level: "error", message: `${field.label} must be ISO datetime.` });
       break;
