@@ -227,6 +227,13 @@ export interface BaggageCase {
     note?: string;
   }[];
   updatedAt?: string;
+  /** L&F operational: true when import/creation captured only the
+   *  mandatory operational fields and one or more optional fields are
+   *  still pending. Agents complete these later; workflow is unaffected. */
+  incomplete?: boolean;
+  /** Human-readable list of optional fields still missing. Cleared once
+   *  the case is fully completed. */
+  missingFields?: string[];
 }
 
 export interface Delivery {
