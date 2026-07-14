@@ -46,6 +46,7 @@ import {
   FileText, Upload, Trash2, MapPin, Radar, History as HistoryIcon,
   ShieldAlert, Star as StarIcon, ExternalLink, Pencil, MoreHorizontal,
   UserCog, Bell, Link as LinkIcon, Copy, Printer, Download, XCircle,
+  AlertTriangle,
 } from "lucide-react";
 import { WORKFLOW_LABELS } from "@/lib/workflow/statuses";
 
@@ -219,6 +220,36 @@ function CaseDetailsPage() {
         <ChevronRight className="h-3.5 w-3.5" />
         <span className="text-foreground font-mono">{c.pirNumber}</span>
       </div>
+
+      {/* Incomplete-data banner — shown when the case was imported/created
+          with mandatory fields only and optional info is still pending. */}
+      {c.incomplete && c.missingFields && c.missingFields.length > 0 && (
+        <div className="rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/30 px-4 py-3 flex items-start gap-3">
+          <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">
+              Incomplete data — case created, please complete when possible
+            </p>
+            <p className="text-xs text-amber-800/90 dark:text-amber-200/80 mt-1">
+              Airport operations continued with the mandatory fields. The
+              following optional fields are still pending:
+            </p>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {c.missingFields.map((f) => (
+                <span
+                  key={f}
+                  className="inline-flex items-center rounded-full border border-amber-300 bg-white/70 dark:bg-amber-900/40 px-2 py-0.5 text-[11px] font-medium text-amber-900 dark:text-amber-100"
+                >
+                  {f}
+                </span>
+              ))}
+            </div>
+          </div>
+          <Button size="sm" variant="outline" onClick={() => setEditOpen(true)} className="gap-1.5">
+            <Pencil className="h-3.5 w-3.5" /> Complete
+          </Button>
+        </div>
+      )}
 
       {/* Header */}
       <Card>
