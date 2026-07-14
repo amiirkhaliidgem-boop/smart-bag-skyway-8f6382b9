@@ -1,4 +1,4 @@
-import { addCase, getState, type CaseStatus } from "@/lib/store";
+import { addCase, updateCase, getState, type CaseStatus } from "@/lib/store";
 import type { DatasetSchema, FieldDef } from "./types";
 
 // Priority mirrors delivery Priority type but decoupled here to keep the
@@ -14,8 +14,11 @@ const CASE_STATUS_VALUES: CaseStatus[] = [
 ];
 
 // ---------------- Lost & Found ----------------
+// Real airport ops: mandatory fields only. Everything else is optional and
+// completed later by an agent. We never reject the whole case because a
+// passport number or delivery address is missing at import time.
 const lostFoundFields: FieldDef[] = [
-  { key: "pirNumber", label: "PIR Number", type: "string", required: true, unique: true, example: "CAIMS12045" },
+  { key: "pirNumber", label: "PIR Number", type: "string", required: true, example: "CAIMS12045" },
   { key: "passengerFirstName", label: "Passenger First Name", type: "string", required: true, example: "Mariam" },
   { key: "passengerLastName", label: "Passenger Last Name", type: "string", required: true, example: "Hossam" },
   { key: "contact", label: "Mobile Number", type: "phone", required: true, example: "+20 100 234 5512" },
@@ -23,9 +26,9 @@ const lostFoundFields: FieldDef[] = [
   { key: "airline", label: "Airline", type: "airlineCode", required: true, example: "MS" },
   { key: "flightNumber", label: "Flight Number", type: "string", required: true, example: "MS985" },
   { key: "flightDate", label: "Flight Date", type: "date", required: true, example: "2026-06-18" },
-  { key: "originAirport", label: "Origin Airport", type: "airportCode", example: "JFK" },
-  { key: "destinationAirport", label: "Destination Airport", type: "airportCode", example: "CAI" },
-  { key: "bagTagNumber", label: "Bag Tag Number", type: "string", required: true, unique: true, example: "MS548921" },
+  { key: "originAirport", label: "Origin Airport", type: "airportCode", required: true, example: "JFK" },
+  { key: "destinationAirport", label: "Destination Airport", type: "airportCode", required: true, example: "CAI" },
+  { key: "bagTagNumber", label: "Bag Tag Number", type: "string", required: true, example: "MS548921" },
   { key: "numberOfBags", label: "Number Of Bags", type: "integer", example: "1" },
   { key: "bagColor", label: "Bag Color", type: "string", example: "Black" },
   { key: "bagType", label: "Bag Type", type: "string", example: "Hardshell" },
@@ -38,36 +41,86 @@ const lostFoundFields: FieldDef[] = [
   { key: "remarks", label: "Remarks", type: "string", example: "Silver Delsey cabin trolley" },
 ];
 
+// Optional fields the operator can complete after import. Missing values
+// generate warnings only — never a rejection.
+const LF_OPTIONAL_FIELDS: { key: string; label: string }[] = [
+  { key: "email", label: "Email" },
+  { key: "numberOfBags", label: "Number of Bags" },
+  { key: "bagColor", label: "Bag Color" },
+  { key: "bagType", label: "Bag Type" },
+  { key: "deliveryAddress", label: "Delivery Address" },
+  { key: "city", label: "City" },
+  { key: "country", label: "Country" },
+  { key: "priority", label: "Priority" },
+  { key: "remarks", label: "Remarks" },
+];
+
+function isBlank(v: unknown) {
+  return v === undefined || v === null || String(v).trim() === "";
+}
+
 export const lostFoundSchema: DatasetSchema = {
   id: "lost-found",
   label: "Lost & Found",
   description: "PIR baggage cases — passenger, flight, tag, and status.",
-  templateVersion: "1.0",
+  templateVersion: "1.1",
   fields: lostFoundFields,
   read: () => getState().cases as unknown as Record<string, unknown>[],
   apply: (rows: Record<string, unknown>[]) => {
     const ids: string[] = [];
     let created = 0;
+    let updated = 0;
+    let warnings = 0;
+    const existing = getState().cases;
     for (const raw of rows) {
       const first = String(raw.passengerFirstName ?? "").trim();
       const last = String(raw.passengerLastName ?? "").trim();
       const description = [raw.bagColor, raw.bagType, raw.remarks]
         .filter((v) => v !== undefined && v !== null && String(v).trim() !== "")
         .join(" — ");
+      const missingFields = LF_OPTIONAL_FIELDS
+        .filter((f) => isBlank(raw[f.key]))
+        .map((f) => f.label);
+      const incomplete = missingFields.length > 0;
+      if (incomplete) warnings++;
+
+      const pirNumber = String(raw.pirNumber ?? "").trim();
+      const dup = existing.find((c) => c.pirNumber && c.pirNumber === pirNumber);
+      if (dup) {
+        // Duplicate PIR → update existing case in place (never reject).
+        updateCase(dup.bagId, {
+          passengerName: `${first} ${last}`.trim() || dup.passengerName,
+          flightNumber: String(raw.flightNumber ?? dup.flightNumber),
+          bagTagNumber: String(raw.bagTagNumber ?? dup.bagTagNumber),
+          arrivalDate: String(raw.flightDate ?? dup.arrivalDate),
+          contact: String(raw.contact ?? dup.contact),
+          email: String(raw.email ?? dup.email),
+          description: description || dup.description,
+          incomplete,
+          missingFields: incomplete ? missingFields : undefined,
+        });
+        ids.push(dup.bagId);
+        updated++;
+        continue;
+      }
+
       const c = addCase({
         passengerName: `${first} ${last}`.trim(),
         flightNumber: String(raw.flightNumber ?? ""),
-        pirNumber: String(raw.pirNumber ?? ""),
+        pirNumber,
         bagTagNumber: String(raw.bagTagNumber ?? ""),
         arrivalDate: String(raw.flightDate ?? new Date().toISOString().slice(0, 10)),
         contact: String(raw.contact ?? ""),
         email: String(raw.email ?? ""),
         description,
       });
+      if (incomplete) {
+        updateCase(c.bagId, { incomplete: true, missingFields });
+      }
       ids.push(c.bagId);
       created++;
     }
-    return { created, updated: 0, skipped: 0, ids };
+    return { created, updated, skipped: 0, warnings, rejected: 0, ids };
   },
 };
 

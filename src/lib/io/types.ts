@@ -62,6 +62,11 @@ export interface ApplyResult {
   created: number;
   updated: number;
   skipped: number;
+  /** Records imported but flagged as incomplete (missing optional fields). */
+  warnings?: number;
+  /** Records rejected during commit (e.g. mandatory operational fields
+   *  missing) even though the row passed CSV parsing. */
+  rejected?: number;
   ids: string[];
 }
 
