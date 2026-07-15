@@ -422,25 +422,31 @@ function Row({
   d,
   checked,
   onToggle,
+  onAssign,
+  onFail,
 }: {
   d: Delivery;
   checked: boolean;
   onToggle: () => void;
+  onAssign: () => void;
+  onFail: () => void;
 }) {
+  const navigate = useNavigate();
   const stage = getDeliveryStage(d);
+  const acts = actionsForStage(stage);
+  const stop = (e: React.MouseEvent | React.ChangeEvent) => e.stopPropagation();
+  const openDetails = () =>
+    navigate({ to: "/delivery/$deliveryId", params: { deliveryId: d.deliveryId } });
   return (
-    <tr className="hover:bg-muted/40">
-      <td className="px-3 py-3">
-        <input type="checkbox" checked={checked} onChange={onToggle} />
+    <tr
+      className="hover:bg-muted/40 cursor-pointer"
+      onClick={openDetails}
+    >
+      <td className="px-3 py-3" onClick={stop as never}>
+        <input type="checkbox" checked={checked} onChange={(e) => { stop(e); onToggle(); }} />
       </td>
       <td className="px-3 py-3">
-        <Link
-          to="/delivery/$deliveryId"
-          params={{ deliveryId: d.deliveryId }}
-          className="font-mono text-xs font-semibold text-primary hover:underline"
-        >
-          {d.deliveryId}
-        </Link>
+        <span className="font-mono text-xs font-semibold text-primary">{d.deliveryId}</span>
       </td>
       <td className="px-3 py-3 font-mono text-xs">{d.pirNumber}</td>
       <td className="px-3 py-3">
@@ -468,16 +474,137 @@ function Row({
         {fmt(d.createdAt ?? d.eta)}
       </td>
       <td className="px-3 py-3 text-xs whitespace-nowrap">{fmt(d.eta)}</td>
-      <td className="px-3 py-3 text-right">
-        <Link
-          to="/delivery/$deliveryId"
-          params={{ deliveryId: d.deliveryId }}
-          className="inline-flex items-center h-8 px-3 rounded-md border border-input bg-background text-xs font-medium hover:bg-muted"
-        >
-          Open
-        </Link>
+      <td className="px-3 py-3 text-right" onClick={stop as never}>
+        <div className="inline-flex items-center gap-1 flex-wrap justify-end">
+          <RowActions d={d} acts={acts} onAssign={onAssign} onFail={onFail} />
+          <Link
+            to="/delivery/$deliveryId"
+            params={{ deliveryId: d.deliveryId }}
+            className="inline-flex items-center h-7 px-2.5 rounded-md border border-input bg-background text-xs font-medium hover:bg-muted"
+          >
+            Open
+          </Link>
+        </div>
       </td>
     </tr>
+  );
+}
+
+function RowActions({
+  d,
+  acts,
+  onAssign,
+  onFail,
+}: {
+  d: Delivery;
+  acts: ReturnType<typeof actionsForStage>;
+  onAssign: () => void;
+  onFail: () => void;
+}) {
+  const id = d.deliveryId;
+  const btn = "inline-flex items-center gap-1 h-7 px-2 rounded-md border border-input bg-background text-[11px] font-medium hover:bg-muted whitespace-nowrap";
+  return (
+    <>
+      {(acts.assign || acts.reassign) && (
+        <button className={btn} onClick={onAssign}>
+          <UserCheck className="h-3 w-3" /> {acts.reassign ? "Reassign" : "Assign"}
+        </button>
+      )}
+      {acts.notify && (
+        <button
+          className={btn}
+          onClick={() => {
+            ensurePassengerToken(id);
+            const events = createTestNotification({ deliveryId: id, channel: "sms", operator: "Delivery Coordinator" });
+            toast.success(events.length ? "Passenger notified" : "No template available");
+          }}
+        >
+          <Bell className="h-3 w-3" /> Notify
+        </button>
+      )}
+      {acts.generateOtp && (
+        <button
+          className={btn}
+          onClick={() => {
+            const code = generateOtp(id, { actor: "Delivery Coordinator" });
+            toast.success(`OTP: ${code}`);
+          }}
+        >
+          <ShieldCheck className="h-3 w-3" /> OTP
+        </button>
+      )}
+      {acts.collect && (
+        <button
+          className={btn}
+          onClick={() => {
+            driverCollect(id, { actor: d.driver || "Driver", role: "Driver" });
+            toast.success("Bag collected");
+          }}
+        >
+          <Package className="h-3 w-3" /> Collected
+        </button>
+      )}
+      {acts.startTrip && (
+        <button
+          className={btn}
+          onClick={() => {
+            driverStartTrip(id, { actor: d.driver || "Driver", role: "Driver" });
+            toast.success("Out for delivery");
+          }}
+        >
+          <Truck className="h-3 w-3" /> Start
+        </button>
+      )}
+      {acts.markDelivered && (
+        <button
+          className={btn}
+          onClick={() => {
+            driverMarkDelivered(id, { actor: d.driver || "Driver", role: "Driver" });
+            toast.success("Delivered");
+          }}
+        >
+          <CheckCircle2 className="h-3 w-3" /> Delivered
+        </button>
+      )}
+      {acts.markFailed && (
+        <button className={btn} onClick={onFail}>
+          <XCircle className="h-3 w-3" /> Failed
+        </button>
+      )}
+      {acts.markReturned && (
+        <button
+          className={btn}
+          onClick={() => {
+            markReturnedToAirport(id, { actor: "Delivery Coordinator", role: "DeliveryCoordinator" });
+            toast.success("Returned to Airport");
+          }}
+        >
+          <Undo2 className="h-3 w-3" /> Return
+        </button>
+      )}
+      {acts.reschedule && (
+        <button
+          className={btn}
+          onClick={() => {
+            rescheduleDelivery(id, { actor: "Delivery Coordinator", role: "DeliveryCoordinator" });
+            toast.success("Rescheduled");
+          }}
+        >
+          <RotateCcw className="h-3 w-3" /> Reschedule
+        </button>
+      )}
+      {acts.close && (
+        <button
+          className={btn}
+          onClick={() => {
+            closeDelivery(id, { actor: "Delivery Coordinator", role: "DeliveryCoordinator" });
+            toast.success("Closed");
+          }}
+        >
+          <XCircle className="h-3 w-3" /> Close
+        </button>
+      )}
+    </>
   );
 }
 
