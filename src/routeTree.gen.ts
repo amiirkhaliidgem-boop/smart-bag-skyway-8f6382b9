@@ -31,6 +31,7 @@ import { Route as ApiStatusRouteImport } from './routes/api-status'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as LostFoundIndexRouteImport } from './routes/lost-found.index'
+import { Route as DeliveryIndexRouteImport } from './routes/delivery.index'
 import { Route as PassengerTokenRouteImport } from './routes/passenger.$token'
 import { Route as LostFoundBagIdRouteImport } from './routes/lost-found.$bagId'
 import { Route as DeliveryDeliveryIdRouteImport } from './routes/delivery.$deliveryId'
@@ -145,6 +146,11 @@ const LostFoundIndexRoute = LostFoundIndexRouteImport.update({
   path: '/',
   getParentRoute: () => LostFoundRoute,
 } as any)
+const DeliveryIndexRoute = DeliveryIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => DeliveryRoute,
+} as any)
 const PassengerTokenRoute = PassengerTokenRouteImport.update({
   id: '/$token',
   path: '/$token',
@@ -186,6 +192,7 @@ export interface FileRoutesByFullPath {
   '/delivery/$deliveryId': typeof DeliveryDeliveryIdRoute
   '/lost-found/$bagId': typeof LostFoundBagIdRoute
   '/passenger/$token': typeof PassengerTokenRoute
+  '/delivery/': typeof DeliveryIndexRoute
   '/lost-found/': typeof LostFoundIndexRoute
 }
 export interface FileRoutesByTo {
@@ -194,7 +201,6 @@ export interface FileRoutesByTo {
   '/api-status': typeof ApiStatusRoute
   '/contact-center': typeof ContactCenterRoute
   '/data-io': typeof DataIoRoute
-  '/delivery': typeof DeliveryRouteWithChildren
   '/driver-portal': typeof DriverPortalRoute
   '/export-center': typeof ExportCenterRoute
   '/feedback': typeof FeedbackRoute
@@ -212,6 +218,7 @@ export interface FileRoutesByTo {
   '/delivery/$deliveryId': typeof DeliveryDeliveryIdRoute
   '/lost-found/$bagId': typeof LostFoundBagIdRoute
   '/passenger/$token': typeof PassengerTokenRoute
+  '/delivery': typeof DeliveryIndexRoute
   '/lost-found': typeof LostFoundIndexRoute
 }
 export interface FileRoutesById {
@@ -240,6 +247,7 @@ export interface FileRoutesById {
   '/delivery/$deliveryId': typeof DeliveryDeliveryIdRoute
   '/lost-found/$bagId': typeof LostFoundBagIdRoute
   '/passenger/$token': typeof PassengerTokenRoute
+  '/delivery/': typeof DeliveryIndexRoute
   '/lost-found/': typeof LostFoundIndexRoute
 }
 export interface FileRouteTypes {
@@ -269,6 +277,7 @@ export interface FileRouteTypes {
     | '/delivery/$deliveryId'
     | '/lost-found/$bagId'
     | '/passenger/$token'
+    | '/delivery/'
     | '/lost-found/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -277,7 +286,6 @@ export interface FileRouteTypes {
     | '/api-status'
     | '/contact-center'
     | '/data-io'
-    | '/delivery'
     | '/driver-portal'
     | '/export-center'
     | '/feedback'
@@ -295,6 +303,7 @@ export interface FileRouteTypes {
     | '/delivery/$deliveryId'
     | '/lost-found/$bagId'
     | '/passenger/$token'
+    | '/delivery'
     | '/lost-found'
   id:
     | '__root__'
@@ -322,6 +331,7 @@ export interface FileRouteTypes {
     | '/delivery/$deliveryId'
     | '/lost-found/$bagId'
     | '/passenger/$token'
+    | '/delivery/'
     | '/lost-found/'
   fileRoutesById: FileRoutesById
 }
@@ -505,6 +515,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LostFoundIndexRouteImport
       parentRoute: typeof LostFoundRoute
     }
+    '/delivery/': {
+      id: '/delivery/'
+      path: '/'
+      fullPath: '/delivery/'
+      preLoaderRoute: typeof DeliveryIndexRouteImport
+      parentRoute: typeof DeliveryRoute
+    }
     '/passenger/$token': {
       id: '/passenger/$token'
       path: '/$token'
@@ -531,10 +548,12 @@ declare module '@tanstack/react-router' {
 
 interface DeliveryRouteChildren {
   DeliveryDeliveryIdRoute: typeof DeliveryDeliveryIdRoute
+  DeliveryIndexRoute: typeof DeliveryIndexRoute
 }
 
 const DeliveryRouteChildren: DeliveryRouteChildren = {
   DeliveryDeliveryIdRoute: DeliveryDeliveryIdRoute,
+  DeliveryIndexRoute: DeliveryIndexRoute,
 }
 
 const DeliveryRouteWithChildren = DeliveryRoute._addFileChildren(
