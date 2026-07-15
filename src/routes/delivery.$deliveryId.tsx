@@ -628,16 +628,15 @@ function FailDialog({
   onOpenChange: (v: boolean) => void;
   deliveryId: string;
 }) {
-  const [reason, setReason] = useState("");
+  const [reason, setReason] = useState<FailureReason>(FAILURE_REASONS[0]);
   function submit(e: React.FormEvent) {
     e.preventDefault();
-    setDeliveryStage(deliveryId, "Delivery Failed", {
+    markDeliveryFailed(deliveryId, reason, {
       actor: "Delivery Coordinator",
-      failureReason: reason || "Not specified",
+      role: "DeliveryCoordinator",
     });
-    toast.error("Delivery marked failed");
+    toast.error(`Delivery marked failed — ${reason}`);
     onOpenChange(false);
-    setReason("");
   }
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -646,7 +645,16 @@ function FailDialog({
         <form onSubmit={submit} className="space-y-4">
           <div className="space-y-1.5">
             <Label>Failure Reason</Label>
-            <Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Passenger unavailable, wrong address, …" />
+            <select
+              className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+              value={reason}
+              onChange={(e) => setReason(e.target.value as FailureReason)}
+            >
+              {FAILURE_REASONS.map((r) => <option key={r} value={r}>{r}</option>)}
+            </select>
+            <p className="text-[11px] text-muted-foreground">
+              Coordinators must choose a predefined reason — free-text is not allowed.
+            </p>
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
