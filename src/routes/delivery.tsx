@@ -179,6 +179,7 @@ function DispatchCenter() {
   const [bulkOpen, setBulkOpen] = useState(false);
   const [assignFor, setAssignFor] = useState<string | null>(null);
   const [failFor, setFailFor] = useState<string | null>(null);
+  const [scheduleFor, setScheduleFor] = useState<string | null>(null);
   const toggleAll = () => {
     if (selected.size === filtered.length) setSelected(new Set());
     else setSelected(new Set(filtered.map((d) => d.deliveryId)));
@@ -390,6 +391,7 @@ function DispatchCenter() {
                     onToggle={() => toggleOne(d.deliveryId)}
                     onAssign={() => setAssignFor(d.deliveryId)}
                     onFail={() => setFailFor(d.deliveryId)}
+                    onSchedule={() => setScheduleFor(d.deliveryId)}
                   />
                 ))}
                 {filtered.length === 0 && (
@@ -425,6 +427,10 @@ function DispatchCenter() {
         deliveryId={failFor}
         onClose={() => setFailFor(null)}
       />
+      <ScheduleDialog
+        deliveryId={scheduleFor}
+        onClose={() => setScheduleFor(null)}
+      />
     </div>
   );
 }
@@ -435,12 +441,14 @@ function Row({
   onToggle,
   onAssign,
   onFail,
+  onSchedule,
 }: {
   d: Delivery;
   checked: boolean;
   onToggle: () => void;
   onAssign: () => void;
   onFail: () => void;
+  onSchedule: () => void;
 }) {
   const navigate = useNavigate();
   const stage = getDeliveryStage(d);
@@ -487,7 +495,7 @@ function Row({
       <td className="px-3 py-3 text-xs whitespace-nowrap">{fmt(d.eta)}</td>
       <td className="px-3 py-3 text-right" onClick={stop as never}>
         <div className="inline-flex items-center gap-1 flex-wrap justify-end">
-          <RowActions d={d} acts={acts} onAssign={onAssign} onFail={onFail} />
+          <RowActions d={d} acts={acts} onAssign={onAssign} onFail={onFail} onSchedule={onSchedule} />
           <Link
             to="/delivery/$deliveryId"
             params={{ deliveryId: d.deliveryId }}
@@ -506,11 +514,13 @@ function RowActions({
   acts,
   onAssign,
   onFail,
+  onSchedule,
 }: {
   d: Delivery;
   acts: ReturnType<typeof actionsForStage>;
   onAssign: () => void;
   onFail: () => void;
+  onSchedule: () => void;
 }) {
   const id = d.deliveryId;
   const btn = "inline-flex items-center gap-1 h-7 px-2 rounded-md border border-input bg-background text-[11px] font-medium hover:bg-muted whitespace-nowrap";
@@ -519,6 +529,11 @@ function RowActions({
       {(acts.assign || acts.reassign) && (
         <button className={btn} onClick={onAssign}>
           <UserCheck className="h-3 w-3" /> {acts.reassign ? "Reassign" : "Assign"}
+        </button>
+      )}
+      {acts.schedule && (
+        <button className={btn} onClick={onSchedule}>
+          <CalendarClock className="h-3 w-3" /> Schedule
         </button>
       )}
       {acts.notify && (
