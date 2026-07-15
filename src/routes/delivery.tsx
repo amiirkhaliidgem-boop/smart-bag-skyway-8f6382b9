@@ -188,7 +188,11 @@ function DispatchCenter() {
               onClick={() => setBulkOpen(true)}
             >
               <Users className="h-4 w-4" />
-              Bulk Assign ({selected.size})
+              {(() => {
+                const sel = deliveries.filter((d) => selected.has(d.deliveryId));
+                const anyAssigned = sel.some((d) => d.driver && d.driver !== "—");
+                return `${anyAssigned ? "Bulk Reassign" : "Bulk Assign"} (${selected.size})`;
+              })()}
             </Button>
           )}
         </div>
@@ -368,7 +372,13 @@ function DispatchCenter() {
                 {filtered.length === 0 && (
                   <tr>
                     <td colSpan={12} className="px-4 py-16 text-center text-sm text-muted-foreground">
-                      No deliveries match the current filters.
+                      {deliveries.length === 0
+                        ? "No deliveries yet. Cases enter this module when Lost & Found marks them Ready for Delivery."
+                        : queue === "failed"
+                        ? "No failed deliveries. 👍"
+                        : queue === "ready"
+                        ? "No deliveries ready to schedule."
+                        : "No deliveries match the current filters."}
                     </td>
                   </tr>
                 )}
