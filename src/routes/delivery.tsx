@@ -217,6 +217,28 @@ function DispatchCenter() {
 
       <Card>
         <CardContent className="p-4 space-y-3">
+          <div className="flex flex-wrap items-center gap-1 border-b border-border pb-3">
+            {DELIVERY_QUEUES.map((qq) => (
+              <button
+                key={qq.id}
+                onClick={() => setQueue(qq.id)}
+                className={cn(
+                  "px-3 py-1.5 rounded-md text-xs font-medium border transition inline-flex items-center gap-1.5",
+                  queue === qq.id
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "bg-background border-border text-muted-foreground hover:text-foreground hover:bg-muted",
+                )}
+              >
+                {qq.label}
+                <span className={cn(
+                  "inline-flex items-center justify-center min-w-[1.25rem] h-4 px-1 rounded text-[10px] font-semibold",
+                  queue === qq.id ? "bg-primary-foreground/20" : "bg-muted",
+                )}>
+                  {queueCounts[qq.id] ?? 0}
+                </span>
+              </button>
+            ))}
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-8 gap-2">
             <div className="lg:col-span-2 relative">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -227,32 +249,18 @@ function DispatchCenter() {
                 className="pl-8 h-9"
               />
             </div>
-            <Select value={driverF} onChange={setDriverF} label="Driver">
-              <option value="all">All drivers</option>
-              {driverPool.map((d) => (
-                <option key={d} value={d}>{d}</option>
-              ))}
-              <option value="—">Unassigned</option>
-            </Select>
             <Select value={stageF} onChange={(v) => setStageF(v as never)} label="Status">
               <option value="all">All stages</option>
               {DELIVERY_STAGES.map((s) => (
                 <option key={s} value={s}>{STAGE_LABELS[s]}</option>
               ))}
             </Select>
-            <Select value={priorityF} onChange={(v) => setPriorityF(v as never)} label="Priority">
-              <option value="all">All priorities</option>
-              {PRIORITIES.map((p) => <option key={p} value={p}>{p}</option>)}
-            </Select>
-            <Select value={stationF} onChange={setStationF} label="Station">
-              <option value="all">All stations</option>
-              {stations.map((s) => <option key={s} value={s}>{s}</option>)}
-              {stations.length === 0 && <option value="none" disabled>—</option>}
-            </Select>
-            <Select value={typeF} onChange={setTypeF} label="Type">
-              <option value="all">All types</option>
-              <option value="Home Delivery">Home Delivery</option>
-              <option value="Airport Pickup">Airport Pickup</option>
+            <Select value={driverF} onChange={setDriverF} label="Driver">
+              <option value="all">All drivers</option>
+              {driverPool.map((d) => (
+                <option key={d} value={d}>{d}</option>
+              ))}
+              <option value="—">Unassigned</option>
             </Select>
             <div className="space-y-1">
               <Label className="text-[11px] text-muted-foreground">Date</Label>
@@ -263,16 +271,44 @@ function DispatchCenter() {
                 className="h-9"
               />
             </div>
+            <div className="flex items-end">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-9 w-full"
+                onClick={() => setShowAdvanced((v) => !v)}
+              >
+                {showAdvanced ? "Hide" : "More"} filters
+              </Button>
+            </div>
           </div>
+          {showAdvanced && (
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
+              <Select value={priorityF} onChange={(v) => setPriorityF(v as never)} label="Priority">
+                <option value="all">All priorities</option>
+                {PRIORITIES.map((p) => <option key={p} value={p}>{p}</option>)}
+              </Select>
+              <Select value={stationF} onChange={setStationF} label="Station">
+                <option value="all">All stations</option>
+                {stations.map((s) => <option key={s} value={s}>{s}</option>)}
+                {stations.length === 0 && <option value="none" disabled>—</option>}
+              </Select>
+              <Select value={typeF} onChange={setTypeF} label="Type">
+                <option value="all">All types</option>
+                <option value="Home Delivery">Home Delivery</option>
+                <option value="Airport Pickup">Airport Pickup</option>
+              </Select>
+              <label className="inline-flex items-end gap-2 text-xs pb-2">
+                <input
+                  type="checkbox"
+                  checked={vipOnly}
+                  onChange={(e) => setVipOnly(e.target.checked)}
+                />
+                VIP only
+              </label>
+            </div>
+          )}
           <div className="flex items-center gap-4 text-xs">
-            <label className="inline-flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={vipOnly}
-                onChange={(e) => setVipOnly(e.target.checked)}
-              />
-              VIP only
-            </label>
             <span className="text-muted-foreground">
               Showing {filtered.length} of {deliveries.length} deliveries · {active} active
             </span>
