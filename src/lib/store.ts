@@ -26,6 +26,7 @@ import {
   stageToLegacyStatus,
   stageFromLegacy,
 } from "./delivery/stages";
+import { stageToLfStatus } from "./delivery/stages";
 import type { FailureReason } from "./delivery/stages";
 
 export type CaseStatus =
@@ -1200,6 +1201,20 @@ export function setDeliveryStage(
     role: opts.role,
     force: backward,
   });
+  // Mirror the operational stage into the L&F case so Lost & Found and
+  // Delivery Management never show conflicting statuses.
+  if (d.bagId) {
+    const lf = stageToLfStatus(stage);
+    const c = state.cases.find((x) => x.bagId === d.bagId);
+    if (c && c.lfStatus !== lf) {
+      updateLfStatus(d.bagId, lf, {
+        actor: opts.actor ?? "system",
+        role: opts.role,
+        note: opts.note ?? `Delivery stage → ${stage}`,
+        force: true,
+      });
+    }
+  }
   emit();
 }
 
