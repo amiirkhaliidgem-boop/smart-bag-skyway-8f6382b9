@@ -848,3 +848,62 @@ function SingleFailDialog({
     </Dialog>
   );
 }
+
+function ScheduleDialog({
+  deliveryId,
+  onClose,
+}: {
+  deliveryId: string | null;
+  onClose: () => void;
+}) {
+  const d = useStore((s) =>
+    deliveryId ? s.deliveries.find((x) => x.deliveryId === deliveryId) : undefined,
+  );
+  const initial = () => {
+    const base = d?.eta ? new Date(d.eta) : new Date(Date.now() + 60 * 60 * 1000);
+    // yyyy-MM-ddTHH:mm for datetime-local
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${base.getFullYear()}-${pad(base.getMonth() + 1)}-${pad(base.getDate())}T${pad(base.getHours())}:${pad(base.getMinutes())}`;
+  };
+  const [eta, setEta] = useState(initial);
+  const open = !!deliveryId;
+  function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!deliveryId || !eta) return;
+    scheduleDelivery(deliveryId, new Date(eta).toISOString(), {
+      actor: "Delivery Coordinator",
+      role: "DeliveryCoordinator",
+    });
+    toast.success("Delivery scheduled");
+    onClose();
+  }
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Schedule Delivery</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={submit} className="space-y-4">
+          {d && (
+            <p className="text-xs text-muted-foreground">
+              {d.deliveryId} · {d.passengerName}
+            </p>
+          )}
+          <div className="space-y-1.5">
+            <Label>Delivery date &amp; time</Label>
+            <Input
+              type="datetime-local"
+              value={eta}
+              onChange={(e) => setEta(e.target.value)}
+              required
+            />
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+            <Button type="submit">Schedule</Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
