@@ -414,6 +414,14 @@ function DispatchCenter() {
         deliveryIds={Array.from(selected)}
         onDone={() => setSelected(new Set())}
       />
+      <SingleAssignDialog
+        deliveryId={assignFor}
+        onClose={() => setAssignFor(null)}
+      />
+      <SingleFailDialog
+        deliveryId={failFor}
+        onClose={() => setFailFor(null)}
+      />
     </div>
   );
 }
