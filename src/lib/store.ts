@@ -20,6 +20,12 @@ import type { AuditEntry, ImportAuditEntry } from "./audit/log";
 import type { Role } from "./roles/roles";
 import type { LFStatus } from "./lost-found/statuses";
 import { LF_TO_WORKFLOW, canTransitionLf } from "./lost-found/statuses";
+import {
+  type DeliveryStage,
+  stageToWorkflow,
+  stageToLegacyStatus,
+  stageFromLegacy,
+} from "./delivery/stages";
 
 export type CaseStatus =
   | "Missing"
@@ -251,6 +257,18 @@ export interface Delivery {
   otpCode: string;
   driverLocation?: { lat: number; lng: number; label: string };
   destination?: { lat: number; lng: number; label: string };
+  // ---- Delivery Management operational overlay (all optional; legacy
+  // seeds derive stage from `status` via stageFromLegacy). ----
+  stage?: DeliveryStage;
+  station?: string;
+  deliveryType?: "Home Delivery" | "Airport Pickup";
+  vip?: boolean;
+  failureReason?: string;
+  createdAt?: string;
+  lastUpdatedAt?: string;
+  acceptedAt?: string;
+  collectedAt?: string;
+  deliveredAt?: string;
 }
 
 interface State {
