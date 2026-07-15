@@ -271,6 +271,7 @@ export interface Delivery {
   acceptedAt?: string;
   collectedAt?: string;
   deliveredAt?: string;
+  notes?: { id: string; at: string; actor: string; text: string }[];
 }
 
 interface State {
@@ -1335,6 +1336,44 @@ export function rescheduleDelivery(
     ...opts,
     note: "Rescheduled — back in the queue",
   });
+}
+
+export function scheduleDelivery(
+  deliveryId: string,
+  eta: string,
+  opts: { actor?: string; role?: Role } = {},
+) {
+  writeDeliveryPatch(deliveryId, { eta });
+  setDeliveryStage(deliveryId, "Scheduled", {
+    ...opts,
+    note: `Scheduled for ${new Date(eta).toLocaleString("en-GB")}`,
+  });
+}
+
+export function addDeliveryNote(
+  deliveryId: string,
+  text: string,
+  opts: { actor?: string; role?: Role } = {},
+) {
+  const d = state.deliveries.find((x) => x.deliveryId === deliveryId);
+  if (!d || !text.trim()) return;
+  const note = {
+    id: `NOTE-${Date.now()}`,
+    at: new Date().toISOString(),
+    actor: opts.actor ?? "system",
+    text: text.trim(),
+  };
+  writeDeliveryPatch(deliveryId, { notes: [...(d.notes ?? []), note] });
+  pushAudit({
+    action: "delivery.update",
+    actor: opts.actor ?? "system",
+    role: opts.role,
+    entityType: "delivery",
+    entityId: deliveryId,
+    note: `Note added: ${note.text.slice(0, 80)}`,
+  });
+  emit();
+  return note;
 }
 
 export function generateOtp(deliveryId: string, opts: { actor?: string } = {}) {

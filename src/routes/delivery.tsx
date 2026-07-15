@@ -21,7 +21,7 @@ import {
   createTestNotification,
   ensurePassengerToken,
 } from "@/lib/store";
-import { markDeliveryFailed } from "@/lib/store";
+import { markDeliveryFailed, scheduleDelivery } from "@/lib/store";
 import { FAILURE_REASONS, type FailureReason } from "@/lib/delivery/stages";
 import {
   DELIVERY_STAGES,
@@ -58,6 +58,7 @@ import {
   ShieldCheck,
   Undo2,
   RotateCcw,
+  CalendarClock,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -178,6 +179,7 @@ function DispatchCenter() {
   const [bulkOpen, setBulkOpen] = useState(false);
   const [assignFor, setAssignFor] = useState<string | null>(null);
   const [failFor, setFailFor] = useState<string | null>(null);
+  const [scheduleFor, setScheduleFor] = useState<string | null>(null);
   const toggleAll = () => {
     if (selected.size === filtered.length) setSelected(new Set());
     else setSelected(new Set(filtered.map((d) => d.deliveryId)));
@@ -389,6 +391,7 @@ function DispatchCenter() {
                     onToggle={() => toggleOne(d.deliveryId)}
                     onAssign={() => setAssignFor(d.deliveryId)}
                     onFail={() => setFailFor(d.deliveryId)}
+                    onSchedule={() => setScheduleFor(d.deliveryId)}
                   />
                 ))}
                 {filtered.length === 0 && (
@@ -424,6 +427,10 @@ function DispatchCenter() {
         deliveryId={failFor}
         onClose={() => setFailFor(null)}
       />
+      <ScheduleDialog
+        deliveryId={scheduleFor}
+        onClose={() => setScheduleFor(null)}
+      />
     </div>
   );
 }
@@ -434,12 +441,14 @@ function Row({
   onToggle,
   onAssign,
   onFail,
+  onSchedule,
 }: {
   d: Delivery;
   checked: boolean;
   onToggle: () => void;
   onAssign: () => void;
   onFail: () => void;
+  onSchedule: () => void;
 }) {
   const navigate = useNavigate();
   const stage = getDeliveryStage(d);
@@ -486,7 +495,7 @@ function Row({
       <td className="px-3 py-3 text-xs whitespace-nowrap">{fmt(d.eta)}</td>
       <td className="px-3 py-3 text-right" onClick={stop as never}>
         <div className="inline-flex items-center gap-1 flex-wrap justify-end">
-          <RowActions d={d} acts={acts} onAssign={onAssign} onFail={onFail} />
+          <RowActions d={d} acts={acts} onAssign={onAssign} onFail={onFail} onSchedule={onSchedule} />
           <Link
             to="/delivery/$deliveryId"
             params={{ deliveryId: d.deliveryId }}
@@ -505,11 +514,13 @@ function RowActions({
   acts,
   onAssign,
   onFail,
+  onSchedule,
 }: {
   d: Delivery;
   acts: ReturnType<typeof actionsForStage>;
   onAssign: () => void;
   onFail: () => void;
+  onSchedule: () => void;
 }) {
   const id = d.deliveryId;
   const btn = "inline-flex items-center gap-1 h-7 px-2 rounded-md border border-input bg-background text-[11px] font-medium hover:bg-muted whitespace-nowrap";
@@ -518,6 +529,11 @@ function RowActions({
       {(acts.assign || acts.reassign) && (
         <button className={btn} onClick={onAssign}>
           <UserCheck className="h-3 w-3" /> {acts.reassign ? "Reassign" : "Assign"}
+        </button>
+      )}
+      {acts.schedule && (
+        <button className={btn} onClick={onSchedule}>
+          <CalendarClock className="h-3 w-3" /> Schedule
         </button>
       )}
       {acts.notify && (
@@ -826,6 +842,65 @@ function SingleFailDialog({
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
             <Button type="submit" variant="destructive">Mark Failed</Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function ScheduleDialog({
+  deliveryId,
+  onClose,
+}: {
+  deliveryId: string | null;
+  onClose: () => void;
+}) {
+  const d = useStore((s) =>
+    deliveryId ? s.deliveries.find((x) => x.deliveryId === deliveryId) : undefined,
+  );
+  const initial = () => {
+    const base = d?.eta ? new Date(d.eta) : new Date(Date.now() + 60 * 60 * 1000);
+    // yyyy-MM-ddTHH:mm for datetime-local
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${base.getFullYear()}-${pad(base.getMonth() + 1)}-${pad(base.getDate())}T${pad(base.getHours())}:${pad(base.getMinutes())}`;
+  };
+  const [eta, setEta] = useState(initial);
+  const open = !!deliveryId;
+  function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!deliveryId || !eta) return;
+    scheduleDelivery(deliveryId, new Date(eta).toISOString(), {
+      actor: "Delivery Coordinator",
+      role: "DeliveryCoordinator",
+    });
+    toast.success("Delivery scheduled");
+    onClose();
+  }
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Schedule Delivery</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={submit} className="space-y-4">
+          {d && (
+            <p className="text-xs text-muted-foreground">
+              {d.deliveryId} · {d.passengerName}
+            </p>
+          )}
+          <div className="space-y-1.5">
+            <Label>Delivery date &amp; time</Label>
+            <Input
+              type="datetime-local"
+              value={eta}
+              onChange={(e) => setEta(e.target.value)}
+              required
+            />
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+            <Button type="submit">Schedule</Button>
           </DialogFooter>
         </form>
       </DialogContent>

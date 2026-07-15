@@ -19,6 +19,8 @@ import {
   markDeliveryFailed,
   markReturnedToAirport,
   rescheduleDelivery,
+  scheduleDelivery,
+  addDeliveryNote,
   type Delivery,
 } from "@/lib/store";
 import {
@@ -59,6 +61,8 @@ import {
   Package,
   Undo2,
   RotateCcw,
+  CalendarClock,
+  StickyNote,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -91,7 +95,7 @@ export const Route = createFileRoute("/delivery/$deliveryId")({
   ),
 });
 
-type Tab = "overview" | "passenger" | "delivery" | "timeline" | "notifications" | "audit" | "history";
+type Tab = "overview" | "passenger" | "delivery" | "notes" | "timeline" | "notifications" | "audit" | "history";
 
 function DeliveryDetails() {
   const { deliveryId } = Route.useParams();
@@ -108,6 +112,7 @@ function DeliveryDetails() {
   const [tab, setTab] = useState<Tab>("overview");
   const [assignOpen, setAssignOpen] = useState(false);
   const [failOpen, setFailOpen] = useState(false);
+  const [scheduleOpen, setScheduleOpen] = useState(false);
 
   if (!delivery) throw notFound();
   const stage = getDeliveryStage(delivery);
@@ -144,6 +149,11 @@ function DeliveryDetails() {
                 <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setAssignOpen(true)}>
                   <UserCheck className="h-3.5 w-3.5" />
                   {acts.reassign ? "Reassign" : "Assign"}
+                </Button>
+              )}
+              {acts.schedule && (
+                <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setScheduleOpen(true)}>
+                  <CalendarClock className="h-3.5 w-3.5" /> Schedule
                 </Button>
               )}
               {acts.driverAccept && (
@@ -365,7 +375,7 @@ function DeliveryDetails() {
 
       <div className="border-b border-border">
         <nav className="flex flex-wrap gap-1">
-          {(["overview", "passenger", "delivery", "timeline", "notifications", "audit", "history"] as Tab[]).map((t) => (
+          {(["overview", "passenger", "delivery", "notes", "timeline", "notifications", "audit", "history"] as Tab[]).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -383,6 +393,7 @@ function DeliveryDetails() {
       {tab === "overview" && <OverviewTab d={delivery} kase={kase} />}
       {tab === "passenger" && <PassengerTab d={delivery} kase={kase} />}
       {tab === "delivery" && <DeliveryTab d={delivery} />}
+      {tab === "notes" && <NotesTab d={delivery} />}
       {tab === "timeline" && workflow && <TimelineTab workflow={workflow} />}
       {tab === "timeline" && !workflow && (
         <p className="text-sm text-muted-foreground">No timeline entries yet.</p>
@@ -393,6 +404,7 @@ function DeliveryDetails() {
 
       <AssignDialog open={assignOpen} onOpenChange={setAssignOpen} delivery={delivery} />
       <FailDialog open={failOpen} onOpenChange={setFailOpen} deliveryId={deliveryId} />
+      <ScheduleDialog open={scheduleOpen} onOpenChange={setScheduleOpen} delivery={delivery} />
     </div>
   );
 }
@@ -659,6 +671,116 @@ function FailDialog({
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
             <Button type="submit" variant="destructive">Mark Failed</Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function NotesTab({ d }: { d: Delivery }) {
+  const [text, setText] = useState("");
+  const notes = d.notes ?? [];
+  function submit(e: React.FormEvent) {
+    e.preventDefault();
+    const n = addDeliveryNote(d.deliveryId, text, {
+      actor: "Delivery Coordinator",
+      role: "DeliveryCoordinator",
+    });
+    if (n) {
+      setText("");
+      toast.success("Note added");
+    }
+  }
+  return (
+    <Card>
+      <CardContent className="p-4 space-y-4">
+        <form onSubmit={submit} className="flex gap-2 items-start">
+          <div className="flex-1 space-y-1.5">
+            <Label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <StickyNote className="h-3.5 w-3.5" /> Internal note
+            </Label>
+            <Input
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              placeholder="Add a coordinator-only note about this delivery…"
+            />
+          </div>
+          <Button type="submit" size="sm" disabled={!text.trim()} className="mt-6">
+            Add
+          </Button>
+        </form>
+        {notes.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No internal notes yet.</p>
+        ) : (
+          <ul className="space-y-2">
+            {notes
+              .slice()
+              .reverse()
+              .map((n) => (
+                <li key={n.id} className="rounded-md border border-border p-3 text-sm">
+                  <p className="whitespace-pre-wrap">{n.text}</p>
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    {fmt(n.at)} · {n.actor}
+                  </p>
+                </li>
+              ))}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function ScheduleDialog({
+  open,
+  onOpenChange,
+  delivery,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  delivery: Delivery;
+}) {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const initial = () => {
+    const base = delivery.eta
+      ? new Date(delivery.eta)
+      : new Date(Date.now() + 60 * 60 * 1000);
+    return `${base.getFullYear()}-${pad(base.getMonth() + 1)}-${pad(base.getDate())}T${pad(base.getHours())}:${pad(base.getMinutes())}`;
+  };
+  const [eta, setEta] = useState(initial);
+  function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!eta) return;
+    scheduleDelivery(delivery.deliveryId, new Date(eta).toISOString(), {
+      actor: "Delivery Coordinator",
+      role: "DeliveryCoordinator",
+    });
+    toast.success("Delivery scheduled");
+    onOpenChange(false);
+  }
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Schedule Delivery</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={submit} className="space-y-4">
+          <p className="text-xs text-muted-foreground">
+            {delivery.deliveryId} · {delivery.passengerName}
+          </p>
+          <div className="space-y-1.5">
+            <Label>Delivery date &amp; time</Label>
+            <Input
+              type="datetime-local"
+              value={eta}
+              onChange={(e) => setEta(e.target.value)}
+              required
+            />
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+            <Button type="submit">Schedule</Button>
           </DialogFooter>
         </form>
       </DialogContent>
