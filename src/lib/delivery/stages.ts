@@ -174,6 +174,7 @@ export function actionsForStage(stage: DeliveryStage) {
   return {
     assign: s === "Ready for Delivery" || s === "Scheduled" || s === "Returned to Airport",
     reassign: s === "Assigned" || s === "Driver Accepted",
+    schedule: s === "Ready for Delivery" || s === "Returned to Airport" || s === "Delivery Failed",
     generateOtp: s === "Driver Accepted" || s === "Collected Bag" || s === "Out for Delivery",
     resendOtp: s === "Driver Accepted" || s === "Collected Bag" || s === "Out for Delivery",
     notify: s !== "Delivered",
