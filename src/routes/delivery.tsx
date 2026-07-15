@@ -21,6 +21,8 @@ import {
   createTestNotification,
   ensurePassengerToken,
 } from "@/lib/store";
+import { markDeliveryFailed } from "@/lib/store";
+import { FAILURE_REASONS, type FailureReason } from "@/lib/delivery/stages";
 import {
   DELIVERY_STAGES,
   STAGE_LABELS,
