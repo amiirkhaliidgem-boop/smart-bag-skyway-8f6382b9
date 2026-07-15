@@ -385,6 +385,8 @@ function DispatchCenter() {
                     d={d}
                     checked={selected.has(d.deliveryId)}
                     onToggle={() => toggleOne(d.deliveryId)}
+                    onAssign={() => setAssignFor(d.deliveryId)}
+                    onFail={() => setFailFor(d.deliveryId)}
                   />
                 ))}
                 {filtered.length === 0 && (
