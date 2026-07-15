@@ -21,7 +21,7 @@ import {
   createTestNotification,
   ensurePassengerToken,
 } from "@/lib/store";
-import { markDeliveryFailed } from "@/lib/store";
+import { markDeliveryFailed, scheduleDelivery } from "@/lib/store";
 import { FAILURE_REASONS, type FailureReason } from "@/lib/delivery/stages";
 import {
   DELIVERY_STAGES,
@@ -58,6 +58,7 @@ import {
   ShieldCheck,
   Undo2,
   RotateCcw,
+  CalendarClock,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
