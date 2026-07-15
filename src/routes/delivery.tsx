@@ -739,3 +739,96 @@ function BulkAssignDialog({
     </Dialog>
   );
 }
+
+function SingleAssignDialog({
+  deliveryId,
+  onClose,
+}: {
+  deliveryId: string | null;
+  onClose: () => void;
+}) {
+  const d = useStore((s) => (deliveryId ? s.deliveries.find((x) => x.deliveryId === deliveryId) : undefined));
+  const [driver, setDriver] = useState(driverPool[0]);
+  const open = !!deliveryId;
+  const wasAssigned = !!(d?.driver && d.driver !== "—");
+  function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!deliveryId) return;
+    assignDriver(deliveryId, driver, { actor: "Delivery Coordinator", role: "DeliveryCoordinator" });
+    toast.success(`${wasAssigned ? "Reassigned" : "Assigned"} to ${driver}`);
+    onClose();
+  }
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>{wasAssigned ? "Reassign Driver" : "Assign Driver"}</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={submit} className="space-y-4">
+          {d && (
+            <p className="text-xs text-muted-foreground">
+              {d.deliveryId} · {d.passengerName}
+            </p>
+          )}
+          <div className="space-y-1.5">
+            <Label>Driver</Label>
+            <select
+              className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+              value={driver}
+              onChange={(e) => setDriver(e.target.value)}
+            >
+              {driverPool.map((dv) => <option key={dv} value={dv}>{dv}</option>)}
+            </select>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+            <Button type="submit">{wasAssigned ? "Reassign" : "Assign"}</Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function SingleFailDialog({
+  deliveryId,
+  onClose,
+}: {
+  deliveryId: string | null;
+  onClose: () => void;
+}) {
+  const [reason, setReason] = useState<FailureReason>(FAILURE_REASONS[0]);
+  const open = !!deliveryId;
+  function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!deliveryId) return;
+    markDeliveryFailed(deliveryId, reason, { actor: "Delivery Coordinator", role: "DeliveryCoordinator" });
+    toast.success(`Marked failed — ${reason}`);
+    onClose();
+  }
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Mark Delivery Failed</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={submit} className="space-y-4">
+          <div className="space-y-1.5">
+            <Label>Failure reason</Label>
+            <select
+              className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+              value={reason}
+              onChange={(e) => setReason(e.target.value as FailureReason)}
+            >
+              {FAILURE_REASONS.map((r) => <option key={r} value={r}>{r}</option>)}
+            </select>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+            <Button type="submit" variant="destructive">Mark Failed</Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
