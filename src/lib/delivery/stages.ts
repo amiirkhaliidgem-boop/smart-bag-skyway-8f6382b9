@@ -6,6 +6,7 @@
 
 import type { WorkflowStatus } from "../workflow/statuses";
 import type { DeliveryStatus } from "../store";
+import type { LFStatus } from "../lost-found/statuses";
 
 export const DELIVERY_STAGES = [
   "Ready for Delivery",
@@ -98,6 +99,28 @@ export function stageToLegacyStatus(stage: DeliveryStage): DeliveryStatus {
       return "Out For Delivery";
     case "Delivered":
       return "Delivered";
+  }
+}
+
+// Map a Delivery stage → canonical Lost & Found status so both modules
+// display exactly the same operational state. The Workflow Engine is the
+// single source of truth; this mapping keeps the L&F case in lockstep.
+export function stageToLfStatus(stage: DeliveryStage): LFStatus {
+  switch (stage) {
+    case "Ready for Delivery":
+    case "Scheduled":
+      return "Ready for Delivery";
+    case "Assigned":
+    case "Driver Accepted":
+    case "Collected Bag":
+      return "Assigned Driver";
+    case "Out for Delivery":
+    case "Delivery Failed":
+      return "Out for Delivery";
+    case "Delivered":
+      return "Delivered";
+    case "Returned to Airport":
+      return "Ready for Delivery";
   }
 }
 
