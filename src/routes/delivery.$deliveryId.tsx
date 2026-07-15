@@ -19,6 +19,8 @@ import {
   markDeliveryFailed,
   markReturnedToAirport,
   rescheduleDelivery,
+  scheduleDelivery,
+  addDeliveryNote,
   type Delivery,
 } from "@/lib/store";
 import {
@@ -59,6 +61,8 @@ import {
   Package,
   Undo2,
   RotateCcw,
+  CalendarClock,
+  StickyNote,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -91,7 +95,7 @@ export const Route = createFileRoute("/delivery/$deliveryId")({
   ),
 });
 
-type Tab = "overview" | "passenger" | "delivery" | "timeline" | "notifications" | "audit" | "history";
+type Tab = "overview" | "passenger" | "delivery" | "notes" | "timeline" | "notifications" | "audit" | "history";
 
 function DeliveryDetails() {
   const { deliveryId } = Route.useParams();
@@ -108,6 +112,7 @@ function DeliveryDetails() {
   const [tab, setTab] = useState<Tab>("overview");
   const [assignOpen, setAssignOpen] = useState(false);
   const [failOpen, setFailOpen] = useState(false);
+  const [scheduleOpen, setScheduleOpen] = useState(false);
 
   if (!delivery) throw notFound();
   const stage = getDeliveryStage(delivery);
@@ -144,6 +149,11 @@ function DeliveryDetails() {
                 <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setAssignOpen(true)}>
                   <UserCheck className="h-3.5 w-3.5" />
                   {acts.reassign ? "Reassign" : "Assign"}
+                </Button>
+              )}
+              {acts.schedule && (
+                <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setScheduleOpen(true)}>
+                  <CalendarClock className="h-3.5 w-3.5" /> Schedule
                 </Button>
               )}
               {acts.driverAccept && (
@@ -365,7 +375,7 @@ function DeliveryDetails() {
 
       <div className="border-b border-border">
         <nav className="flex flex-wrap gap-1">
-          {(["overview", "passenger", "delivery", "timeline", "notifications", "audit", "history"] as Tab[]).map((t) => (
+          {(["overview", "passenger", "delivery", "notes", "timeline", "notifications", "audit", "history"] as Tab[]).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -383,6 +393,7 @@ function DeliveryDetails() {
       {tab === "overview" && <OverviewTab d={delivery} kase={kase} />}
       {tab === "passenger" && <PassengerTab d={delivery} kase={kase} />}
       {tab === "delivery" && <DeliveryTab d={delivery} />}
+      {tab === "notes" && <NotesTab d={delivery} />}
       {tab === "timeline" && workflow && <TimelineTab workflow={workflow} />}
       {tab === "timeline" && !workflow && (
         <p className="text-sm text-muted-foreground">No timeline entries yet.</p>
@@ -393,6 +404,7 @@ function DeliveryDetails() {
 
       <AssignDialog open={assignOpen} onOpenChange={setAssignOpen} delivery={delivery} />
       <FailDialog open={failOpen} onOpenChange={setFailOpen} deliveryId={deliveryId} />
+      <ScheduleDialog open={scheduleOpen} onOpenChange={setScheduleOpen} delivery={delivery} />
     </div>
   );
 }
