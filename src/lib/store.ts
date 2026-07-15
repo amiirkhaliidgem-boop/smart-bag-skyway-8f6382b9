@@ -271,6 +271,7 @@ export interface Delivery {
   acceptedAt?: string;
   collectedAt?: string;
   deliveredAt?: string;
+  notes?: { id: string; at: string; actor: string; text: string }[];
 }
 
 interface State {
