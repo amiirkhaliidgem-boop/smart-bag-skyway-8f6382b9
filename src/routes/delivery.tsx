@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import {
   useStore,
@@ -11,10 +11,22 @@ import {
   type Priority,
 } from "@/lib/store";
 import {
+  driverCollect,
+  driverStartTrip,
+  driverMarkDelivered,
+  markReturnedToAirport,
+  rescheduleDelivery,
+  closeDelivery,
+  generateOtp,
+  createTestNotification,
+  ensurePassengerToken,
+} from "@/lib/store";
+import {
   DELIVERY_STAGES,
   STAGE_LABELS,
   STAGE_STYLES,
   DELIVERY_QUEUES,
+  actionsForStage,
   type DeliveryQueueId,
   type DeliveryStage,
 } from "@/lib/delivery/stages";
@@ -40,6 +52,10 @@ import {
   Clock,
   Gauge,
   Search,
+  Bell,
+  ShieldCheck,
+  Undo2,
+  RotateCcw,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
