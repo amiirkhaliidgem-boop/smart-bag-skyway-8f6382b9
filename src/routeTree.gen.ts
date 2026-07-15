@@ -33,6 +33,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as LostFoundIndexRouteImport } from './routes/lost-found.index'
 import { Route as PassengerTokenRouteImport } from './routes/passenger.$token'
 import { Route as LostFoundBagIdRouteImport } from './routes/lost-found.$bagId'
+import { Route as DeliveryDeliveryIdRouteImport } from './routes/delivery.$deliveryId'
 
 const WorkflowMonitorRoute = WorkflowMonitorRouteImport.update({
   id: '/workflow-monitor',
@@ -154,6 +155,11 @@ const LostFoundBagIdRoute = LostFoundBagIdRouteImport.update({
   path: '/$bagId',
   getParentRoute: () => LostFoundRoute,
 } as any)
+const DeliveryDeliveryIdRoute = DeliveryDeliveryIdRouteImport.update({
+  id: '/$deliveryId',
+  path: '/$deliveryId',
+  getParentRoute: () => DeliveryRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -161,7 +167,7 @@ export interface FileRoutesByFullPath {
   '/api-status': typeof ApiStatusRoute
   '/contact-center': typeof ContactCenterRoute
   '/data-io': typeof DataIoRoute
-  '/delivery': typeof DeliveryRoute
+  '/delivery': typeof DeliveryRouteWithChildren
   '/driver-portal': typeof DriverPortalRoute
   '/export-center': typeof ExportCenterRoute
   '/feedback': typeof FeedbackRoute
@@ -177,6 +183,7 @@ export interface FileRoutesByFullPath {
   '/timeline': typeof TimelineRoute
   '/tracking': typeof TrackingRoute
   '/workflow-monitor': typeof WorkflowMonitorRoute
+  '/delivery/$deliveryId': typeof DeliveryDeliveryIdRoute
   '/lost-found/$bagId': typeof LostFoundBagIdRoute
   '/passenger/$token': typeof PassengerTokenRoute
   '/lost-found/': typeof LostFoundIndexRoute
@@ -187,7 +194,7 @@ export interface FileRoutesByTo {
   '/api-status': typeof ApiStatusRoute
   '/contact-center': typeof ContactCenterRoute
   '/data-io': typeof DataIoRoute
-  '/delivery': typeof DeliveryRoute
+  '/delivery': typeof DeliveryRouteWithChildren
   '/driver-portal': typeof DriverPortalRoute
   '/export-center': typeof ExportCenterRoute
   '/feedback': typeof FeedbackRoute
@@ -202,6 +209,7 @@ export interface FileRoutesByTo {
   '/timeline': typeof TimelineRoute
   '/tracking': typeof TrackingRoute
   '/workflow-monitor': typeof WorkflowMonitorRoute
+  '/delivery/$deliveryId': typeof DeliveryDeliveryIdRoute
   '/lost-found/$bagId': typeof LostFoundBagIdRoute
   '/passenger/$token': typeof PassengerTokenRoute
   '/lost-found': typeof LostFoundIndexRoute
@@ -213,7 +221,7 @@ export interface FileRoutesById {
   '/api-status': typeof ApiStatusRoute
   '/contact-center': typeof ContactCenterRoute
   '/data-io': typeof DataIoRoute
-  '/delivery': typeof DeliveryRoute
+  '/delivery': typeof DeliveryRouteWithChildren
   '/driver-portal': typeof DriverPortalRoute
   '/export-center': typeof ExportCenterRoute
   '/feedback': typeof FeedbackRoute
@@ -229,6 +237,7 @@ export interface FileRoutesById {
   '/timeline': typeof TimelineRoute
   '/tracking': typeof TrackingRoute
   '/workflow-monitor': typeof WorkflowMonitorRoute
+  '/delivery/$deliveryId': typeof DeliveryDeliveryIdRoute
   '/lost-found/$bagId': typeof LostFoundBagIdRoute
   '/passenger/$token': typeof PassengerTokenRoute
   '/lost-found/': typeof LostFoundIndexRoute
@@ -257,6 +266,7 @@ export interface FileRouteTypes {
     | '/timeline'
     | '/tracking'
     | '/workflow-monitor'
+    | '/delivery/$deliveryId'
     | '/lost-found/$bagId'
     | '/passenger/$token'
     | '/lost-found/'
@@ -282,6 +292,7 @@ export interface FileRouteTypes {
     | '/timeline'
     | '/tracking'
     | '/workflow-monitor'
+    | '/delivery/$deliveryId'
     | '/lost-found/$bagId'
     | '/passenger/$token'
     | '/lost-found'
@@ -308,6 +319,7 @@ export interface FileRouteTypes {
     | '/timeline'
     | '/tracking'
     | '/workflow-monitor'
+    | '/delivery/$deliveryId'
     | '/lost-found/$bagId'
     | '/passenger/$token'
     | '/lost-found/'
@@ -319,7 +331,7 @@ export interface RootRouteChildren {
   ApiStatusRoute: typeof ApiStatusRoute
   ContactCenterRoute: typeof ContactCenterRoute
   DataIoRoute: typeof DataIoRoute
-  DeliveryRoute: typeof DeliveryRoute
+  DeliveryRoute: typeof DeliveryRouteWithChildren
   DriverPortalRoute: typeof DriverPortalRoute
   ExportCenterRoute: typeof ExportCenterRoute
   FeedbackRoute: typeof FeedbackRoute
@@ -507,8 +519,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LostFoundBagIdRouteImport
       parentRoute: typeof LostFoundRoute
     }
+    '/delivery/$deliveryId': {
+      id: '/delivery/$deliveryId'
+      path: '/$deliveryId'
+      fullPath: '/delivery/$deliveryId'
+      preLoaderRoute: typeof DeliveryDeliveryIdRouteImport
+      parentRoute: typeof DeliveryRoute
+    }
   }
 }
+
+interface DeliveryRouteChildren {
+  DeliveryDeliveryIdRoute: typeof DeliveryDeliveryIdRoute
+}
+
+const DeliveryRouteChildren: DeliveryRouteChildren = {
+  DeliveryDeliveryIdRoute: DeliveryDeliveryIdRoute,
+}
+
+const DeliveryRouteWithChildren = DeliveryRoute._addFileChildren(
+  DeliveryRouteChildren,
+)
 
 interface LostFoundRouteChildren {
   LostFoundBagIdRoute: typeof LostFoundBagIdRoute
@@ -542,7 +573,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiStatusRoute: ApiStatusRoute,
   ContactCenterRoute: ContactCenterRoute,
   DataIoRoute: DataIoRoute,
-  DeliveryRoute: DeliveryRoute,
+  DeliveryRoute: DeliveryRouteWithChildren,
   DriverPortalRoute: DriverPortalRoute,
   ExportCenterRoute: ExportCenterRoute,
   FeedbackRoute: FeedbackRoute,

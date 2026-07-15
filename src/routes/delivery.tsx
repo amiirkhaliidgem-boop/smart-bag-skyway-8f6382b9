@@ -1,17 +1,22 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useMemo, useState } from "react";
 import {
   useStore,
-  updateDelivery,
-  addDelivery,
   driverPool,
-  ensurePassengerToken,
-  createTestNotification,
-  type DeliveryStatus,
-  type OtpStatus,
+  assignDriver,
+  bulkAssignDriver,
+  setDeliveryStage,
+  getDeliveryStage,
   type Delivery,
+  type Priority,
 } from "@/lib/store";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  DELIVERY_STAGES,
+  STAGE_LABELS,
+  STAGE_STYLES,
+  type DeliveryStage,
+} from "@/lib/delivery/stages";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,126 +25,298 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
   DialogFooter,
+  DialogTrigger,
 } from "@/components/ui/dialog";
-import { StatusBadge } from "@/components/status-badge";
 import {
   Truck,
-  Plus,
-  ShieldCheck,
-  Clock,
+  UserCheck,
+  Users,
   CheckCircle2,
-  ShieldAlert,
-  MoreHorizontal,
-  ExternalLink,
-  Link as LinkIcon,
-  Send,
-  MessageCircle,
+  XCircle,
+  Package,
+  Clock,
+  Gauge,
+  Search,
 } from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
-
-const STATUSES: DeliveryStatus[] = ["Pending", "Assigned", "Out For Delivery", "Delivered"];
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/delivery")({
   head: () => ({
     meta: [
-      { title: "Delivery Management — Smart Baggage Ecosystem" },
-      { name: "description", content: "Schedule and dispatch home baggage delivery." },
+      { title: "Delivery Dispatch Center — IAB Smart Baggage Ecosystem" },
+      {
+        name: "description",
+        content:
+          "Operational dispatch center for airport home baggage delivery — assign drivers, track stages, and manage SLA in real time.",
+      },
     ],
   }),
-  component: DeliveryPage,
+  component: DispatchCenter,
 });
 
-function DeliveryPage() {
+const PRIORITIES: Priority[] = ["Low", "Normal", "High", "VIP"];
+
+function DispatchCenter() {
   const deliveries = useStore((s) => s.deliveries);
-  const [open, setOpen] = useState(false);
 
-  const counts = STATUSES.reduce<Record<string, number>>((acc, s) => {
-    acc[s] = deliveries.filter((d) => d.status === s).length;
-    return acc;
-  }, {});
+  // ---- Filters (URL-independent; local UI state for this operational view)
+  const [q, setQ] = useState("");
+  const [driverF, setDriverF] = useState("all");
+  const [stageF, setStageF] = useState<DeliveryStage | "all">("all");
+  const [priorityF, setPriorityF] = useState<Priority | "all">("all");
+  const [stationF, setStationF] = useState("all");
+  const [typeF, setTypeF] = useState("all");
+  const [vipOnly, setVipOnly] = useState(false);
+  const [dateF, setDateF] = useState("");
 
-  const otpVerified = deliveries.filter((d) => d.otpStatus === "Verified").length;
-  const otpPending = deliveries.filter((d) => d.otpStatus === "Pending" || d.otpStatus === "Sent").length;
-  const inTransit = counts["Out For Delivery"] ?? 0;
-  const completed = counts["Delivered"] ?? 0;
+  const stations = useMemo(
+    () =>
+      Array.from(
+        new Set(deliveries.map((d) => d.station).filter((s): s is string => !!s)),
+      ),
+    [deliveries],
+  );
+
+  const filtered = useMemo(() => {
+    return deliveries.filter((d) => {
+      const stage = getDeliveryStage(d);
+      const hay = `${d.deliveryId} ${d.pirNumber} ${d.passengerName} ${d.mobile} ${d.address} ${d.driver}`.toLowerCase();
+      if (q && !hay.includes(q.toLowerCase())) return false;
+      if (driverF !== "all" && d.driver !== driverF) return false;
+      if (stageF !== "all" && stage !== stageF) return false;
+      if (priorityF !== "all" && d.priority !== priorityF) return false;
+      if (stationF !== "all" && d.station !== stationF) return false;
+      if (typeF !== "all" && (d.deliveryType ?? "Home Delivery") !== typeF)
+        return false;
+      if (vipOnly && d.priority !== "VIP") return false;
+      if (dateF) {
+        const iso = new Date(d.eta).toISOString().slice(0, 10);
+        if (iso !== dateF) return false;
+      }
+      return true;
+    });
+  }, [deliveries, q, driverF, stageF, priorityF, stationF, typeF, vipOnly, dateF]);
+
+  // ---- KPIs
+  const stageCounts = useMemo(() => {
+    const m: Record<DeliveryStage, number> = {} as never;
+    for (const s of DELIVERY_STAGES) m[s] = 0;
+    for (const d of deliveries) m[getDeliveryStage(d)]++;
+    return m;
+  }, [deliveries]);
+
+  const today = new Date().toISOString().slice(0, 10);
+  const deliveredToday = deliveries.filter(
+    (d) =>
+      getDeliveryStage(d) === "Delivered" &&
+      (d.deliveredAt ?? d.eta).slice(0, 10) === today,
+  ).length;
+
+  const completed = deliveries.filter(
+    (d) => getDeliveryStage(d) === "Delivered",
+  );
+  const durationsMs = completed
+    .map((d) => {
+      const start = d.createdAt ? new Date(d.createdAt).getTime() : NaN;
+      const end = d.deliveredAt ? new Date(d.deliveredAt).getTime() : NaN;
+      return Number.isFinite(start) && Number.isFinite(end) ? end - start : null;
+    })
+    .filter((v): v is number => v != null && v > 0);
+  const avgHrs = durationsMs.length
+    ? durationsMs.reduce((a, b) => a + b, 0) / durationsMs.length / 3_600_000
+    : null;
+
+  const active = deliveries.filter(
+    (d) => !["Delivered", "Returned to Airport"].includes(getDeliveryStage(d)),
+  ).length;
+  const failed = stageCounts["Delivery Failed"] ?? 0;
+  const slaOk = deliveries.filter((d) => {
+    const s = getDeliveryStage(d);
+    return s === "Delivered" && d.deliveredAt && d.eta &&
+      new Date(d.deliveredAt).getTime() <= new Date(d.eta).getTime();
+  }).length;
+  const slaPct = completed.length ? Math.round((slaOk / completed.length) * 100) : 100;
+
+  // ---- Selection (bulk actions)
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const toggleAll = () => {
+    if (selected.size === filtered.length) setSelected(new Set());
+    else setSelected(new Set(filtered.map((d) => d.deliveryId)));
+  };
+  const toggleOne = (id: string) => {
+    const next = new Set(selected);
+    next.has(id) ? next.delete(id) : next.add(id);
+    setSelected(next);
+  };
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Home Baggage Delivery</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
+            Delivery Dispatch Center
+          </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Coordinate last-mile delivery to passenger addresses across Greater Cairo.
+            Operational back office for home baggage delivery. Cases enter this
+            module when Lost &amp; Found marks them Ready for Delivery.
           </p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button className="gap-2"><Plus className="h-4 w-4" /> Schedule Delivery</Button>
-          </DialogTrigger>
-          <NewDeliveryDialog onClose={() => setOpen(false)} />
-        </Dialog>
+        <div className="flex items-center gap-2">
+          {selected.size > 0 && (
+            <Button
+              variant="outline"
+              className="gap-2"
+              onClick={() => setBulkOpen(true)}
+            >
+              <Users className="h-4 w-4" />
+              Bulk Assign ({selected.size})
+            </Button>
+          )}
+        </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <KpiCard label="In Transit" value={inTransit} icon={<Truck className="h-5 w-5" />} tone="primary" />
-        <KpiCard label="Completed Today" value={completed} icon={<CheckCircle2 className="h-5 w-5" />} tone="emerald" />
-        <KpiCard label="OTP Verified" value={otpVerified} icon={<ShieldCheck className="h-5 w-5" />} tone="indigo" />
-        <KpiCard label="Awaiting OTP" value={otpPending} icon={<ShieldAlert className="h-5 w-5" />} tone="amber" />
-      </div>
-
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {STATUSES.map((s) => (
-          <Card key={s}>
-            <CardContent className="p-4 flex items-center justify-between">
-              <div>
-                <p className="text-xs text-muted-foreground">{s}</p>
-                <p className="text-lg font-bold tabular-nums">{counts[s] ?? 0}</p>
-              </div>
-              <StatusBadge status={s} />
-            </CardContent>
-          </Card>
-        ))}
+      <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-3">
+        <Kpi label="Ready for Delivery" value={stageCounts["Ready for Delivery"]} icon={<Package className="h-5 w-5" />} tone="slate" />
+        <Kpi label="Scheduled" value={stageCounts["Scheduled"]} icon={<Clock className="h-5 w-5" />} tone="blue" />
+        <Kpi label="Assigned" value={stageCounts["Assigned"] + stageCounts["Driver Accepted"]} icon={<UserCheck className="h-5 w-5" />} tone="indigo" />
+        <Kpi label="Out for Delivery" value={stageCounts["Out for Delivery"]} icon={<Truck className="h-5 w-5" />} tone="cyan" />
+        <Kpi label="Delivered Today" value={deliveredToday} icon={<CheckCircle2 className="h-5 w-5" />} tone="emerald" />
+        <Kpi label="Failed" value={failed} icon={<XCircle className="h-5 w-5" />} tone="rose" />
+        <Kpi
+          label="Avg Delivery Time"
+          value={avgHrs != null ? `${avgHrs.toFixed(1)}h` : "—"}
+          icon={<Clock className="h-5 w-5" />}
+          tone="amber"
+        />
+        <Kpi
+          label="SLA %"
+          value={`${slaPct}%`}
+          icon={<Gauge className="h-5 w-5" />}
+          tone={slaPct >= 90 ? "emerald" : slaPct >= 70 ? "amber" : "rose"}
+        />
       </div>
 
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Delivery Orders</CardTitle>
-        </CardHeader>
+        <CardContent className="p-4 space-y-3">
+          <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-8 gap-2">
+            <div className="lg:col-span-2 relative">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="Search ID, PIR, passenger, phone…"
+                className="pl-8 h-9"
+              />
+            </div>
+            <Select value={driverF} onChange={setDriverF} label="Driver">
+              <option value="all">All drivers</option>
+              {driverPool.map((d) => (
+                <option key={d} value={d}>{d}</option>
+              ))}
+              <option value="—">Unassigned</option>
+            </Select>
+            <Select value={stageF} onChange={(v) => setStageF(v as never)} label="Status">
+              <option value="all">All stages</option>
+              {DELIVERY_STAGES.map((s) => (
+                <option key={s} value={s}>{STAGE_LABELS[s]}</option>
+              ))}
+            </Select>
+            <Select value={priorityF} onChange={(v) => setPriorityF(v as never)} label="Priority">
+              <option value="all">All priorities</option>
+              {PRIORITIES.map((p) => <option key={p} value={p}>{p}</option>)}
+            </Select>
+            <Select value={stationF} onChange={setStationF} label="Station">
+              <option value="all">All stations</option>
+              {stations.map((s) => <option key={s} value={s}>{s}</option>)}
+              {stations.length === 0 && <option value="none" disabled>—</option>}
+            </Select>
+            <Select value={typeF} onChange={setTypeF} label="Type">
+              <option value="all">All types</option>
+              <option value="Home Delivery">Home Delivery</option>
+              <option value="Airport Pickup">Airport Pickup</option>
+            </Select>
+            <div className="space-y-1">
+              <Label className="text-[11px] text-muted-foreground">Date</Label>
+              <Input
+                type="date"
+                value={dateF}
+                onChange={(e) => setDateF(e.target.value)}
+                className="h-9"
+              />
+            </div>
+          </div>
+          <div className="flex items-center gap-4 text-xs">
+            <label className="inline-flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={vipOnly}
+                onChange={(e) => setVipOnly(e.target.checked)}
+              />
+              VIP only
+            </label>
+            <span className="text-muted-foreground">
+              Showing {filtered.length} of {deliveries.length} deliveries · {active} active
+            </span>
+            {(q || driverF !== "all" || stageF !== "all" || priorityF !== "all" || stationF !== "all" || typeF !== "all" || vipOnly || dateF) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7"
+                onClick={() => {
+                  setQ(""); setDriverF("all"); setStageF("all");
+                  setPriorityF("all"); setStationF("all"); setTypeF("all");
+                  setVipOnly(false); setDateF("");
+                }}
+              >
+                Clear filters
+              </Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-muted/60 text-xs uppercase tracking-wider text-muted-foreground">
                 <tr>
-                  <th className="text-left px-4 py-3 font-medium">Delivery ID</th>
-                  <th className="text-left px-4 py-3 font-medium">Bag</th>
-                  <th className="text-left px-4 py-3 font-medium">Passenger</th>
-                  <th className="text-left px-4 py-3 font-medium">Address</th>
-                  <th className="text-left px-4 py-3 font-medium">Driver</th>
-                  <th className="text-left px-4 py-3 font-medium">ETA</th>
-                  <th className="text-left px-4 py-3 font-medium">Status</th>
-                  <th className="text-left px-4 py-3 font-medium">OTP</th>
-                  <th className="text-left px-4 py-3 font-medium">Passenger</th>
-                  <th className="text-right px-4 py-3 font-medium">Actions</th>
+                  <th className="w-8 px-3 py-3">
+                    <input
+                      type="checkbox"
+                      checked={filtered.length > 0 && selected.size === filtered.length}
+                      onChange={toggleAll}
+                    />
+                  </th>
+                  <th className="text-left px-3 py-3 font-medium">Delivery</th>
+                  <th className="text-left px-3 py-3 font-medium">PIR</th>
+                  <th className="text-left px-3 py-3 font-medium">Passenger</th>
+                  <th className="text-left px-3 py-3 font-medium">Mobile</th>
+                  <th className="text-left px-3 py-3 font-medium">Address</th>
+                  <th className="text-left px-3 py-3 font-medium">Driver</th>
+                  <th className="text-left px-3 py-3 font-medium">Status</th>
+                  <th className="text-left px-3 py-3 font-medium">Priority</th>
+                  <th className="text-left px-3 py-3 font-medium">Created</th>
+                  <th className="text-left px-3 py-3 font-medium">ETA</th>
+                  <th className="text-right px-3 py-3 font-medium">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {deliveries.map((d) => (
-                  <DeliveryRow key={d.deliveryId} d={d} />
+                {filtered.map((d) => (
+                  <Row
+                    key={d.deliveryId}
+                    d={d}
+                    checked={selected.has(d.deliveryId)}
+                    onToggle={() => toggleOne(d.deliveryId)}
+                  />
                 ))}
-                {deliveries.length === 0 && (
+                {filtered.length === 0 && (
                   <tr>
-                    <td colSpan={10} className="px-4 py-12 text-center text-sm text-muted-foreground">
-                      No deliveries scheduled.
+                    <td colSpan={12} className="px-4 py-16 text-center text-sm text-muted-foreground">
+                      No deliveries match the current filters.
                     </td>
                   </tr>
                 )}
@@ -148,48 +325,85 @@ function DeliveryPage() {
           </div>
         </CardContent>
       </Card>
+
+      <BulkAssignDialog
+        open={bulkOpen}
+        onOpenChange={setBulkOpen}
+        deliveryIds={Array.from(selected)}
+        onDone={() => setSelected(new Set())}
+      />
     </div>
   );
 }
 
-function KpiCard({
-  label,
-  value,
-  icon,
-  tone,
+function Row({
+  d,
+  checked,
+  onToggle,
 }: {
-  label: string;
-  value: number;
-  icon: React.ReactNode;
-  tone: "primary" | "emerald" | "indigo" | "amber";
+  d: Delivery;
+  checked: boolean;
+  onToggle: () => void;
 }) {
-  const tones: Record<string, string> = {
-    primary: "bg-primary/10 text-primary",
-    emerald: "bg-emerald-100 text-emerald-700",
-    indigo: "bg-indigo-100 text-indigo-700",
-    amber: "bg-amber-100 text-amber-700",
-  };
+  const stage = getDeliveryStage(d);
   return (
-    <Card>
-      <CardContent className="p-5 flex items-center gap-4">
-        <div className={`h-10 w-10 rounded-lg grid place-items-center ${tones[tone]}`}>{icon}</div>
-        <div>
-          <p className="text-xs text-muted-foreground">{label}</p>
-          <p className="text-2xl font-bold tabular-nums">{value}</p>
+    <tr className="hover:bg-muted/40">
+      <td className="px-3 py-3">
+        <input type="checkbox" checked={checked} onChange={onToggle} />
+      </td>
+      <td className="px-3 py-3">
+        <Link
+          to="/delivery/$deliveryId"
+          params={{ deliveryId: d.deliveryId }}
+          className="font-mono text-xs font-semibold text-primary hover:underline"
+        >
+          {d.deliveryId}
+        </Link>
+      </td>
+      <td className="px-3 py-3 font-mono text-xs">{d.pirNumber}</td>
+      <td className="px-3 py-3">
+        <div className="flex items-center gap-1.5">
+          {d.priority === "VIP" && (
+            <span className="text-[10px] font-bold text-amber-700 bg-amber-100 border border-amber-200 px-1 rounded">VIP</span>
+          )}
+          <span>{d.passengerName}</span>
         </div>
-      </CardContent>
-    </Card>
+      </td>
+      <td className="px-3 py-3 font-mono text-xs">{d.mobile}</td>
+      <td className="px-3 py-3 text-xs text-muted-foreground max-w-[220px] truncate" title={d.address}>{d.address}</td>
+      <td className="px-3 py-3 text-xs">
+        {d.driver && d.driver !== "—" ? d.driver : <span className="text-muted-foreground italic">Unassigned</span>}
+      </td>
+      <td className="px-3 py-3">
+        <span className={cn("inline-flex items-center px-2 py-0.5 rounded-full border text-[11px] font-medium whitespace-nowrap", STAGE_STYLES[stage])}>
+          {STAGE_LABELS[stage]}
+        </span>
+      </td>
+      <td className="px-3 py-3">
+        <span className="text-xs">{d.priority}</span>
+      </td>
+      <td className="px-3 py-3 text-xs text-muted-foreground whitespace-nowrap">
+        {fmt(d.createdAt ?? d.eta)}
+      </td>
+      <td className="px-3 py-3 text-xs whitespace-nowrap">{fmt(d.eta)}</td>
+      <td className="px-3 py-3 text-right">
+        <Link
+          to="/delivery/$deliveryId"
+          params={{ deliveryId: d.deliveryId }}
+          className="inline-flex items-center h-8 px-3 rounded-md border border-input bg-background text-xs font-medium hover:bg-muted"
+        >
+          Open
+        </Link>
+      </td>
+    </tr>
   );
 }
 
-function formatEta(iso: string) {
+function fmt(iso: string) {
   try {
-    const d = new Date(iso);
-    if (Number.isNaN(d.getTime())) return "—";
-    // Force UTC to avoid SSR/client timezone hydration mismatches.
-    return d.toLocaleString("en-US", {
+    return new Date(iso).toLocaleString("en-GB", {
+      day: "2-digit",
       month: "short",
-      day: "numeric",
       hour: "2-digit",
       minute: "2-digit",
       timeZone: "UTC",
@@ -199,389 +413,110 @@ function formatEta(iso: string) {
   }
 }
 
-function otpStyles(status: OtpStatus) {
-  switch (status) {
-    case "Verified":
-      return "bg-emerald-100 text-emerald-700 border-emerald-200";
-    case "Sent":
-      return "bg-blue-100 text-blue-700 border-blue-200";
-    case "Failed":
-      return "bg-rose-100 text-rose-700 border-rose-200";
-    default:
-      return "bg-slate-100 text-slate-700 border-slate-200";
-  }
-}
-
-function DeliveryRow({ d }: { d: Delivery }) {
-  const [otpOpen, setOtpOpen] = useState(false);
+function Kpi({
+  label,
+  value,
+  icon,
+  tone,
+}: {
+  label: string;
+  value: number | string;
+  icon: React.ReactNode;
+  tone: "primary" | "emerald" | "indigo" | "amber" | "rose" | "cyan" | "blue" | "slate";
+}) {
+  const tones: Record<string, string> = {
+    primary: "bg-primary/10 text-primary",
+    emerald: "bg-emerald-100 text-emerald-700",
+    indigo: "bg-indigo-100 text-indigo-700",
+    amber: "bg-amber-100 text-amber-700",
+    rose: "bg-rose-100 text-rose-700",
+    cyan: "bg-cyan-100 text-cyan-700",
+    blue: "bg-blue-100 text-blue-700",
+    slate: "bg-slate-100 text-slate-700",
+  };
   return (
-    <tr className="hover:bg-muted/40">
-      <td className="px-4 py-3 font-mono text-xs font-semibold text-primary">{d.deliveryId}</td>
-      <td className="px-4 py-3 font-mono text-xs">{d.bagId}</td>
-      <td className="px-4 py-3">{d.passengerName}</td>
-      <td className="px-4 py-3 text-xs text-muted-foreground max-w-xs">{d.address}</td>
-      <td className="px-4 py-3">{d.driver}</td>
-      <td className="px-4 py-3 text-xs whitespace-nowrap">
-        <span className="inline-flex items-center gap-1">
-          <Clock className="h-3 w-3 text-muted-foreground" />
-          {formatEta(d.eta)}
-        </span>
-      </td>
-      <td className="px-4 py-3">
-        <select
-          className="h-8 rounded-md border border-input bg-background px-2 text-xs"
-          value={d.status}
-          onChange={(e) => {
-            const next = e.target.value as DeliveryStatus;
-            const driver =
-              next !== "Pending" && d.driver === "—"
-                ? driverPool[Math.floor(Math.random() * driverPool.length)]
-                : d.driver;
-            const otpStatus =
-              next === "Out For Delivery" && d.otpStatus === "Pending" ? "Sent" : d.otpStatus;
-            updateDelivery(d.deliveryId, { status: next, driver, otpStatus });
-            toast.success(`${d.deliveryId} → ${next}`);
-          }}
-        >
-          {STATUSES.map((s) => (
-            <option key={s} value={s}>{s}</option>
-          ))}
-        </select>
-      </td>
-      <td className="px-4 py-3">
-        <span
-          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[11px] font-medium ${otpStyles(
-            d.otpStatus,
-          )}`}
-        >
-          <ShieldCheck className="h-3 w-3" />
-          {d.otpStatus}
-        </span>
-      </td>
-      <td className="px-4 py-3">
-        <PassengerActions d={d} />
-      </td>
-      <td className="px-4 py-3 text-right">
-        <Dialog open={otpOpen} onOpenChange={setOtpOpen}>
-          <DialogTrigger asChild>
-            <Button size="sm" variant="outline" disabled={d.otpStatus === "Verified"}>
-              Verify OTP
-            </Button>
-          </DialogTrigger>
-          <OtpDialog d={d} onClose={() => setOtpOpen(false)} />
-        </Dialog>
-      </td>
-    </tr>
-  );
-}
-
-function OtpDialog({ d, onClose }: { d: Delivery; onClose: () => void }) {
-  const [code, setCode] = useState("");
-  function submit(e: React.FormEvent) {
-    e.preventDefault();
-    if (code.trim() === d.otpCode) {
-      updateDelivery(d.deliveryId, { otpStatus: "Verified", status: "Delivered" });
-      toast.success(`OTP verified · ${d.deliveryId} delivered`);
-      onClose();
-    } else {
-      updateDelivery(d.deliveryId, { otpStatus: "Failed" });
-      toast.error("Invalid OTP code");
-    }
-  }
-  return (
-    <DialogContent className="max-w-sm">
-      <DialogHeader>
-        <DialogTitle>OTP Verification</DialogTitle>
-      </DialogHeader>
-      <form onSubmit={submit} className="space-y-4">
-        <p className="text-sm text-muted-foreground">
-          Enter the 6-digit code shared with{" "}
-          <span className="font-medium text-foreground">{d.passengerName}</span> to
-          confirm handover of <span className="font-mono">{d.bagId}</span>.
-        </p>
-        <div className="space-y-1.5">
-          <Label>OTP Code</Label>
-          <Input
-            value={code}
-            onChange={(e) => setCode(e.target.value)}
-            placeholder="6-digit code"
-            inputMode="numeric"
-            maxLength={6}
-            required
-          />
-          <p className="text-[11px] text-muted-foreground">
-            Demo code: <span className="font-mono">{d.otpCode}</span>
-          </p>
+    <Card>
+      <CardContent className="p-3 flex items-center gap-3">
+        <div className={cn("h-9 w-9 rounded-lg grid place-items-center", tones[tone])}>{icon}</div>
+        <div className="min-w-0">
+          <p className="text-[11px] text-muted-foreground truncate">{label}</p>
+          <p className="text-xl font-bold tabular-nums">{value}</p>
         </div>
-        <DialogFooter>
-          <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-          <Button type="submit">Confirm Delivery</Button>
-        </DialogFooter>
-      </form>
-    </DialogContent>
+      </CardContent>
+    </Card>
   );
 }
 
-function NewDeliveryDialog({ onClose }: { onClose: () => void }) {
-  const readyCases = useStore((s) =>
-    s.cases.filter(
-      (c) => c.status === "Ready For Delivery" || c.status === "Stored",
-    ),
+function Select({
+  value,
+  onChange,
+  label,
+  children,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="space-y-1">
+      <Label className="text-[11px] text-muted-foreground">{label}</Label>
+      <select
+        className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      >
+        {children}
+      </select>
+    </div>
   );
-  const [bagId, setBagId] = useState(readyCases[0]?.bagId ?? "");
-  const selected = readyCases.find((x) => x.bagId === bagId);
+}
 
-  // Derive the authoritative address from the shared L&F case. Prefer the
-  // wizard's single free-form fullAddress; fall back to legacy structured
-  // fields for backward compatibility.
-  function deriveAddress(c: typeof selected): string {
-    if (!c) return "";
-    const d = c.delivery;
-    if (!d) return "";
-    if (d.fullAddress && d.fullAddress.trim()) return d.fullAddress;
-    return [
-      d.building,
-      d.street,
-      d.district,
-      d.city,
-      d.governorate,
-      d.country,
-    ]
-      .filter(Boolean)
-      .join(", ");
-  }
-
-  const [address, setAddress] = useState(() => deriveAddress(selected));
-  const [addressTouched, setAddressTouched] = useState(false);
+function BulkAssignDialog({
+  open,
+  onOpenChange,
+  deliveryIds,
+  onDone,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  deliveryIds: string[];
+  onDone: () => void;
+}) {
   const [driver, setDriver] = useState(driverPool[0]);
-  const [eta, setEta] = useState(() => {
-    const t = new Date(Date.now() + 4 * 60 * 60 * 1000);
-    return t.toISOString().slice(0, 16);
-  });
-
-  // Re-prefill the address whenever the operator selects a different case,
-  // unless they've manually edited it in this session.
-  function onBagChange(next: string) {
-    setBagId(next);
-    if (!addressTouched) {
-      const c = readyCases.find((x) => x.bagId === next);
-      setAddress(deriveAddress(c));
-    }
-  }
-
   function submit(e: React.FormEvent) {
     e.preventDefault();
-    const c = readyCases.find((x) => x.bagId === bagId);
-    if (!c) {
-      toast.error("Please select a bag.");
-      return;
-    }
-    if (!address.trim()) {
-      toast.error("Address is required.");
-      return;
-    }
-    const otpCode = String(Math.floor(100000 + Math.random() * 900000));
-    const d = addDelivery({
-      bagId: c.bagId,
-      passengerName: c.passengerName,
-      address,
-      mobile: c.contact,
-      pirNumber: c.pirNumber,
-      priority: "Normal",
-      status: "Assigned",
-      driver,
-      eta: new Date(eta).toISOString(),
-      otpStatus: "Pending",
-      otpCode,
-    });
-    toast.success(`Scheduled ${d.deliveryId} · OTP ${otpCode}`);
-    onClose();
+    bulkAssignDriver(deliveryIds, driver, { actor: "Delivery Coordinator" });
+    toast.success(`Assigned ${deliveryIds.length} deliveries to ${driver}`);
+    onOpenChange(false);
+    onDone();
   }
-
   return (
-    <DialogContent className="max-w-lg">
-      <DialogHeader>
-        <DialogTitle>Schedule Home Delivery</DialogTitle>
-      </DialogHeader>
-      <form onSubmit={submit} className="space-y-4">
-        <div className="space-y-1.5">
-          <Label>Baggage</Label>
-          <select
-            className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
-            value={bagId}
-            onChange={(e) => onBagChange(e.target.value)}
-          >
-            {readyCases.length === 0 && <option value="">No eligible bags</option>}
-            {readyCases.map((c) => (
-              <option key={c.bagId} value={c.bagId}>
-                {c.bagId} · {c.passengerName}
-              </option>
-            ))}
-          </select>
-        </div>
-        {selected && (
-          <div className="rounded-md border bg-muted/40 p-3 text-xs space-y-1">
-            <div className="flex justify-between gap-4">
-              <span className="text-muted-foreground">Passenger</span>
-              <span className="font-medium text-foreground">{selected.passengerName}</span>
-            </div>
-            <div className="flex justify-between gap-4">
-              <span className="text-muted-foreground">Mobile</span>
-              <span className="font-mono">{selected.contact || "—"}</span>
-            </div>
-            <div className="flex justify-between gap-4">
-              <span className="text-muted-foreground">Delivery Method</span>
-              <span>{selected.delivery?.method ?? "Home Delivery"}</span>
-            </div>
-            <div className="flex justify-between gap-4">
-              <span className="text-muted-foreground">PIR</span>
-              <span className="font-mono">{selected.pirNumber}</span>
-            </div>
-            {selected.internal?.internalNotes && (
-              <div className="pt-1 border-t mt-1">
-                <p className="text-muted-foreground mb-0.5">Internal Notes</p>
-                <p className="text-foreground whitespace-pre-wrap">{selected.internal.internalNotes}</p>
-              </div>
-            )}
-            <p className="pt-1 text-[10px] text-muted-foreground">
-              Prefilled from PIR · same case, no duplicate record.
-            </p>
-          </div>
-        )}
-        <div className="space-y-1.5">
-          <Label>Delivery Address</Label>
-          <textarea
-            className="min-h-[72px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-            value={address}
-            onChange={(e) => {
-              setAddress(e.target.value);
-              setAddressTouched(true);
-            }}
-            placeholder="Street, district, governorate"
-            required
-          />
-          <p className="text-[11px] text-muted-foreground">
-            Prefilled from the PIR. Edit only if the passenger provided a correction.
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Bulk Assign Driver</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={submit} className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Assign {deliveryIds.length} selected deliveries to a driver.
           </p>
-        </div>
-        <div className="space-y-1.5">
-          <Label>Estimated Arrival</Label>
-          <Input
-            type="datetime-local"
-            value={eta}
-            onChange={(e) => setEta(e.target.value)}
-            required
-          />
-        </div>
-        <div className="space-y-1.5">
-          <Label>Assigned Driver</Label>
-          <select
-            className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
-            value={driver}
-            onChange={(e) => setDriver(e.target.value)}
-          >
-            {driverPool.map((d) => <option key={d} value={d}>{d}</option>)}
-          </select>
-        </div>
-        <DialogFooter>
-          <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-          <Button type="submit">Schedule Delivery</Button>
-        </DialogFooter>
-      </form>
-    </DialogContent>
-  );
-}
-
-function PassengerActions({ d }: { d: Delivery }) {
-  function withToken(action: (token: string, url: string) => void) {
-    const token = ensurePassengerToken(d.deliveryId);
-    if (!token) {
-      toast.error("Tracking token unavailable for this delivery");
-      return;
-    }
-    const origin =
-      typeof window !== "undefined" ? window.location.origin : "";
-    const url = `${origin}/passenger/${token}`;
-    action(token, url);
-  }
-
-  function previewPortal() {
-    withToken((token) => {
-      if (typeof window !== "undefined") {
-        window.open(`/passenger/${token}`, "_blank", "noopener");
-      }
-    });
-  }
-
-  function copyTrackingLink() {
-    withToken(async (_token, url) => {
-      try {
-        if (navigator.clipboard?.writeText) {
-          await navigator.clipboard.writeText(url);
-        } else {
-          const ta = document.createElement("textarea");
-          ta.value = url;
-          document.body.appendChild(ta);
-          ta.select();
-          document.execCommand("copy");
-          document.body.removeChild(ta);
-        }
-        toast.success("Tracking link copied");
-      } catch {
-        toast.error("Failed to copy link");
-      }
-    });
-  }
-
-  function sendSms() {
-    withToken(() => {
-      const events = createTestNotification({
-        deliveryId: d.deliveryId,
-        channel: "sms",
-        operator: "Delivery Desk",
-      });
-      toast.success(events.length ? "SMS queued" : "SMS template unavailable");
-    });
-  }
-
-  function sendWhatsApp() {
-    withToken(() => {
-      const events = createTestNotification({
-        deliveryId: d.deliveryId,
-        channel: "whatsapp",
-        operator: "Delivery Desk",
-      });
-      toast.success(
-        events.length ? "WhatsApp queued" : "WhatsApp template unavailable",
-      );
-    });
-  }
-
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button size="sm" variant="ghost" className="h-8 gap-1 px-2">
-          <ExternalLink className="h-3.5 w-3.5" />
-          <span className="hidden md:inline">Portal</span>
-          <MoreHorizontal className="h-3.5 w-3.5" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-56">
-        <DropdownMenuLabel>Passenger Experience</DropdownMenuLabel>
-        <DropdownMenuItem onClick={previewPortal}>
-          <ExternalLink className="h-4 w-4" /> Preview Passenger Portal
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={copyTrackingLink}>
-          <LinkIcon className="h-4 w-4" /> Copy Tracking Link
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={sendSms}>
-          <Send className="h-4 w-4" /> Send SMS
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={sendWhatsApp}>
-          <MessageCircle className="h-4 w-4" /> Send WhatsApp
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+          <div className="space-y-1.5">
+            <Label>Driver</Label>
+            <select
+              className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+              value={driver}
+              onChange={(e) => setDriver(e.target.value)}
+            >
+              {driverPool.map((d) => <option key={d} value={d}>{d}</option>)}
+            </select>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+            <Button type="submit">Assign</Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }

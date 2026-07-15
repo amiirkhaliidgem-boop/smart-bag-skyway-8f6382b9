@@ -20,6 +20,12 @@ import type { AuditEntry, ImportAuditEntry } from "./audit/log";
 import type { Role } from "./roles/roles";
 import type { LFStatus } from "./lost-found/statuses";
 import { LF_TO_WORKFLOW, canTransitionLf } from "./lost-found/statuses";
+import {
+  type DeliveryStage,
+  stageToWorkflow,
+  stageToLegacyStatus,
+  stageFromLegacy,
+} from "./delivery/stages";
 
 export type CaseStatus =
   | "Missing"
@@ -251,6 +257,18 @@ export interface Delivery {
   otpCode: string;
   driverLocation?: { lat: number; lng: number; label: string };
   destination?: { lat: number; lng: number; label: string };
+  // ---- Delivery Management operational overlay (all optional; legacy
+  // seeds derive stage from `status` via stageFromLegacy). ----
+  stage?: DeliveryStage;
+  station?: string;
+  deliveryType?: "Home Delivery" | "Airport Pickup";
+  vip?: boolean;
+  failureReason?: string;
+  createdAt?: string;
+  lastUpdatedAt?: string;
+  acceptedAt?: string;
+  collectedAt?: string;
+  deliveredAt?: string;
 }
 
 interface State {
@@ -1122,6 +1140,143 @@ export function addDelivery(input: Omit<Delivery, "deliveryId">) {
   state = { ...state, deliveries: [newDel, ...state.deliveries] };
   emit();
   return newDel;
+}
+
+// ---------- Delivery Management operational helpers ----------
+
+export function getDeliveryStage(d: Delivery): DeliveryStage {
+  return d.stage ?? stageFromLegacy(d);
+}
+
+function writeDeliveryPatch(deliveryId: string, patch: Partial<Delivery>) {
+  state = {
+    ...state,
+    deliveries: state.deliveries.map((d) =>
+      d.deliveryId === deliveryId
+        ? { ...d, ...patch, lastUpdatedAt: new Date().toISOString() }
+        : d,
+    ),
+  };
+}
+
+export function setDeliveryStage(
+  deliveryId: string,
+  stage: DeliveryStage,
+  opts: { actor?: string; role?: Role; note?: string; failureReason?: string } = {},
+) {
+  const d = state.deliveries.find((x) => x.deliveryId === deliveryId);
+  if (!d) return;
+  const now = new Date().toISOString();
+  const patch: Partial<Delivery> = {
+    stage,
+    status: stageToLegacyStatus(stage),
+  };
+  if (stage === "Driver Accepted") patch.acceptedAt = now;
+  if (stage === "Collected Bag") patch.collectedAt = now;
+  if (stage === "Delivered") patch.deliveredAt = now;
+  if (stage === "Delivery Failed" && opts.failureReason)
+    patch.failureReason = opts.failureReason;
+  if (stage === "Returned to Airport") {
+    patch.driver = "—";
+    patch.otpStatus = "Pending";
+  }
+  writeDeliveryPatch(deliveryId, patch);
+  pushAudit({
+    action: "delivery.update",
+    actor: opts.actor ?? "system",
+    role: opts.role,
+    entityType: "delivery",
+    entityId: deliveryId,
+    note:
+      opts.note ??
+      `Stage → ${stage}${opts.failureReason ? ` · ${opts.failureReason}` : ""}`,
+  });
+  // Feed the Workflow Engine (which triggers Notifications + Timeline + Audit).
+  const wf = stageToWorkflow(stage);
+  const backward = stage === "Delivery Failed" || stage === "Returned to Airport";
+  transitionWorkflow(deliveryId, wf, {
+    actor: opts.actor ?? "system",
+    role: opts.role,
+    force: backward,
+  });
+  emit();
+}
+
+export function assignDriver(
+  deliveryId: string,
+  driver: string,
+  opts: { actor?: string; role?: Role } = {},
+) {
+  const d = state.deliveries.find((x) => x.deliveryId === deliveryId);
+  if (!d) return;
+  const wasAssigned = d.driver && d.driver !== "—";
+  writeDeliveryPatch(deliveryId, { driver });
+  pushAudit({
+    action: "delivery.assign",
+    actor: opts.actor ?? "system",
+    role: opts.role,
+    entityType: "delivery",
+    entityId: deliveryId,
+    note: wasAssigned ? `Reassigned to ${driver}` : `Assigned to ${driver}`,
+  });
+  // Advance stage to Assigned via the Workflow Engine.
+  setDeliveryStage(deliveryId, "Assigned", {
+    actor: opts.actor,
+    role: opts.role,
+    note: `Driver: ${driver}`,
+  });
+}
+
+export function bulkAssignDriver(
+  deliveryIds: string[],
+  driver: string,
+  opts: { actor?: string; role?: Role } = {},
+) {
+  for (const id of deliveryIds) assignDriver(id, driver, opts);
+}
+
+export function generateOtp(deliveryId: string, opts: { actor?: string } = {}) {
+  const code = String(Math.floor(100000 + Math.random() * 900000));
+  writeDeliveryPatch(deliveryId, { otpCode: code, otpStatus: "Sent" });
+  pushAudit({
+    action: "delivery.update",
+    actor: opts.actor ?? "system",
+    entityType: "delivery",
+    entityId: deliveryId,
+    note: "OTP generated",
+  });
+  emit();
+  return code;
+}
+
+export function resendOtp(deliveryId: string, opts: { actor?: string } = {}) {
+  const d = state.deliveries.find((x) => x.deliveryId === deliveryId);
+  if (!d) return;
+  writeDeliveryPatch(deliveryId, { otpStatus: "Sent" });
+  pushAudit({
+    action: "delivery.update",
+    actor: opts.actor ?? "system",
+    entityType: "delivery",
+    entityId: deliveryId,
+    note: "OTP resent",
+  });
+  emit();
+  return d.otpCode;
+}
+
+export function closeDelivery(deliveryId: string, opts: { actor?: string; role?: Role } = {}) {
+  const d = state.deliveries.find((x) => x.deliveryId === deliveryId);
+  if (!d) return;
+  pushAudit({
+    action: "delivery.update",
+    actor: opts.actor ?? "system",
+    role: opts.role,
+    entityType: "delivery",
+    entityId: deliveryId,
+    note: "Delivery closed",
+  });
+  transitionWorkflow(deliveryId, "CLOSED", { actor: opts.actor, role: opts.role, force: true });
+  emit();
 }
 
 export function updateDelivery(deliveryId: string, patch: Partial<Delivery>) {
