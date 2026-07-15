@@ -1163,7 +1163,7 @@ function writeDeliveryPatch(deliveryId: string, patch: Partial<Delivery>) {
 export function setDeliveryStage(
   deliveryId: string,
   stage: DeliveryStage,
-  opts: { actor?: string; role?: Role; note?: string; failureReason?: string } = {},
+  opts: { actor?: string; role?: Role; note?: string; failureReason?: FailureReason } = {},
 ) {
   const d = state.deliveries.find((x) => x.deliveryId === deliveryId);
   if (!d) return;
@@ -1234,6 +1234,92 @@ export function bulkAssignDriver(
   opts: { actor?: string; role?: Role } = {},
 ) {
   for (const id of deliveryIds) assignDriver(id, driver, opts);
+}
+
+// ----- Driver-side transitions (Delivery Management is the source of
+// truth for the operational stage machine; Driver Portal UI is untouched
+// and will consume these helpers when wired). -----
+
+export function driverAccept(
+  deliveryId: string,
+  opts: { actor?: string; role?: Role } = {},
+) {
+  setDeliveryStage(deliveryId, "Driver Accepted", {
+    ...opts,
+    note: "Driver accepted",
+  });
+}
+
+export function driverReject(
+  deliveryId: string,
+  opts: { actor?: string; role?: Role; note?: string } = {},
+) {
+  const d = state.deliveries.find((x) => x.deliveryId === deliveryId);
+  if (!d) return;
+  const previous = d.driver;
+  // Clear driver and move back to Scheduled so a coordinator can reassign.
+  writeDeliveryPatch(deliveryId, { driver: "—" });
+  pushAudit({
+    action: "delivery.assign",
+    actor: opts.actor ?? previous ?? "system",
+    role: opts.role,
+    entityType: "delivery",
+    entityId: deliveryId,
+    note: `Driver rejected — ${previous ?? "n/a"}${opts.note ? ` · ${opts.note}` : ""}`,
+  });
+  setDeliveryStage(deliveryId, "Scheduled", {
+    actor: opts.actor,
+    role: opts.role,
+    note: "Rescheduled after driver rejection",
+  });
+}
+
+export function driverCollect(
+  deliveryId: string,
+  opts: { actor?: string; role?: Role } = {},
+) {
+  setDeliveryStage(deliveryId, "Collected Bag", opts);
+}
+
+export function driverStartTrip(
+  deliveryId: string,
+  opts: { actor?: string; role?: Role } = {},
+) {
+  setDeliveryStage(deliveryId, "Out for Delivery", opts);
+}
+
+export function driverMarkDelivered(
+  deliveryId: string,
+  opts: { actor?: string; role?: Role } = {},
+) {
+  setDeliveryStage(deliveryId, "Delivered", opts);
+}
+
+export function markDeliveryFailed(
+  deliveryId: string,
+  reason: FailureReason,
+  opts: { actor?: string; role?: Role } = {},
+) {
+  setDeliveryStage(deliveryId, "Delivery Failed", { ...opts, failureReason: reason });
+}
+
+export function markReturnedToAirport(
+  deliveryId: string,
+  opts: { actor?: string; role?: Role } = {},
+) {
+  setDeliveryStage(deliveryId, "Returned to Airport", opts);
+}
+
+export function rescheduleDelivery(
+  deliveryId: string,
+  opts: { actor?: string; role?: Role } = {},
+) {
+  // Returned/failed deliveries become available for scheduling again.
+  writeDeliveryPatch(deliveryId, { failureReason: undefined, driver: "—" });
+  setDeliveryStage(deliveryId, "Ready for Delivery", {
+    ...opts,
+    note: "Rescheduled — back in the queue",
+  });
 }
 
 export function generateOtp(deliveryId: string, opts: { actor?: string } = {}) {
