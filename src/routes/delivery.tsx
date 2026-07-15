@@ -174,6 +174,8 @@ function DispatchCenter() {
   // ---- Selection (bulk actions)
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkOpen, setBulkOpen] = useState(false);
+  const [assignFor, setAssignFor] = useState<string | null>(null);
+  const [failFor, setFailFor] = useState<string | null>(null);
   const toggleAll = () => {
     if (selected.size === filtered.length) setSelected(new Set());
     else setSelected(new Set(filtered.map((d) => d.deliveryId)));
