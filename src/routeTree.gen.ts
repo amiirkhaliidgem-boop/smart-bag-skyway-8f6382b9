@@ -24,6 +24,7 @@ import { Route as IntegrationsRouteImport } from './routes/integrations'
 import { Route as FeedbackRouteImport } from './routes/feedback'
 import { Route as ExportCenterRouteImport } from './routes/export-center'
 import { Route as DriverPortalRouteImport } from './routes/driver-portal'
+import { Route as DeliveryRouteImport } from './routes/delivery'
 import { Route as DataIoRouteImport } from './routes/data-io'
 import { Route as ContactCenterRouteImport } from './routes/contact-center'
 import { Route as ApiStatusRouteImport } from './routes/api-status'
@@ -110,6 +111,11 @@ const DriverPortalRoute = DriverPortalRouteImport.update({
   path: '/driver-portal',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DeliveryRoute = DeliveryRouteImport.update({
+  id: '/delivery',
+  path: '/delivery',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DataIoRoute = DataIoRouteImport.update({
   id: '/data-io',
   path: '/data-io',
@@ -141,9 +147,9 @@ const LostFoundIndexRoute = LostFoundIndexRouteImport.update({
   getParentRoute: () => LostFoundRoute,
 } as any)
 const DeliveryIndexRoute = DeliveryIndexRouteImport.update({
-  id: '/delivery/',
-  path: '/delivery/',
-  getParentRoute: () => rootRouteImport,
+  id: '/',
+  path: '/',
+  getParentRoute: () => DeliveryRoute,
 } as any)
 const PassengerTokenRoute = PassengerTokenRouteImport.update({
   id: '/$token',
@@ -156,9 +162,9 @@ const LostFoundBagIdRoute = LostFoundBagIdRouteImport.update({
   getParentRoute: () => LostFoundRoute,
 } as any)
 const DeliveryDeliveryIdRoute = DeliveryDeliveryIdRouteImport.update({
-  id: '/delivery/$deliveryId',
-  path: '/delivery/$deliveryId',
-  getParentRoute: () => rootRouteImport,
+  id: '/$deliveryId',
+  path: '/$deliveryId',
+  getParentRoute: () => DeliveryRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -167,6 +173,7 @@ export interface FileRoutesByFullPath {
   '/api-status': typeof ApiStatusRoute
   '/contact-center': typeof ContactCenterRoute
   '/data-io': typeof DataIoRoute
+  '/delivery': typeof DeliveryRouteWithChildren
   '/driver-portal': typeof DriverPortalRoute
   '/export-center': typeof ExportCenterRoute
   '/feedback': typeof FeedbackRoute
@@ -221,6 +228,7 @@ export interface FileRoutesById {
   '/api-status': typeof ApiStatusRoute
   '/contact-center': typeof ContactCenterRoute
   '/data-io': typeof DataIoRoute
+  '/delivery': typeof DeliveryRouteWithChildren
   '/driver-portal': typeof DriverPortalRoute
   '/export-center': typeof ExportCenterRoute
   '/feedback': typeof FeedbackRoute
@@ -250,6 +258,7 @@ export interface FileRouteTypes {
     | '/api-status'
     | '/contact-center'
     | '/data-io'
+    | '/delivery'
     | '/driver-portal'
     | '/export-center'
     | '/feedback'
@@ -303,6 +312,7 @@ export interface FileRouteTypes {
     | '/api-status'
     | '/contact-center'
     | '/data-io'
+    | '/delivery'
     | '/driver-portal'
     | '/export-center'
     | '/feedback'
@@ -331,6 +341,7 @@ export interface RootRouteChildren {
   ApiStatusRoute: typeof ApiStatusRoute
   ContactCenterRoute: typeof ContactCenterRoute
   DataIoRoute: typeof DataIoRoute
+  DeliveryRoute: typeof DeliveryRouteWithChildren
   DriverPortalRoute: typeof DriverPortalRoute
   ExportCenterRoute: typeof ExportCenterRoute
   FeedbackRoute: typeof FeedbackRoute
@@ -346,8 +357,6 @@ export interface RootRouteChildren {
   TimelineRoute: typeof TimelineRoute
   TrackingRoute: typeof TrackingRoute
   WorkflowMonitorRoute: typeof WorkflowMonitorRoute
-  DeliveryDeliveryIdRoute: typeof DeliveryDeliveryIdRoute
-  DeliveryIndexRoute: typeof DeliveryIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -457,6 +466,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DriverPortalRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/delivery': {
+      id: '/delivery'
+      path: '/delivery'
+      fullPath: '/delivery'
+      preLoaderRoute: typeof DeliveryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/data-io': {
       id: '/data-io'
       path: '/data-io'
@@ -501,10 +517,10 @@ declare module '@tanstack/react-router' {
     }
     '/delivery/': {
       id: '/delivery/'
-      path: '/delivery'
+      path: '/'
       fullPath: '/delivery/'
       preLoaderRoute: typeof DeliveryIndexRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof DeliveryRoute
     }
     '/passenger/$token': {
       id: '/passenger/$token'
@@ -522,13 +538,27 @@ declare module '@tanstack/react-router' {
     }
     '/delivery/$deliveryId': {
       id: '/delivery/$deliveryId'
-      path: '/delivery/$deliveryId'
+      path: '/$deliveryId'
       fullPath: '/delivery/$deliveryId'
       preLoaderRoute: typeof DeliveryDeliveryIdRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof DeliveryRoute
     }
   }
 }
+
+interface DeliveryRouteChildren {
+  DeliveryDeliveryIdRoute: typeof DeliveryDeliveryIdRoute
+  DeliveryIndexRoute: typeof DeliveryIndexRoute
+}
+
+const DeliveryRouteChildren: DeliveryRouteChildren = {
+  DeliveryDeliveryIdRoute: DeliveryDeliveryIdRoute,
+  DeliveryIndexRoute: DeliveryIndexRoute,
+}
+
+const DeliveryRouteWithChildren = DeliveryRoute._addFileChildren(
+  DeliveryRouteChildren,
+)
 
 interface LostFoundRouteChildren {
   LostFoundBagIdRoute: typeof LostFoundBagIdRoute
@@ -562,6 +592,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiStatusRoute: ApiStatusRoute,
   ContactCenterRoute: ContactCenterRoute,
   DataIoRoute: DataIoRoute,
+  DeliveryRoute: DeliveryRouteWithChildren,
   DriverPortalRoute: DriverPortalRoute,
   ExportCenterRoute: ExportCenterRoute,
   FeedbackRoute: FeedbackRoute,
@@ -577,8 +608,6 @@ const rootRouteChildren: RootRouteChildren = {
   TimelineRoute: TimelineRoute,
   TrackingRoute: TrackingRoute,
   WorkflowMonitorRoute: WorkflowMonitorRoute,
-  DeliveryDeliveryIdRoute: DeliveryDeliveryIdRoute,
-  DeliveryIndexRoute: DeliveryIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
