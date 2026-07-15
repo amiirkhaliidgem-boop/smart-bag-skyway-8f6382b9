@@ -26,6 +26,7 @@ import {
   stageToLegacyStatus,
   stageFromLegacy,
 } from "./delivery/stages";
+import type { FailureReason } from "./delivery/stages";
 
 export type CaseStatus =
   | "Missing"
