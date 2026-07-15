@@ -112,3 +112,57 @@ export const STAGE_STYLES: Record<DeliveryStage, string> = {
   "Delivery Failed": "bg-rose-100 text-rose-700 border-rose-200",
   "Returned to Airport": "bg-amber-100 text-amber-700 border-amber-200",
 };
+
+// Predefined failure reasons — free-text is not allowed for operational
+// consistency and downstream reporting.
+export const FAILURE_REASONS = [
+  "Passenger Not Available",
+  "Passenger Requested Reschedule",
+  "Wrong Address",
+  "Phone Not Reachable",
+  "Passenger Refused",
+  "Security Issue",
+  "Driver Issue",
+  "Weather",
+  "Other",
+] as const;
+
+export type FailureReason = (typeof FAILURE_REASONS)[number];
+
+// Operational queues shown as tabs in the Dispatch Center. Each queue maps
+// to one or more stages.
+export const DELIVERY_QUEUES = [
+  { id: "all", label: "All", stages: [...DELIVERY_STAGES] as DeliveryStage[] },
+  { id: "ready", label: "Ready for Delivery", stages: ["Ready for Delivery"] },
+  { id: "scheduled", label: "Scheduled", stages: ["Scheduled"] },
+  { id: "assigned", label: "Assigned", stages: ["Assigned", "Driver Accepted"] },
+  { id: "out", label: "Out for Delivery", stages: ["Collected Bag", "Out for Delivery"] },
+  { id: "failed", label: "Failed", stages: ["Delivery Failed"] },
+  { id: "returned", label: "Returned to Airport", stages: ["Returned to Airport"] },
+  { id: "completed", label: "Completed", stages: ["Delivered"] },
+] as const satisfies ReadonlyArray<{ id: string; label: string; stages: DeliveryStage[] }>;
+
+export type DeliveryQueueId = (typeof DELIVERY_QUEUES)[number]["id"];
+
+// Which coordinator actions apply at a given stage. Buttons for actions
+// that are not valid at the current stage must be hidden — never disabled.
+export function actionsForStage(stage: DeliveryStage) {
+  const s = stage;
+  return {
+    assign: s === "Ready for Delivery" || s === "Scheduled" || s === "Returned to Airport",
+    reassign: s === "Assigned" || s === "Driver Accepted",
+    generateOtp: s === "Driver Accepted" || s === "Collected Bag" || s === "Out for Delivery",
+    resendOtp: s === "Driver Accepted" || s === "Collected Bag" || s === "Out for Delivery",
+    notify: s !== "Delivered",
+    markFailed: s === "Out for Delivery" || s === "Collected Bag" || s === "Driver Accepted",
+    markReturned: s === "Delivery Failed",
+    reschedule: s === "Delivery Failed" || s === "Returned to Airport",
+    close: s === "Delivered" || s === "Returned to Airport",
+    // Driver-side actions (surfaced in the coordinator UI for testing/manual override).
+    driverAccept: s === "Assigned",
+    driverReject: s === "Assigned",
+    collect: s === "Driver Accepted",
+    startTrip: s === "Collected Bag",
+    markDelivered: s === "Out for Delivery",
+  };
+}
