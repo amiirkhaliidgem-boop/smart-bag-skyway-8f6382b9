@@ -14,6 +14,8 @@ import {
   DELIVERY_STAGES,
   STAGE_LABELS,
   STAGE_STYLES,
+  DELIVERY_QUEUES,
+  type DeliveryQueueId,
   type DeliveryStage,
 } from "@/lib/delivery/stages";
 import { Card, CardContent } from "@/components/ui/card";
@@ -70,6 +72,8 @@ function DispatchCenter() {
   const [typeF, setTypeF] = useState("all");
   const [vipOnly, setVipOnly] = useState(false);
   const [dateF, setDateF] = useState("");
+  const [queue, setQueue] = useState<DeliveryQueueId>("all");
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   const stations = useMemo(
     () =>
@@ -80,8 +84,11 @@ function DispatchCenter() {
   );
 
   const filtered = useMemo(() => {
+    const activeQueue = DELIVERY_QUEUES.find((qq) => qq.id === queue) ?? DELIVERY_QUEUES[0];
+    const queueStages = new Set<DeliveryStage>(activeQueue.stages);
     return deliveries.filter((d) => {
       const stage = getDeliveryStage(d);
+      if (queue !== "all" && !queueStages.has(stage)) return false;
       const hay = `${d.deliveryId} ${d.pirNumber} ${d.passengerName} ${d.mobile} ${d.address} ${d.driver}`.toLowerCase();
       if (q && !hay.includes(q.toLowerCase())) return false;
       if (driverF !== "all" && d.driver !== driverF) return false;
@@ -97,7 +104,16 @@ function DispatchCenter() {
       }
       return true;
     });
-  }, [deliveries, q, driverF, stageF, priorityF, stationF, typeF, vipOnly, dateF]);
+  }, [deliveries, queue, q, driverF, stageF, priorityF, stationF, typeF, vipOnly, dateF]);
+
+  const queueCounts = useMemo(() => {
+    const m: Record<string, number> = {};
+    for (const qq of DELIVERY_QUEUES) {
+      const set = new Set<DeliveryStage>(qq.stages);
+      m[qq.id] = qq.id === "all" ? deliveries.length : deliveries.filter((d) => set.has(getDeliveryStage(d))).length;
+    }
+    return m;
+  }, [deliveries]);
 
   // ---- KPIs
   const stageCounts = useMemo(() => {
