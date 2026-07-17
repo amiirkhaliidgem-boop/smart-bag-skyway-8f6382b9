@@ -22,6 +22,22 @@ export const LF_STATUSES = [
 
 export type LFStatus = (typeof LF_STATUSES)[number];
 
+// Statuses that Lost & Found actively OWNS. Ownership hands over to
+// Delivery Management the moment the case reaches "Ready for Delivery" —
+// from that point on, L&F is read-only and every downstream status
+// (Assigned Driver, Out for Delivery, Delivered, Closed) is driven by the
+// Delivery module through the Workflow Engine. The L&F UI must only
+// expose these statuses as user-selectable options.
+export const LF_OWNED_STATUSES = [
+  "Open",
+  "Tracing",
+  "Located",
+  "In Transit to Cairo",
+  "Arrived at Cairo",
+  "Waiting Customs Clearance",
+  "Ready for Delivery",
+] as const satisfies ReadonlyArray<LFStatus>;
+
 export const LF_STATUS_ORDER: Record<LFStatus, number> = LF_STATUSES.reduce(
   (acc, s, i) => ((acc[s] = i), acc),
   {} as Record<LFStatus, number>,
