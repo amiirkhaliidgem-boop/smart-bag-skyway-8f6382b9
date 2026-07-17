@@ -15,6 +15,7 @@ import {
 } from "@/lib/store";
 import {
   LF_STATUSES,
+  LF_OWNED_STATUSES,
   deriveLfFromCase,
   nextLfStatus,
   canTransitionLf,
@@ -45,7 +46,7 @@ import {
   ArrowLeft, ChevronRight, Truck, MessageSquare, Phone, Mail,
   FileText, Upload, Trash2, MapPin, Radar, History as HistoryIcon,
   ShieldAlert, Star as StarIcon, ExternalLink, Pencil, MoreHorizontal,
-  UserCog, Bell, Link as LinkIcon, Copy, Printer, Download, XCircle,
+  UserCog, Bell, Link as LinkIcon, Copy, Printer, Download,
   AlertTriangle,
 } from "lucide-react";
 import { WORKFLOW_LABELS } from "@/lib/workflow/statuses";
@@ -204,12 +205,6 @@ function CaseDetailsPage() {
     URL.revokeObjectURL(url);
     toast.success(`Exported ${c!.pirNumber}`);
   }
-  function closeCase() {
-    if (lfs === "Closed") return;
-    updateLfStatus(c!.bagId, "Closed", { actor: "Ops Console", force: true, note: "Closed via quick actions" });
-    toast.success("Case closed");
-  }
-
   return (
     <div className="space-y-5">
       {/* Breadcrumbs */}
