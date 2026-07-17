@@ -11,7 +11,6 @@ export interface TemplateContext {
   passengerName: string;
   pirNumber: string;
   driverName?: string;
-  eta?: string;
   otp?: string;
   trackingUrl?: string;
 }
@@ -48,28 +47,28 @@ export const TEMPLATES: Partial<Record<WorkflowStatus, Bundle>> = {
   DRIVER_ASSIGNED: {
     sms: {
       en: (c) => ({
-        body: `${brand}: Driver ${c.driverName ?? ""} assigned to your delivery (PIR ${c.pirNumber}). ETA ${c.eta ?? "TBA"}.`,
+        body: `${brand}: A driver has been assigned to your delivery (PIR ${c.pirNumber}). Track & view your OTP: ${c.trackingUrl ?? ""}`,
       }),
       ar: (c) => ({
-        body: `${brand}: تم تعيين السائق ${c.driverName ?? ""} لتوصيل حقيبتك (${c.pirNumber}). الوصول المتوقع ${c.eta ?? "قريباً"}.`,
+        body: `${brand}: تم تعيين سائق لتوصيل حقيبتك (${c.pirNumber}). تابع واستعرض رمز التحقق: ${c.trackingUrl ?? ""}`,
       }),
     },
     whatsapp: {
       en: (c) => ({
-        body: `Your baggage delivery has been assigned to driver ${c.driverName}. Estimated arrival: ${c.eta}. Live tracking: ${c.trackingUrl ?? ""}`,
+        body: `Hello ${c.passengerName}, a driver has been assigned to your baggage delivery. Open your secure Passenger Portal to view your OTP and track the delivery: ${c.trackingUrl ?? ""}`,
       }),
       ar: (c) => ({
-        body: `تم تعيين السائق ${c.driverName} لتوصيل حقيبتك. الوصول المتوقع: ${c.eta}. تتبع مباشر: ${c.trackingUrl ?? ""}`,
+        body: `مرحباً ${c.passengerName}، تم تعيين سائق لتوصيل حقيبتك. افتح بوابة الراكب الآمنة لعرض رمز التحقق ومتابعة التوصيل: ${c.trackingUrl ?? ""}`,
       }),
     },
   },
   OUT_FOR_DELIVERY: {
     sms: {
       en: (c) => ({
-        body: `${brand}: Your baggage is out for delivery. Driver ${c.driverName ?? ""}. ETA ${c.eta ?? "soon"}.`,
+        body: `${brand}: Your baggage is out for delivery. Track: ${c.trackingUrl ?? ""}`,
       }),
       ar: (c) => ({
-        body: `${brand}: حقيبتك فى الطريق إليك. السائق ${c.driverName ?? ""}. الوصول ${c.eta ?? "قريباً"}.`,
+        body: `${brand}: حقيبتك فى الطريق إليك. تابع: ${c.trackingUrl ?? ""}`,
       }),
     },
     whatsapp: {
