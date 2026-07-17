@@ -287,7 +287,7 @@ function OtpDialog({ d, onClose }: { d: Delivery; onClose: () => void }) {
           Ask <span className="font-medium text-foreground">{d.passengerName}</span> for the 6-digit code.
         </p>
         <Input value={code} onChange={(e) => setCode(e.target.value)} maxLength={6} placeholder="6-digit code" />
-        <p className="text-[11px] text-muted-foreground">Demo OTP: <span className="font-mono">{d.otpCode}</span></p>
+        <p className="text-[11px] text-muted-foreground">Ask the passenger for the OTP shown in their Passenger Portal.</p>
         <DialogFooter>
           <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
           <Button type="submit">Confirm</Button>

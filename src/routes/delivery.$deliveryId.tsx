@@ -4,32 +4,19 @@ import {
   useStore,
   driverPool,
   assignDriver,
-  setDeliveryStage,
-  generateOtp,
   resendOtp,
   closeDelivery,
   createTestNotification,
   ensurePassengerToken,
   getDeliveryStage,
-  driverAccept,
-  driverReject,
-  driverCollect,
-  driverStartTrip,
-  driverMarkDelivered,
-  markDeliveryFailed,
-  markReturnedToAirport,
-  rescheduleDelivery,
-  scheduleDelivery,
   addDeliveryNote,
   type Delivery,
+  type BaggageCase,
 } from "@/lib/store";
 import {
-  DELIVERY_STAGES,
   STAGE_LABELS,
   STAGE_STYLES,
-  FAILURE_REASONS,
   actionsForStage,
-  type FailureReason,
   type DeliveryStage,
 } from "@/lib/delivery/stages";
 import { WORKFLOW_LABELS } from "@/lib/workflow/statuses";
@@ -48,20 +35,11 @@ import {
   ArrowLeft,
   UserCheck,
   Repeat,
-  ShieldCheck,
-  Send,
   Printer,
   Download,
   XCircle,
   Bell,
-  Truck,
   Navigation,
-  CheckCircle2,
-  Ban,
-  Package,
-  Undo2,
-  RotateCcw,
-  CalendarClock,
   StickyNote,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -111,8 +89,6 @@ function DeliveryDetails() {
 
   const [tab, setTab] = useState<Tab>("overview");
   const [assignOpen, setAssignOpen] = useState(false);
-  const [failOpen, setFailOpen] = useState(false);
-  const [scheduleOpen, setScheduleOpen] = useState(false);
 
   if (!delivery) throw notFound();
   const stage = getDeliveryStage(delivery);
@@ -151,128 +127,14 @@ function DeliveryDetails() {
                   {acts.reassign ? "Reassign" : "Assign"}
                 </Button>
               )}
-              {acts.schedule && (
-                <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setScheduleOpen(true)}>
-                  <CalendarClock className="h-3.5 w-3.5" /> Schedule
-                </Button>
-              )}
-              {acts.driverAccept && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="gap-1.5"
-                  onClick={() => {
-                    driverAccept(deliveryId, { actor: delivery.driver || "Driver", role: "Driver" });
-                    toast.success("Driver accepted");
-                  }}
-                >
-                  <CheckCircle2 className="h-3.5 w-3.5" /> Driver Accept
-                </Button>
-              )}
-              {acts.driverReject && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="gap-1.5"
-                  onClick={() => {
-                    driverReject(deliveryId, { actor: delivery.driver || "Driver", role: "Driver" });
-                    toast.message("Driver rejected — back to Scheduled");
-                  }}
-                >
-                  <Ban className="h-3.5 w-3.5" /> Driver Reject
-                </Button>
-              )}
-              {acts.collect && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="gap-1.5"
-                  onClick={() => {
-                    driverCollect(deliveryId, { actor: delivery.driver || "Driver", role: "Driver" });
-                    toast.success("Bag collected");
-                  }}
-                >
-                  <Package className="h-3.5 w-3.5" /> Collect
-                </Button>
-              )}
-              {acts.startTrip && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="gap-1.5"
-                  onClick={() => {
-                    driverStartTrip(deliveryId, { actor: delivery.driver || "Driver", role: "Driver" });
-                    toast.success("Out for delivery");
-                  }}
-                >
-                  <Truck className="h-3.5 w-3.5" /> Start Trip
-                </Button>
-              )}
-              {acts.markDelivered && (
-                <Button
-                  size="sm"
-                  variant="default"
-                  className="gap-1.5"
-                  onClick={() => {
-                    driverMarkDelivered(deliveryId, { actor: delivery.driver || "Driver", role: "Driver" });
-                    toast.success("Marked delivered");
-                  }}
-                >
-                  <CheckCircle2 className="h-3.5 w-3.5" /> Mark Delivered
-                </Button>
-              )}
-              {acts.markFailed && (
-                <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setFailOpen(true)}>
-                  <XCircle className="h-3.5 w-3.5" /> Mark Failed
-                </Button>
-              )}
-              {acts.markReturned && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="gap-1.5"
-                  onClick={() => {
-                    markReturnedToAirport(deliveryId, { actor: "Delivery Coordinator", role: "DeliveryCoordinator" });
-                    toast.success("Returned to Airport");
-                  }}
-                >
-                  <Undo2 className="h-3.5 w-3.5" /> Returned to Airport
-                </Button>
-              )}
-              {acts.reschedule && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="gap-1.5"
-                  onClick={() => {
-                    rescheduleDelivery(deliveryId, { actor: "Delivery Coordinator", role: "DeliveryCoordinator" });
-                    toast.success("Back in Ready for Delivery queue");
-                  }}
-                >
-                  <RotateCcw className="h-3.5 w-3.5" /> Reschedule
-                </Button>
-              )}
-              {acts.generateOtp && (
-                <Button
-                size="sm"
-                variant="outline"
-                className="gap-1.5"
-                onClick={() => {
-                  const code = generateOtp(deliveryId, { actor: "Delivery Coordinator" });
-                  toast.success(`OTP generated: ${code}`);
-                }}
-                >
-                  <ShieldCheck className="h-3.5 w-3.5" /> Generate OTP
-                </Button>
-              )}
               {acts.resendOtp && (
                 <Button
                 size="sm"
                 variant="outline"
                 className="gap-1.5"
                 onClick={() => {
-                  const code = resendOtp(deliveryId, { actor: "Delivery Coordinator" });
-                  toast.success(code ? `OTP resent: ${code}` : "OTP unavailable");
+                  resendOtp(deliveryId, { actor: "Delivery Coordinator" });
+                  toast.success("Passenger Portal link resent");
                 }}
                 >
                   <Repeat className="h-3.5 w-3.5" /> Resend OTP
@@ -352,27 +214,6 @@ function DeliveryDetails() {
         </CardContent>
       </Card>
 
-      {/* Stage advancement */}
-      <Card>
-        <CardHeader><CardTitle className="text-base">Advance Stage</CardTitle></CardHeader>
-        <CardContent className="p-4 pt-0 flex flex-wrap gap-2">
-          {DELIVERY_STAGES.map((s) => (
-            <Button
-              key={s}
-              size="sm"
-              variant={s === stage ? "default" : "outline"}
-              onClick={() => {
-                if (s === "Delivery Failed") { setFailOpen(true); return; }
-                setDeliveryStage(deliveryId, s, { actor: "Delivery Coordinator" });
-                toast.success(`Stage → ${STAGE_LABELS[s]}`);
-              }}
-            >
-              {STAGE_LABELS[s]}
-            </Button>
-          ))}
-        </CardContent>
-      </Card>
-
       <div className="border-b border-border">
         <nav className="flex flex-wrap gap-1">
           {(["overview", "passenger", "delivery", "notes", "timeline", "notifications", "audit", "history"] as Tab[]).map((t) => (
@@ -403,8 +244,6 @@ function DeliveryDetails() {
       {tab === "history" && workflow && <HistoryTab workflow={workflow} />}
 
       <AssignDialog open={assignOpen} onOpenChange={setAssignOpen} delivery={delivery} />
-      <FailDialog open={failOpen} onOpenChange={setFailOpen} deliveryId={deliveryId} />
-      <ScheduleDialog open={scheduleOpen} onOpenChange={setScheduleOpen} delivery={delivery} />
     </div>
   );
 }
@@ -433,22 +272,35 @@ function fmt(iso?: string) {
   }
 }
 
-function OverviewTab({ d, kase }: { d: Delivery; kase?: ReturnType<typeof useStore<any>> }) {
+function OverviewTab({ d, kase }: { d: Delivery; kase?: BaggageCase }) {
+  const bagTag =
+    kase?.baggage?.bagTags?.filter(Boolean).join(", ") ||
+    kase?.bagTagNumber ||
+    "—";
+  const airline = kase?.flight?.airline ?? "—";
+  const flight = kase?.flightNumber ?? "—";
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       <Card>
         <CardHeader><CardTitle className="text-sm">Baggage</CardTitle></CardHeader>
         <CardContent className="text-sm space-y-1 pt-0">
-          <Row label="Bag ID" value={<span className="font-mono">{d.bagId}</span>} />
           <Row label="PIR" value={<span className="font-mono">{d.pirNumber}</span>} />
-          {kase && <Row label="Description" value={<span className="text-xs">{(kase as any).description}</span>} />}
+          <Row label="Bag ID" value={<span className="font-mono">{d.bagId}</span>} />
+          <Row label="Bag Tag" value={<span className="font-mono">{bagTag}</span>} />
+          <Row label="Airline" value={airline} />
+          <Row label="Flight" value={<span className="font-mono">{flight}</span>} />
+          {kase?.description && (
+            <Row label="Description" value={<span className="text-xs">{kase.description}</span>} />
+          )}
         </CardContent>
       </Card>
       <Card>
         <CardHeader><CardTitle className="text-sm">Delivery</CardTitle></CardHeader>
         <CardContent className="text-sm space-y-1 pt-0">
+          <Row label="Passenger" value={d.passengerName} />
           <Row label="Address" value={<span className="text-xs">{d.address}</span>} />
-          <Row label="ETA" value={fmt(d.eta)} />
+          <Row label="Delivery Type" value={d.deliveryType ?? "Home Delivery"} />
+          <Row label="Priority" value={d.priority} />
           <Row label="Driver" value={d.driver && d.driver !== "—" ? d.driver : "Unassigned"} />
         </CardContent>
       </Card>
@@ -456,7 +308,7 @@ function OverviewTab({ d, kase }: { d: Delivery; kase?: ReturnType<typeof useSto
   );
 }
 
-function PassengerTab({ d, kase }: { d: Delivery; kase?: ReturnType<typeof useStore<any>> }) {
+function PassengerTab({ d, kase }: { d: Delivery; kase?: BaggageCase }) {
   const k = kase as any;
   return (
     <Card>
@@ -631,53 +483,6 @@ function AssignDialog({
   );
 }
 
-function FailDialog({
-  open,
-  onOpenChange,
-  deliveryId,
-}: {
-  open: boolean;
-  onOpenChange: (v: boolean) => void;
-  deliveryId: string;
-}) {
-  const [reason, setReason] = useState<FailureReason>(FAILURE_REASONS[0]);
-  function submit(e: React.FormEvent) {
-    e.preventDefault();
-    markDeliveryFailed(deliveryId, reason, {
-      actor: "Delivery Coordinator",
-      role: "DeliveryCoordinator",
-    });
-    toast.error(`Delivery marked failed — ${reason}`);
-    onOpenChange(false);
-  }
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-sm">
-        <DialogHeader><DialogTitle>Mark Delivery Failed</DialogTitle></DialogHeader>
-        <form onSubmit={submit} className="space-y-4">
-          <div className="space-y-1.5">
-            <Label>Failure Reason</Label>
-            <select
-              className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
-              value={reason}
-              onChange={(e) => setReason(e.target.value as FailureReason)}
-            >
-              {FAILURE_REASONS.map((r) => <option key={r} value={r}>{r}</option>)}
-            </select>
-            <p className="text-[11px] text-muted-foreground">
-              Coordinators must choose a predefined reason — free-text is not allowed.
-            </p>
-          </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button type="submit" variant="destructive">Mark Failed</Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
 function NotesTab({ d }: { d: Delivery }) {
   const [text, setText] = useState("");
   const notes = d.notes ?? [];
@@ -732,58 +537,3 @@ function NotesTab({ d }: { d: Delivery }) {
   );
 }
 
-function ScheduleDialog({
-  open,
-  onOpenChange,
-  delivery,
-}: {
-  open: boolean;
-  onOpenChange: (v: boolean) => void;
-  delivery: Delivery;
-}) {
-  const pad = (n: number) => String(n).padStart(2, "0");
-  const initial = () => {
-    const base = delivery.eta
-      ? new Date(delivery.eta)
-      : new Date(Date.now() + 60 * 60 * 1000);
-    return `${base.getFullYear()}-${pad(base.getMonth() + 1)}-${pad(base.getDate())}T${pad(base.getHours())}:${pad(base.getMinutes())}`;
-  };
-  const [eta, setEta] = useState(initial);
-  function submit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!eta) return;
-    scheduleDelivery(delivery.deliveryId, new Date(eta).toISOString(), {
-      actor: "Delivery Coordinator",
-      role: "DeliveryCoordinator",
-    });
-    toast.success("Delivery scheduled");
-    onOpenChange(false);
-  }
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-sm">
-        <DialogHeader>
-          <DialogTitle>Schedule Delivery</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={submit} className="space-y-4">
-          <p className="text-xs text-muted-foreground">
-            {delivery.deliveryId} · {delivery.passengerName}
-          </p>
-          <div className="space-y-1.5">
-            <Label>Delivery date &amp; time</Label>
-            <Input
-              type="datetime-local"
-              value={eta}
-              onChange={(e) => setEta(e.target.value)}
-              required
-            />
-          </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button type="submit">Schedule</Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
-  );
-}

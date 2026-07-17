@@ -5,24 +5,16 @@ import {
   driverPool,
   assignDriver,
   bulkAssignDriver,
-  setDeliveryStage,
   getDeliveryStage,
   type Delivery,
   type Priority,
 } from "@/lib/store";
 import {
-  driverCollect,
-  driverStartTrip,
-  driverMarkDelivered,
-  markReturnedToAirport,
-  rescheduleDelivery,
   closeDelivery,
-  generateOtp,
+  resendOtp,
   createTestNotification,
   ensurePassengerToken,
 } from "@/lib/store";
-import { markDeliveryFailed, scheduleDelivery } from "@/lib/store";
-import { FAILURE_REASONS, type FailureReason } from "@/lib/delivery/stages";
 import {
   DELIVERY_STAGES,
   STAGE_LABELS,
@@ -55,10 +47,7 @@ import {
   Gauge,
   Search,
   Bell,
-  ShieldCheck,
-  Undo2,
-  RotateCcw,
-  CalendarClock,
+  Repeat,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -178,8 +167,6 @@ function DispatchCenter() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkOpen, setBulkOpen] = useState(false);
   const [assignFor, setAssignFor] = useState<string | null>(null);
-  const [failFor, setFailFor] = useState<string | null>(null);
-  const [scheduleFor, setScheduleFor] = useState<string | null>(null);
   const toggleAll = () => {
     if (selected.size === filtered.length) setSelected(new Set());
     else setSelected(new Set(filtered.map((d) => d.deliveryId)));
@@ -390,8 +377,6 @@ function DispatchCenter() {
                     checked={selected.has(d.deliveryId)}
                     onToggle={() => toggleOne(d.deliveryId)}
                     onAssign={() => setAssignFor(d.deliveryId)}
-                    onFail={() => setFailFor(d.deliveryId)}
-                    onSchedule={() => setScheduleFor(d.deliveryId)}
                   />
                 ))}
                 {filtered.length === 0 && (
@@ -423,14 +408,6 @@ function DispatchCenter() {
         deliveryId={assignFor}
         onClose={() => setAssignFor(null)}
       />
-      <SingleFailDialog
-        deliveryId={failFor}
-        onClose={() => setFailFor(null)}
-      />
-      <ScheduleDialog
-        deliveryId={scheduleFor}
-        onClose={() => setScheduleFor(null)}
-      />
     </div>
   );
 }
@@ -440,15 +417,11 @@ function Row({
   checked,
   onToggle,
   onAssign,
-  onFail,
-  onSchedule,
 }: {
   d: Delivery;
   checked: boolean;
   onToggle: () => void;
   onAssign: () => void;
-  onFail: () => void;
-  onSchedule: () => void;
 }) {
   const navigate = useNavigate();
   const stage = getDeliveryStage(d);
@@ -495,7 +468,7 @@ function Row({
       <td className="px-3 py-3 text-xs whitespace-nowrap">{fmt(d.eta)}</td>
       <td className="px-3 py-3 text-right" onClick={stop as never}>
         <div className="inline-flex items-center gap-1 flex-wrap justify-end">
-          <RowActions d={d} acts={acts} onAssign={onAssign} onFail={onFail} onSchedule={onSchedule} />
+          <RowActions d={d} acts={acts} onAssign={onAssign} />
           <Link
             to="/delivery/$deliveryId"
             params={{ deliveryId: d.deliveryId }}
@@ -513,14 +486,10 @@ function RowActions({
   d,
   acts,
   onAssign,
-  onFail,
-  onSchedule,
 }: {
   d: Delivery;
   acts: ReturnType<typeof actionsForStage>;
   onAssign: () => void;
-  onFail: () => void;
-  onSchedule: () => void;
 }) {
   const id = d.deliveryId;
   const btn = "inline-flex items-center gap-1 h-7 px-2 rounded-md border border-input bg-background text-[11px] font-medium hover:bg-muted whitespace-nowrap";
@@ -529,11 +498,6 @@ function RowActions({
       {(acts.assign || acts.reassign) && (
         <button className={btn} onClick={onAssign}>
           <UserCheck className="h-3 w-3" /> {acts.reassign ? "Reassign" : "Assign"}
-        </button>
-      )}
-      {acts.schedule && (
-        <button className={btn} onClick={onSchedule}>
-          <CalendarClock className="h-3 w-3" /> Schedule
         </button>
       )}
       {acts.notify && (
@@ -548,75 +512,15 @@ function RowActions({
           <Bell className="h-3 w-3" /> Notify
         </button>
       )}
-      {acts.generateOtp && (
+      {acts.resendOtp && (
         <button
           className={btn}
           onClick={() => {
-            const code = generateOtp(id, { actor: "Delivery Coordinator" });
-            toast.success(`OTP: ${code}`);
+            resendOtp(id, { actor: "Delivery Coordinator" });
+            toast.success("Passenger Portal link resent");
           }}
         >
-          <ShieldCheck className="h-3 w-3" /> OTP
-        </button>
-      )}
-      {acts.collect && (
-        <button
-          className={btn}
-          onClick={() => {
-            driverCollect(id, { actor: d.driver || "Driver", role: "Driver" });
-            toast.success("Bag collected");
-          }}
-        >
-          <Package className="h-3 w-3" /> Collected
-        </button>
-      )}
-      {acts.startTrip && (
-        <button
-          className={btn}
-          onClick={() => {
-            driverStartTrip(id, { actor: d.driver || "Driver", role: "Driver" });
-            toast.success("Out for delivery");
-          }}
-        >
-          <Truck className="h-3 w-3" /> Start
-        </button>
-      )}
-      {acts.markDelivered && (
-        <button
-          className={btn}
-          onClick={() => {
-            driverMarkDelivered(id, { actor: d.driver || "Driver", role: "Driver" });
-            toast.success("Delivered");
-          }}
-        >
-          <CheckCircle2 className="h-3 w-3" /> Delivered
-        </button>
-      )}
-      {acts.markFailed && (
-        <button className={btn} onClick={onFail}>
-          <XCircle className="h-3 w-3" /> Failed
-        </button>
-      )}
-      {acts.markReturned && (
-        <button
-          className={btn}
-          onClick={() => {
-            markReturnedToAirport(id, { actor: "Delivery Coordinator", role: "DeliveryCoordinator" });
-            toast.success("Returned to Airport");
-          }}
-        >
-          <Undo2 className="h-3 w-3" /> Return
-        </button>
-      )}
-      {acts.reschedule && (
-        <button
-          className={btn}
-          onClick={() => {
-            rescheduleDelivery(id, { actor: "Delivery Coordinator", role: "DeliveryCoordinator" });
-            toast.success("Rescheduled");
-          }}
-        >
-          <RotateCcw className="h-3 w-3" /> Reschedule
+          <Repeat className="h-3 w-3" /> Resend OTP
         </button>
       )}
       {acts.close && (
@@ -806,104 +710,3 @@ function SingleAssignDialog({
   );
 }
 
-function SingleFailDialog({
-  deliveryId,
-  onClose,
-}: {
-  deliveryId: string | null;
-  onClose: () => void;
-}) {
-  const [reason, setReason] = useState<FailureReason>(FAILURE_REASONS[0]);
-  const open = !!deliveryId;
-  function submit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!deliveryId) return;
-    markDeliveryFailed(deliveryId, reason, { actor: "Delivery Coordinator", role: "DeliveryCoordinator" });
-    toast.success(`Marked failed — ${reason}`);
-    onClose();
-  }
-  return (
-    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-sm">
-        <DialogHeader>
-          <DialogTitle>Mark Delivery Failed</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={submit} className="space-y-4">
-          <div className="space-y-1.5">
-            <Label>Failure reason</Label>
-            <select
-              className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
-              value={reason}
-              onChange={(e) => setReason(e.target.value as FailureReason)}
-            >
-              {FAILURE_REASONS.map((r) => <option key={r} value={r}>{r}</option>)}
-            </select>
-          </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-            <Button type="submit" variant="destructive">Mark Failed</Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function ScheduleDialog({
-  deliveryId,
-  onClose,
-}: {
-  deliveryId: string | null;
-  onClose: () => void;
-}) {
-  const d = useStore((s) =>
-    deliveryId ? s.deliveries.find((x) => x.deliveryId === deliveryId) : undefined,
-  );
-  const initial = () => {
-    const base = d?.eta ? new Date(d.eta) : new Date(Date.now() + 60 * 60 * 1000);
-    // yyyy-MM-ddTHH:mm for datetime-local
-    const pad = (n: number) => String(n).padStart(2, "0");
-    return `${base.getFullYear()}-${pad(base.getMonth() + 1)}-${pad(base.getDate())}T${pad(base.getHours())}:${pad(base.getMinutes())}`;
-  };
-  const [eta, setEta] = useState(initial);
-  const open = !!deliveryId;
-  function submit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!deliveryId || !eta) return;
-    scheduleDelivery(deliveryId, new Date(eta).toISOString(), {
-      actor: "Delivery Coordinator",
-      role: "DeliveryCoordinator",
-    });
-    toast.success("Delivery scheduled");
-    onClose();
-  }
-  return (
-    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-sm">
-        <DialogHeader>
-          <DialogTitle>Schedule Delivery</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={submit} className="space-y-4">
-          {d && (
-            <p className="text-xs text-muted-foreground">
-              {d.deliveryId} · {d.passengerName}
-            </p>
-          )}
-          <div className="space-y-1.5">
-            <Label>Delivery date &amp; time</Label>
-            <Input
-              type="datetime-local"
-              value={eta}
-              onChange={(e) => setEta(e.target.value)}
-              required
-            />
-          </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-            <Button type="submit">Schedule</Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
-  );
-}
