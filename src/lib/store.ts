@@ -1226,7 +1226,18 @@ export function assignDriver(
   const d = state.deliveries.find((x) => x.deliveryId === deliveryId);
   if (!d) return;
   const wasAssigned = d.driver && d.driver !== "—";
-  writeDeliveryPatch(deliveryId, { driver });
+  // Auto-generate OTP (only visible in the Passenger Portal — never shown
+  // to the driver or the dispatcher) and bootstrap the passenger tracking
+  // token before we transition the workflow. Both must exist before the
+  // DRIVER_ASSIGNED notification templates render, otherwise the SMS /
+  // WhatsApp link would be missing.
+  const otpCode = String(Math.floor(100000 + Math.random() * 900000));
+  ensureWorkflow(deliveryId);
+  writeDeliveryPatch(deliveryId, {
+    driver,
+    otpCode,
+    otpStatus: "Sent",
+  });
   pushAudit({
     action: "delivery.assign",
     actor: opts.actor ?? "system",
@@ -1235,7 +1246,16 @@ export function assignDriver(
     entityId: deliveryId,
     note: wasAssigned ? `Reassigned to ${driver}` : `Assigned to ${driver}`,
   });
-  // Advance stage to Assigned via the Workflow Engine.
+  pushAudit({
+    action: "delivery.update",
+    actor: "system",
+    entityType: "delivery",
+    entityId: deliveryId,
+    note: "OTP generated automatically",
+  });
+  // Advance stage to Assigned via the Workflow Engine — this also fires
+  // the DRIVER_ASSIGNED SMS + WhatsApp templates to the passenger,
+  // including the secure Passenger Portal link.
   setDeliveryStage(deliveryId, "Assigned", {
     actor: opts.actor,
     role: opts.role,
@@ -1392,16 +1412,25 @@ export function generateOtp(deliveryId: string, opts: { actor?: string } = {}) {
 export function resendOtp(deliveryId: string, opts: { actor?: string } = {}) {
   const d = state.deliveries.find((x) => x.deliveryId === deliveryId);
   if (!d) return;
-  writeDeliveryPatch(deliveryId, { otpStatus: "Sent" });
+  // If the OTP was cleared (e.g. expired / never generated), mint a new
+  // one before resending. The dispatcher never sees the code — it is only
+  // exposed in the Passenger Portal.
+  const regenerated = !d.otpCode;
+  const code = d.otpCode ?? String(Math.floor(100000 + Math.random() * 900000));
+  writeDeliveryPatch(deliveryId, { otpCode: code, otpStatus: "Sent" });
+  ensureWorkflow(deliveryId);
   pushAudit({
     action: "delivery.update",
     actor: opts.actor ?? "system",
     entityType: "delivery",
     entityId: deliveryId,
-    note: "OTP resent",
+    note: regenerated ? "OTP regenerated and resent" : "OTP resent",
   });
+  // Re-fire the DRIVER_ASSIGNED passenger notifications so the portal
+  // link (and OTP inside it) reaches the passenger again.
+  enqueueNotifications(deliveryId, "DRIVER_ASSIGNED");
   emit();
-  return d.otpCode;
+  return code;
 }
 
 export function closeDelivery(deliveryId: string, opts: { actor?: string; role?: Role } = {}) {
