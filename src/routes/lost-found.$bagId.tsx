@@ -310,9 +310,6 @@ function CaseDetailsPage() {
                   <DropdownMenuItem onClick={() => setAssignOfficerOpen(true)}>
                     <UserCog className="h-4 w-4 mr-2" /> Assign Officer
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={assignDelivery}>
-                    <Truck className="h-4 w-4 mr-2" /> Assign Delivery
-                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={notifyPassenger}>
                     <Bell className="h-4 w-4 mr-2" /> Notify Passenger
                   </DropdownMenuItem>
@@ -328,14 +325,6 @@ function CaseDetailsPage() {
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={exportCase}>
                     <Download className="h-4 w-4 mr-2" /> Export Case
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={closeCase}
-                    className="text-rose-600"
-                    disabled={lfs === "Closed"}
-                  >
-                    <XCircle className="h-4 w-4 mr-2" /> Close Case
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
