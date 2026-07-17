@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import {
   useStore,
@@ -63,7 +63,6 @@ export const Route = createFileRoute("/lost-found/$bagId")({
 
 function CaseDetailsPage() {
   const { bagId } = Route.useParams();
-  const navigate = useNavigate();
   const c = useStore((s) => s.cases.find((x) => x.bagId === bagId));
   const deliveries = useStore((s) => s.deliveries);
   const notifications = useStore((s) => s.notifications);
