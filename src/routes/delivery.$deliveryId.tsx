@@ -131,128 +131,14 @@ function DeliveryDetails() {
                   {acts.reassign ? "Reassign" : "Assign"}
                 </Button>
               )}
-              {acts.schedule && (
-                <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setScheduleOpen(true)}>
-                  <CalendarClock className="h-3.5 w-3.5" /> Schedule
-                </Button>
-              )}
-              {acts.driverAccept && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="gap-1.5"
-                  onClick={() => {
-                    driverAccept(deliveryId, { actor: delivery.driver || "Driver", role: "Driver" });
-                    toast.success("Driver accepted");
-                  }}
-                >
-                  <CheckCircle2 className="h-3.5 w-3.5" /> Driver Accept
-                </Button>
-              )}
-              {acts.driverReject && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="gap-1.5"
-                  onClick={() => {
-                    driverReject(deliveryId, { actor: delivery.driver || "Driver", role: "Driver" });
-                    toast.message("Driver rejected — back to Scheduled");
-                  }}
-                >
-                  <Ban className="h-3.5 w-3.5" /> Driver Reject
-                </Button>
-              )}
-              {acts.collect && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="gap-1.5"
-                  onClick={() => {
-                    driverCollect(deliveryId, { actor: delivery.driver || "Driver", role: "Driver" });
-                    toast.success("Bag collected");
-                  }}
-                >
-                  <Package className="h-3.5 w-3.5" /> Collect
-                </Button>
-              )}
-              {acts.startTrip && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="gap-1.5"
-                  onClick={() => {
-                    driverStartTrip(deliveryId, { actor: delivery.driver || "Driver", role: "Driver" });
-                    toast.success("Out for delivery");
-                  }}
-                >
-                  <Truck className="h-3.5 w-3.5" /> Start Trip
-                </Button>
-              )}
-              {acts.markDelivered && (
-                <Button
-                  size="sm"
-                  variant="default"
-                  className="gap-1.5"
-                  onClick={() => {
-                    driverMarkDelivered(deliveryId, { actor: delivery.driver || "Driver", role: "Driver" });
-                    toast.success("Marked delivered");
-                  }}
-                >
-                  <CheckCircle2 className="h-3.5 w-3.5" /> Mark Delivered
-                </Button>
-              )}
-              {acts.markFailed && (
-                <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setFailOpen(true)}>
-                  <XCircle className="h-3.5 w-3.5" /> Mark Failed
-                </Button>
-              )}
-              {acts.markReturned && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="gap-1.5"
-                  onClick={() => {
-                    markReturnedToAirport(deliveryId, { actor: "Delivery Coordinator", role: "DeliveryCoordinator" });
-                    toast.success("Returned to Airport");
-                  }}
-                >
-                  <Undo2 className="h-3.5 w-3.5" /> Returned to Airport
-                </Button>
-              )}
-              {acts.reschedule && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="gap-1.5"
-                  onClick={() => {
-                    rescheduleDelivery(deliveryId, { actor: "Delivery Coordinator", role: "DeliveryCoordinator" });
-                    toast.success("Back in Ready for Delivery queue");
-                  }}
-                >
-                  <RotateCcw className="h-3.5 w-3.5" /> Reschedule
-                </Button>
-              )}
-              {acts.generateOtp && (
-                <Button
-                size="sm"
-                variant="outline"
-                className="gap-1.5"
-                onClick={() => {
-                  const code = generateOtp(deliveryId, { actor: "Delivery Coordinator" });
-                  toast.success(`OTP generated: ${code}`);
-                }}
-                >
-                  <ShieldCheck className="h-3.5 w-3.5" /> Generate OTP
-                </Button>
-              )}
               {acts.resendOtp && (
                 <Button
                 size="sm"
                 variant="outline"
                 className="gap-1.5"
                 onClick={() => {
-                  const code = resendOtp(deliveryId, { actor: "Delivery Coordinator" });
-                  toast.success(code ? `OTP resent: ${code}` : "OTP unavailable");
+                  resendOtp(deliveryId, { actor: "Delivery Coordinator" });
+                  toast.success("Passenger Portal link resent");
                 }}
                 >
                   <Repeat className="h-3.5 w-3.5" /> Resend OTP
