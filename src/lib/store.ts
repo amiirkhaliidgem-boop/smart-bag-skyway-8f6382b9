@@ -770,7 +770,6 @@ function enqueueNotifications(deliveryId: string, status: WorkflowStatus) {
     passengerName: d.passengerName,
     pirNumber: d.pirNumber,
     driverName: d.driver,
-    eta: new Date(d.eta).toLocaleString("en-GB"),
     otp: d.otpCode,
     trackingUrl: rec ? `/passenger/${rec.token}` : undefined,
   };
@@ -1564,7 +1563,6 @@ export function createTestNotification(input: {
     passengerName: delivery.passengerName,
     pirNumber: delivery.pirNumber,
     driverName: delivery.driver,
-    eta: new Date(delivery.eta).toLocaleString("en-GB"),
     otp: delivery.otpCode,
     trackingUrl: rec ? `/passenger/${rec.token}` : undefined,
   };
