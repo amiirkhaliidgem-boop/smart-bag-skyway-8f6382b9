@@ -678,7 +678,7 @@ function ChangeStatusDialog({
           <Select value={target} onValueChange={(v) => setTarget(v as LFStatus)}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
-              {LF_STATUSES.map((s) => (
+              {LF_OWNED_STATUSES.map((s) => (
                 <SelectItem key={s} value={s}>{s}</SelectItem>
               ))}
             </SelectContent>
