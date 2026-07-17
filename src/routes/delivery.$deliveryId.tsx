@@ -91,8 +91,6 @@ function DeliveryDetails() {
 
   const [tab, setTab] = useState<Tab>("overview");
   const [assignOpen, setAssignOpen] = useState(false);
-  const [failOpen, setFailOpen] = useState(false);
-  const [scheduleOpen, setScheduleOpen] = useState(false);
 
   if (!delivery) throw notFound();
   const stage = getDeliveryStage(delivery);
@@ -218,27 +216,6 @@ function DeliveryDetails() {
         </CardContent>
       </Card>
 
-      {/* Stage advancement */}
-      <Card>
-        <CardHeader><CardTitle className="text-base">Advance Stage</CardTitle></CardHeader>
-        <CardContent className="p-4 pt-0 flex flex-wrap gap-2">
-          {DELIVERY_STAGES.map((s) => (
-            <Button
-              key={s}
-              size="sm"
-              variant={s === stage ? "default" : "outline"}
-              onClick={() => {
-                if (s === "Delivery Failed") { setFailOpen(true); return; }
-                setDeliveryStage(deliveryId, s, { actor: "Delivery Coordinator" });
-                toast.success(`Stage → ${STAGE_LABELS[s]}`);
-              }}
-            >
-              {STAGE_LABELS[s]}
-            </Button>
-          ))}
-        </CardContent>
-      </Card>
-
       <div className="border-b border-border">
         <nav className="flex flex-wrap gap-1">
           {(["overview", "passenger", "delivery", "notes", "timeline", "notifications", "audit", "history"] as Tab[]).map((t) => (
@@ -269,8 +246,6 @@ function DeliveryDetails() {
       {tab === "history" && workflow && <HistoryTab workflow={workflow} />}
 
       <AssignDialog open={assignOpen} onOpenChange={setAssignOpen} delivery={delivery} />
-      <FailDialog open={failOpen} onOpenChange={setFailOpen} deliveryId={deliveryId} />
-      <ScheduleDialog open={scheduleOpen} onOpenChange={setScheduleOpen} delivery={delivery} />
     </div>
   );
 }
@@ -299,22 +274,35 @@ function fmt(iso?: string) {
   }
 }
 
-function OverviewTab({ d, kase }: { d: Delivery; kase?: ReturnType<typeof useStore<any>> }) {
+function OverviewTab({ d, kase }: { d: Delivery; kase?: BaggageCase }) {
+  const bagTag =
+    kase?.baggage?.bagTags?.filter(Boolean).join(", ") ||
+    kase?.bagTagNumber ||
+    "—";
+  const airline = kase?.flight?.airline ?? "—";
+  const flight = kase?.flightNumber ?? "—";
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       <Card>
         <CardHeader><CardTitle className="text-sm">Baggage</CardTitle></CardHeader>
         <CardContent className="text-sm space-y-1 pt-0">
-          <Row label="Bag ID" value={<span className="font-mono">{d.bagId}</span>} />
           <Row label="PIR" value={<span className="font-mono">{d.pirNumber}</span>} />
-          {kase && <Row label="Description" value={<span className="text-xs">{(kase as any).description}</span>} />}
+          <Row label="Bag ID" value={<span className="font-mono">{d.bagId}</span>} />
+          <Row label="Bag Tag" value={<span className="font-mono">{bagTag}</span>} />
+          <Row label="Airline" value={airline} />
+          <Row label="Flight" value={<span className="font-mono">{flight}</span>} />
+          {kase?.description && (
+            <Row label="Description" value={<span className="text-xs">{kase.description}</span>} />
+          )}
         </CardContent>
       </Card>
       <Card>
         <CardHeader><CardTitle className="text-sm">Delivery</CardTitle></CardHeader>
         <CardContent className="text-sm space-y-1 pt-0">
+          <Row label="Passenger" value={d.passengerName} />
           <Row label="Address" value={<span className="text-xs">{d.address}</span>} />
-          <Row label="ETA" value={fmt(d.eta)} />
+          <Row label="Delivery Type" value={d.deliveryType ?? "Home Delivery"} />
+          <Row label="Priority" value={d.priority} />
           <Row label="Driver" value={d.driver && d.driver !== "—" ? d.driver : "Unassigned"} />
         </CardContent>
       </Card>
@@ -322,7 +310,7 @@ function OverviewTab({ d, kase }: { d: Delivery; kase?: ReturnType<typeof useSto
   );
 }
 
-function PassengerTab({ d, kase }: { d: Delivery; kase?: ReturnType<typeof useStore<any>> }) {
+function PassengerTab({ d, kase }: { d: Delivery; kase?: BaggageCase }) {
   const k = kase as any;
   return (
     <Card>
@@ -490,53 +478,6 @@ function AssignDialog({
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
             <Button type="submit">Confirm</Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function FailDialog({
-  open,
-  onOpenChange,
-  deliveryId,
-}: {
-  open: boolean;
-  onOpenChange: (v: boolean) => void;
-  deliveryId: string;
-}) {
-  const [reason, setReason] = useState<FailureReason>(FAILURE_REASONS[0]);
-  function submit(e: React.FormEvent) {
-    e.preventDefault();
-    markDeliveryFailed(deliveryId, reason, {
-      actor: "Delivery Coordinator",
-      role: "DeliveryCoordinator",
-    });
-    toast.error(`Delivery marked failed — ${reason}`);
-    onOpenChange(false);
-  }
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-sm">
-        <DialogHeader><DialogTitle>Mark Delivery Failed</DialogTitle></DialogHeader>
-        <form onSubmit={submit} className="space-y-4">
-          <div className="space-y-1.5">
-            <Label>Failure Reason</Label>
-            <select
-              className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
-              value={reason}
-              onChange={(e) => setReason(e.target.value as FailureReason)}
-            >
-              {FAILURE_REASONS.map((r) => <option key={r} value={r}>{r}</option>)}
-            </select>
-            <p className="text-[11px] text-muted-foreground">
-              Coordinators must choose a predefined reason — free-text is not allowed.
-            </p>
-          </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button type="submit" variant="destructive">Mark Failed</Button>
           </DialogFooter>
         </form>
       </DialogContent>
