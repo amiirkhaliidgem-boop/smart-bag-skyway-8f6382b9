@@ -14,7 +14,6 @@ import {
   type WorkflowRecord,
 } from "@/lib/store";
 import {
-  LF_STATUSES,
   LF_OWNED_STATUSES,
   deriveLfFromCase,
   nextLfStatus,
@@ -184,14 +183,6 @@ function CaseDetailsPage() {
     });
     if (events.length) toast.success(`Notification queued (${events.length} messages)`);
     else toast.error("No template available for current workflow status.");
-  }
-  function assignDelivery() {
-    if (linkedDelivery) {
-      navigate({ to: "/delivery" });
-    } else {
-      navigate({ to: "/delivery" });
-      toast.info("Create a delivery for this case in the Delivery module.");
-    }
   }
   function printPir() { window.print(); }
   function exportCase() {
