@@ -15,6 +15,9 @@ import {
   createTestNotification,
   ensurePassengerToken,
 } from "@/lib/store";
+import { renderTemplate, type NotificationChannel } from "@/lib/notifications/templates";
+import type { WorkflowStatus } from "@/lib/workflow/statuses";
+import { Textarea } from "@/components/ui/textarea";
 import {
   DELIVERY_STAGES,
   STAGE_LABELS,
@@ -165,7 +168,8 @@ function DispatchCenter() {
 
   // ---- Selection (bulk actions)
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkAssignOpen, setBulkAssignOpen] = useState(false);
+  const [bulkNotifyOpen, setBulkNotifyOpen] = useState(false);
   const [assignFor, setAssignFor] = useState<string | null>(null);
   const toggleAll = () => {
     if (selected.size === filtered.length) setSelected(new Set());
@@ -189,23 +193,17 @@ function DispatchCenter() {
             module when Lost &amp; Found marks them Ready for Delivery.
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          {selected.size > 0 && (
-            <Button
-              variant="outline"
-              className="gap-2"
-              onClick={() => setBulkOpen(true)}
-            >
-              <Users className="h-4 w-4" />
-              {(() => {
-                const sel = deliveries.filter((d) => selected.has(d.deliveryId));
-                const anyAssigned = sel.some((d) => d.driver && d.driver !== "—");
-                return `${anyAssigned ? "Bulk Reassign" : "Bulk Assign"} (${selected.size})`;
-              })()}
-            </Button>
-          )}
-        </div>
+        <div />
       </div>
+
+      {selected.size > 0 && (
+        <BulkToolbar
+          deliveries={deliveries.filter((d) => selected.has(d.deliveryId))}
+          onAssign={() => setBulkAssignOpen(true)}
+          onNotify={() => setBulkNotifyOpen(true)}
+          onCancel={() => setSelected(new Set())}
+        />
+      )}
 
       <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-3">
         <Kpi label="Ready for Delivery" value={stageCounts["Ready for Delivery"]} icon={<Package className="h-5 w-5" />} tone="slate" />
@@ -399,9 +397,15 @@ function DispatchCenter() {
       </Card>
 
       <BulkAssignDialog
-        open={bulkOpen}
-        onOpenChange={setBulkOpen}
-        deliveryIds={Array.from(selected)}
+        open={bulkAssignOpen}
+        onOpenChange={setBulkAssignOpen}
+        deliveries={deliveries.filter((d) => selected.has(d.deliveryId))}
+        onDone={() => setSelected(new Set())}
+      />
+      <BulkNotifyDialog
+        open={bulkNotifyOpen}
+        onOpenChange={setBulkNotifyOpen}
+        deliveries={deliveries.filter((d) => selected.has(d.deliveryId))}
         onDone={() => setSelected(new Set())}
       />
       <SingleAssignDialog
