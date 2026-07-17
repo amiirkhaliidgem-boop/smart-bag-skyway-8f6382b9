@@ -15,6 +15,9 @@ import {
   createTestNotification,
   ensurePassengerToken,
 } from "@/lib/store";
+import { renderTemplate, type NotificationChannel } from "@/lib/notifications/templates";
+import type { WorkflowStatus } from "@/lib/workflow/statuses";
+import { Textarea } from "@/components/ui/textarea";
 import {
   DELIVERY_STAGES,
   STAGE_LABELS,
@@ -39,7 +42,6 @@ import {
 import {
   Truck,
   UserCheck,
-  Users,
   CheckCircle2,
   XCircle,
   Package,
@@ -165,7 +167,8 @@ function DispatchCenter() {
 
   // ---- Selection (bulk actions)
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkAssignOpen, setBulkAssignOpen] = useState(false);
+  const [bulkNotifyOpen, setBulkNotifyOpen] = useState(false);
   const [assignFor, setAssignFor] = useState<string | null>(null);
   const toggleAll = () => {
     if (selected.size === filtered.length) setSelected(new Set());
@@ -189,23 +192,17 @@ function DispatchCenter() {
             module when Lost &amp; Found marks them Ready for Delivery.
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          {selected.size > 0 && (
-            <Button
-              variant="outline"
-              className="gap-2"
-              onClick={() => setBulkOpen(true)}
-            >
-              <Users className="h-4 w-4" />
-              {(() => {
-                const sel = deliveries.filter((d) => selected.has(d.deliveryId));
-                const anyAssigned = sel.some((d) => d.driver && d.driver !== "—");
-                return `${anyAssigned ? "Bulk Reassign" : "Bulk Assign"} (${selected.size})`;
-              })()}
-            </Button>
-          )}
-        </div>
+        <div />
       </div>
+
+      {selected.size > 0 && (
+        <BulkToolbar
+          deliveries={deliveries.filter((d) => selected.has(d.deliveryId))}
+          onAssign={() => setBulkAssignOpen(true)}
+          onNotify={() => setBulkNotifyOpen(true)}
+          onCancel={() => setSelected(new Set())}
+        />
+      )}
 
       <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-3">
         <Kpi label="Ready for Delivery" value={stageCounts["Ready for Delivery"]} icon={<Package className="h-5 w-5" />} tone="slate" />
@@ -399,9 +396,15 @@ function DispatchCenter() {
       </Card>
 
       <BulkAssignDialog
-        open={bulkOpen}
-        onOpenChange={setBulkOpen}
-        deliveryIds={Array.from(selected)}
+        open={bulkAssignOpen}
+        onOpenChange={setBulkAssignOpen}
+        deliveries={deliveries.filter((d) => selected.has(d.deliveryId))}
+        onDone={() => setSelected(new Set())}
+      />
+      <BulkNotifyDialog
+        open={bulkNotifyOpen}
+        onOpenChange={setBulkNotifyOpen}
+        deliveries={deliveries.filter((d) => selected.has(d.deliveryId))}
         onDone={() => setSelected(new Set())}
       />
       <SingleAssignDialog
@@ -614,31 +617,48 @@ function Select({
 function BulkAssignDialog({
   open,
   onOpenChange,
-  deliveryIds,
+  deliveries,
   onDone,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
-  deliveryIds: string[];
+  deliveries: Delivery[];
   onDone: () => void;
 }) {
   const [driver, setDriver] = useState(driverPool[0]);
+  const [note, setNote] = useState("");
+  const deliveryIds = deliveries.map((d) => d.deliveryId);
+  const allAssigned =
+    deliveries.length > 0 &&
+    deliveries.every((d) => d.driver && d.driver !== "—");
+  const mode: "assign" | "reassign" = allAssigned ? "reassign" : "assign";
   function submit(e: React.FormEvent) {
     e.preventDefault();
-    bulkAssignDriver(deliveryIds, driver, { actor: "Delivery Coordinator" });
-    toast.success(`Assigned ${deliveryIds.length} deliveries to ${driver}`);
+    bulkAssignDriver(deliveryIds, driver, {
+      actor: "Delivery Coordinator",
+      role: "DeliveryCoordinator",
+      note: note.trim() || undefined,
+    });
+    toast.success(
+      `${mode === "reassign" ? "Reassigned" : "Assigned"} ${deliveryIds.length} deliveries to ${driver}`,
+    );
+    setNote("");
     onOpenChange(false);
     onDone();
   }
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-sm">
+      <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Bulk Assign Driver</DialogTitle>
+          <DialogTitle>
+            {mode === "reassign" ? "Bulk Reassign Driver" : "Bulk Assign Driver"}
+          </DialogTitle>
         </DialogHeader>
         <form onSubmit={submit} className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Assign {deliveryIds.length} selected deliveries to a driver.
+            {mode === "reassign"
+              ? `Replace the current driver for ${deliveryIds.length} selected deliveries.`
+              : `Assign ${deliveryIds.length} selected deliveries to a driver.`}
           </p>
           <div className="space-y-1.5">
             <Label>Driver</Label>
@@ -650,9 +670,178 @@ function BulkAssignDialog({
               {driverPool.map((d) => <option key={d} value={d}>{d}</option>)}
             </select>
           </div>
+          <div className="space-y-1.5">
+            <Label>Notes (optional)</Label>
+            <Textarea
+              rows={3}
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="Add context for the driver / audit trail…"
+            />
+          </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button type="submit">Assign</Button>
+            <Button type="submit">
+              {mode === "reassign" ? "Reassign" : "Assign"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function BulkToolbar({
+  deliveries,
+  onAssign,
+  onNotify,
+  onCancel,
+}: {
+  deliveries: Delivery[];
+  onAssign: () => void;
+  onNotify: () => void;
+  onCancel: () => void;
+}) {
+  const allAssigned =
+    deliveries.length > 0 &&
+    deliveries.every((d) => d.driver && d.driver !== "—");
+  const mode: "assign" | "reassign" = allAssigned ? "reassign" : "assign";
+  return (
+    <div className="sticky top-2 z-20 flex flex-wrap items-center gap-3 rounded-lg border border-primary/30 bg-primary/5 px-4 py-2.5 shadow-sm">
+      <div className="text-sm">
+        <span className="text-muted-foreground">Selected:</span>{" "}
+        <span className="font-semibold">
+          {deliveries.length} {deliveries.length === 1 ? "Delivery" : "Deliveries"}
+        </span>
+      </div>
+      <div className="ml-auto flex flex-wrap items-center gap-2">
+        <Button size="sm" onClick={onAssign} className="gap-1.5">
+          <UserCheck className="h-3.5 w-3.5" />
+          {mode === "reassign" ? "Bulk Reassign" : "Bulk Assign"}
+        </Button>
+        <Button size="sm" variant="outline" onClick={onNotify} className="gap-1.5">
+          <Bell className="h-3.5 w-3.5" />
+          Bulk Notify Passenger
+        </Button>
+        <Button size="sm" variant="ghost" onClick={onCancel}>
+          Cancel Selection
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+const NOTIFY_TEMPLATES: { status: WorkflowStatus; label: string }[] = [
+  { status: "DELIVERY_APPROVED", label: "Delivery Approved" },
+  { status: "DRIVER_ASSIGNED", label: "Driver Assigned (Portal + OTP)" },
+  { status: "OUT_FOR_DELIVERY", label: "Out for Delivery" },
+  { status: "DRIVER_ARRIVED", label: "Driver Arrived" },
+  { status: "DELIVERED", label: "Delivered" },
+];
+
+function BulkNotifyDialog({
+  open,
+  onOpenChange,
+  deliveries,
+  onDone,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  deliveries: Delivery[];
+  onDone: () => void;
+}) {
+  const [channel, setChannel] = useState<NotificationChannel>("sms");
+  const [status, setStatus] = useState<WorkflowStatus>("OUT_FOR_DELIVERY");
+
+  const preview = useMemo(() => {
+    const sample = deliveries[0];
+    if (!sample) return null;
+    return renderTemplate(status, channel, "en", {
+      passengerName: sample.passengerName,
+      pirNumber: sample.pirNumber,
+      driverName: sample.driver,
+      otp: sample.otpCode,
+      trackingUrl: `/passenger/${sample.deliveryId.toLowerCase()}`,
+    });
+  }, [deliveries, status, channel]);
+
+  function submit(e: React.FormEvent) {
+    e.preventDefault();
+    let sent = 0;
+    let skipped = 0;
+    for (const d of deliveries) {
+      ensurePassengerToken(d.deliveryId);
+      const events = createTestNotification({
+        deliveryId: d.deliveryId,
+        channel,
+        workflowStatus: status,
+        operator: "Delivery Coordinator",
+      });
+      if (events.length) sent++;
+      else skipped++;
+    }
+    if (sent) toast.success(`Notified ${sent} passenger${sent === 1 ? "" : "s"} via ${channel.toUpperCase()}`);
+    if (skipped) toast.warning(`${skipped} skipped — no ${channel} template for this status`);
+    onOpenChange(false);
+    onDone();
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Bulk Notify Passenger</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={submit} className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Send a notification individually to every passenger across {deliveries.length}{" "}
+            selected {deliveries.length === 1 ? "delivery" : "deliveries"}.
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label>Channel</Label>
+              <select
+                className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+                value={channel}
+                onChange={(e) => setChannel(e.target.value as NotificationChannel)}
+              >
+                <option value="sms">SMS</option>
+                <option value="whatsapp">WhatsApp</option>
+                <option value="email">Email</option>
+                <option value="push">Push</option>
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Template</Label>
+              <select
+                className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+                value={status}
+                onChange={(e) => setStatus(e.target.value as WorkflowStatus)}
+              >
+                {NOTIFY_TEMPLATES.map((t) => (
+                  <option key={t.status} value={t.status}>{t.label}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-[11px] text-muted-foreground">Preview (sample: {deliveries[0]?.passengerName ?? "—"})</Label>
+            <div className="rounded-md border border-border bg-muted/40 p-3 text-xs whitespace-pre-wrap min-h-[80px]">
+              {preview ? (
+                <>
+                  {preview.subject && <div className="font-semibold mb-1">{preview.subject}</div>}
+                  {preview.body}
+                </>
+              ) : (
+                <span className="italic text-muted-foreground">
+                  No {channel} template available for this status.
+                </span>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+            <Button type="submit" disabled={!preview}>Send</Button>
           </DialogFooter>
         </form>
       </DialogContent>
