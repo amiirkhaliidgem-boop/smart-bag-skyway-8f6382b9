@@ -41,6 +41,7 @@ import {
   Bell,
   Navigation,
   StickyNote,
+  ExternalLink,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -158,6 +159,21 @@ function DeliveryDetails() {
                   <Bell className="h-3.5 w-3.5" /> Notify Passenger
                 </Button>
               )}
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-1.5"
+                onClick={() => {
+                  const token = ensurePassengerToken(deliveryId);
+                  if (!token) {
+                    toast.error("Unable to open Passenger Portal");
+                    return;
+                  }
+                  window.open(`/passenger/${token}`, "_blank", "noopener,noreferrer");
+                }}
+              >
+                <ExternalLink className="h-3.5 w-3.5" /> View Passenger Portal
+              </Button>
               <a
                 href={mapsHref}
                 target="_blank"
