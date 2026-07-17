@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import {
   useStore,
@@ -14,7 +14,7 @@ import {
   type WorkflowRecord,
 } from "@/lib/store";
 import {
-  LF_STATUSES,
+  LF_OWNED_STATUSES,
   deriveLfFromCase,
   nextLfStatus,
   canTransitionLf,
@@ -45,7 +45,7 @@ import {
   ArrowLeft, ChevronRight, Truck, MessageSquare, Phone, Mail,
   FileText, Upload, Trash2, MapPin, Radar, History as HistoryIcon,
   ShieldAlert, Star as StarIcon, ExternalLink, Pencil, MoreHorizontal,
-  UserCog, Bell, Link as LinkIcon, Copy, Printer, Download, XCircle,
+  UserCog, Bell, Link as LinkIcon, Copy, Printer, Download,
   AlertTriangle,
 } from "lucide-react";
 import { WORKFLOW_LABELS } from "@/lib/workflow/statuses";
@@ -63,7 +63,6 @@ export const Route = createFileRoute("/lost-found/$bagId")({
 
 function CaseDetailsPage() {
   const { bagId } = Route.useParams();
-  const navigate = useNavigate();
   const c = useStore((s) => s.cases.find((x) => x.bagId === bagId));
   const deliveries = useStore((s) => s.deliveries);
   const notifications = useStore((s) => s.notifications);
@@ -184,14 +183,6 @@ function CaseDetailsPage() {
     if (events.length) toast.success(`Notification queued (${events.length} messages)`);
     else toast.error("No template available for current workflow status.");
   }
-  function assignDelivery() {
-    if (linkedDelivery) {
-      navigate({ to: "/delivery" });
-    } else {
-      navigate({ to: "/delivery" });
-      toast.info("Create a delivery for this case in the Delivery module.");
-    }
-  }
   function printPir() { window.print(); }
   function exportCase() {
     const payload = JSON.stringify(c, null, 2);
@@ -204,12 +195,6 @@ function CaseDetailsPage() {
     URL.revokeObjectURL(url);
     toast.success(`Exported ${c!.pirNumber}`);
   }
-  function closeCase() {
-    if (lfs === "Closed") return;
-    updateLfStatus(c!.bagId, "Closed", { actor: "Ops Console", force: true, note: "Closed via quick actions" });
-    toast.success("Case closed");
-  }
-
   return (
     <div className="space-y-5">
       {/* Breadcrumbs */}
@@ -315,9 +300,6 @@ function CaseDetailsPage() {
                   <DropdownMenuItem onClick={() => setAssignOfficerOpen(true)}>
                     <UserCog className="h-4 w-4 mr-2" /> Assign Officer
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={assignDelivery}>
-                    <Truck className="h-4 w-4 mr-2" /> Assign Delivery
-                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={notifyPassenger}>
                     <Bell className="h-4 w-4 mr-2" /> Notify Passenger
                   </DropdownMenuItem>
@@ -333,14 +315,6 @@ function CaseDetailsPage() {
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={exportCase}>
                     <Download className="h-4 w-4 mr-2" /> Export Case
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={closeCase}
-                    className="text-rose-600"
-                    disabled={lfs === "Closed"}
-                  >
-                    <XCircle className="h-4 w-4 mr-2" /> Close Case
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -694,7 +668,7 @@ function ChangeStatusDialog({
           <Select value={target} onValueChange={(v) => setTarget(v as LFStatus)}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
-              {LF_STATUSES.map((s) => (
+              {LF_OWNED_STATUSES.map((s) => (
                 <SelectItem key={s} value={s}>{s}</SelectItem>
               ))}
             </SelectContent>

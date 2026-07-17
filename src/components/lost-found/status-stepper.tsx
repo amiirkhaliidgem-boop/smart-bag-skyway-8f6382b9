@@ -1,6 +1,6 @@
 import { Check, Circle, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { LF_STATUSES, LF_STATUS_ORDER, type LFStatus } from "@/lib/lost-found/statuses";
+import { LF_OWNED_STATUSES, LF_STATUS_ORDER, type LFStatus } from "@/lib/lost-found/statuses";
 
 // Enterprise workflow stepper. Reads canonical LF_STATUSES from
 // src/lib/lost-found/statuses.ts. Completed = check, current = filled,
@@ -15,7 +15,15 @@ export function LfStatusStepper({
   onSelect?: (s: LFStatus) => void;
   className?: string;
 }) {
-  const currentIndex = LF_STATUS_ORDER[current];
+  // The stepper only renders L&F-owned statuses (up to Ready for Delivery).
+  // Anything beyond that belongs to Delivery Management and is displayed
+  // there — not here.
+  const steps = LF_OWNED_STATUSES;
+  const stepIndex = steps.findIndex((s) => s === current);
+  const globalCurrent = LF_STATUS_ORDER[current];
+  const readyIdx = LF_STATUS_ORDER["Ready for Delivery"];
+  // Once past Ready for Delivery, force the last step to render as complete.
+  const currentIndex = stepIndex >= 0 ? stepIndex : globalCurrent > readyIdx ? steps.length : 0;
   return (
     <div
       className={cn(
@@ -23,7 +31,7 @@ export function LfStatusStepper({
         className,
       )}
     >
-      {LF_STATUSES.map((s, i) => {
+      {steps.map((s, i) => {
         const done = i < currentIndex;
         const isCurrent = i === currentIndex;
         const isFuture = i > currentIndex;
@@ -56,7 +64,7 @@ export function LfStatusStepper({
               </span>
               <span className="whitespace-nowrap">{s}</span>
             </button>
-            {i < LF_STATUSES.length - 1 && (
+            {i < steps.length - 1 && (
               <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/60 mx-0.5 shrink-0" />
             )}
           </div>
