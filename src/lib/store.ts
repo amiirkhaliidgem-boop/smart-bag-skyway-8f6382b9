@@ -1221,11 +1221,12 @@ export function setDeliveryStage(
 export function assignDriver(
   deliveryId: string,
   driver: string,
-  opts: { actor?: string; role?: Role } = {},
+  opts: { actor?: string; role?: Role; note?: string } = {},
 ) {
   const d = state.deliveries.find((x) => x.deliveryId === deliveryId);
   if (!d) return;
-  const wasAssigned = d.driver && d.driver !== "—";
+  const prev = d.driver && d.driver !== "—" ? d.driver : null;
+  const wasAssigned = !!prev;
   // Auto-generate OTP (only visible in the Passenger Portal — never shown
   // to the driver or the dispatcher) and bootstrap the passenger tracking
   // token before we transition the workflow. Both must exist before the
@@ -1244,7 +1245,9 @@ export function assignDriver(
     role: opts.role,
     entityType: "delivery",
     entityId: deliveryId,
-    note: wasAssigned ? `Reassigned to ${driver}` : `Assigned to ${driver}`,
+    note: wasAssigned
+      ? `Driver reassigned — changed from ${prev} to ${driver}`
+      : `Assigned to ${driver}`,
   });
   pushAudit({
     action: "delivery.update",
@@ -1259,14 +1262,19 @@ export function assignDriver(
   setDeliveryStage(deliveryId, "Assigned", {
     actor: opts.actor,
     role: opts.role,
-    note: `Driver: ${driver}`,
+    note: wasAssigned
+      ? `Driver changed from ${prev} to ${driver}`
+      : `Driver: ${driver}`,
   });
+  if (opts.note && opts.note.trim()) {
+    addDeliveryNote(deliveryId, opts.note, { actor: opts.actor, role: opts.role });
+  }
 }
 
 export function bulkAssignDriver(
   deliveryIds: string[],
   driver: string,
-  opts: { actor?: string; role?: Role } = {},
+  opts: { actor?: string; role?: Role; note?: string } = {},
 ) {
   for (const id of deliveryIds) assignDriver(id, driver, opts);
 }
