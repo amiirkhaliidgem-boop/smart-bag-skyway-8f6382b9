@@ -223,6 +223,41 @@ function LostFoundPage() {
     return { total, open, tracing, readyDelivery, delivered, vip };
   }, [cases]);
 
+  const selectedIds = Array.from(selected);
+  function clearSelection() { setSelected(new Set()); }
+
+  function runAssignDelivery() {
+    if (selectedIds.length === 0) return;
+    const res = bulkAssignDelivery(selectedIds, { actor: "L&F Officer" });
+    const parts: string[] = [];
+    if (res.handedOver) parts.push(`${res.handedOver} handed over to Delivery`);
+    if (res.alreadyHandedOver) parts.push(`${res.alreadyHandedOver} already handed over`);
+    if (res.skipped) parts.push(`${res.skipped} skipped`);
+    toast.success(parts.join(" · ") || "No cases to hand over");
+    clearSelection();
+  }
+
+  function runPriority(p: Priority) {
+    bulkUpdateCases(selectedIds, { priority: p });
+    toast.success(`Priority set to ${p} for ${selectedIds.length} case(s)`);
+    setPriorityDialogOpen(false);
+    clearSelection();
+  }
+
+  function runAssignOfficer(officerName: string) {
+    const name = officerName.trim();
+    if (!name) return;
+    bulkUpdateCases(selectedIds, { internal: { assignedOfficer: name } as never });
+    toast.success(`${selectedIds.length} case(s) assigned to ${name}`);
+    setAssignOfficerOpen(false);
+    clearSelection();
+  }
+
+  function runExportSelected() {
+    toast.info("Use the Export menu — bulk export is scoped to the selected rows.");
+  }
+  function runPrint() { window.print(); }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
