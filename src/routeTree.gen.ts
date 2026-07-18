@@ -27,6 +27,7 @@ import { Route as DriverPortalRouteImport } from './routes/driver-portal'
 import { Route as DeliveryRouteImport } from './routes/delivery'
 import { Route as DataIoRouteImport } from './routes/data-io'
 import { Route as ContactCenterRouteImport } from './routes/contact-center'
+import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ApiStatusRouteImport } from './routes/api-status'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
@@ -126,6 +127,11 @@ const ContactCenterRoute = ContactCenterRouteImport.update({
   path: '/contact-center',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiStatusRoute = ApiStatusRouteImport.update({
   id: '/api-status',
   path: '/api-status',
@@ -171,6 +177,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/api-status': typeof ApiStatusRoute
+  '/auth': typeof AuthRoute
   '/contact-center': typeof ContactCenterRoute
   '/data-io': typeof DataIoRoute
   '/delivery': typeof DeliveryRouteWithChildren
@@ -199,6 +206,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/api-status': typeof ApiStatusRoute
+  '/auth': typeof AuthRoute
   '/contact-center': typeof ContactCenterRoute
   '/data-io': typeof DataIoRoute
   '/driver-portal': typeof DriverPortalRoute
@@ -226,6 +234,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/api-status': typeof ApiStatusRoute
+  '/auth': typeof AuthRoute
   '/contact-center': typeof ContactCenterRoute
   '/data-io': typeof DataIoRoute
   '/delivery': typeof DeliveryRouteWithChildren
@@ -256,6 +265,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/api-status'
+    | '/auth'
     | '/contact-center'
     | '/data-io'
     | '/delivery'
@@ -284,6 +294,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/api-status'
+    | '/auth'
     | '/contact-center'
     | '/data-io'
     | '/driver-portal'
@@ -310,6 +321,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/api-status'
+    | '/auth'
     | '/contact-center'
     | '/data-io'
     | '/delivery'
@@ -339,6 +351,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
   ApiStatusRoute: typeof ApiStatusRoute
+  AuthRoute: typeof AuthRoute
   ContactCenterRoute: typeof ContactCenterRoute
   DataIoRoute: typeof DataIoRoute
   DeliveryRoute: typeof DeliveryRouteWithChildren
@@ -487,6 +500,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ContactCenterRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api-status': {
       id: '/api-status'
       path: '/api-status'
@@ -590,6 +610,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
   ApiStatusRoute: ApiStatusRoute,
+  AuthRoute: AuthRoute,
   ContactCenterRoute: ContactCenterRoute,
   DataIoRoute: DataIoRoute,
   DeliveryRoute: DeliveryRouteWithChildren,
