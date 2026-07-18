@@ -81,7 +81,6 @@ function DispatchCenter() {
   const [stationF, setStationF] = useState("all");
   const [typeF, setTypeF] = useState("all");
   const [vipOnly, setVipOnly] = useState(false);
-  const [dateF, setDateF] = useState("");
   const [queue, setQueue] = useState<DeliveryQueueId>("all");
   const [showAdvanced, setShowAdvanced] = useState(false);
 
