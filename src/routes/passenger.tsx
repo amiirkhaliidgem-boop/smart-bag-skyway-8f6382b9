@@ -362,8 +362,7 @@ function StatusHero({ delivery, kase }: { delivery: Delivery; kase: BaggageCase 
           lang="ar"
           style={{ fontFamily: "var(--font-arabic)" }}
         >
-          {kase.language === "AR" ? "أهلاً بك " : "أهلاً بك "}
-          {delivery.passengerName}
+          أهلاً بك {delivery.passengerName}
         </p>
 
         <div className="mt-6">
