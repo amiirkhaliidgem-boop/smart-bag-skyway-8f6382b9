@@ -25,10 +25,13 @@ import {
   Radio,
   ArrowRightLeft,
   Settings as SettingsIcon,
+  LogOut,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import iabLogo from "@/assets/iab-logo.jpeg.asset.json";
+import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "@tanstack/react-router";
 
 const navSections: {
   label: string;
@@ -239,9 +242,7 @@ export function AppShell() {
               <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
               System Online
             </div>
-            <div className="h-8 w-8 rounded-full bg-accent text-accent-foreground grid place-items-center text-xs font-semibold">
-              OP
-            </div>
+            <UserMenu />
           </div>
         </header>
         <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-[1600px] w-full mx-auto">
@@ -277,6 +278,35 @@ function SidebarFooter() {
     <div className="px-5 py-4 border-t border-sidebar-border text-[11px] text-sidebar-foreground/60">
       <p className="font-medium text-sidebar-foreground/80">Ops Console v2.6</p>
       <p className="mt-0.5">© 2026 Cairo Ground Services</p>
+    </div>
+  );
+}
+
+function UserMenu() {
+  const navigate = useNavigate();
+  const [email, setEmail] = useState<string>("");
+  useEffect(() => {
+    void supabase.auth.getUser().then(({ data }) => {
+      setEmail(data.user?.email ?? "");
+    });
+  }, []);
+  async function signOut() {
+    await supabase.auth.signOut();
+    navigate({ to: "/auth", replace: true });
+  }
+  return (
+    <div className="flex items-center gap-2">
+      <span className="hidden md:inline text-xs text-muted-foreground max-w-[160px] truncate">
+        {email}
+      </span>
+      <button
+        type="button"
+        onClick={signOut}
+        className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-md border border-input bg-background text-xs font-medium hover:bg-muted"
+        aria-label="Sign out"
+      >
+        <LogOut className="h-3.5 w-3.5" /> Sign out
+      </button>
     </div>
   );
 }
