@@ -149,7 +149,8 @@ function AuthGate() {
     session?.user?.id ?? null,
     session?.user?.app_metadata?.role,
   );
-  const claimedRole = session?.user?.app_metadata?.role;
+  const claimedRole =
+    session?.user?.app_metadata?.role ?? session?.user?.user_metadata?.role;
   const effectiveRole =
     role ??
     (claimedRole === "admin" ||
