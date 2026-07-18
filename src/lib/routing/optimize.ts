@@ -10,10 +10,13 @@
 
 import type { Delivery } from "../store";
 
+// Deprecated fallback. The station origin is configurable in Settings ›
+// Airport and read from the store; this constant is kept only so legacy
+// call sites still compile. New code must pass an explicit origin.
 export const AIRPORT_ORIGIN = {
   lat: 30.1219,
   lng: 31.4056,
-  label: "Cairo International Airport",
+  label: "Station",
 } as const;
 
 export interface LatLng {
@@ -40,7 +43,7 @@ function haversineKm(a: LatLng, b: LatLng): number {
 // without geocoding.
 export function optimizeRoute<T extends Delivery>(
   deliveries: T[],
-  originOverride?: LatLng,
+  origin: LatLng = AIRPORT_ORIGIN,
 ): T[] {
   const geo: T[] = [];
   const nogeo: T[] = [];
@@ -53,7 +56,7 @@ export function optimizeRoute<T extends Delivery>(
   }
   const remaining = [...geo];
   const ordered: T[] = [];
-  let cursor: LatLng = originOverride ?? AIRPORT_ORIGIN;
+  let cursor: LatLng = origin;
   while (remaining.length) {
     let bestIdx = 0;
     let bestDist = Infinity;

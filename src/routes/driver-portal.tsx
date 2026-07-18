@@ -109,6 +109,7 @@ function DriverLogin({
 
 function DriverDashboard({ driver, onSignOut }: { driver: string; onSignOut: () => void }) {
   const mine = useStore((s) => s.deliveries.filter((d) => d.driver === driver));
+  const station = useStore((s) => s.station);
 
   // Today's Route — every stop assigned to this driver that has not been
   // delivered yet, optimized nearest-neighbor. Once the trip is under way
@@ -121,8 +122,11 @@ function DriverDashboard({ driver, onSignOut }: { driver: string; onSignOut: () 
     const anchor = [...completed]
       .reverse()
       .find((d) => d.destination)?.destination;
-    return optimizeRoute(open, anchor ?? undefined);
-  }, [mine, completed]);
+    // Trip in progress → re-optimize from the driver's last completed
+    // stop (a proxy for current position); otherwise anchor at the
+    // configured station.
+    return optimizeRoute(open, anchor ?? { lat: station.lat, lng: station.lng });
+  }, [mine, completed, station.lat, station.lng]);
 
   return (
     <div className="space-y-6">

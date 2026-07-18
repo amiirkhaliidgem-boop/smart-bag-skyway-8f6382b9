@@ -285,7 +285,25 @@ interface State {
   notifications: NotificationEvent[];
   audit: AuditEntry[];
   ioAudit: ImportAuditEntry[];
+  station: Station;
 }
+
+// Station (airport) configuration — origin for route optimization and the
+// default anchor for the driver's route. Editable from Settings › Airport
+// so the system can be deployed at any airport, not just Cairo.
+export interface Station {
+  code: string;
+  name: string;
+  lat: number;
+  lng: number;
+}
+
+export const DEFAULT_STATION: Station = {
+  code: "CAI",
+  name: "Cairo International Airport",
+  lat: 30.1219,
+  lng: 31.4056,
+};
 
 const driverPool = [
   "Ahmed Mostafa",
@@ -626,6 +644,7 @@ function defaults(): State {
     notifications: [],
     audit: [],
     ioAudit: [],
+    station: DEFAULT_STATION,
   };
 }
 
@@ -641,6 +660,7 @@ function load(): State {
     notifications: [],
     audit: [],
     ioAudit: [],
+    station: DEFAULT_STATION,
   };
   // Always start from defaults on both server and client so SSR HTML
   // matches the first client render. localStorage is merged in after
@@ -670,6 +690,7 @@ function applyRemote(payload: unknown, _version: number) {
     notifications: parsed.notifications ?? base.notifications,
     audit: parsed.audit ?? base.audit,
     ioAudit: parsed.ioAudit ?? base.ioAudit,
+    station: parsed.station ?? base.station,
   };
   listeners.forEach((l) => l());
 }
@@ -1560,6 +1581,15 @@ export function logIoAudit(entry: Omit<ImportAuditEntry, "id" | "at">) {
   state = { ...state, ioAudit: [full, ...state.ioAudit] };
   emit();
   return full;
+}
+
+// ---------- Station configuration ----------
+// Origin used by the route optimization engine. Editable from Settings ›
+// Airport so the platform can be deployed at any airport.
+export function setStation(patch: Partial<Station>) {
+  state = { ...state, station: { ...state.station, ...patch } };
+  emit();
+  return state.station;
 }
 
 // ---------- Notification helpers ----------
