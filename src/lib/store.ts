@@ -427,7 +427,7 @@ const seedDeliveries: Delivery[] = [
     driver: "Ahmed Mostafa",
     eta: "2026-06-23T19:30:00Z",
     otpStatus: "Sent",
-    otpCode: "481923",
+    otpCode: "4819",
     driverLocation: { lat: 30.058, lng: 31.245, label: "Salah Salem, Cairo" },
     destination: { lat: 29.96, lng: 31.258, label: "Maadi, Cairo" },
   },
@@ -443,7 +443,7 @@ const seedDeliveries: Delivery[] = [
     driver: "Karim El-Sayed",
     eta: "2026-06-23T21:00:00Z",
     otpStatus: "Pending",
-    otpCode: "302145",
+    otpCode: "3021",
     destination: { lat: 30.05, lng: 31.34, label: "Nasr City, Cairo" },
   },
   {
@@ -458,7 +458,7 @@ const seedDeliveries: Delivery[] = [
     driver: "—",
     eta: "2026-06-24T10:00:00Z",
     otpStatus: "Pending",
-    otpCode: "775612",
+    otpCode: "7756",
     destination: { lat: 30.063, lng: 31.219, label: "Zamalek, Cairo" },
   },
   {
@@ -473,7 +473,7 @@ const seedDeliveries: Delivery[] = [
     driver: "Youssef Hassan",
     eta: "2026-06-19T16:40:00Z",
     otpStatus: "Verified",
-    otpCode: "910044",
+    otpCode: "9100",
     destination: { lat: 30.038, lng: 31.211, label: "Dokki, Giza" },
   },
 ];
@@ -1026,7 +1026,7 @@ export function updateLfStatus(
           ]
             .filter(Boolean)
             .join(", ");
-        const otp = String(Math.floor(100000 + Math.random() * 900000));
+        const otp = String(Math.floor(1000 + Math.random() * 9000));
         const eta = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
         addDelivery({
           bagId,
