@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import {
   useStore,
   updateDelivery,
@@ -23,13 +24,13 @@ import {
   Truck,
   Sparkles,
   Copy,
-  Phone,
+  PhoneCall,
   MessageCircle,
   Mail,
-  X,
   AlertTriangle,
   Star,
   Plane,
+  ChevronRight,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
