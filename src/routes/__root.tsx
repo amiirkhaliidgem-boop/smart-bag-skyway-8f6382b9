@@ -145,7 +145,10 @@ function AuthGate() {
   const [ready, setReady] = useState(false);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
-  const { role, loading: roleLoading } = useCurrentRole(session?.user?.id ?? null);
+  const { role, loading: roleLoading } = useCurrentRole(
+    session?.user?.id ?? null,
+    session?.user?.app_metadata?.role,
+  );
 
   useEffect(() => {
     let mounted = true;

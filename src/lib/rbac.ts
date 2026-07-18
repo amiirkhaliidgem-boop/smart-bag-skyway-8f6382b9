@@ -78,7 +78,10 @@ export function useRole() {
   return useContext(RoleContext);
 }
 
-export function useCurrentRole(userId: string | null | undefined) {
+export function useCurrentRole(
+  userId: string | null | undefined,
+  metadataRole?: unknown,
+) {
   const [role, setRole] = useState<AppRole | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -96,7 +99,18 @@ export function useCurrentRole(userId: string | null | undefined) {
       .eq("user_id", userId)
       .then(({ data, error }) => {
         if (cancelled) return;
-        if (error || !data || data.length === 0) {
+        const fallbackRole =
+          metadataRole === "admin" ||
+          metadataRole === "agent" ||
+          metadataRole === "coordinator" ||
+          metadataRole === "driver"
+            ? metadataRole
+            : null;
+        if (error) {
+          // app_metadata is issued by the Auth server and cannot be changed by
+          // the signed-in user. It safely bridges transient role-query errors.
+          setRole(fallbackRole);
+        } else if (!data || data.length === 0) {
           setRole(null);
         } else {
           const known = data
@@ -110,7 +124,7 @@ export function useCurrentRole(userId: string | null | undefined) {
     return () => {
       cancelled = true;
     };
-  }, [userId]);
+  }, [userId, metadataRole]);
 
   return { role, loading };
 }
