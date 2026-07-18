@@ -392,11 +392,6 @@ function LostFoundPage() {
                   ))}
                 </DropdownMenuContent>
               </DropdownMenu>
-              <BulkActions
-                selected={selected}
-                onDone={() => setSelected(new Set())}
-                totalDeliveriesForBag={(bagId) => deliveries.some((d) => d.bagId === bagId)}
-              />
             </div>
           </div>
         </CardHeader>
