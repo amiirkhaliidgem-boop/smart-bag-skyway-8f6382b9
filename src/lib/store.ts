@@ -1232,7 +1232,7 @@ export function assignDriver(
   // token before we transition the workflow. Both must exist before the
   // DRIVER_ASSIGNED notification templates render, otherwise the SMS /
   // WhatsApp link would be missing.
-  const otpCode = String(Math.floor(100000 + Math.random() * 900000));
+  const otpCode = String(Math.floor(1000 + Math.random() * 9000));
   ensureWorkflow(deliveryId);
   writeDeliveryPatch(deliveryId, {
     driver,
@@ -1404,7 +1404,7 @@ export function addDeliveryNote(
 }
 
 export function generateOtp(deliveryId: string, opts: { actor?: string } = {}) {
-  const code = String(Math.floor(100000 + Math.random() * 900000));
+  const code = String(Math.floor(1000 + Math.random() * 9000));
   writeDeliveryPatch(deliveryId, { otpCode: code, otpStatus: "Sent" });
   pushAudit({
     action: "delivery.update",
@@ -1424,7 +1424,7 @@ export function resendOtp(deliveryId: string, opts: { actor?: string } = {}) {
   // one before resending. The dispatcher never sees the code — it is only
   // exposed in the Passenger Portal.
   const regenerated = !d.otpCode;
-  const code = d.otpCode ?? String(Math.floor(100000 + Math.random() * 900000));
+  const code = d.otpCode ?? String(Math.floor(1000 + Math.random() * 9000));
   writeDeliveryPatch(deliveryId, { otpCode: code, otpStatus: "Sent" });
   ensureWorkflow(deliveryId);
   pushAudit({
