@@ -253,7 +253,6 @@ function TrackScreen({
   const [sealed, setSealed] = useState(false);
   const [otpAfter, setOtpAfter] = useState(false);
   const [noBribe, setNoBribe] = useState(true);
-  const [showContact, setShowContact] = useState(false);
   const [reported, setReported] = useState(false);
 
   const allChecked = tags && sealed && otpAfter && noBribe;
@@ -305,11 +304,26 @@ function TrackScreen({
   }
 
   return (
-    <div className="space-y-6 iab-rise">
+    <motion.div
+      initial="hidden"
+      animate="show"
+      variants={{
+        hidden: {},
+        show: { transition: { staggerChildren: 0.08, delayChildren: 0.05 } },
+      }}
+      className="space-y-5 sm:space-y-6"
+    >
       <StatusHero delivery={delivery} kase={kase} />
-      <SimpleTimeline delivery={delivery} kase={kase} />
-      {showExpected && <ExpectedDeliveryCard />}
-      <OtpHeroCard
+      <MotionSection>
+        <SimpleTimeline delivery={delivery} kase={kase} />
+      </MotionSection>
+      {showExpected && (
+        <MotionSection>
+          <ExpectedDeliveryCard />
+        </MotionSection>
+      )}
+      <MotionSection>
+        <OtpHeroCard
         code={delivery.otpCode}
         tags={tags}
         sealed={sealed}
@@ -322,12 +336,29 @@ function TrackScreen({
         reported={reported}
         allChecked={allChecked}
         onConfirm={confirm}
-      />
-      <SupportCard onOpen={() => setShowContact(true)} />
-      {showContact && (
-        <ContactModal delivery={delivery} onClose={() => setShowContact(false)} />
-      )}
-    </div>
+        />
+      </MotionSection>
+      <MotionSection>
+        <ContactCard delivery={delivery} />
+      </MotionSection>
+    </motion.div>
+  );
+}
+
+function MotionSection({ children }: { children: React.ReactNode }) {
+  return (
+    <motion.div
+      variants={{
+        hidden: { opacity: 0, y: 14 },
+        show: {
+          opacity: 1,
+          y: 0,
+          transition: { duration: 0.5, ease: [0.2, 0.7, 0.2, 1] },
+        },
+      }}
+    >
+      {children}
+    </motion.div>
   );
 }
 
