@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Settings as SettingsIcon } from "lucide-react";
 import iabLogo from "@/assets/iab-logo.jpeg.asset.json";
 import { toast } from "sonner";
+import { useStore, setStation } from "@/lib/store";
+import { useState } from "react";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({ meta: [{ title: "System Settings — IAB Smart Baggage Ecosystem" }] }),
@@ -131,14 +133,7 @@ function SettingsPage() {
         </TabsContent>
 
         <TabsContent value="airport" className="mt-4">
-          <Card><CardHeader><CardTitle className="text-base">Airport Information</CardTitle></CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Field label="Primary Station" defaultValue="Cairo International Airport (CAI)" />
-              <Field label="Terminals" defaultValue="TB1, TB2, TB3" />
-              <Field label="Ground Handling Provider" defaultValue="IAB Ground Services" />
-              <Field label="Operations Contact" defaultValue="+20 2 2265 0000" />
-            </CardContent>
-          </Card>
+          <StationCard />
         </TabsContent>
       </Tabs>
 
@@ -173,5 +168,59 @@ function ToggleRow({ label, defaultChecked }: { label: string; defaultChecked?: 
       <p className="text-sm font-medium">{label}</p>
       <Switch defaultChecked={defaultChecked} />
     </div>
+  );
+}
+
+function StationCard() {
+  const station = useStore((s) => s.station);
+  const [code, setCode] = useState(station.code);
+  const [name, setName] = useState(station.name);
+  const [lat, setLat] = useState(String(station.lat));
+  const [lng, setLng] = useState(String(station.lng));
+  const save = () => {
+    const nlat = Number(lat);
+    const nlng = Number(lng);
+    if (!Number.isFinite(nlat) || !Number.isFinite(nlng)) {
+      toast.error("Latitude and longitude must be valid numbers.");
+      return;
+    }
+    setStation({ code: code.trim(), name: name.trim(), lat: nlat, lng: nlng });
+    toast.success("Station updated", {
+      description: "Route optimization now uses these coordinates as the origin.",
+    });
+  };
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Station (Route Optimization Origin)</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <p className="text-xs text-muted-foreground">
+          These coordinates are the starting point for the driver route optimizer.
+          Update them when deploying at a different airport.
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="text-xs text-muted-foreground">Station Code</label>
+            <Input value={code} onChange={(e) => setCode(e.target.value)} placeholder="CAI" />
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground">Station Name</label>
+            <Input value={name} onChange={(e) => setName(e.target.value)} />
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground">Latitude</label>
+            <Input value={lat} onChange={(e) => setLat(e.target.value)} inputMode="decimal" />
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground">Longitude</label>
+            <Input value={lng} onChange={(e) => setLng(e.target.value)} inputMode="decimal" />
+          </div>
+        </div>
+        <div className="flex justify-end">
+          <Button onClick={save}>Save Station</Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
