@@ -885,97 +885,123 @@ function BilingualCheck({
 }
 
 // ---------------------------------------------------------------------------
-// Support card (contact channels)
+// Contact card — three premium action tiles (Call · WhatsApp · Email)
 // ---------------------------------------------------------------------------
 
-function SupportCard({ onOpen }: { onOpen: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onOpen}
-      className="w-full text-left iab-glass rounded-3xl p-5 flex items-center gap-4 hover:brightness-[0.99] transition"
-    >
-      <div
-        className="h-11 w-11 rounded-2xl grid place-items-center text-white shrink-0"
-        style={{ background: "var(--gradient-iab-crimson)" }}
-      >
-        <MessageCircle className="h-4 w-4" />
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="font-medium text-[color:var(--iab-navy)]">
-          Need help? · هل تحتاج للمساعدة؟
-        </p>
-        <p className="text-xs text-[color:var(--iab-navy)]/60 mt-0.5">
-          IAB Customer Care · +20 2 2696 0000
-        </p>
-      </div>
-      <span className="text-[color:var(--iab-navy)]/50 text-xs">›</span>
-    </button>
+function ContactCard({ delivery }: { delivery: Delivery }) {
+  const waMessage = encodeURIComponent(
+    `Hello IAB Support, I need assistance with delivery ${delivery.deliveryId} (PIR ${delivery.pirNumber}).`,
   );
-}
-
-function ContactModal({
-  delivery,
-  onClose,
-}: {
-  delivery: Delivery;
-  onClose: () => void;
-}) {
-  const options = [
-    { icon: Phone, label: "Phone", value: "+20 2 2696 0000", href: "tel:+20226960000" },
-    { icon: MessageCircle, label: "WhatsApp", value: "+20 100 000 1234", href: "https://wa.me/201000001234" },
-    { icon: Mail, label: "Email", value: "support@iab.aero", href: "mailto:support@iab.aero" },
+  const mailSubject = encodeURIComponent(
+    `PIR ${delivery.pirNumber} — Support request`,
+  );
+  const tiles = [
+    {
+      icon: PhoneCall,
+      en: "Call Airport",
+      ar: "اتصل بالمطار",
+      href: "tel:+20226960000",
+      value: "+20 2 2696 0000",
+    },
+    {
+      icon: MessageCircle,
+      en: "WhatsApp",
+      ar: "واتساب",
+      href: `https://wa.me/201000001234?text=${waMessage}`,
+      value: "+20 100 000 1234",
+    },
+    {
+      icon: Mail,
+      en: "Email",
+      ar: "البريد",
+      href: `mailto:support@iab.aero?subject=${mailSubject}`,
+      value: "support@iab.aero",
+    },
   ];
   return (
-    <div
-      className="fixed inset-0 z-50 grid place-items-center p-4"
-      style={{ background: "color-mix(in oklab, #0F1830 60%, transparent)" }}
-      onClick={onClose}
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-40px" }}
+      transition={{ duration: 0.5, ease: [0.2, 0.7, 0.2, 1] }}
+      className="space-y-3"
     >
-      <div
-        className="bg-white rounded-3xl w-full max-w-md shadow-2xl iab-rise"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between px-5 py-4 border-b border-[color:var(--iab-mist)]">
-          <div>
-            <p className="font-semibold text-[color:var(--iab-navy)]">Contact Us · تواصل معنا</p>
-            <p className="text-xs text-[color:var(--iab-navy)]/60">
-              Reference {delivery.deliveryId} · IAB Customer Care
-            </p>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-1 rounded hover:bg-[color:var(--iab-mist)]"
-            aria-label="Close"
+      <div className="flex items-center justify-between px-1">
+        <div>
+          <p className="text-[10px] uppercase tracking-[0.28em] font-semibold text-[color:var(--iab-navy)]/70">
+            Support
+          </p>
+          <p
+            className="text-[12px] text-[color:var(--iab-navy)]/70 mt-0.5"
+            dir="rtl"
+            lang="ar"
+            style={{ fontFamily: "var(--font-arabic)" }}
           >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-        <div className="p-5 space-y-2">
-          {options.map((o) => (
-            <a
-              key={o.label}
-              href={o.href}
-              className="flex items-center gap-3 rounded-2xl border border-[color:var(--iab-mist)] p-3 hover:bg-[color:var(--iab-mist)]/50 transition-colors"
-            >
-              <div
-                className="h-10 w-10 rounded-full grid place-items-center text-white"
-                style={{ background: "var(--gradient-iab-crimson)" }}
-              >
-                <o.icon className="h-4 w-4" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-sm font-medium text-[color:var(--iab-navy)]">{o.label}</p>
-                <p className="text-xs text-[color:var(--iab-navy)]/60 truncate">{o.value}</p>
-              </div>
-            </a>
-          ))}
-          <p className="text-[11px] text-[color:var(--iab-navy)]/60 pt-2 text-center">
-            For your safety, IAB does not enable direct driver communication.
+            المساعدة والدعم
           </p>
         </div>
+        <p className="text-[10px] uppercase tracking-[0.2em] text-[color:var(--iab-navy)]/50">
+          24 / 7
+        </p>
       </div>
-    </div>
+      <div className="grid grid-cols-3 gap-2 sm:gap-3">
+        {tiles.map((t, i) => (
+          <motion.a
+            key={t.en}
+            href={t.href}
+            target={t.href.startsWith("http") ? "_blank" : undefined}
+            rel="noreferrer"
+            initial={{ opacity: 0, y: 8 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: i * 0.06, duration: 0.4 }}
+            whileHover={{ y: -3 }}
+            whileTap={{ scale: 0.97 }}
+            className="iab-glass iab-ripple group relative rounded-3xl p-4 sm:p-5 flex flex-col items-center text-center gap-2 overflow-hidden"
+            style={{ boxShadow: "var(--shadow-iab-soft)" }}
+            onPointerDown={(e) => {
+              const target = e.currentTarget;
+              const rect = target.getBoundingClientRect();
+              target.style.setProperty(
+                "--x",
+                `${((e.clientX - rect.left) / rect.width) * 100}%`,
+              );
+              target.style.setProperty(
+                "--y",
+                `${((e.clientY - rect.top) / rect.height) * 100}%`,
+              );
+            }}
+          >
+            <div
+              className="h-11 w-11 rounded-2xl grid place-items-center text-white shrink-0 transition-transform group-hover:scale-105"
+              style={{ background: "var(--gradient-iab-hero)" }}
+            >
+              <t.icon className="h-5 w-5" strokeWidth={1.75} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[13px] font-semibold text-[color:var(--iab-navy)] leading-tight">
+                {t.en}
+              </p>
+              <p
+                className="text-[13px] text-[color:var(--iab-navy)]/75 leading-tight"
+                dir="rtl"
+                lang="ar"
+                style={{ fontFamily: "var(--font-arabic)" }}
+              >
+                {t.ar}
+              </p>
+            </div>
+            <span
+              className="pointer-events-none absolute inset-x-0 bottom-0 h-[2px] scale-x-0 origin-left transition-transform duration-300 group-hover:scale-x-100"
+              style={{ background: "var(--gradient-iab-crimson)" }}
+            />
+          </motion.a>
+        ))}
+      </div>
+      <p className="text-[11px] text-[color:var(--iab-navy)]/55 text-center pt-1">
+        For your safety, IAB does not enable direct driver communication.
+      </p>
+    </motion.div>
   );
 }
 
