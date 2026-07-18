@@ -321,7 +321,6 @@ function TrackStage({
 }
 
 function WelcomeCard({ delivery }: { delivery: Delivery }) {
-  const eta = etaHours(delivery.eta);
   return (
     <Card className="overflow-hidden border-0 shadow-md">
       <div className="bg-gradient-to-br from-primary to-[#0b1e4a] text-primary-foreground p-6 sm:p-7">
@@ -339,13 +338,7 @@ function WelcomeCard({ delivery }: { delivery: Delivery }) {
           أمتعتك فى الطريق إليك.
         </p>
 
-        <div className="mt-6 grid grid-cols-2 gap-3">
-          <div className="rounded-lg bg-white/10 backdrop-blur px-4 py-3">
-            <p className="text-[10px] uppercase tracking-wider text-primary-foreground/70">
-              Estimated Arrival
-            </p>
-            <p className="text-xl sm:text-2xl font-bold tabular-nums mt-1">{eta}</p>
-          </div>
+        <div className="mt-6 grid grid-cols-1 gap-3">
           <div className="rounded-lg bg-white/10 backdrop-blur px-4 py-3">
             <p className="text-[10px] uppercase tracking-wider text-primary-foreground/70">
               Current Status
@@ -486,12 +479,6 @@ function DriverCard({
   onContact: () => void;
 }) {
   const vehicle = "IAB · " + delivery.deliveryId.replace("DEL-", "V-");
-  const eta = new Date(delivery.eta).toLocaleString(undefined, {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
   return (
     <Card>
       <CardContent className="p-5 sm:p-6">
@@ -509,9 +496,8 @@ function DriverCard({
             Contact Us
           </Button>
         </div>
-        <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+        <div className="mt-4 grid grid-cols-1 gap-3 text-sm">
           <InfoRow icon={<MapPin className="h-4 w-4" />} label="Vehicle Number" value={vehicle} />
-          <InfoRow icon={<Clock className="h-4 w-4" />} label="Estimated Arrival Time" value={eta} />
         </div>
       </CardContent>
     </Card>
