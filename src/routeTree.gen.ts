@@ -36,6 +36,7 @@ import { Route as DeliveryIndexRouteImport } from './routes/delivery.index'
 import { Route as PassengerTokenRouteImport } from './routes/passenger.$token'
 import { Route as LostFoundBagIdRouteImport } from './routes/lost-found.$bagId'
 import { Route as DeliveryDeliveryIdRouteImport } from './routes/delivery.$deliveryId'
+import { Route as ApiPublicAuthRepairRouteImport } from './routes/api.public.auth-repair'
 
 const WorkflowMonitorRoute = WorkflowMonitorRouteImport.update({
   id: '/workflow-monitor',
@@ -172,6 +173,11 @@ const DeliveryDeliveryIdRoute = DeliveryDeliveryIdRouteImport.update({
   path: '/$deliveryId',
   getParentRoute: () => DeliveryRoute,
 } as any)
+const ApiPublicAuthRepairRoute = ApiPublicAuthRepairRouteImport.update({
+  id: '/api/public/auth-repair',
+  path: '/api/public/auth-repair',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -201,6 +207,7 @@ export interface FileRoutesByFullPath {
   '/passenger/$token': typeof PassengerTokenRoute
   '/delivery/': typeof DeliveryIndexRoute
   '/lost-found/': typeof LostFoundIndexRoute
+  '/api/public/auth-repair': typeof ApiPublicAuthRepairRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -228,6 +235,7 @@ export interface FileRoutesByTo {
   '/passenger/$token': typeof PassengerTokenRoute
   '/delivery': typeof DeliveryIndexRoute
   '/lost-found': typeof LostFoundIndexRoute
+  '/api/public/auth-repair': typeof ApiPublicAuthRepairRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -258,6 +266,7 @@ export interface FileRoutesById {
   '/passenger/$token': typeof PassengerTokenRoute
   '/delivery/': typeof DeliveryIndexRoute
   '/lost-found/': typeof LostFoundIndexRoute
+  '/api/public/auth-repair': typeof ApiPublicAuthRepairRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -289,6 +298,7 @@ export interface FileRouteTypes {
     | '/passenger/$token'
     | '/delivery/'
     | '/lost-found/'
+    | '/api/public/auth-repair'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -316,6 +326,7 @@ export interface FileRouteTypes {
     | '/passenger/$token'
     | '/delivery'
     | '/lost-found'
+    | '/api/public/auth-repair'
   id:
     | '__root__'
     | '/'
@@ -345,6 +356,7 @@ export interface FileRouteTypes {
     | '/passenger/$token'
     | '/delivery/'
     | '/lost-found/'
+    | '/api/public/auth-repair'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -370,6 +382,7 @@ export interface RootRouteChildren {
   TimelineRoute: typeof TimelineRoute
   TrackingRoute: typeof TrackingRoute
   WorkflowMonitorRoute: typeof WorkflowMonitorRoute
+  ApiPublicAuthRepairRoute: typeof ApiPublicAuthRepairRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -563,6 +576,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DeliveryDeliveryIdRouteImport
       parentRoute: typeof DeliveryRoute
     }
+    '/api/public/auth-repair': {
+      id: '/api/public/auth-repair'
+      path: '/api/public/auth-repair'
+      fullPath: '/api/public/auth-repair'
+      preLoaderRoute: typeof ApiPublicAuthRepairRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -629,6 +649,7 @@ const rootRouteChildren: RootRouteChildren = {
   TimelineRoute: TimelineRoute,
   TrackingRoute: TrackingRoute,
   WorkflowMonitorRoute: WorkflowMonitorRoute,
+  ApiPublicAuthRepairRoute: ApiPublicAuthRepairRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
