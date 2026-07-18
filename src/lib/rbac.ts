@@ -78,25 +78,43 @@ export function useRole() {
   return useContext(RoleContext);
 }
 
-export function useCurrentRole(userId: string | null | undefined) {
+export function useCurrentRole(
+  userId: string | null | undefined,
+  metadataRole?: unknown,
+) {
   const [role, setRole] = useState<AppRole | null>(null);
   const [loading, setLoading] = useState(true);
+  const [resolvedUserId, setResolvedUserId] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     if (!userId) {
       setRole(null);
+      setResolvedUserId(null);
       setLoading(false);
       return;
     }
     setLoading(true);
-    void supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", userId)
-      .then(({ data, error }) => {
+    const loadRole = async () => {
+      let result = await supabase.from("user_roles").select("role").eq("user_id", userId);
+      for (let attempt = 0; result.error && attempt < 2; attempt += 1) {
+        await new Promise((resolve) => window.setTimeout(resolve, 250 * (attempt + 1)));
+        result = await supabase.from("user_roles").select("role").eq("user_id", userId);
+      }
+      const { data, error } = result;
         if (cancelled) return;
-        if (error || !data || data.length === 0) {
+        const fallbackRole =
+          metadataRole === "admin" ||
+          metadataRole === "agent" ||
+          metadataRole === "coordinator" ||
+          metadataRole === "driver"
+            ? metadataRole
+            : null;
+        if (error) {
+          // app_metadata is issued by the Auth server and cannot be changed by
+          // the signed-in user. It safely bridges transient role-query errors.
+          setRole(fallbackRole);
+        } else if (!data || data.length === 0) {
           setRole(null);
         } else {
           const known = data
@@ -105,12 +123,14 @@ export function useCurrentRole(userId: string | null | undefined) {
           known.sort((a, b) => RolePriority[a] - RolePriority[b]);
           setRole(known[0] ?? null);
         }
+        setResolvedUserId(userId);
         setLoading(false);
-      });
+    };
+    void loadRole();
     return () => {
       cancelled = true;
     };
-  }, [userId]);
+  }, [userId, metadataRole]);
 
-  return { role, loading };
+  return { role, loading, resolvedUserId };
 }

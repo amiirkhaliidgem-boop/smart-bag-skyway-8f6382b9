@@ -145,7 +145,21 @@ function AuthGate() {
   const [ready, setReady] = useState(false);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
-  const { role, loading: roleLoading } = useCurrentRole(session?.user?.id ?? null);
+  const { role, loading: roleLoading, resolvedUserId } = useCurrentRole(
+    session?.user?.id ?? null,
+    session?.user?.app_metadata?.role,
+  );
+  const claimedRole =
+    session?.user?.app_metadata?.role ?? session?.user?.user_metadata?.role;
+  const effectiveRole =
+    role ??
+    (claimedRole === "admin" ||
+    claimedRole === "agent" ||
+    claimedRole === "coordinator" ||
+    claimedRole === "driver"
+      ? claimedRole
+      : null);
+  const roleReadyForSession = resolvedUserId === (session?.user?.id ?? null);
 
   useEffect(() => {
     let mounted = true;
@@ -172,19 +186,18 @@ function AuthGate() {
 
   // Role-based redirect for signed-in users on disallowed paths.
   useEffect(() => {
-    if (!ready || !session || roleLoading) return;
+    if (!ready || !session || roleLoading || !roleReadyForSession) return;
     if (isPublicPath(pathname)) return;
-    if (!role) {
-      // Signed in but no role row: sign out and inform.
-      void supabase.auth.signOut();
-      toast.error("No role assigned. Contact your administrator.");
-      navigate({ to: "/auth", replace: true });
+    if (!effectiveRole) {
+      // Keep a valid session intact if the role lookup is temporarily
+      // unavailable; no protected content is rendered without a role.
+      toast.error("Unable to verify your staff role. Please refresh and try again.");
       return;
     }
-    if (!canAccessPath(pathname, role)) {
-      navigate({ to: defaultPathForRole(role), replace: true });
+    if (!canAccessPath(pathname, effectiveRole)) {
+      navigate({ to: defaultPathForRole(effectiveRole), replace: true });
     }
-  }, [ready, session, role, roleLoading, pathname, navigate]);
+  }, [ready, session, effectiveRole, roleLoading, roleReadyForSession, pathname, navigate]);
 
   if (!ready) {
     return (
@@ -208,7 +221,7 @@ function AuthGate() {
     );
   }
 
-  if (roleLoading) {
+  if (roleLoading || !roleReadyForSession) {
     return (
       <div className="min-h-screen grid place-items-center text-sm text-muted-foreground">
         Loading…
@@ -216,8 +229,16 @@ function AuthGate() {
     );
   }
 
+  if (!effectiveRole) {
+    return (
+      <div className="min-h-screen grid place-items-center text-sm text-muted-foreground">
+        Unable to verify your staff role. Please refresh and try again.
+      </div>
+    );
+  }
+
   // Block rendering of disallowed routes while the redirect effect runs.
-  if (role && !canAccessPath(pathname, role)) {
+  if (effectiveRole && !canAccessPath(pathname, effectiveRole)) {
     return (
       <div className="min-h-screen grid place-items-center text-sm text-muted-foreground">
         Redirecting…
@@ -226,7 +247,7 @@ function AuthGate() {
   }
 
   return (
-    <RoleContext.Provider value={{ role, loading: roleLoading }}>
+    <RoleContext.Provider value={{ role: effectiveRole, loading: roleLoading }}>
       <AppShell />
     </RoleContext.Provider>
   );
