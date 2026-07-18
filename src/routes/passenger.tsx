@@ -374,55 +374,133 @@ function Bi({
 function StatusHero({ delivery, kase }: { delivery: Delivery; kase: BaggageCase }) {
   const stage = getDeliveryStage(delivery);
   const heroCopy = heroCopyForStage(stage);
+  const reduce = useReducedMotion();
   const bagTag =
     kase.baggage?.bagTags?.filter(Boolean).join(" · ") ?? kase.bagTagNumber ?? "—";
   return (
-    <div
-      className="relative overflow-hidden rounded-3xl p-7 sm:p-9 text-white shadow-[0_30px_80px_-30px_rgba(15,24,48,0.55)]"
-      style={{ background: "var(--gradient-iab-hero)" }}
+    <motion.div
+      initial={{ opacity: 0, y: 14 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.6, ease: [0.2, 0.7, 0.2, 1] }}
+      className="iab-grain relative overflow-hidden rounded-[32px] px-6 py-8 sm:px-10 sm:py-12 text-white"
+      style={{
+        background: "var(--gradient-iab-hero)",
+        boxShadow:
+          "0 40px 100px -40px rgba(15,24,48,0.7), 0 20px 40px -25px rgba(214,40,75,0.35)",
+      }}
     >
+      {/* Aurora glow layers */}
       <div
-        className="absolute -top-16 -right-16 h-56 w-56 rounded-full opacity-40 blur-3xl"
+        className={cn(
+          "pointer-events-none absolute -top-24 -right-20 h-72 w-72 rounded-full blur-3xl opacity-50",
+          !reduce && "iab-aurora",
+        )}
         style={{ background: "var(--iab-crimson)" }}
       />
+      <div
+        className={cn(
+          "pointer-events-none absolute -bottom-24 -left-24 h-80 w-80 rounded-full blur-3xl opacity-30",
+          !reduce && "iab-aurora",
+        )}
+        style={{
+          background: "radial-gradient(closest-side, #5978DC, transparent)",
+          animationDelay: "3s",
+        }}
+      />
+      <div
+        className="pointer-events-none absolute inset-0 opacity-40"
+        style={{
+          background:
+            "radial-gradient(120% 60% at 0% 0%, rgba(255,255,255,0.18), transparent 55%)",
+        }}
+      />
+
       <div className="relative">
-        <p className="text-[10px] uppercase tracking-[0.28em] text-white/70">
+        <motion.p
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05, duration: 0.4 }}
+          className="text-[10px] uppercase tracking-[0.32em] text-white/70 font-medium"
+        >
           Welcome · مرحباً
-        </p>
-        <h1
-          className="mt-2 text-3xl sm:text-4xl leading-[1.05] tracking-tight"
-          style={{ fontFamily: "var(--font-display)" }}
+        </motion.p>
+        <motion.h1
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.12, duration: 0.55, ease: [0.2, 0.7, 0.2, 1] }}
+          className="mt-3 leading-[1.02] tracking-tight text-white"
+          style={{
+            fontFamily: "var(--font-display)",
+            fontOpticalSizing: "auto",
+            fontVariationSettings: '"opsz" 96, "SOFT" 30',
+            fontSize: "clamp(2.25rem, 8.2vw, 3.5rem)",
+            fontWeight: 400,
+          }}
         >
           {delivery.passengerName}
-        </h1>
-        <p
-          className="mt-1 text-white/85 text-lg"
+        </motion.h1>
+        <motion.p
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2, duration: 0.5 }}
+          className="mt-1 text-white/85"
           dir="rtl"
           lang="ar"
-          style={{ fontFamily: "var(--font-arabic)" }}
+          style={{
+            fontFamily: "var(--font-arabic-display)",
+            fontSize: "clamp(1.5rem, 5vw, 2.25rem)",
+            fontWeight: 500,
+            lineHeight: 1.15,
+          }}
         >
           أهلاً بك {delivery.passengerName}
-        </p>
+        </motion.p>
 
-        <div className="mt-6">
-          <p className="text-white/70 text-sm">{heroCopy.en}</p>
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3, duration: 0.5 }}
+          className="mt-8"
+        >
           <p
-            className="text-white/80 text-sm mt-0.5"
+            className="text-white leading-tight"
+            style={{
+              fontFamily: "var(--font-display)",
+              fontVariationSettings: '"opsz" 48',
+              fontSize: "clamp(1.35rem, 5.4vw, 1.9rem)",
+              fontWeight: 400,
+            }}
+          >
+            {heroCopy.en}
+          </p>
+          <p
+            className="text-white/90 mt-1 leading-tight"
             dir="rtl"
             lang="ar"
-            style={{ fontFamily: "var(--font-arabic)" }}
+            style={{
+              fontFamily: "var(--font-arabic-display)",
+              fontSize: "clamp(1.15rem, 4.6vw, 1.6rem)",
+              fontWeight: 500,
+            }}
           >
             {heroCopy.ar}
           </p>
-        </div>
+        </motion.div>
 
-        <div className="mt-6 flex flex-wrap gap-2 text-[11px] uppercase tracking-[0.14em]">
-          <Chip icon={<Plane className="h-3 w-3" />}>Flight {kase.flightNumber ?? "—"}</Chip>
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4, duration: 0.5 }}
+          className="mt-7 flex flex-wrap gap-2 text-[11px] uppercase tracking-[0.16em]"
+        >
+          <Chip icon={<Plane className="h-3 w-3" />}>
+            Flight {kase.flightNumber ?? "—"}
+          </Chip>
           <Chip>PIR {delivery.pirNumber}</Chip>
           <Chip>Tag {bagTag}</Chip>
-        </div>
+        </motion.div>
       </div>
-    </div>
+    </motion.div>
   );
 }
 
