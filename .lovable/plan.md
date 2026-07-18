@@ -1,38 +1,43 @@
-## Confirmed audit findings
+# Route Optimization Engine — Pre-Test Audit
 
-- All four email addresses exist in Supabase Auth and each has an encrypted password value.
-- All four are confirmed and not banned or deleted.
-- `public.user_roles` contains the expected canonical role for every account: admin, agent, coordinator, and driver.
-- The three failing non-admin Auth records are malformed: GoTrue-required token fields such as `confirmation_token`, `recovery_token`, and email-change fields are `NULL`. The working administrator record has valid non-null values.
-- Supabase Auth logs confirm the failure occurs before password validation: `Database error querying schema` caused by `confirmation_token` being `NULL`.
-- The three non-admin records also lack the requested role metadata. Their secure authorization role rows do exist, and those rows will remain the source used for authorization.
-- The login page currently formats some non-standard Auth failures as an object, producing `{}` rather than a useful message.
+Verified against `src/lib/routing/optimize.ts` and `src/routes/driver-portal.tsx`. No code changes proposed yet — this is a status confirmation. Items marked ⚠️ do not match the expectation exactly and need a decision before testing.
 
-## Implementation plan
+## Confirmed as implemented
 
-1. **Repair the four seeded Auth identities through the Supabase Auth Admin API**
-   - Keep the working administrator account and normalize its confirmation/password/role metadata.
-   - Repair the three malformed accounts through supported Auth Admin operations; if a malformed record cannot be updated because GoTrue cannot deserialize it, delete and recreate that identity through the Auth Admin API, then restore its `user_roles` row for the new user ID.
-   - Explicitly set each known password, mark each email confirmed, ensure no ban is active, and set secure app metadata to the matching role.
-   - Keep `public.user_roles` as the canonical authorization source; metadata is informational and will not replace server-backed role checks.
-   - Re-query Auth and role data afterward to confirm existence, confirmation, enabled state, metadata, and role-row consistency.
+**1. Auto-calculated for multiple deliveries on same driver** ✅
+`DriverDashboard` filters `deliveries` by `driver === <signed-in driver>`, then `useMemo(() => optimizeRoute(open), [mine])` runs nearest-neighbor over every non-delivered stop.
 
-2. **Fix authentication error presentation**
-   - Add a robust error-message extractor in `src/routes/auth.tsx` that prefers Supabase `message`, then `error_description`, `code`, or status details, with a clear fallback.
-   - Ensure sign-in failures display the actual Supabase message instead of `{}`.
-   - Preserve role-based post-login routing.
+**2. Origin is the Airport** ✅ (with caveat)
+`AIRPORT_ORIGIN` in `src/lib/routing/optimize.ts` is hard-coded to Cairo International Airport (30.1219, 31.4056). It is not read from a "station" setting — if the airport ever changes, it's a code edit.
 
-3. **Verify every account through the real UI**
-   - Use a fresh browser context for each seeded account and submit the actual `/auth` form.
-   - Confirm successful login and expected landing page:
-     - Administrator → `/`
-     - Lost & Found Officer → `/`
-     - Delivery Coordinator → `/`
-     - Driver → `/driver-portal`
-   - Confirm the visible sidebar modules match the required matrix for each role.
-   - Attempt representative forbidden direct URLs for each non-admin role and confirm redirect to that role’s permitted default page.
-   - Confirm permitted routes open correctly and sign-out returns to `/auth`.
+**3. Stops reordered automatically before trip starts** ✅
+Optimization runs on every render of the driver dashboard, so the order is always current when the driver opens the app — no manual trigger, no "optimize" button.
 
-4. **Final integrity report**
-   - Report each account’s verified Auth status, role metadata, canonical role row, successful UI login, landing route, visible modules, and denied-route result.
-   - Recheck Auth logs/network responses to ensure all four password grants return success and no schema-query failures remain.
+**4. Driver never sees the optimization process** ✅
+UI shows only the numbered ordered list ("Today's Route · N stops · optimized from airport"). No toggles, no algorithm details, no raw distances.
+
+**5. Reassign / add recalculates automatically** ✅
+The store is reactive (`useStore`), so any `assignDriver` / reassignment mutation updates `mine`, which re-runs `useMemo`, which re-runs `optimizeRoute`. No manual refresh needed.
+
+## Partial / does not match exactly
+
+**6. Open Navigation opens Google Maps for the current stop only** ⚠️
+Per-stop, yes — each card's button calls `navigationHref(d)` for that one delivery. **But** the URL is built as `origin=<airport coords> → destination=<stop>`, so Google Maps always routes from the airport, even for stop #3 after the driver already left stops #1 and #2. Expected behavior is usually "navigate from my current location to this stop." Two options:
+- **A.** Drop `origin` from the URL so Google Maps uses the device's current location (recommended for a real driver in the field).
+- **B.** Keep airport as origin (matches the current "optimized from airport" framing but is wrong for stops 2+).
+
+**7. After completing a stop, the next stop automatically becomes active** ⚠️
+Partial. Completing a stop (OTP verified → `driverMarkDelivered`) moves it to the "Completed" section and it drops out of the route, so the next stop naturally rises to position #1. **But** there is no explicit "active / current stop" state or highlight in the UI — the driver has to infer it's the top card. Also, the remaining route is re-optimized from the airport, not from the driver's last delivered location, so the visit order after a completion can shift in ways that surprise the driver.
+Options:
+- **A.** Add a visible "Current stop" badge on route[0] and slightly de-emphasize the rest until it's completed.
+- **B.** Additionally, re-anchor optimization to the last completed stop's coordinates (not the airport) once the trip has started, so the order is stable as the driver progresses.
+
+## Decision needed before testing
+
+Please confirm which of these to apply (if any) before you start the E2E test:
+
+- Item 6: **A** (device location) or **B** (keep airport origin)?
+- Item 7: **A** (add active-stop highlight only), **A + B** (also re-anchor from last stop), or leave as-is?
+- Item 2: is a hard-coded Cairo airport origin acceptable, or should it become a configurable station coordinate?
+
+Once you pick, I'll implement in build mode and then you can test.
