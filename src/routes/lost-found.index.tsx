@@ -298,6 +298,50 @@ function LostFoundPage() {
         <Kpi label="VIP Passengers" value={kpis.vip} tone="indigo" />
       </div>
 
+      {selected.size > 0 && (
+        <BulkToolbar
+          count={selected.size}
+          noun="Case"
+          onCancel={clearSelection}
+          actions={[
+            {
+              key: "assign-delivery",
+              label: "Assign Delivery",
+              icon: Truck,
+              onClick: runAssignDelivery,
+            },
+            {
+              key: "assign-officer",
+              label: "Assign Officer",
+              icon: UserCheck,
+              variant: "outline",
+              onClick: () => setAssignOfficerOpen(true),
+            },
+            {
+              key: "priority",
+              label: "Change Priority",
+              icon: Flag,
+              variant: "outline",
+              onClick: () => setPriorityDialogOpen(true),
+            },
+            {
+              key: "export",
+              label: "Export Selected",
+              icon: Download,
+              variant: "outline",
+              onClick: runExportSelected,
+            },
+            {
+              key: "print",
+              label: "Print",
+              icon: Printer,
+              variant: "outline",
+              onClick: runPrint,
+            },
+          ]}
+        />
+      )}
+
       {/* Simplified filter bar */}
       <Card>
         <CardHeader className="pb-3">
