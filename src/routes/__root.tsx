@@ -143,6 +143,7 @@ function isPublicPath(pathname: string): boolean {
 function AuthGate() {
   const [session, setSession] = useState<Session | null>(null);
   const [ready, setReady] = useState(false);
+  const [roleUserId, setRoleUserId] = useState<string | null>(null);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
   const { role, loading: roleLoading } = useCurrentRole(
@@ -158,6 +159,11 @@ function AuthGate() {
     claimedRole === "driver"
       ? claimedRole
       : null);
+  const roleReadyForSession = roleUserId === (session?.user?.id ?? null);
+
+  useEffect(() => {
+    if (!roleLoading) setRoleUserId(session?.user?.id ?? null);
+  }, [roleLoading, session?.user?.id]);
 
   useEffect(() => {
     let mounted = true;
@@ -184,7 +190,7 @@ function AuthGate() {
 
   // Role-based redirect for signed-in users on disallowed paths.
   useEffect(() => {
-    if (!ready || !session || roleLoading) return;
+    if (!ready || !session || roleLoading || !roleReadyForSession) return;
     if (isPublicPath(pathname)) return;
     if (!effectiveRole) {
       // Signed in but no role row: sign out and inform.
@@ -196,7 +202,7 @@ function AuthGate() {
     if (!canAccessPath(pathname, effectiveRole)) {
       navigate({ to: defaultPathForRole(effectiveRole), replace: true });
     }
-  }, [ready, session, effectiveRole, roleLoading, pathname, navigate]);
+  }, [ready, session, effectiveRole, roleLoading, roleReadyForSession, pathname, navigate]);
 
   if (!ready) {
     return (
@@ -220,7 +226,7 @@ function AuthGate() {
     );
   }
 
-  if (roleLoading) {
+  if (roleLoading || !roleReadyForSession) {
     return (
       <div className="min-h-screen grid place-items-center text-sm text-muted-foreground">
         Loading…
