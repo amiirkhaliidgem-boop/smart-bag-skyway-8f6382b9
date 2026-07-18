@@ -59,6 +59,16 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --color-iab-navy: var(--iab-navy);
+  --color-iab-navy-deep: var(--iab-navy-deep);
+  --color-iab-crimson: var(--iab-crimson);
+  --color-iab-crimson-soft: var(--iab-crimson-soft);
+  --color-iab-ivory: var(--iab-ivory);
+  --color-iab-mist: var(--iab-mist);
+  --color-iab-ink: var(--iab-ink);
+  --font-display: "Instrument Serif", ui-serif, Georgia, serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-arabic: "IBM Plex Sans Arabic", "Inter", system-ui, sans-serif;
 }
 
 :root {
@@ -98,6 +108,18 @@
   --sidebar-accent-foreground: oklch(0.985 0.005 247);
   --sidebar-border: oklch(0.32 0.08 262);
   --sidebar-ring: oklch(0.62 0.22 18);
+  /* IAB brand tokens — extracted from the official IAB logo */
+  --iab-navy: #1B2A5B;
+  --iab-navy-deep: #0F1830;
+  --iab-crimson: #D6284B;
+  --iab-crimson-soft: #F26B84;
+  --iab-ivory: #F7F5F0;
+  --iab-mist: #E8ECF3;
+  --iab-ink: #0F1830;
+  --gradient-iab-hero: linear-gradient(140deg, #0F1830 0%, #1B2A5B 55%, #2A3D7A 100%);
+  --gradient-iab-crimson: linear-gradient(135deg, #D6284B 0%, #F26B84 100%);
+  --shadow-iab-glass: 0 24px 60px -30px color-mix(in oklab, #1B2A5B 40%, transparent), 0 8px 24px -12px color-mix(in oklab, #1B2A5B 22%, transparent);
+  --shadow-iab-crimson: 0 18px 40px -14px color-mix(in oklab, #D6284B 45%, transparent);
 }
 
 .dark {
@@ -144,4 +166,49 @@
     background-color: var(--color-background);
     color: var(--color-foreground);
   }
+}
+
+/* Passenger Portal — premium animations */
+@keyframes iab-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+@keyframes iab-float {
+  0%,100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+@keyframes iab-pulse-ring {
+  0% { box-shadow: 0 0 0 0 color-mix(in oklab, #D6284B 55%, transparent); }
+  70% { box-shadow: 0 0 0 14px color-mix(in oklab, #D6284B 0%, transparent); }
+  100% { box-shadow: 0 0 0 0 color-mix(in oklab, #D6284B 0%, transparent); }
+}
+@keyframes iab-check-draw {
+  from { stroke-dashoffset: 60; }
+  to { stroke-dashoffset: 0; }
+}
+@keyframes iab-rise {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.iab-shimmer {
+  background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.45) 50%, rgba(255,255,255,0) 100%), var(--iab-mist);
+  background-size: 200% 100%;
+  animation: iab-shimmer 1.6s linear infinite;
+}
+.iab-glass {
+  background: color-mix(in oklab, white 78%, transparent);
+  backdrop-filter: saturate(140%) blur(18px);
+  border: 1px solid color-mix(in oklab, #1B2A5B 10%, transparent);
+  box-shadow: var(--shadow-iab-glass);
+}
+.iab-glass-dark {
+  background: color-mix(in oklab, #0F1830 82%, transparent);
+  backdrop-filter: saturate(140%) blur(18px);
+  border: 1px solid color-mix(in oklab, white 12%, transparent);
+}
+.iab-rise { animation: iab-rise 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+.iab-float { animation: iab-float 3.5s ease-in-out infinite; }
+.iab-pulse-ring { animation: iab-pulse-ring 2s ease-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .iab-shimmer, .iab-float, .iab-pulse-ring, .iab-rise { animation: none !important; }
 }
