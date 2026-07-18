@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import {
   useStore,
   bulkUpdateCases,
-  updateLfStatus,
+  bulkAssignDelivery,
   type BaggageCase,
   type Priority,
   type DeliveryMethod,
@@ -18,7 +18,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Dialog, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogTrigger,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -42,15 +49,20 @@ import {
 } from "@/components/ui/popover";
 import { LfStatusBadge } from "@/components/lf-status-badge";
 import { PirWizard } from "@/components/lost-found/pir-wizard";
+import { BulkToolbar } from "@/components/bulk/bulk-toolbar";
 import {
   Search,
   Plus,
   Columns3,
-  Filter,
   Star as StarIcon,
   ChevronDown,
   X,
   SlidersHorizontal,
+  UserCheck,
+  Truck,
+  Flag,
+  Download,
+  Printer,
 } from "lucide-react";
 import { toast } from "sonner";
 import { ImportExportButtons } from "@/components/io/import-export-buttons";
