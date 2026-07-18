@@ -235,7 +235,7 @@ function TrackStage({
       <SummaryCard delivery={delivery} />
       <TimelineCard delivery={delivery} />
       <DriverCard delivery={delivery} onContact={() => setShowContact(true)} />
-      <OtpCard code={delivery.otpCode.slice(0, 4)} />
+      <OtpCard code={delivery.otpCode} />
 
       <Card>
         <CardContent className="p-5 sm:p-6 space-y-4">
