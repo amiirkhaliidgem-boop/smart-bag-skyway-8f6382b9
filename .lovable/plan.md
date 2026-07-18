@@ -1,114 +1,45 @@
-# IAB Smart Baggage Ecosystem — Enterprise Architecture Upgrade
 
-Reshape the app around a single **Delivery Workflow Engine** while preserving every existing module and route. No mocks; production-shaped code with clean integration seams for Odoo, SMS/WhatsApp, Maps, OTP, and Auth/RBAC later.
+## Problem
 
-## 1. New core engines (in `src/lib/`)
+The Passenger Portal renders `delivery.otpCode.slice(0, 4)` — only the first 4 digits of the 6-digit OTP minted at Assign Driver. The Driver Portal validates against the full `d.otpCode` (6 digits, `maxLength={6}`, placeholder "6-digit code"). Verification therefore never succeeds because the two portals reference different views of the same value. There is no second OTP being minted at verify time — the bug is length/rendering, not generation.
 
-```text
-src/lib/
-  workflow/
-    statuses.ts        # WORKFLOW_STATUS enum + ordered timeline + labels (EN/AR)
-    engine.ts          # transition(), canTransition(), history, side-effects
-    mapping.ts         # workflow <-> legacy CaseStatus/DeliveryStatus bridge
-  notifications/
-    templates.ts       # SMS / WhatsApp / Email / Push templates per status (EN/AR)
-    engine.ts          # dispatch(status, record) -> queues NotificationEvent
-    channels.ts        # Channel adapter interface (no real providers wired)
-  quality/
-    categories.ts      # Incident categories + priority matrix
-    engine.ts          # createIncident(), auto-trigger hooks
-  roles/
-    roles.ts           # Role enum + Permission objects (RBAC-ready)
-    permissions.ts     # can(role, action, resource)
-  passenger/
-    tokens.ts          # generate/verify opaque tracking tokens (crypto.randomUUID)
-  integrations/
-    odoo.ts            # typed client stub + endpoint contracts
-    sms.ts whatsapp.ts maps.ts otp.ts   # provider-agnostic interfaces
-  audit/
-    log.ts             # append-only activity log with actor/role/entity/status
-  store.ts             # extended: workflowRecords, notifications, incidents, audit
-```
+## Single source of truth
 
-The engine is the **single source of truth**. Legacy `CaseStatus`/`DeliveryStatus` become derived views via `mapping.ts` so existing pages keep working unchanged.
+`Delivery.otpCode` in `src/lib/store.ts` remains the only OTP. It is minted exactly once inside `assignDriver` (store.ts ~L1235), stored on the delivery, and every module reads it from there. Verify OTP compares the driver's input to that same field and never mints anything.
 
-### Workflow statuses (canonical order)
-`PIR_CREATED → HOME_DELIVERY_REQUESTED → DELIVERY_APPROVED → DRIVER_ASSIGNED → READY_FOR_COLLECTION → CLAIMED_ON_HAND → OUT_FOR_DELIVERY → DRIVER_ARRIVED → OTP_VERIFIED → DELIVERED → FEEDBACK_SUBMITTED → CLOSED`
+## Changes
 
-Each transition: validates predecessor, stamps `at/actor`, appends audit entry, calls `notifications.dispatch()`, and updates derived legacy state.
+1. **`src/lib/store.ts`** — make every OTP mint 4 digits so the stored value equals what the passenger sees.
+   - `assignDriver` (~L1235): `Math.floor(1000 + Math.random() * 9000)` (4-digit).
+   - `generateOtp` helper (~L1406) and `resendOtp` fallback (~L1427): same 4-digit formula.
+   - Seed deliveries (L430, 446, 461, 476): replace the 6-digit literals with 4-digit codes so demo data matches.
 
-## 2. Passenger journey (token-gated, off-sidebar)
+2. **`src/routes/passenger.tsx`** (L238) — render the full stored value: `<OtpCard code={delivery.otpCode} />`. Remove `.slice(0, 4)`.
 
-- Remove Passenger from sidebar navigation.
-- New route `src/routes/passenger.$token.tsx` — resolves token → workflow record (404 on unknown).
-- Existing `src/routes/passenger.tsx` becomes an internal "Send tracking link" helper page (staff-only) that generates the SMS/WhatsApp share URL.
-- Bilingual EN/AR with a language toggle + `dir="rtl"` when Arabic.
-- Sections: Logo, Welcome, Live Status (from engine), Timeline, ETA, Map placeholder (Google Maps seam), PIR, Bag tags, Bag count, OTP entry, Contact.
-- **Receive Baggage** button disabled until 3 confirmations checked. Unchecking the anti-bribery clause triggers `quality.engine.createIncident({category: 'Possible Misconduct', priority: 'High'})` immediately.
-- On confirm → transition to `DELIVERED` → redirect to `/passenger/$token/feedback`.
+3. **`src/routes/driver-portal.tsx`** `OtpDialog` (L315–345):
+   - `maxLength={4}`, `placeholder="4-digit code"`, `inputMode="numeric"`.
+   - Remove the "6-digit code" phrasing. Keep the existing helper line: "Ask the passenger for the OTP shown in their Passenger Portal." (already present; drop the redundant "Ask … for the 6-digit code" sentence above the input and keep only the single instruction).
+   - Verification path unchanged: `code.trim() === d.otpCode` → `driverMarkDelivered(...)`. No new mint.
 
-## 3. Feedback
+4. **End-to-end test** — add `src/lib/__tests__/otp-flow.test.ts` (Vitest) that:
+   - picks a seeded Ready-for-Delivery case, calls `assignDriver`, captures `delivery.otpCode`;
+   - asserts the code is exactly 4 digits and that the passenger-portal view (reading the same store) shows that same string;
+   - calls `driverStartTrip` then `driverMarkDelivered` with the captured code and asserts:
+     - delivery stage becomes `Delivered`,
+     - `otpStatus === "Verified"`,
+     - the linked L&F case status mirrors to the delivered terminal state,
+     - a Timeline entry and Audit entry were appended,
+     - a passenger `DELIVERED` notification was queued.
+   - Also asserts `otpCode` did not change between assign and verify (single OTP invariant).
 
-- Route `src/routes/passenger.$token.feedback.tsx`.
-- 5-star rating + per-question ratings (courtesy, professionalism, time, condition, overall), free comment, Recommend YES/NO.
-- Submission transitions record to `FEEDBACK_SUBMITTED` then `CLOSED`.
+## Out of scope
 
-## 4. Notification engine
+- Notification template copy — `DRIVER_ARRIVED` template references `{otp}` and continues to interpolate the same field; no template change needed.
+- OTP expiry / rotation UX. `resendOtp` keeps the existing code when present (already correct) and only mints a fresh 4-digit code if the field was cleared.
+- Provider `src/lib/integrations/otp.ts` is unused by the live flow; left as-is.
 
-- Pure template registry keyed by status; each entry has EN + AR bodies for SMS / WhatsApp / Email / Push.
-- `dispatch()` enqueues `NotificationEvent[]` into store (viewable in Contact Center → new "Outbox" tab). No real provider calls.
-- Channel adapters expose `send(event)` — currently a no-op logger; swap-in point for Twilio/Meta later.
+## Acceptance
 
-## 5. Quality engine
-
-- Auto-triggers: bribery flag, low rating (≤2), damaged/missing selection, SLA breach on ETA.
-- Incident record: number (QI-####), PIR, passenger, driver, deliveryId, category, priority, description, status (Open/Under Review/Resolved), assignedTo, createdAt.
-- Surfaced in Executive Dashboard KPI + existing Reports/Contact Center tabs.
-
-## 6. Role architecture (no auth yet)
-
-- `Role` enum with the 9 roles listed.
-- `Permission` = `{ resource, actions[] }`; each role has a permission set.
-- `can(role, action, resource)` helper exported for future gating; not enforced at UI yet, but sidebar items carry a `requiredPermission` prop so wiring RBAC later is a one-line change.
-
-## 7. Enterprise foundation
-
-Integration folders scaffolded with typed contracts and README-style comments. `.env` names documented (no secrets). Audit log records every workflow transition + incident + notification dispatch.
-
-## 8. UI / preservation rules
-
-- Keep IAB logo, palette, typography, and shell layout untouched.
-- All existing routes remain (`/`, `/lost-found`, `/storage`, `/qr-scan`, `/delivery`, `/driver-portal`, `/route-tracking`, `/tracking`, `/contact-center`, `/feedback`, `/reports`).
-- Executive Dashboard gains a "Workflow Funnel" widget + Quality Incident KPI.
-- Contact Center gains a "Notification Outbox" tab.
-- Sidebar: remove Passenger link, add nothing else.
-
-## Files to add
-- `src/lib/workflow/{statuses,engine,mapping}.ts`
-- `src/lib/notifications/{templates,engine,channels}.ts`
-- `src/lib/quality/{categories,engine}.ts`
-- `src/lib/roles/{roles,permissions}.ts`
-- `src/lib/passenger/tokens.ts`
-- `src/lib/integrations/{odoo,sms,whatsapp,maps,otp}.ts`
-- `src/lib/audit/log.ts`
-- `src/routes/passenger.$token.tsx`
-- `src/routes/passenger.$token.feedback.tsx`
-
-## Files to edit
-- `src/lib/store.ts` — add workflowRecords, notifications, incidents, audit arrays; wire actions through engines.
-- `src/components/app-shell.tsx` — remove Passenger from sidebar.
-- `src/routes/passenger.tsx` — convert to internal "Send tracking link" tool.
-- `src/routes/index.tsx` — Workflow Funnel + Quality KPI widgets.
-- `src/routes/contact-center.tsx` — Notification Outbox tab.
-- `src/routes/delivery.tsx`, `driver-portal.tsx`, `route-tracking.tsx` — call `workflow.engine.transition()` instead of ad-hoc status writes.
-
-## Out of scope for this phase
-Real SMS/WhatsApp/Email delivery, live Google Maps, Odoo sync, authentication (roles are structural only), persistence beyond localStorage.
-
-## Assumptions
-- LocalStorage remains the transport until Lovable Cloud is enabled.
-- Tokens are opaque UUIDs stored on each workflow record; no expiration yet.
-- Existing legacy `Delivery`/`BaggageCase` shapes stay; the workflow record wraps them by `deliveryId`.
-- Arabic copy uses professional aviation terminology; RTL applied at the passenger portal only.
-
-Approve and I'll implement in one pass, keeping every existing page working.
+- Assigning a driver mints one 4-digit `otpCode`; the Passenger Portal, Delivery Details, and Driver Portal all display / compare that identical value.
+- Driver enters the 4-digit code shown to the passenger → delivery flips to Delivered, and L&F, Workflow, Timeline, Audit, and passenger notifications update through the existing central helpers.
+- Vitest `otp-flow` test passes.
