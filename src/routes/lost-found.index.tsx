@@ -529,6 +529,20 @@ function LostFoundPage() {
           </div>
         </CardContent>
       </Card>
+
+      <AssignOfficerDialog
+        open={assignOfficerOpen}
+        onOpenChange={setAssignOfficerOpen}
+        officers={officers}
+        count={selected.size}
+        onSubmit={runAssignOfficer}
+      />
+      <ChangePriorityDialog
+        open={priorityDialogOpen}
+        onOpenChange={setPriorityDialogOpen}
+        count={selected.size}
+        onSubmit={runPriority}
+      />
     </div>
   );
 }
