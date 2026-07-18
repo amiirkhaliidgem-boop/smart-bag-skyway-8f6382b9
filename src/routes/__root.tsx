@@ -149,6 +149,15 @@ function AuthGate() {
     session?.user?.id ?? null,
     session?.user?.app_metadata?.role,
   );
+  const claimedRole = session?.user?.app_metadata?.role;
+  const effectiveRole =
+    role ??
+    (claimedRole === "admin" ||
+    claimedRole === "agent" ||
+    claimedRole === "coordinator" ||
+    claimedRole === "driver"
+      ? claimedRole
+      : null);
 
   useEffect(() => {
     let mounted = true;
@@ -177,17 +186,17 @@ function AuthGate() {
   useEffect(() => {
     if (!ready || !session || roleLoading) return;
     if (isPublicPath(pathname)) return;
-    if (!role) {
+    if (!effectiveRole) {
       // Signed in but no role row: sign out and inform.
       void supabase.auth.signOut();
       toast.error("No role assigned. Contact your administrator.");
       navigate({ to: "/auth", replace: true });
       return;
     }
-    if (!canAccessPath(pathname, role)) {
-      navigate({ to: defaultPathForRole(role), replace: true });
+    if (!canAccessPath(pathname, effectiveRole)) {
+      navigate({ to: defaultPathForRole(effectiveRole), replace: true });
     }
-  }, [ready, session, role, roleLoading, pathname, navigate]);
+  }, [ready, session, effectiveRole, roleLoading, pathname, navigate]);
 
   if (!ready) {
     return (
@@ -220,7 +229,7 @@ function AuthGate() {
   }
 
   // Block rendering of disallowed routes while the redirect effect runs.
-  if (role && !canAccessPath(pathname, role)) {
+  if (effectiveRole && !canAccessPath(pathname, effectiveRole)) {
     return (
       <div className="min-h-screen grid place-items-center text-sm text-muted-foreground">
         Redirecting…
@@ -229,7 +238,7 @@ function AuthGate() {
   }
 
   return (
-    <RoleContext.Provider value={{ role, loading: roleLoading }}>
+    <RoleContext.Provider value={{ role: effectiveRole, loading: roleLoading }}>
       <AppShell />
     </RoleContext.Provider>
   );
