@@ -20,7 +20,7 @@ describe("OTP single-source-of-truth flow", () => {
     expect(target, "seed delivery available").toBeTruthy();
     const deliveryId = target!.deliveryId;
 
-    assignDriver(deliveryId, "Ahmed Mostafa", { actor: "test", role: "Dispatcher" });
+    assignDriver(deliveryId, "Ahmed Mostafa", { actor: "test", role: "DeliveryCoordinator" });
 
     const afterAssign = getState().deliveries.find((d) => d.deliveryId === deliveryId)!;
     const otp = afterAssign.otpCode;
