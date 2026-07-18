@@ -287,8 +287,6 @@ interface State {
   ioAudit: ImportAuditEntry[];
 }
 
-const STORAGE_KEY = "sbe-state-v6";
-
 const driverPool = [
   "Ahmed Mostafa",
   "Karim El-Sayed",
