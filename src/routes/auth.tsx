@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { ShieldCheck } from "lucide-react";
+import { defaultPathForRole, type AppRole } from "@/lib/rbac";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -26,9 +27,11 @@ function AuthPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    // If already signed in, bounce to home.
-    void supabase.auth.getSession().then(({ data }) => {
-      if (data.session) navigate({ to: "/" });
+    // If already signed in, bounce to the role's default landing path.
+    void supabase.auth.getSession().then(async ({ data }) => {
+      if (!data.session) return;
+      const to = await resolveDefaultPath(data.session.user.id);
+      navigate({ to, replace: true });
     });
   }, [navigate]);
 
@@ -45,17 +48,39 @@ function AuthPage() {
         if (error) throw error;
         toast.success("Account created. You are signed in.");
       } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        const { error, data } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
         toast.success("Signed in.");
+        const to = await resolveDefaultPath(data.user?.id ?? null);
+        navigate({ to, replace: true });
+        return;
       }
-      navigate({ to: "/" });
+      // Signup path: role may not be assigned yet — send to home; AuthGate will handle.
+      navigate({ to: "/", replace: true });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Authentication failed");
     } finally {
       setLoading(false);
     }
   }
+
+async function resolveDefaultPath(userId: string | null): Promise<string> {
+  if (!userId) return "/";
+  const { data } = await supabase
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", userId);
+  const roles = (data ?? [])
+    .map((r) => r.role as string)
+    .filter((r): r is AppRole =>
+      r === "admin" || r === "agent" || r === "coordinator" || r === "driver",
+    );
+  // Prefer admin if present.
+  const role: AppRole | null = roles.includes("admin")
+    ? "admin"
+    : (roles[0] ?? null);
+  return defaultPathForRole(role);
+}
 
   return (
     <div className="min-h-screen grid place-items-center bg-background p-6">
