@@ -18,6 +18,7 @@ import {
 import { renderTemplate, type NotificationChannel } from "@/lib/notifications/templates";
 import type { WorkflowStatus } from "@/lib/workflow/statuses";
 import { Textarea } from "@/components/ui/textarea";
+import { BulkToolbar as SharedBulkToolbar } from "@/components/bulk/bulk-toolbar";
 import {
   DELIVERY_STAGES,
   STAGE_LABELS,
@@ -183,7 +184,7 @@ function DispatchCenter() {
       </div>
 
       {selected.size > 0 && (
-        <BulkToolbar
+        <DeliveryBulkToolbar
           deliveries={deliveries.filter((d) => selected.has(d.deliveryId))}
           onAssign={() => setBulkAssignOpen(true)}
           onNotify={() => setBulkNotifyOpen(true)}
