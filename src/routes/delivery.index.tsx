@@ -46,7 +46,6 @@ import {
   XCircle,
   Package,
   Clock,
-  Gauge,
   Search,
   Bell,
   Repeat,
