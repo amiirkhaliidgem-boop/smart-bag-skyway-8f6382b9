@@ -345,7 +345,7 @@ function TrackScreen({
   );
 }
 
-function MotionSection({ children }: { children: React.ReactNode }) {
+function MotionSection({ children }: { children: ReactNode }) {
   return (
     <motion.div
       variants={{
