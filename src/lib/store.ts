@@ -1583,6 +1583,15 @@ export function logIoAudit(entry: Omit<ImportAuditEntry, "id" | "at">) {
   return full;
 }
 
+// ---------- Station configuration ----------
+// Origin used by the route optimization engine. Editable from Settings ›
+// Airport so the platform can be deployed at any airport.
+export function setStation(patch: Partial<Station>) {
+  state = { ...state, station: { ...state.station, ...patch } };
+  emit();
+  return state.station;
+}
+
 // ---------- Notification helpers ----------
 export function setNotificationStatus(
   id: string,
