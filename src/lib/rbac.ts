@@ -84,11 +84,13 @@ export function useCurrentRole(
 ) {
   const [role, setRole] = useState<AppRole | null>(null);
   const [loading, setLoading] = useState(true);
+  const [resolvedUserId, setResolvedUserId] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     if (!userId) {
       setRole(null);
+      setResolvedUserId(null);
       setLoading(false);
       return;
     }
@@ -119,6 +121,7 @@ export function useCurrentRole(
           known.sort((a, b) => RolePriority[a] - RolePriority[b]);
           setRole(known[0] ?? null);
         }
+        setResolvedUserId(userId);
         setLoading(false);
       });
     return () => {
@@ -126,5 +129,5 @@ export function useCurrentRole(
     };
   }, [userId, metadataRole]);
 
-  return { role, loading };
+  return { role, loading, resolvedUserId };
 }

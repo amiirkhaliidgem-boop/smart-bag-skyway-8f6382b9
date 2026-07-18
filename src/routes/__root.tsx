@@ -143,10 +143,9 @@ function isPublicPath(pathname: string): boolean {
 function AuthGate() {
   const [session, setSession] = useState<Session | null>(null);
   const [ready, setReady] = useState(false);
-  const [roleUserId, setRoleUserId] = useState<string | null>(null);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
-  const { role, loading: roleLoading } = useCurrentRole(
+  const { role, loading: roleLoading, resolvedUserId } = useCurrentRole(
     session?.user?.id ?? null,
     session?.user?.app_metadata?.role,
   );
@@ -159,11 +158,7 @@ function AuthGate() {
     claimedRole === "driver"
       ? claimedRole
       : null);
-  const roleReadyForSession = roleUserId === (session?.user?.id ?? null);
-
-  useEffect(() => {
-    if (!roleLoading) setRoleUserId(session?.user?.id ?? null);
-  }, [roleLoading, session?.user?.id]);
+  const roleReadyForSession = resolvedUserId === (session?.user?.id ?? null);
 
   useEffect(() => {
     let mounted = true;
