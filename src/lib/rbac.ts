@@ -95,11 +95,13 @@ export function useCurrentRole(
       return;
     }
     setLoading(true);
-    void supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", userId)
-      .then(({ data, error }) => {
+    const loadRole = async () => {
+      let result = await supabase.from("user_roles").select("role").eq("user_id", userId);
+      for (let attempt = 0; result.error && attempt < 2; attempt += 1) {
+        await new Promise((resolve) => window.setTimeout(resolve, 250 * (attempt + 1)));
+        result = await supabase.from("user_roles").select("role").eq("user_id", userId);
+      }
+      const { data, error } = result;
         if (cancelled) return;
         const fallbackRole =
           metadataRole === "admin" ||
@@ -123,7 +125,8 @@ export function useCurrentRole(
         }
         setResolvedUserId(userId);
         setLoading(false);
-      });
+    };
+    void loadRole();
     return () => {
       cancelled = true;
     };
