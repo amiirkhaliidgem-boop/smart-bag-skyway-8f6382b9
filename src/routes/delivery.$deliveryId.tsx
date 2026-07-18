@@ -222,9 +222,8 @@ function DeliveryDetails() {
             <Field label="Station" value={delivery.station ?? "—"} />
             <Field label="Type" value={delivery.deliveryType ?? "Home Delivery"} />
             <Field label="Priority" value={delivery.priority} />
-            <Field label="Created" value={fmt(delivery.createdAt ?? delivery.eta)} />
-            <Field label="Last Updated" value={fmt(delivery.lastUpdatedAt ?? delivery.eta)} />
-            <Field label="ETA" value={fmt(delivery.eta)} />
+            <Field label="Created" value={fmt(delivery.createdAt ?? "")} />
+            <Field label="Last Updated" value={fmt(delivery.lastUpdatedAt ?? "")} />
             <Field label="OTP Status" value={delivery.otpStatus} />
           </div>
         </CardContent>

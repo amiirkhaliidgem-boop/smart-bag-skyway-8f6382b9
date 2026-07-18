@@ -46,7 +46,6 @@ import {
   XCircle,
   Package,
   Clock,
-  Gauge,
   Search,
   Bell,
   Repeat,
@@ -81,7 +80,6 @@ function DispatchCenter() {
   const [stationF, setStationF] = useState("all");
   const [typeF, setTypeF] = useState("all");
   const [vipOnly, setVipOnly] = useState(false);
-  const [dateF, setDateF] = useState("");
   const [queue, setQueue] = useState<DeliveryQueueId>("all");
   const [showAdvanced, setShowAdvanced] = useState(false);
 
@@ -108,13 +106,9 @@ function DispatchCenter() {
       if (typeF !== "all" && (d.deliveryType ?? "Home Delivery") !== typeF)
         return false;
       if (vipOnly && d.priority !== "VIP") return false;
-      if (dateF) {
-        const iso = new Date(d.eta).toISOString().slice(0, 10);
-        if (iso !== dateF) return false;
-      }
       return true;
     });
-  }, [deliveries, queue, q, driverF, stageF, priorityF, stationF, typeF, vipOnly, dateF]);
+  }, [deliveries, queue, q, driverF, stageF, priorityF, stationF, typeF, vipOnly]);
 
   const queueCounts = useMemo(() => {
     const m: Record<string, number> = {};
@@ -137,7 +131,7 @@ function DispatchCenter() {
   const deliveredToday = deliveries.filter(
     (d) =>
       getDeliveryStage(d) === "Delivered" &&
-      (d.deliveredAt ?? d.eta).slice(0, 10) === today,
+      (d.deliveredAt ?? d.createdAt ?? "").slice(0, 10) === today,
   ).length;
 
   const completed = deliveries.filter(
@@ -155,15 +149,8 @@ function DispatchCenter() {
     : null;
 
   const active = deliveries.filter(
-    (d) => !["Delivered", "Returned to Airport"].includes(getDeliveryStage(d)),
+    (d) => getDeliveryStage(d) !== "Delivered",
   ).length;
-  const failed = stageCounts["Delivery Failed"] ?? 0;
-  const slaOk = deliveries.filter((d) => {
-    const s = getDeliveryStage(d);
-    return s === "Delivered" && d.deliveredAt && d.eta &&
-      new Date(d.deliveredAt).getTime() <= new Date(d.eta).getTime();
-  }).length;
-  const slaPct = completed.length ? Math.round((slaOk / completed.length) * 100) : 100;
 
   // ---- Selection (bulk actions)
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -204,24 +191,17 @@ function DispatchCenter() {
         />
       )}
 
-      <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
         <Kpi label="Ready for Delivery" value={stageCounts["Ready for Delivery"]} icon={<Package className="h-5 w-5" />} tone="slate" />
-        <Kpi label="Scheduled" value={stageCounts["Scheduled"]} icon={<Clock className="h-5 w-5" />} tone="blue" />
         <Kpi label="Assigned" value={stageCounts["Assigned"] + stageCounts["Driver Accepted"]} icon={<UserCheck className="h-5 w-5" />} tone="indigo" />
         <Kpi label="Out for Delivery" value={stageCounts["Out for Delivery"]} icon={<Truck className="h-5 w-5" />} tone="cyan" />
         <Kpi label="Delivered Today" value={deliveredToday} icon={<CheckCircle2 className="h-5 w-5" />} tone="emerald" />
-        <Kpi label="Failed" value={failed} icon={<XCircle className="h-5 w-5" />} tone="rose" />
+        <Kpi label="Active" value={active} icon={<Truck className="h-5 w-5" />} tone="primary" />
         <Kpi
           label="Avg Delivery Time"
           value={avgHrs != null ? `${avgHrs.toFixed(1)}h` : "—"}
           icon={<Clock className="h-5 w-5" />}
           tone="amber"
-        />
-        <Kpi
-          label="SLA %"
-          value={`${slaPct}%`}
-          icon={<Gauge className="h-5 w-5" />}
-          tone={slaPct >= 90 ? "emerald" : slaPct >= 70 ? "amber" : "rose"}
         />
       </div>
 
@@ -272,15 +252,6 @@ function DispatchCenter() {
               ))}
               <option value="—">Unassigned</option>
             </Select>
-            <div className="space-y-1">
-              <Label className="text-[11px] text-muted-foreground">Date</Label>
-              <Input
-                type="date"
-                value={dateF}
-                onChange={(e) => setDateF(e.target.value)}
-                className="h-9"
-              />
-            </div>
             <div className="flex items-end">
               <Button
                 variant="outline"
@@ -322,7 +293,7 @@ function DispatchCenter() {
             <span className="text-muted-foreground">
               Showing {filtered.length} of {deliveries.length} deliveries · {active} active
             </span>
-            {(q || driverF !== "all" || stageF !== "all" || priorityF !== "all" || stationF !== "all" || typeF !== "all" || vipOnly || dateF) && (
+            {(q || driverF !== "all" || stageF !== "all" || priorityF !== "all" || stationF !== "all" || typeF !== "all" || vipOnly) && (
               <Button
                 variant="ghost"
                 size="sm"
@@ -330,7 +301,7 @@ function DispatchCenter() {
                 onClick={() => {
                   setQ(""); setDriverF("all"); setStageF("all");
                   setPriorityF("all"); setStationF("all"); setTypeF("all");
-                  setVipOnly(false); setDateF("");
+                  setVipOnly(false);
                 }}
               >
                 Clear filters
@@ -362,7 +333,6 @@ function DispatchCenter() {
                   <th className="text-left px-3 py-3 font-medium">Status</th>
                   <th className="text-left px-3 py-3 font-medium">Priority</th>
                   <th className="text-left px-3 py-3 font-medium">Created</th>
-                  <th className="text-left px-3 py-3 font-medium">ETA</th>
                   <th className="text-right px-3 py-3 font-medium">Actions</th>
                 </tr>
               </thead>
@@ -378,11 +348,9 @@ function DispatchCenter() {
                 ))}
                 {filtered.length === 0 && (
                   <tr>
-                    <td colSpan={12} className="px-4 py-16 text-center text-sm text-muted-foreground">
+                    <td colSpan={11} className="px-4 py-16 text-center text-sm text-muted-foreground">
                       {deliveries.length === 0
                         ? "No deliveries yet. Cases enter this module when Lost & Found marks them Ready for Delivery."
-                        : queue === "failed"
-                        ? "No failed deliveries. 👍"
                         : queue === "ready"
                         ? "No deliveries ready to schedule."
                         : "No deliveries match the current filters."}
@@ -466,9 +434,8 @@ function Row({
         <span className="text-xs">{d.priority}</span>
       </td>
       <td className="px-3 py-3 text-xs text-muted-foreground whitespace-nowrap">
-        {fmt(d.createdAt ?? d.eta)}
+        {fmt(d.createdAt ?? "")}
       </td>
-      <td className="px-3 py-3 text-xs whitespace-nowrap">{fmt(d.eta)}</td>
       <td className="px-3 py-3 text-right" onClick={stop as never}>
         <div className="inline-flex items-center gap-1 flex-wrap justify-end">
           <RowActions d={d} acts={acts} onAssign={onAssign} />

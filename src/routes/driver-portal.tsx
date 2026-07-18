@@ -1,17 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   useStore,
-  updateDelivery,
+  driverStartTrip,
+  driverMarkDelivered,
   driverPool,
   type Delivery,
-  type DeliveryStatus,
 } from "@/lib/store";
+import { getDeliveryStage } from "@/lib/store";
+import { optimizeRoute, navigationHref } from "@/lib/routing/optimize";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { StatusBadge } from "@/components/status-badge";
 import {
   Dialog,
   DialogContent,
@@ -24,11 +25,11 @@ import {
   Truck,
   MapPin,
   Phone,
-  ShieldCheck,
   CheckCircle2,
-  Clock,
   PackageCheck,
   LogOut,
+  Navigation,
+  Package,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -107,14 +108,15 @@ function DriverLogin({
 }
 
 function DriverDashboard({ driver, onSignOut }: { driver: string; onSignOut: () => void }) {
-  const deliveries = useStore((s) =>
-    s.deliveries.filter((d) => d.driver === driver),
-  );
-  const assigned = deliveries.filter((d) => d.status === "Assigned");
-  const inProgress = deliveries.filter(
-    (d) => d.status === "Picked Up" || d.status === "Out For Delivery",
-  );
-  const completed = deliveries.filter((d) => d.status === "Delivered");
+  const mine = useStore((s) => s.deliveries.filter((d) => d.driver === driver));
+
+  // Today's Route — every stop assigned to this driver that has not been
+  // delivered yet, optimized from the airport (nearest-neighbor).
+  const route = useMemo(() => {
+    const open = mine.filter((d) => getDeliveryStage(d) !== "Delivered");
+    return optimizeRoute(open);
+  }, [mine]);
+  const completed = mine.filter((d) => getDeliveryStage(d) === "Delivered");
 
   return (
     <div className="space-y-6">
@@ -131,14 +133,18 @@ function DriverDashboard({ driver, onSignOut }: { driver: string; onSignOut: () 
       </div>
 
       <div className="grid grid-cols-3 gap-4">
-        <Kpi label="Assigned" value={assigned.length} icon={<PackageCheck />} tone="indigo" />
-        <Kpi label="In Transit" value={inProgress.length} icon={<Truck />} tone="primary" />
+        <Kpi label="Stops Today" value={route.length} icon={<Package />} tone="indigo" />
+        <Kpi
+          label="Out for Delivery"
+          value={route.filter((d) => getDeliveryStage(d) === "Out for Delivery").length}
+          icon={<Truck />}
+          tone="primary"
+        />
         <Kpi label="Completed" value={completed.length} icon={<CheckCircle2 />} tone="emerald" />
       </div>
 
-      <Section title="Assigned" items={assigned} empty="No new assignments." />
-      <Section title="In Progress" items={inProgress} empty="Nothing in transit." />
-      <Section title="Completed Today" items={completed} empty="No deliveries completed yet." />
+      <RouteSection route={route} />
+      <Section title="Completed" items={completed} empty="No deliveries completed yet." />
     </div>
   );
 }
@@ -174,6 +180,31 @@ function Kpi({
   );
 }
 
+function RouteSection({ route }: { route: Delivery[] }) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base flex items-center gap-2">
+          <Navigation className="h-4 w-4" /> Today's Route
+          <span className="ml-auto text-xs font-normal text-muted-foreground">
+            {route.length} {route.length === 1 ? "stop" : "stops"} · optimized from airport
+          </span>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {route.length === 0 && (
+          <p className="text-sm text-muted-foreground text-center py-6">
+            No stops assigned. New deliveries will appear here automatically.
+          </p>
+        )}
+        {route.map((d, i) => (
+          <DeliveryCard key={d.deliveryId} d={d} stopNumber={i + 1} />
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
+
 function Section({
   title,
   items,
@@ -198,16 +229,15 @@ function Section({
   );
 }
 
-function DeliveryCard({ d }: { d: Delivery }) {
+function DeliveryCard({ d, stopNumber }: { d: Delivery; stopNumber?: number }) {
   const [otpOpen, setOtpOpen] = useState(false);
-  const next: Record<DeliveryStatus, DeliveryStatus | null> = {
-    Pending: "Assigned",
-    Assigned: "Picked Up",
-    "Picked Up": "Out For Delivery",
-    "Out For Delivery": "Delivered",
-    Delivered: null,
-  };
-  const nextStatus = next[d.status];
+  const stage = getDeliveryStage(d);
+  const cases = useStore((s) => s.cases);
+  const kase = cases.find((c) => c.bagId === d.bagId);
+  const bagTag =
+    kase?.baggage?.bagTags?.filter(Boolean).join(", ") ||
+    kase?.bagTagNumber ||
+    "—";
   const priorityTone: Record<string, string> = {
     VIP: "bg-rose-100 text-rose-700",
     High: "bg-amber-100 text-amber-700",
@@ -218,44 +248,64 @@ function DeliveryCard({ d }: { d: Delivery }) {
   return (
     <div className="rounded-lg border border-border p-4 hover:bg-muted/30 transition-colors">
       <div className="flex flex-wrap items-start justify-between gap-2">
-        <div>
-          <p className="font-semibold">{d.passengerName}</p>
+        <div className="flex items-start gap-3 min-w-0">
+          {stopNumber !== undefined && (
+            <div className="h-8 w-8 rounded-full bg-primary text-primary-foreground grid place-items-center text-sm font-bold shrink-0">
+              {stopNumber}
+            </div>
+          )}
+          <div className="min-w-0">
+            <p className="font-semibold">{d.passengerName}</p>
           <p className="text-xs font-mono text-muted-foreground">
-            {d.deliveryId} · {d.bagId} · PIR {d.pirNumber}
+              {d.deliveryId} · PIR {d.pirNumber} · Tag {bagTag}
           </p>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${priorityTone[d.priority]}`}>
             {d.priority}
           </span>
-          <StatusBadge status={d.status} />
         </div>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3 text-sm">
         <p className="flex items-start gap-2"><MapPin className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />{d.address}</p>
         <p className="flex items-center gap-2"><Phone className="h-4 w-4 text-muted-foreground" />{d.mobile}</p>
-        <p className="flex items-center gap-2 text-xs text-muted-foreground"><Clock className="h-3.5 w-3.5" /> ETA {new Date(d.eta).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</p>
-        <p className="flex items-center gap-2 text-xs"><ShieldCheck className="h-3.5 w-3.5" /> OTP: <span className="font-medium">{d.otpStatus}</span></p>
       </div>
       <div className="flex flex-wrap gap-2 mt-3">
-        {nextStatus && nextStatus !== "Delivered" && (
+        <a
+          href={navigationHref(d)}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center gap-1.5 h-9 px-3 rounded-md border border-input bg-background text-sm font-medium hover:bg-muted"
+        >
+          <Navigation className="h-4 w-4" /> Open Navigation
+        </a>
+        {stage === "Assigned" && (
           <Button
             size="sm"
             onClick={() => {
-              updateDelivery(d.deliveryId, { status: nextStatus });
-              toast.success(`${d.deliveryId} → ${nextStatus}`);
+              driverStartTrip(d.deliveryId, { actor: d.driver, role: "Driver" });
+              toast.success(`${d.deliveryId} — Out for Delivery`);
             }}
+            className="gap-1.5"
           >
-            Mark {nextStatus}
+            <Truck className="h-4 w-4" /> Start Delivery
           </Button>
         )}
-        {d.status === "Out For Delivery" && (
+        {stage === "Out for Delivery" && (
           <Dialog open={otpOpen} onOpenChange={setOtpOpen}>
             <DialogTrigger asChild>
-              <Button size="sm" variant="default">Complete with OTP</Button>
+              <Button size="sm" variant="default" className="gap-1.5">
+                <PackageCheck className="h-4 w-4" /> Complete with OTP
+              </Button>
             </DialogTrigger>
             <OtpDialog d={d} onClose={() => setOtpOpen(false)} />
           </Dialog>
+        )}
+        {stage === "Delivered" && (
+          <span className="inline-flex items-center gap-1.5 text-xs text-emerald-700 font-medium">
+            <CheckCircle2 className="h-4 w-4" /> Delivered
+          </span>
         )}
       </div>
     </div>
@@ -273,11 +323,10 @@ function OtpDialog({ d, onClose }: { d: Delivery; onClose: () => void }) {
         onSubmit={(e) => {
           e.preventDefault();
           if (code.trim() === d.otpCode) {
-            updateDelivery(d.deliveryId, { status: "Delivered", otpStatus: "Verified" });
+            driverMarkDelivered(d.deliveryId, { actor: d.driver, role: "Driver" });
             toast.success(`Delivered · OTP verified`);
             onClose();
           } else {
-            updateDelivery(d.deliveryId, { otpStatus: "Failed" });
             toast.error("Invalid OTP");
           }
         }}
