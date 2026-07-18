@@ -181,17 +181,6 @@ function DemoSwitcher({
   );
 }
 
-function etaHours(iso: string) {
-  const diff = new Date(iso).getTime() - Date.now();
-  if (diff <= 0) return "Arriving now";
-  const hours = Math.round(diff / (1000 * 60 * 60));
-  if (hours <= 0) {
-    const mins = Math.max(5, Math.round(diff / (1000 * 60)));
-    return `${mins} Minutes`;
-  }
-  return `${String(hours).padStart(2, "0")} Hours`;
-}
-
 function TrackStage({
   delivery,
   onConfirm,
