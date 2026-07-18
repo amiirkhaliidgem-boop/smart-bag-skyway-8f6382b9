@@ -69,6 +69,7 @@
   --font-display: "Instrument Serif", ui-serif, Georgia, serif;
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-arabic: "IBM Plex Sans Arabic", "Inter", system-ui, sans-serif;
+  --font-arabic-display: "Reem Kufi", "IBM Plex Sans Arabic", system-ui, sans-serif;
 }
 
 :root {
@@ -118,8 +119,10 @@
   --iab-ink: #0F1830;
   --gradient-iab-hero: linear-gradient(140deg, #0F1830 0%, #1B2A5B 55%, #2A3D7A 100%);
   --gradient-iab-crimson: linear-gradient(135deg, #D6284B 0%, #F26B84 100%);
+  --gradient-iab-aurora: radial-gradient(60% 60% at 20% 20%, rgba(214,40,75,0.35) 0%, transparent 60%), radial-gradient(60% 60% at 80% 80%, rgba(89,120,220,0.35) 0%, transparent 60%);
   --shadow-iab-glass: 0 24px 60px -30px color-mix(in oklab, #1B2A5B 40%, transparent), 0 8px 24px -12px color-mix(in oklab, #1B2A5B 22%, transparent);
   --shadow-iab-crimson: 0 18px 40px -14px color-mix(in oklab, #D6284B 45%, transparent);
+  --shadow-iab-soft: 0 8px 24px -12px color-mix(in oklab, #1B2A5B 18%, transparent);
 }
 
 .dark {
@@ -209,6 +212,28 @@
 .iab-rise { animation: iab-rise 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
 .iab-float { animation: iab-float 3.5s ease-in-out infinite; }
 .iab-pulse-ring { animation: iab-pulse-ring 2s ease-out infinite; }
+@keyframes iab-aurora {
+  0%,100% { transform: translate3d(0,0,0) scale(1); }
+  33% { transform: translate3d(-4%, 3%, 0) scale(1.08); }
+  66% { transform: translate3d(3%, -3%, 0) scale(0.95); }
+}
+.iab-aurora { animation: iab-aurora 18s ease-in-out infinite; }
+.iab-grain::before {
+  content: "";
+  position: absolute; inset: 0;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.6 0'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='0.35'/></svg>");
+  opacity: 0.05;
+  mix-blend-mode: overlay;
+}
+.iab-ripple { position: relative; overflow: hidden; }
+.iab-ripple::after {
+  content: ""; position: absolute; inset: 0;
+  background: radial-gradient(circle at var(--x,50%) var(--y,50%), rgba(255,255,255,0.35) 0%, transparent 45%);
+  opacity: 0; transition: opacity 400ms ease-out;
+  pointer-events: none;
+}
+.iab-ripple:active::after { opacity: 1; transition-duration: 0ms; }
 @media (prefers-reduced-motion: reduce) {
-  .iab-shimmer, .iab-float, .iab-pulse-ring, .iab-rise { animation: none !important; }
+  .iab-shimmer, .iab-float, .iab-pulse-ring, .iab-rise, .iab-aurora { animation: none !important; }
 }

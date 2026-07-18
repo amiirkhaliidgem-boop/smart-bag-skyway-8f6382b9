@@ -1,135 +1,107 @@
+# Passenger Portal — Premium Visual Refinement
 
-# Phase 3 — Passenger Experience Redesign
+Scope: **Presentation only**. No changes to Workflow Engine, OTP flow, Timeline derivation, Feedback submission, store, or any server function. Every existing selector, action, and route stays identical. Files touched are limited to the passenger UI tree plus design tokens.
 
-Scope: **UI/UX only**. Workflow Engine, Notification Engine, OTP Engine, Timeline Engine, and store logic remain untouched. The Passenger Portal becomes a pure presentation layer over existing state.
+## 1. Branding & header (`src/components/passenger/brand-header.tsx`)
 
-## 1. Design System (IAB brand)
+- Remove the "IAB Baggage Concierge" wordmark string entirely.
+- Rebuild the header as a full-width branded band on `--gradient-iab-hero` with a subtle noise/grain overlay and a soft crimson accent glow bottom-right.
+- Enlarge the IAB logo mark (56–72px on mobile, 88px on ≥sm), placed on a soft ivory chip with 1px inner stroke for legibility over the navy gradient.
+- Right side: compact bilingual "Official Airport Service / خدمة رسمية بالمطار" micro-line in IBM Plex Sans Arabic + Inter, uppercase tracking on the English, equal size on Arabic.
+- Sticky on scroll with a smooth backdrop-blur transition (opaque navy → translucent glass) driven by a small scroll listener + CSS var, respecting `prefers-reduced-motion`.
 
-Extract from `src/assets/iab-logo.jpeg.asset.json`:
-- Primary: IAB deep navy `#1B2A5B`
-- Accent: IAB crimson swoosh `#D6284B`
-- Neutrals: ivory `#F7F5F0`, mist `#E8ECF3`, ink `#0F1830`
-- Derived: soft navy gradient, subtle crimson glow for CTAs
+## 2. Hero centerpiece (`src/components/passenger/status-hero.tsx`)
 
-Add tokens to `src/styles.css` under `@theme` — new semantic vars `--iab-navy`, `--iab-crimson`, `--iab-ivory`, plus gradient + shadow tokens (`--gradient-hero`, `--shadow-glass`, `--shadow-elegant`). All portal components consume tokens; no hex in JSX.
+- Promote the hero to the true focal element: full-bleed rounded 32px card, layered gradient (`--gradient-iab-hero`), soft radial highlight top-left, animated aurora blob (very slow, low opacity) behind the content.
+- Passenger name: swap Instrument Serif for **Fraunces** (variable, optical-size) — modern luxury display, warmer than the current serif; loaded via `<link>` in `__root.tsx`. Tracked tight, size clamps `clamp(2rem, 8vw, 3.25rem)`.
+- Current status headline enlarged to `clamp(1.5rem, 5.5vw, 2rem)`, ivory on navy, with a bilingual sub-line of equal weight underneath (Fraunces / IBM Plex Sans Arabic).
+- Small "PIR • Bag Tag • Flight" chip row at the bottom of the hero, glass pills.
+- Entrance: staggered fade+rise (100ms/step) via Motion One or Framer Motion (Framer already in project). Reduced motion → static.
 
-Typography: pair **Instrument Serif** (display, hero + OTP number) with **Inter** (body) via `<link>` in `__root.tsx` head. Arabic: **IBM Plex Sans Arabic** so Arabic never renders smaller than Latin.
+## 3. Typography system (`src/routes/__root.tsx` + `src/styles.css`)
 
-## 2. New file structure
+- Add font `<link>`s: **Fraunces** (display), keep **Inter** (body), keep **IBM Plex Sans Arabic** (Arabic body), add **Reem Kufi Fun** or **Cairo** for Arabic display so Arabic hero text has real display presence — Arabic never renders in a body face while English uses a display face.
+- Update tokens:
+  - `--font-display: "Fraunces", ui-serif, Georgia, serif;`
+  - `--font-arabic-display: "Reem Kufi Fun", "IBM Plex Sans Arabic", system-ui, sans-serif;`
+- `<Bi>` helper extended with an optional `variant="display" | "body"` prop that swaps Arabic to the display face and matches x-heights so RTL/LTR pairs feel truly equal.
 
-Redesign is scoped to two routes plus a small components folder — no new routes, no store changes.
+## 4. Micro-interactions
 
-```
-src/routes/passenger.tsx           (rewritten, still exports PassengerPortal)
-src/routes/feedback.tsx            (rewritten — premium)
-src/components/passenger/
-  brand-header.tsx                 IAB logo + flight/PIR chip
-  status-hero.tsx                  Gradient hero: current stage title + bilingual subtitle
-  timeline-simple.tsx              5-step vertical timeline (see §4)
-  expected-delivery-card.tsx       Glass card, "Expected Today" (no ETA/countdown)
-  otp-card.tsx                     Large animated OTP + bilingual checklist (see §5)
-  delivered-celebration.tsx        Animated success → auto-routes to feedback
-  loading-skeleton.tsx             Premium shimmer skeletons w/ IAB logo mark
-  bilingual.tsx                    <Bi en="..." ar="..." /> helper (RTL-aware, equal weight)
-```
+Introduce a single motion primitive file `src/components/passenger/motion.ts` exposing shared variants; all consumed via Framer Motion (already installed).
 
-## 3. Timeline simplification
+- Page-level `AnimatePresence` in `passenger.tsx` — fade + 8px rise on stage change.
+- Timeline (`timeline-simple.tsx`): the progress rail draws with `pathLength` from 0→currentIndex, dots pop with spring, active dot has `iab-pulse-ring`.
+- Cards: `whileHover={{ y: -2 }}`, soft shadow lift, 200ms.
+- Buttons: press ripple utility (`.iab-ripple`) — pointer-position radial gradient on `:active`; works on touch via `onPointerDown`.
+- OTP digits (`otp-card.tsx`): each digit tile mounts with scale-spring (staggered 60ms), the active tile gets a slow crimson glow pulse.
+- Delivered success: keep existing `DeliveredCelebration`, tighten check-stroke curve, add confetti-free particle glow (3 ivory dots) for restraint.
+- Background: hero aurora + a very faint fixed grain layer over the page (SVG noise, 3% opacity).
+- Scroll reveal: `useInView` on each major section (Expected Delivery, OTP, Timeline, Contact) → fade-rise once.
+- All motion gated by `prefers-reduced-motion`.
 
-The visible timeline is derived from `getDeliveryStage(delivery)` + `case.lfStatus` — read-only projection, no new state:
+## 5. Mobile-first layout (`src/routes/passenger.tsx`)
 
-| Passenger step | Bilingual label | Derived from |
-|---|---|---|
-| Bag Located | تم العثور على الأمتعة | `lfStatus ∈ {Open, Under Investigation, Located}` |
-| Customs Cleared | تم التخليص الجمركي | `lfStatus === "Customs Cleared"` |
-| Assigned to Delivery | تم التعيين للتسليم | stage `Ready`/`Scheduled`/`Assigned`/`Driver Accepted`/`Collected` |
-| Out for Delivery | في الطريق إليك | stage `Out for Delivery` |
-| Delivered | تم التسليم | stage `Delivered` |
+- Single-column, max-width 480px on phone, 560px on tablet, centered on desktop with a soft ivory canvas outside the card stack.
+- Reduce vertical whitespace between sections from current ~24px to a rhythm of 16/20/24 based on hierarchy.
+- Collapsible sections using shadcn `Collapsible`:
+  - "Trip details" (PIR, Bag Tag, Airline, Flight) — collapsed by default when hero already shows the chip row.
+  - "Safety checklist" inside the OTP card — expanded by default only when OTP is active; collapsed when Delivered.
+- Sticky bottom action bar on mobile carrying the primary CTA (Confirm / Contact) so the passenger never scrolls to act.
 
-A helper `passengerTimeline(case, delivery)` in `src/lib/passenger/view.ts` returns `{ steps, currentIndex }`. All other statuses (Storage, QR, Failed retries, etc.) are hidden from the passenger. No new workflow statuses.
+## 6. Contact card (`src/components/passenger/contact-card.tsx`, new)
 
-## 4. Remove driver tracking
+Three premium action tiles (not plain buttons), grid `grid-cols-3` on mobile with icon-forward layout:
 
-Delete map / driver-location / vehicle / route-progress blocks from `passenger.tsx`. Replace with `ExpectedDeliveryCard`: large glass card, IAB navy gradient border, text:
+- **Call Airport** — `tel:` link to station.contactPhone (fallback support number from `src/lib/passenger/brand.ts`).
+- **WhatsApp Support** — `https://wa.me/<number>` with prefilled bilingual message including PIR.
+- **Email Support** — `mailto:` prefilled subject "PIR {number} — Support request".
 
-> **Expected Today**
-> **متوقع اليوم**
-> Our delivery partner will contact you shortly.
-> سيتواصل معك مندوب التسليم قريباً.
+Each tile: glass surface, IAB navy iconography, crimson micro-accent on hover, bilingual label (equal weight), press ripple. Never triggers workflow notifications; purely `href` links.
 
-Shown while stage ∈ {Assigned, Driver Accepted, Collected, Out for Delivery}. No time, no ETA, no countdown.
+## 7. Premium polish pass
 
-## 5. OTP card redesign
+- Replace flat white cards with `iab-glass` + 1px hairline border `color-mix(navy 8%, transparent)`.
+- Elevation system: three shadow tiers (`--shadow-iab-soft`, `--shadow-iab-glass`, `--shadow-iab-crimson`) — used consistently per element role.
+- Iconography: swap generic Lucide icons in the passenger tree for a curated set (`Plane`, `ShieldCheck`, `Sparkles`, `PhoneCall`, `MessageCircle`, `Mail`) at 20/24px, stroke 1.5.
+- Empty/loading states: premium skeleton (already scaffolded) tuned to match the new hero silhouette; adds a slow shimmer + IAB monogram watermark.
+- Success/Delivered screen: full-viewport ivory canvas with centered logo, Fraunces "Delivered / تم التسليم", subtle radial navy glow — replaces the current inline overlay for a memorable close.
 
-Single hero card, fits mobile viewport without scroll on typical phones:
+## 8. Workflow integrity guardrails (unchanged)
 
-- Large 4-digit OTP in Instrument Serif, letter-spaced, with subtle pulse animation on the active digit
-- Copy button (haptic-style press animation)
-- Bilingual sub-label: "Show this code to the driver / أظهر هذا الرمز للسائق"
-- Compact bilingual checklist (all 4 items, both languages, equal type size):
-  1. I verified my baggage tag numbers. / لقد تحققت من أرقام بطاقات الأمتعة.
-  2. I confirmed the baggage is sealed and in good condition. / أؤكد أن الأمتعة مختومة وبحالة جيدة.
-  3. I will provide the OTP only after receiving my baggage. / لن أشارك رمز التحقق إلا بعد استلام الأمتعة.
-  4. No employee requested money, tips, or unofficial payment. / أؤكد أنني لم أتعرض لأي طلب أموال أو إكراميات أو أي مدفوعات غير رسمية.
-- Primary CTA: **Confirm Baggage Received / تأكيد استلام الأمتعة** (disabled until all 4 checked)
-
-Checklist items use `<Bi>` with `dir="rtl"` on Arabic line; both lines share the same font size (14–15px) and line-height.
-
-## 6. Confirm → Feedback flow
-
-Confirm button handler:
-1. Fire existing store confirmation (already marks delivered when OTP verified upstream — no new status).
-2. Play a 900ms success overlay (`DeliveredCelebration`): IAB logo fades in, checkmark strokes, subtitle "Delivered / تم التسليم".
-3. `router.navigate({ to: "/feedback", search: { bagId } })` — no refresh, framer-motion `AnimatePresence` handles the transition.
-
-## 7. Feedback redesign
-
-Rewrite `src/routes/feedback.tsx`:
-- Read `?bagId=` from search; pre-select the case; hide the picker when provided.
-- Hero: IAB logo, "How was your delivery? / كيف كانت تجربتك؟"
-- Large 5-star control (48px stars, spring animation on tap)
-- Yes/No resolved as pill toggle
-- Comments textarea with floating label
-- Submit → animated **Thank You** screen: IAB logo, checkmark, "شكراً لك — Thank you", auto-dismiss to `/` after 4s.
-- Existing `addFeedback` store call unchanged.
-
-## 8. Loading & transitions
-
-- Premium skeleton (`LoadingSkeleton`) shown during initial hydration and while `useStore` selectors resolve — replaces the plain "Loading your delivery…" in `passenger.$token.tsx`.
-- Route-level `AnimatePresence` in `passenger.tsx` for stage transitions (fade + subtle slide).
-- Reduced-motion respected via `prefers-reduced-motion`.
-
-## 9. Branding hooks
-
-`BrandHeader` reads logo from `@/assets/iab-logo.jpeg.asset.json` (already present). All colors flow from CSS tokens, so a future brand refresh only touches `styles.css`. No hardcoded brand strings duplicated — a small `src/lib/passenger/brand.ts` centralizes tagline + support phone.
-
-## 10. Workflow integrity checklist
-
-- No new fields on Case/Delivery.
-- No new workflow statuses.
-- No local status state in passenger components — all reads through `useStore` selectors + `getDeliveryStage`.
-- Confirmation reuses the existing "passenger confirms received" store action (already wired to Workflow/Timeline/Audit/Notifications).
-- Removed: driver coordinates, `navigationHref`, ETA fields from the passenger tree only (Driver Portal keeps them).
+- No changes to `src/lib/store.ts`, `src/lib/passenger.functions.ts`, OTP logic, feedback submission, or notifications.
+- Timeline still derived from `passengerTimeline(case, delivery)`; no new statuses.
+- All copy remains bilingual with equal typographic weight.
+- No new routes; no store fields.
 
 ## Files touched
 
-Rewritten:
+Rewritten (UI only):
 - `src/routes/passenger.tsx`
-- `src/routes/feedback.tsx`
-- `src/routes/passenger.$token.tsx` (skeleton only)
-- `src/styles.css` (tokens + font imports via head link, not @import)
-- `src/routes/__root.tsx` (font `<link>` tags only)
+- `src/routes/feedback.tsx` (visual polish to match — no flow change)
+- `src/components/passenger/brand-header.tsx`
+- `src/components/passenger/status-hero.tsx`
+- `src/components/passenger/timeline-simple.tsx`
+- `src/components/passenger/otp-card.tsx`
+- `src/components/passenger/delivered-celebration.tsx`
+- `src/components/passenger/loading-skeleton.tsx`
+- `src/components/passenger/bilingual.tsx` (add display variant)
 
 New:
-- `src/components/passenger/*` (8 files above)
-- `src/lib/passenger/view.ts` (timeline projection)
-- `src/lib/passenger/brand.ts`
+- `src/components/passenger/contact-card.tsx`
+- `src/components/passenger/motion.ts`
+- `src/components/passenger/trip-details.tsx` (collapsible)
 
-Untouched: store, workflow engine, notifications, OTP logic, driver portal, delivery module, L&F.
+Edited (tokens + font links only):
+- `src/styles.css` — Fraunces / Arabic display tokens, shadow tiers, ripple utility, aurora keyframes
+- `src/routes/__root.tsx` — `<link>` tags for Fraunces + Reem Kufi Fun
 
-## Out of scope (deferred)
+Untouched: store, workflow engine, notifications, OTP engine, driver portal, delivery/L&F/warehouse modules, feedback submission logic.
 
-- Warehouse Operations (explicit).
-- Additional brand assets beyond current IAB logo — code is token-driven so drop-in swap is a one-liner.
-- Native app / push notifications.
+## Out of scope
+
+- Any workflow/business-logic edits.
+- Driver Portal, Delivery Dispatch, or L&F visuals.
+- New brand assets beyond the existing IAB logo.
 
 Ready to implement on approval.

@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import {
   useStore,
   updateDelivery,
@@ -23,13 +24,13 @@ import {
   Truck,
   Sparkles,
   Copy,
-  Phone,
+  PhoneCall,
   MessageCircle,
   Mail,
-  X,
   AlertTriangle,
   Star,
   Plane,
+  ChevronRight,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -139,24 +140,62 @@ export function PassengerPortal({
 }
 
 function BrandHeader() {
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 12);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
   return (
-    <header className="w-full">
-      <div className="mx-auto w-full max-w-2xl px-4 sm:px-6 pt-6 flex items-center gap-3">
-        <div className="h-12 w-12 rounded-2xl bg-white grid place-items-center overflow-hidden shrink-0 shadow-[0_10px_30px_-12px_rgba(27,42,91,0.35)] ring-1 ring-black/5">
-          <img src={iabLogo.url} alt="IAB" className="h-11 w-11 object-contain" />
-        </div>
-        <div className="min-w-0">
-          <p className="text-[10px] uppercase tracking-[0.24em] text-[color:var(--iab-navy)]/70 leading-none">
-            IAB
+    <header
+      className={cn(
+        "sticky top-0 z-40 w-full transition-all duration-300",
+        scrolled ? "backdrop-blur-xl" : "",
+      )}
+      style={{
+        background: scrolled
+          ? "color-mix(in oklab, #0F1830 88%, transparent)"
+          : "var(--gradient-iab-hero)",
+        boxShadow: scrolled ? "0 10px 30px -20px rgba(15,24,48,0.5)" : "none",
+      }}
+    >
+      <div
+        className="pointer-events-none absolute inset-0 opacity-70"
+        style={{ background: "var(--gradient-iab-aurora)" }}
+      />
+      <div className="relative mx-auto w-full max-w-2xl px-4 sm:px-6 py-4 sm:py-5 flex items-center gap-4">
+        <motion.div
+          initial={{ scale: 0.9, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ duration: 0.5, ease: [0.2, 0.7, 0.2, 1] }}
+          className="rounded-2xl bg-white grid place-items-center overflow-hidden shrink-0 ring-1 ring-white/40 shadow-[0_20px_50px_-20px_rgba(214,40,75,0.5)]"
+          style={{
+            height: scrolled ? 44 : 64,
+            width: scrolled ? 44 : 64,
+            transition: "height 300ms, width 300ms",
+          }}
+        >
+          <img
+            src={iabLogo.url}
+            alt="IAB"
+            className="h-full w-full object-contain p-1"
+          />
+        </motion.div>
+        <div className="min-w-0 flex-1">
+          <p className="text-[10px] uppercase tracking-[0.32em] text-white/70 leading-none font-medium">
+            Official Airport Service
           </p>
           <p
-            className="text-lg leading-tight mt-1 truncate"
-            style={{ fontFamily: "var(--font-display)" }}
+            className="text-[13px] text-white/80 mt-1 leading-none"
+            dir="rtl"
+            lang="ar"
+            style={{ fontFamily: "var(--font-arabic)" }}
           >
-            Baggage Concierge
+            خدمة رسمية معتمدة بالمطار
           </p>
         </div>
-        <div className="ml-auto hidden sm:flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-[color:var(--iab-navy)]/70">
+        <div className="hidden sm:flex items-center gap-2 text-[10px] uppercase tracking-[0.22em] text-white/70">
           <span
             className="h-1.5 w-1.5 rounded-full"
             style={{ background: "var(--iab-crimson)" }}
@@ -214,7 +253,6 @@ function TrackScreen({
   const [sealed, setSealed] = useState(false);
   const [otpAfter, setOtpAfter] = useState(false);
   const [noBribe, setNoBribe] = useState(true);
-  const [showContact, setShowContact] = useState(false);
   const [reported, setReported] = useState(false);
 
   const allChecked = tags && sealed && otpAfter && noBribe;
@@ -266,11 +304,26 @@ function TrackScreen({
   }
 
   return (
-    <div className="space-y-6 iab-rise">
+    <motion.div
+      initial="hidden"
+      animate="show"
+      variants={{
+        hidden: {},
+        show: { transition: { staggerChildren: 0.08, delayChildren: 0.05 } },
+      }}
+      className="space-y-5 sm:space-y-6"
+    >
       <StatusHero delivery={delivery} kase={kase} />
-      <SimpleTimeline delivery={delivery} kase={kase} />
-      {showExpected && <ExpectedDeliveryCard />}
-      <OtpHeroCard
+      <MotionSection>
+        <SimpleTimeline delivery={delivery} kase={kase} />
+      </MotionSection>
+      {showExpected && (
+        <MotionSection>
+          <ExpectedDeliveryCard />
+        </MotionSection>
+      )}
+      <MotionSection>
+        <OtpHeroCard
         code={delivery.otpCode}
         tags={tags}
         sealed={sealed}
@@ -283,12 +336,29 @@ function TrackScreen({
         reported={reported}
         allChecked={allChecked}
         onConfirm={confirm}
-      />
-      <SupportCard onOpen={() => setShowContact(true)} />
-      {showContact && (
-        <ContactModal delivery={delivery} onClose={() => setShowContact(false)} />
-      )}
-    </div>
+        />
+      </MotionSection>
+      <MotionSection>
+        <ContactCard delivery={delivery} />
+      </MotionSection>
+    </motion.div>
+  );
+}
+
+function MotionSection({ children }: { children: ReactNode }) {
+  return (
+    <motion.div
+      variants={{
+        hidden: { opacity: 0, y: 14 },
+        show: {
+          opacity: 1,
+          y: 0,
+          transition: { duration: 0.5, ease: [0.2, 0.7, 0.2, 1] },
+        },
+      }}
+    >
+      {children}
+    </motion.div>
   );
 }
 
@@ -335,55 +405,133 @@ function Bi({
 function StatusHero({ delivery, kase }: { delivery: Delivery; kase: BaggageCase }) {
   const stage = getDeliveryStage(delivery);
   const heroCopy = heroCopyForStage(stage);
+  const reduce = useReducedMotion();
   const bagTag =
     kase.baggage?.bagTags?.filter(Boolean).join(" · ") ?? kase.bagTagNumber ?? "—";
   return (
-    <div
-      className="relative overflow-hidden rounded-3xl p-7 sm:p-9 text-white shadow-[0_30px_80px_-30px_rgba(15,24,48,0.55)]"
-      style={{ background: "var(--gradient-iab-hero)" }}
+    <motion.div
+      initial={{ opacity: 0, y: 14 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.6, ease: [0.2, 0.7, 0.2, 1] }}
+      className="iab-grain relative overflow-hidden rounded-[32px] px-6 py-8 sm:px-10 sm:py-12 text-white"
+      style={{
+        background: "var(--gradient-iab-hero)",
+        boxShadow:
+          "0 40px 100px -40px rgba(15,24,48,0.7), 0 20px 40px -25px rgba(214,40,75,0.35)",
+      }}
     >
+      {/* Aurora glow layers */}
       <div
-        className="absolute -top-16 -right-16 h-56 w-56 rounded-full opacity-40 blur-3xl"
+        className={cn(
+          "pointer-events-none absolute -top-24 -right-20 h-72 w-72 rounded-full blur-3xl opacity-50",
+          !reduce && "iab-aurora",
+        )}
         style={{ background: "var(--iab-crimson)" }}
       />
+      <div
+        className={cn(
+          "pointer-events-none absolute -bottom-24 -left-24 h-80 w-80 rounded-full blur-3xl opacity-30",
+          !reduce && "iab-aurora",
+        )}
+        style={{
+          background: "radial-gradient(closest-side, #5978DC, transparent)",
+          animationDelay: "3s",
+        }}
+      />
+      <div
+        className="pointer-events-none absolute inset-0 opacity-40"
+        style={{
+          background:
+            "radial-gradient(120% 60% at 0% 0%, rgba(255,255,255,0.18), transparent 55%)",
+        }}
+      />
+
       <div className="relative">
-        <p className="text-[10px] uppercase tracking-[0.28em] text-white/70">
+        <motion.p
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05, duration: 0.4 }}
+          className="text-[10px] uppercase tracking-[0.32em] text-white/70 font-medium"
+        >
           Welcome · مرحباً
-        </p>
-        <h1
-          className="mt-2 text-3xl sm:text-4xl leading-[1.05] tracking-tight"
-          style={{ fontFamily: "var(--font-display)" }}
+        </motion.p>
+        <motion.h1
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.12, duration: 0.55, ease: [0.2, 0.7, 0.2, 1] }}
+          className="mt-3 leading-[1.02] tracking-tight text-white"
+          style={{
+            fontFamily: "var(--font-display)",
+            fontOpticalSizing: "auto",
+            fontVariationSettings: '"opsz" 96, "SOFT" 30',
+            fontSize: "clamp(2.25rem, 8.2vw, 3.5rem)",
+            fontWeight: 400,
+          }}
         >
           {delivery.passengerName}
-        </h1>
-        <p
-          className="mt-1 text-white/85 text-lg"
+        </motion.h1>
+        <motion.p
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2, duration: 0.5 }}
+          className="mt-1 text-white/85"
           dir="rtl"
           lang="ar"
-          style={{ fontFamily: "var(--font-arabic)" }}
+          style={{
+            fontFamily: "var(--font-arabic-display)",
+            fontSize: "clamp(1.5rem, 5vw, 2.25rem)",
+            fontWeight: 500,
+            lineHeight: 1.15,
+          }}
         >
           أهلاً بك {delivery.passengerName}
-        </p>
+        </motion.p>
 
-        <div className="mt-6">
-          <p className="text-white/70 text-sm">{heroCopy.en}</p>
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3, duration: 0.5 }}
+          className="mt-8"
+        >
           <p
-            className="text-white/80 text-sm mt-0.5"
+            className="text-white leading-tight"
+            style={{
+              fontFamily: "var(--font-display)",
+              fontVariationSettings: '"opsz" 48',
+              fontSize: "clamp(1.35rem, 5.4vw, 1.9rem)",
+              fontWeight: 400,
+            }}
+          >
+            {heroCopy.en}
+          </p>
+          <p
+            className="text-white/90 mt-1 leading-tight"
             dir="rtl"
             lang="ar"
-            style={{ fontFamily: "var(--font-arabic)" }}
+            style={{
+              fontFamily: "var(--font-arabic-display)",
+              fontSize: "clamp(1.15rem, 4.6vw, 1.6rem)",
+              fontWeight: 500,
+            }}
           >
             {heroCopy.ar}
           </p>
-        </div>
+        </motion.div>
 
-        <div className="mt-6 flex flex-wrap gap-2 text-[11px] uppercase tracking-[0.14em]">
-          <Chip icon={<Plane className="h-3 w-3" />}>Flight {kase.flightNumber ?? "—"}</Chip>
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4, duration: 0.5 }}
+          className="mt-7 flex flex-wrap gap-2 text-[11px] uppercase tracking-[0.16em]"
+        >
+          <Chip icon={<Plane className="h-3 w-3" />}>
+            Flight {kase.flightNumber ?? "—"}
+          </Chip>
           <Chip>PIR {delivery.pirNumber}</Chip>
           <Chip>Tag {bagTag}</Chip>
-        </div>
+        </motion.div>
       </div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -768,97 +916,123 @@ function BilingualCheck({
 }
 
 // ---------------------------------------------------------------------------
-// Support card (contact channels)
+// Contact card — three premium action tiles (Call · WhatsApp · Email)
 // ---------------------------------------------------------------------------
 
-function SupportCard({ onOpen }: { onOpen: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onOpen}
-      className="w-full text-left iab-glass rounded-3xl p-5 flex items-center gap-4 hover:brightness-[0.99] transition"
-    >
-      <div
-        className="h-11 w-11 rounded-2xl grid place-items-center text-white shrink-0"
-        style={{ background: "var(--gradient-iab-crimson)" }}
-      >
-        <MessageCircle className="h-4 w-4" />
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="font-medium text-[color:var(--iab-navy)]">
-          Need help? · هل تحتاج للمساعدة؟
-        </p>
-        <p className="text-xs text-[color:var(--iab-navy)]/60 mt-0.5">
-          IAB Customer Care · +20 2 2696 0000
-        </p>
-      </div>
-      <span className="text-[color:var(--iab-navy)]/50 text-xs">›</span>
-    </button>
+function ContactCard({ delivery }: { delivery: Delivery }) {
+  const waMessage = encodeURIComponent(
+    `Hello IAB Support, I need assistance with delivery ${delivery.deliveryId} (PIR ${delivery.pirNumber}).`,
   );
-}
-
-function ContactModal({
-  delivery,
-  onClose,
-}: {
-  delivery: Delivery;
-  onClose: () => void;
-}) {
-  const options = [
-    { icon: Phone, label: "Phone", value: "+20 2 2696 0000", href: "tel:+20226960000" },
-    { icon: MessageCircle, label: "WhatsApp", value: "+20 100 000 1234", href: "https://wa.me/201000001234" },
-    { icon: Mail, label: "Email", value: "support@iab.aero", href: "mailto:support@iab.aero" },
+  const mailSubject = encodeURIComponent(
+    `PIR ${delivery.pirNumber} — Support request`,
+  );
+  const tiles = [
+    {
+      icon: PhoneCall,
+      en: "Call Airport",
+      ar: "اتصل بالمطار",
+      href: "tel:+20226960000",
+      value: "+20 2 2696 0000",
+    },
+    {
+      icon: MessageCircle,
+      en: "WhatsApp",
+      ar: "واتساب",
+      href: `https://wa.me/201000001234?text=${waMessage}`,
+      value: "+20 100 000 1234",
+    },
+    {
+      icon: Mail,
+      en: "Email",
+      ar: "البريد",
+      href: `mailto:support@iab.aero?subject=${mailSubject}`,
+      value: "support@iab.aero",
+    },
   ];
   return (
-    <div
-      className="fixed inset-0 z-50 grid place-items-center p-4"
-      style={{ background: "color-mix(in oklab, #0F1830 60%, transparent)" }}
-      onClick={onClose}
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-40px" }}
+      transition={{ duration: 0.5, ease: [0.2, 0.7, 0.2, 1] }}
+      className="space-y-3"
     >
-      <div
-        className="bg-white rounded-3xl w-full max-w-md shadow-2xl iab-rise"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between px-5 py-4 border-b border-[color:var(--iab-mist)]">
-          <div>
-            <p className="font-semibold text-[color:var(--iab-navy)]">Contact Us · تواصل معنا</p>
-            <p className="text-xs text-[color:var(--iab-navy)]/60">
-              Reference {delivery.deliveryId} · IAB Customer Care
-            </p>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-1 rounded hover:bg-[color:var(--iab-mist)]"
-            aria-label="Close"
+      <div className="flex items-center justify-between px-1">
+        <div>
+          <p className="text-[10px] uppercase tracking-[0.28em] font-semibold text-[color:var(--iab-navy)]/70">
+            Support
+          </p>
+          <p
+            className="text-[12px] text-[color:var(--iab-navy)]/70 mt-0.5"
+            dir="rtl"
+            lang="ar"
+            style={{ fontFamily: "var(--font-arabic)" }}
           >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-        <div className="p-5 space-y-2">
-          {options.map((o) => (
-            <a
-              key={o.label}
-              href={o.href}
-              className="flex items-center gap-3 rounded-2xl border border-[color:var(--iab-mist)] p-3 hover:bg-[color:var(--iab-mist)]/50 transition-colors"
-            >
-              <div
-                className="h-10 w-10 rounded-full grid place-items-center text-white"
-                style={{ background: "var(--gradient-iab-crimson)" }}
-              >
-                <o.icon className="h-4 w-4" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-sm font-medium text-[color:var(--iab-navy)]">{o.label}</p>
-                <p className="text-xs text-[color:var(--iab-navy)]/60 truncate">{o.value}</p>
-              </div>
-            </a>
-          ))}
-          <p className="text-[11px] text-[color:var(--iab-navy)]/60 pt-2 text-center">
-            For your safety, IAB does not enable direct driver communication.
+            المساعدة والدعم
           </p>
         </div>
+        <p className="text-[10px] uppercase tracking-[0.2em] text-[color:var(--iab-navy)]/50">
+          24 / 7
+        </p>
       </div>
-    </div>
+      <div className="grid grid-cols-3 gap-2 sm:gap-3">
+        {tiles.map((t, i) => (
+          <motion.a
+            key={t.en}
+            href={t.href}
+            target={t.href.startsWith("http") ? "_blank" : undefined}
+            rel="noreferrer"
+            initial={{ opacity: 0, y: 8 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: i * 0.06, duration: 0.4 }}
+            whileHover={{ y: -3 }}
+            whileTap={{ scale: 0.97 }}
+            className="iab-glass iab-ripple group relative rounded-3xl p-4 sm:p-5 flex flex-col items-center text-center gap-2 overflow-hidden"
+            style={{ boxShadow: "var(--shadow-iab-soft)" }}
+            onPointerDown={(e) => {
+              const target = e.currentTarget;
+              const rect = target.getBoundingClientRect();
+              target.style.setProperty(
+                "--x",
+                `${((e.clientX - rect.left) / rect.width) * 100}%`,
+              );
+              target.style.setProperty(
+                "--y",
+                `${((e.clientY - rect.top) / rect.height) * 100}%`,
+              );
+            }}
+          >
+            <div
+              className="h-11 w-11 rounded-2xl grid place-items-center text-white shrink-0 transition-transform group-hover:scale-105"
+              style={{ background: "var(--gradient-iab-hero)" }}
+            >
+              <t.icon className="h-5 w-5" strokeWidth={1.75} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[13px] font-semibold text-[color:var(--iab-navy)] leading-tight">
+                {t.en}
+              </p>
+              <p
+                className="text-[13px] text-[color:var(--iab-navy)]/75 leading-tight"
+                dir="rtl"
+                lang="ar"
+                style={{ fontFamily: "var(--font-arabic)" }}
+              >
+                {t.ar}
+              </p>
+            </div>
+            <span
+              className="pointer-events-none absolute inset-x-0 bottom-0 h-[2px] scale-x-0 origin-left transition-transform duration-300 group-hover:scale-x-100"
+              style={{ background: "var(--gradient-iab-crimson)" }}
+            />
+          </motion.a>
+        ))}
+      </div>
+      <p className="text-[11px] text-[color:var(--iab-navy)]/55 text-center pt-1">
+        For your safety, IAB does not enable direct driver communication.
+      </p>
+    </motion.div>
   );
 }
 
