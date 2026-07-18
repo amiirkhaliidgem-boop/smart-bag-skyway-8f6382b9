@@ -16,7 +16,7 @@ export const getPassengerViewByToken = createServerFn({ method: "GET" })
     if (error) throw new Error(error.message);
 
     const payload = (row?.payload ?? {}) as {
-      workflow?: Array<{ deliveryId: string; token: string; status?: string; history?: unknown[] }>;
+      workflow?: Array<Record<string, unknown> & { deliveryId: string; token: string }>;
       deliveries?: Array<Record<string, unknown>>;
       cases?: Array<Record<string, unknown>>;
     };
@@ -32,10 +32,12 @@ export const getPassengerViewByToken = createServerFn({ method: "GET" })
         )
       : undefined;
 
-    return {
-      found: true as const,
-      workflow: wf,
-      delivery: delivery ?? null,
-      case: kase ?? null,
-    };
+    return JSON.parse(
+      JSON.stringify({
+        found: true,
+        workflow: wf,
+        delivery: delivery ?? null,
+        case: kase ?? null,
+      }),
+    ) as { found: true; workflow: unknown; delivery: unknown; case: unknown };
   });
