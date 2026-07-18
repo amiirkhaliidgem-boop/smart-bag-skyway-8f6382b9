@@ -285,7 +285,25 @@ interface State {
   notifications: NotificationEvent[];
   audit: AuditEntry[];
   ioAudit: ImportAuditEntry[];
+  station: Station;
 }
+
+// Station (airport) configuration — origin for route optimization and the
+// default anchor for the driver's route. Editable from Settings › Airport
+// so the system can be deployed at any airport, not just Cairo.
+export interface Station {
+  code: string;
+  name: string;
+  lat: number;
+  lng: number;
+}
+
+export const DEFAULT_STATION: Station = {
+  code: "CAI",
+  name: "Cairo International Airport",
+  lat: 30.1219,
+  lng: 31.4056,
+};
 
 const driverPool = [
   "Ahmed Mostafa",
