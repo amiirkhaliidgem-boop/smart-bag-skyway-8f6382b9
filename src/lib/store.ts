@@ -690,6 +690,7 @@ function applyRemote(payload: unknown, _version: number) {
     notifications: parsed.notifications ?? base.notifications,
     audit: parsed.audit ?? base.audit,
     ioAudit: parsed.ioAudit ?? base.ioAudit,
+    station: parsed.station ?? base.station,
   };
   listeners.forEach((l) => l());
 }
