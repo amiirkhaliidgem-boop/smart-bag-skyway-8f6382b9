@@ -189,10 +189,9 @@ function AuthGate() {
     if (!ready || !session || roleLoading || !roleReadyForSession) return;
     if (isPublicPath(pathname)) return;
     if (!effectiveRole) {
-      // Signed in but no role row: sign out and inform.
-      void supabase.auth.signOut();
-      toast.error("No role assigned. Contact your administrator.");
-      navigate({ to: "/auth", replace: true });
+      // Keep a valid session intact if the role lookup is temporarily
+      // unavailable; no protected content is rendered without a role.
+      toast.error("Unable to verify your staff role. Please refresh and try again.");
       return;
     }
     if (!canAccessPath(pathname, effectiveRole)) {
@@ -226,6 +225,14 @@ function AuthGate() {
     return (
       <div className="min-h-screen grid place-items-center text-sm text-muted-foreground">
         Loading…
+      </div>
+    );
+  }
+
+  if (!effectiveRole) {
+    return (
+      <div className="min-h-screen grid place-items-center text-sm text-muted-foreground">
+        Unable to verify your staff role. Please refresh and try again.
       </div>
     );
   }
