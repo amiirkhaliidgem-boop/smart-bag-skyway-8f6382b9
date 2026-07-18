@@ -381,8 +381,6 @@ function DispatchCenter() {
                     <td colSpan={12} className="px-4 py-16 text-center text-sm text-muted-foreground">
                       {deliveries.length === 0
                         ? "No deliveries yet. Cases enter this module when Lost & Found marks them Ready for Delivery."
-                        : queue === "failed"
-                        ? "No failed deliveries. 👍"
                         : queue === "ready"
                         ? "No deliveries ready to schedule."
                         : "No deliveries match the current filters."}
