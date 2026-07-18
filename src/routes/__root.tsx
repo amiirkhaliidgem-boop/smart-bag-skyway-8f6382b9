@@ -6,13 +6,17 @@ import {
   useRouter,
   HeadContent,
   Scripts,
+  useRouterState,
+  useNavigate,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AppShell } from "../components/app-shell";
 import { Toaster } from "../components/ui/sonner";
+import { supabase } from "@/integrations/supabase/client";
+import type { Session } from "@supabase/supabase-js";
 
 function NotFoundComponent() {
   return (
@@ -120,8 +124,70 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <AppShell />
+      <AuthGate />
       <Toaster richColors position="top-right" />
     </QueryClientProvider>
   );
+}
+
+// Public paths that don't require staff sign-in.
+function isPublicPath(pathname: string): boolean {
+  return (
+    pathname === "/auth" ||
+    pathname.startsWith("/passenger/") // token portal only; /passenger alone is staff
+  );
+}
+
+function AuthGate() {
+  const [session, setSession] = useState<Session | null>(null);
+  const [ready, setReady] = useState(false);
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    let mounted = true;
+    void supabase.auth.getSession().then(({ data }) => {
+      if (!mounted) return;
+      setSession(data.session);
+      setReady(true);
+    });
+    const { data: sub } = supabase.auth.onAuthStateChange((_evt, s) => {
+      setSession(s);
+    });
+    return () => {
+      mounted = false;
+      sub.subscription.unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!ready) return;
+    if (!session && !isPublicPath(pathname)) {
+      navigate({ to: "/auth", replace: true });
+    }
+  }, [ready, session, pathname, navigate]);
+
+  if (!ready) {
+    return (
+      <div className="min-h-screen grid place-items-center text-sm text-muted-foreground">
+        Loading…
+      </div>
+    );
+  }
+
+  // Public routes render bare (no sidebar).
+  if (isPublicPath(pathname)) {
+    return <Outlet />;
+  }
+
+  // Protected: don't flash the shell before redirect completes.
+  if (!session) {
+    return (
+      <div className="min-h-screen grid place-items-center text-sm text-muted-foreground">
+        Redirecting to sign in…
+      </div>
+    );
+  }
+
+  return <AppShell />;
 }
