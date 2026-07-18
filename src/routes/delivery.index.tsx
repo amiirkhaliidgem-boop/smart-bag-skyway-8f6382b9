@@ -436,9 +436,8 @@ function Row({
         <span className="text-xs">{d.priority}</span>
       </td>
       <td className="px-3 py-3 text-xs text-muted-foreground whitespace-nowrap">
-        {fmt(d.createdAt ?? d.eta)}
+        {fmt(d.createdAt ?? "")}
       </td>
-      <td className="px-3 py-3 text-xs whitespace-nowrap">{fmt(d.eta)}</td>
       <td className="px-3 py-3 text-right" onClick={stop as never}>
         <div className="inline-flex items-center gap-1 flex-wrap justify-end">
           <RowActions d={d} acts={acts} onAssign={onAssign} />
