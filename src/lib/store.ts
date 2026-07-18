@@ -650,50 +650,51 @@ function load(): State {
   return defaults;
 }
 
-let hydratedFromStorage = false;
-function hydrateFromStorage() {
-  if (hydratedFromStorage || typeof window === "undefined") return;
-  hydratedFromStorage = true;
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) {
-      // Prime the workflow records for existing seed deliveries.
-      state = defaults();
-      emit();
-      return;
-    }
-    const parsed = JSON.parse(raw) as Partial<State>;
-    const base = defaults();
-    state = {
-      ...base,
-      ...parsed,
-      // Guarantee workflow / notifications / audit are seeded when
-      // older localStorage snapshots don't include them.
-      workflow:
-        parsed.workflow && parsed.workflow.length ? parsed.workflow : base.workflow,
-      notifications: parsed.notifications ?? base.notifications,
-      audit: parsed.audit ?? base.audit,
-      ioAudit: parsed.ioAudit ?? base.ioAudit,
-    };
-    emit();
-  } catch {}
+// -- Supabase-backed persistence (single source of truth) ------------------
+// The store keeps its full behavior. On the client, we bootstrap from
+// `app_state` in Supabase, subscribe to realtime changes, and push every
+// mutation back. Preview and Open-in-New-Tab therefore see the same state.
+import {
+  initPersistence,
+  scheduleRemotePush,
+  markRemoteApply,
+} from "./persistence";
+
+let bootstrapped = false;
+function applyRemote(payload: unknown, _version: number) {
+  const base = defaults();
+  const parsed = (payload ?? {}) as Partial<State>;
+  state = {
+    ...base,
+    ...parsed,
+    workflow:
+      parsed.workflow && parsed.workflow.length ? parsed.workflow : base.workflow,
+    notifications: parsed.notifications ?? base.notifications,
+    audit: parsed.audit ?? base.audit,
+    ioAudit: parsed.ioAudit ?? base.ioAudit,
+  };
+  listeners.forEach((l) => l());
+}
+
+function ensureBootstrap() {
+  if (bootstrapped || typeof window === "undefined") return;
+  bootstrapped = true;
+  // Prime state to defaults so seed data is visible before auth completes;
+  // once signed in, remote state (if any) replaces it.
+  state = defaults();
+  markRemoteApply(); // don't push the freshly-seeded defaults immediately
+  listeners.forEach((l) => l());
+  void initPersistence(applyRemote);
 }
 
 if (typeof window !== "undefined") {
   // Defer to after React's initial hydration so HTML doesn't mismatch.
-  setTimeout(hydrateFromStorage, 0);
-}
-
-function persist() {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  } catch {}
+  setTimeout(ensureBootstrap, 0);
 }
 
 function emit() {
-  persist();
   listeners.forEach((l) => l());
+  scheduleRemotePush(() => state);
 }
 
 function subscribe(l: () => void) {
