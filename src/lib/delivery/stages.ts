@@ -153,15 +153,14 @@ export const FAILURE_REASONS = [
 export type FailureReason = (typeof FAILURE_REASONS)[number];
 
 // Operational queues shown as tabs in the Dispatch Center. Each queue maps
-// to one or more stages.
+// to one or more stages. Only stages that appear in the live operational
+// workflow surface here — Scheduled / Failed / Returned exist internally
+// for future expansion but are intentionally hidden from the Dispatch UI.
 export const DELIVERY_QUEUES = [
   { id: "all", label: "All", stages: [...DELIVERY_STAGES] as DeliveryStage[] },
   { id: "ready", label: "Ready for Delivery", stages: ["Ready for Delivery"] },
-  { id: "scheduled", label: "Scheduled", stages: ["Scheduled"] },
   { id: "assigned", label: "Assigned", stages: ["Assigned", "Driver Accepted"] },
   { id: "out", label: "Out for Delivery", stages: ["Collected Bag", "Out for Delivery"] },
-  { id: "failed", label: "Failed", stages: ["Delivery Failed"] },
-  { id: "returned", label: "Returned to Airport", stages: ["Returned to Airport"] },
   { id: "completed", label: "Completed", stages: ["Delivered"] },
 ] as const satisfies ReadonlyArray<{ id: string; label: string; stages: DeliveryStage[] }>;
 
