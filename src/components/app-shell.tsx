@@ -294,6 +294,7 @@ function SidebarFooter() {
 function UserMenu() {
   const navigate = useNavigate();
   const [email, setEmail] = useState<string>("");
+  const { role } = useRole();
   useEffect(() => {
     void supabase.auth.getUser().then(({ data }) => {
       setEmail(data.user?.email ?? "");
@@ -305,9 +306,14 @@ function UserMenu() {
   }
   return (
     <div className="flex items-center gap-2">
-      <span className="hidden md:inline text-xs text-muted-foreground max-w-[160px] truncate">
-        {email}
-      </span>
+      <div className="hidden md:flex flex-col items-end leading-tight max-w-[220px]">
+        <span className="text-xs text-foreground truncate">{email}</span>
+        {role && (
+          <span className="text-[10px] text-muted-foreground truncate">
+            {ROLE_LABELS[role]}
+          </span>
+        )}
+      </div>
       <button
         type="button"
         onClick={signOut}
