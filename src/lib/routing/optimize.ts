@@ -38,7 +38,10 @@ function haversineKm(a: LatLng, b: LatLng): number {
 // Deliveries without destination coordinates are appended at the end in
 // input order — they still appear in the route but cannot be optimized
 // without geocoding.
-export function optimizeRoute<T extends Delivery>(deliveries: T[]): T[] {
+export function optimizeRoute<T extends Delivery>(
+  deliveries: T[],
+  originOverride?: LatLng,
+): T[] {
   const geo: T[] = [];
   const nogeo: T[] = [];
   for (const d of deliveries) {
@@ -50,7 +53,7 @@ export function optimizeRoute<T extends Delivery>(deliveries: T[]): T[] {
   }
   const remaining = [...geo];
   const ordered: T[] = [];
-  let cursor: LatLng = AIRPORT_ORIGIN;
+  let cursor: LatLng = originOverride ?? AIRPORT_ORIGIN;
   while (remaining.length) {
     let bestIdx = 0;
     let bestDist = Infinity;
@@ -69,11 +72,12 @@ export function optimizeRoute<T extends Delivery>(deliveries: T[]): T[] {
   return [...ordered, ...nogeo];
 }
 
-// Build a Google Maps navigation URL for a single stop. Uses the address
-// when coordinates are missing so the driver always gets turn-by-turn.
+// Build a Google Maps navigation URL for a single stop. Origin is omitted
+// so Google Maps uses the driver's current device location — the driver is
+// rarely still at the airport by the time they open navigation.
 export function navigationHref(d: Delivery): string {
   if (d.destination) {
-    return `https://www.google.com/maps/dir/?api=1&origin=${AIRPORT_ORIGIN.lat},${AIRPORT_ORIGIN.lng}&destination=${d.destination.lat},${d.destination.lng}&travelmode=driving`;
+    return `https://www.google.com/maps/dir/?api=1&destination=${d.destination.lat},${d.destination.lng}&travelmode=driving`;
   }
   return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(d.address)}&travelmode=driving`;
 }

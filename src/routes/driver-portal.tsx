@@ -111,12 +111,18 @@ function DriverDashboard({ driver, onSignOut }: { driver: string; onSignOut: () 
   const mine = useStore((s) => s.deliveries.filter((d) => d.driver === driver));
 
   // Today's Route — every stop assigned to this driver that has not been
-  // delivered yet, optimized from the airport (nearest-neighbor).
+  // delivered yet, optimized nearest-neighbor. Once the trip is under way
+  // we re-anchor from the last completed stop's coordinates so the visit
+  // order stays stable as the driver progresses; before any completion we
+  // anchor from the airport.
+  const completed = mine.filter((d) => getDeliveryStage(d) === "Delivered");
   const route = useMemo(() => {
     const open = mine.filter((d) => getDeliveryStage(d) !== "Delivered");
-    return optimizeRoute(open);
-  }, [mine]);
-  const completed = mine.filter((d) => getDeliveryStage(d) === "Delivered");
+    const anchor = [...completed]
+      .reverse()
+      .find((d) => d.destination)?.destination;
+    return optimizeRoute(open, anchor ?? undefined);
+  }, [mine, completed]);
 
   return (
     <div className="space-y-6">
@@ -198,7 +204,12 @@ function RouteSection({ route }: { route: Delivery[] }) {
           </p>
         )}
         {route.map((d, i) => (
-          <DeliveryCard key={d.deliveryId} d={d} stopNumber={i + 1} />
+          <DeliveryCard
+            key={d.deliveryId}
+            d={d}
+            stopNumber={i + 1}
+            isCurrent={i === 0}
+          />
         ))}
       </CardContent>
     </Card>
@@ -229,7 +240,15 @@ function Section({
   );
 }
 
-function DeliveryCard({ d, stopNumber }: { d: Delivery; stopNumber?: number }) {
+function DeliveryCard({
+  d,
+  stopNumber,
+  isCurrent,
+}: {
+  d: Delivery;
+  stopNumber?: number;
+  isCurrent?: boolean;
+}) {
   const [otpOpen, setOtpOpen] = useState(false);
   const stage = getDeliveryStage(d);
   const cases = useStore((s) => s.cases);
@@ -246,7 +265,13 @@ function DeliveryCard({ d, stopNumber }: { d: Delivery; stopNumber?: number }) {
   };
 
   return (
-    <div className="rounded-lg border border-border p-4 hover:bg-muted/30 transition-colors">
+    <div
+      className={`rounded-lg border p-4 transition-colors ${
+        isCurrent
+          ? "border-primary bg-primary/5 ring-1 ring-primary/30"
+          : "border-border hover:bg-muted/30 opacity-90"
+      }`}
+    >
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="flex items-start gap-3 min-w-0">
           {stopNumber !== undefined && (
@@ -262,6 +287,11 @@ function DeliveryCard({ d, stopNumber }: { d: Delivery; stopNumber?: number }) {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {isCurrent && (
+            <span className="text-[11px] px-2 py-0.5 rounded-full font-semibold bg-primary text-primary-foreground">
+              Current stop
+            </span>
+          )}
           <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${priorityTone[d.priority]}`}>
             {d.priority}
           </span>
