@@ -140,24 +140,62 @@ export function PassengerPortal({
 }
 
 function BrandHeader() {
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 12);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
   return (
-    <header className="w-full">
-      <div className="mx-auto w-full max-w-2xl px-4 sm:px-6 pt-6 flex items-center gap-3">
-        <div className="h-12 w-12 rounded-2xl bg-white grid place-items-center overflow-hidden shrink-0 shadow-[0_10px_30px_-12px_rgba(27,42,91,0.35)] ring-1 ring-black/5">
-          <img src={iabLogo.url} alt="IAB" className="h-11 w-11 object-contain" />
-        </div>
-        <div className="min-w-0">
-          <p className="text-[10px] uppercase tracking-[0.24em] text-[color:var(--iab-navy)]/70 leading-none">
-            IAB
+    <header
+      className={cn(
+        "sticky top-0 z-40 w-full transition-all duration-300",
+        scrolled ? "backdrop-blur-xl" : "",
+      )}
+      style={{
+        background: scrolled
+          ? "color-mix(in oklab, #0F1830 88%, transparent)"
+          : "var(--gradient-iab-hero)",
+        boxShadow: scrolled ? "0 10px 30px -20px rgba(15,24,48,0.5)" : "none",
+      }}
+    >
+      <div
+        className="pointer-events-none absolute inset-0 opacity-70"
+        style={{ background: "var(--gradient-iab-aurora)" }}
+      />
+      <div className="relative mx-auto w-full max-w-2xl px-4 sm:px-6 py-4 sm:py-5 flex items-center gap-4">
+        <motion.div
+          initial={{ scale: 0.9, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ duration: 0.5, ease: [0.2, 0.7, 0.2, 1] }}
+          className="rounded-2xl bg-white grid place-items-center overflow-hidden shrink-0 ring-1 ring-white/40 shadow-[0_20px_50px_-20px_rgba(214,40,75,0.5)]"
+          style={{
+            height: scrolled ? 44 : 64,
+            width: scrolled ? 44 : 64,
+            transition: "height 300ms, width 300ms",
+          }}
+        >
+          <img
+            src={iabLogo.url}
+            alt="IAB"
+            className="h-full w-full object-contain p-1"
+          />
+        </motion.div>
+        <div className="min-w-0 flex-1">
+          <p className="text-[10px] uppercase tracking-[0.32em] text-white/70 leading-none font-medium">
+            Official Airport Service
           </p>
           <p
-            className="text-lg leading-tight mt-1 truncate"
-            style={{ fontFamily: "var(--font-display)" }}
+            className="text-[13px] text-white/80 mt-1 leading-none"
+            dir="rtl"
+            lang="ar"
+            style={{ fontFamily: "var(--font-arabic)" }}
           >
-            Baggage Concierge
+            خدمة رسمية معتمدة بالمطار
           </p>
         </div>
-        <div className="ml-auto hidden sm:flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-[color:var(--iab-navy)]/70">
+        <div className="hidden sm:flex items-center gap-2 text-[10px] uppercase tracking-[0.22em] text-white/70">
           <span
             className="h-1.5 w-1.5 rounded-full"
             style={{ background: "var(--iab-crimson)" }}
