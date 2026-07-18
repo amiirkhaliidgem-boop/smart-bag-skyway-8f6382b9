@@ -17,6 +17,8 @@ import { AppShell } from "../components/app-shell";
 import { Toaster } from "../components/ui/sonner";
 import { supabase } from "@/integrations/supabase/client";
 import type { Session } from "@supabase/supabase-js";
+import { RoleContext, canAccessPath, defaultPathForRole, useCurrentRole } from "@/lib/rbac";
+import { toast } from "sonner";
 
 function NotFoundComponent() {
   return (
@@ -143,6 +145,7 @@ function AuthGate() {
   const [ready, setReady] = useState(false);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
+  const { role, loading: roleLoading } = useCurrentRole(session?.user?.id ?? null);
 
   useEffect(() => {
     let mounted = true;
@@ -167,6 +170,22 @@ function AuthGate() {
     }
   }, [ready, session, pathname, navigate]);
 
+  // Role-based redirect for signed-in users on disallowed paths.
+  useEffect(() => {
+    if (!ready || !session || roleLoading) return;
+    if (isPublicPath(pathname)) return;
+    if (!role) {
+      // Signed in but no role row: sign out and inform.
+      void supabase.auth.signOut();
+      toast.error("No role assigned. Contact your administrator.");
+      navigate({ to: "/auth", replace: true });
+      return;
+    }
+    if (!canAccessPath(pathname, role)) {
+      navigate({ to: defaultPathForRole(role), replace: true });
+    }
+  }, [ready, session, role, roleLoading, pathname, navigate]);
+
   if (!ready) {
     return (
       <div className="min-h-screen grid place-items-center text-sm text-muted-foreground">
@@ -189,5 +208,26 @@ function AuthGate() {
     );
   }
 
-  return <AppShell />;
+  if (roleLoading) {
+    return (
+      <div className="min-h-screen grid place-items-center text-sm text-muted-foreground">
+        Loading…
+      </div>
+    );
+  }
+
+  // Block rendering of disallowed routes while the redirect effect runs.
+  if (role && !canAccessPath(pathname, role)) {
+    return (
+      <div className="min-h-screen grid place-items-center text-sm text-muted-foreground">
+        Redirecting…
+      </div>
+    );
+  }
+
+  return (
+    <RoleContext.Provider value={{ role, loading: roleLoading }}>
+      <AppShell />
+    </RoleContext.Provider>
+  );
 }

@@ -32,6 +32,7 @@ import { cn } from "@/lib/utils";
 import iabLogo from "@/assets/iab-logo.jpeg.asset.json";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "@tanstack/react-router";
+import { useRole, canAccessPath, ROLE_LABELS } from "@/lib/rbac";
 
 const navSections: {
   label: string;
@@ -121,6 +122,14 @@ export function AppShell() {
     select: (s) => (s.location.search as { section?: string })?.section,
   });
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { role } = useRole();
+
+  const visibleSections = navSections
+    .map((section) => ({
+      ...section,
+      items: section.items.filter((item) => canAccessPath(item.to, role)),
+    }))
+    .filter((section) => section.items.length > 0);
 
   const isActive = (
     to: string,
@@ -143,7 +152,7 @@ export function AppShell() {
       <aside className="hidden lg:flex w-64 shrink-0 flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border">
         <SidebarBrand />
         <nav className="flex-1 px-3 py-4 space-y-5 overflow-y-auto">
-          {navSections.map((section) => (
+          {visibleSections.map((section) => (
             <div key={section.label}>
               <p className="px-3 mb-1 text-[10px] uppercase tracking-wider text-sidebar-foreground/50 font-semibold">
                 {section.label}
@@ -183,7 +192,7 @@ export function AppShell() {
           <aside className="absolute left-0 top-0 bottom-0 w-72 bg-sidebar text-sidebar-foreground flex flex-col">
             <SidebarBrand onClose={() => setMobileOpen(false)} />
             <nav className="flex-1 px-3 py-4 space-y-5 overflow-y-auto">
-              {navSections.map((section) => (
+              {visibleSections.map((section) => (
                 <div key={section.label}>
                   <p className="px-3 mb-1 text-[10px] uppercase tracking-wider text-sidebar-foreground/50 font-semibold">
                     {section.label}
@@ -285,6 +294,7 @@ function SidebarFooter() {
 function UserMenu() {
   const navigate = useNavigate();
   const [email, setEmail] = useState<string>("");
+  const { role } = useRole();
   useEffect(() => {
     void supabase.auth.getUser().then(({ data }) => {
       setEmail(data.user?.email ?? "");
@@ -296,9 +306,14 @@ function UserMenu() {
   }
   return (
     <div className="flex items-center gap-2">
-      <span className="hidden md:inline text-xs text-muted-foreground max-w-[160px] truncate">
-        {email}
-      </span>
+      <div className="hidden md:flex flex-col items-end leading-tight max-w-[220px]">
+        <span className="text-xs text-foreground truncate">{email}</span>
+        {role && (
+          <span className="text-[10px] text-muted-foreground truncate">
+            {ROLE_LABELS[role]}
+          </span>
+        )}
+      </div>
       <button
         type="button"
         onClick={signOut}
