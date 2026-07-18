@@ -9,6 +9,22 @@ import { toast } from "sonner";
 import { ShieldCheck } from "lucide-react";
 import { defaultPathForRole, type AppRole } from "@/lib/rbac";
 
+function getAuthErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.message.trim()) return error.message;
+  if (typeof error === "string" && error.trim()) return error;
+  if (error && typeof error === "object") {
+    const value = error as Record<string, unknown>;
+    for (const key of ["message", "error_description", "code", "statusText"]) {
+      const detail = value[key];
+      if (typeof detail === "string" && detail.trim()) return detail;
+    }
+    if (typeof value.status === "number") {
+      return `Authentication failed (${value.status}).`;
+    }
+  }
+  return "Authentication failed. Please check your credentials and try again.";
+}
+
 export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
@@ -58,7 +74,7 @@ function AuthPage() {
       // Signup path: role may not be assigned yet — send to home; AuthGate will handle.
       navigate({ to: "/", replace: true });
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Authentication failed");
+      toast.error(getAuthErrorMessage(err));
     } finally {
       setLoading(false);
     }
