@@ -101,7 +101,6 @@ const ALL_COLUMNS: { key: ColKey; label: string; default: boolean }[] = [
 
 function LostFoundPage() {
   const cases = useStore((s) => s.cases);
-  const deliveries = useStore((s) => s.deliveries);
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<LFStatus | "all">("all");
   const [priority, setPriority] = useState<Priority | "all">("all");
@@ -114,6 +113,8 @@ function LostFoundPage() {
   const [to, setTo] = useState("");
   const [openNew, setOpenNew] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [assignOfficerOpen, setAssignOfficerOpen] = useState(false);
+  const [priorityDialogOpen, setPriorityDialogOpen] = useState(false);
   const [sortKey, setSortKey] = useState<ColKey>("created");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [visible, setVisible] = useState<Record<ColKey, boolean>>(
