@@ -644,6 +644,7 @@ function defaults(): State {
     notifications: [],
     audit: [],
     ioAudit: [],
+    station: DEFAULT_STATION,
   };
 }
 
@@ -659,6 +660,7 @@ function load(): State {
     notifications: [],
     audit: [],
     ioAudit: [],
+    station: DEFAULT_STATION,
   };
   // Always start from defaults on both server and client so SSR HTML
   // matches the first client render. localStorage is merged in after
