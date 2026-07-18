@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import {
   useStore,
   bulkUpdateCases,
-  updateLfStatus,
+  bulkAssignDelivery,
   type BaggageCase,
   type Priority,
   type DeliveryMethod,
@@ -18,7 +18,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Dialog, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogTrigger,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -42,15 +49,20 @@ import {
 } from "@/components/ui/popover";
 import { LfStatusBadge } from "@/components/lf-status-badge";
 import { PirWizard } from "@/components/lost-found/pir-wizard";
+import { BulkToolbar } from "@/components/bulk/bulk-toolbar";
 import {
   Search,
   Plus,
   Columns3,
-  Filter,
   Star as StarIcon,
   ChevronDown,
   X,
   SlidersHorizontal,
+  UserCheck,
+  Truck,
+  Flag,
+  Download,
+  Printer,
 } from "lucide-react";
 import { toast } from "sonner";
 import { ImportExportButtons } from "@/components/io/import-export-buttons";
@@ -89,7 +101,6 @@ const ALL_COLUMNS: { key: ColKey; label: string; default: boolean }[] = [
 
 function LostFoundPage() {
   const cases = useStore((s) => s.cases);
-  const deliveries = useStore((s) => s.deliveries);
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<LFStatus | "all">("all");
   const [priority, setPriority] = useState<Priority | "all">("all");
@@ -102,6 +113,8 @@ function LostFoundPage() {
   const [to, setTo] = useState("");
   const [openNew, setOpenNew] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [assignOfficerOpen, setAssignOfficerOpen] = useState(false);
+  const [priorityDialogOpen, setPriorityDialogOpen] = useState(false);
   const [sortKey, setSortKey] = useState<ColKey>("created");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [visible, setVisible] = useState<Record<ColKey, boolean>>(
@@ -210,6 +223,41 @@ function LostFoundPage() {
     return { total, open, tracing, readyDelivery, delivered, vip };
   }, [cases]);
 
+  const selectedIds = Array.from(selected);
+  function clearSelection() { setSelected(new Set()); }
+
+  function runAssignDelivery() {
+    if (selectedIds.length === 0) return;
+    const res = bulkAssignDelivery(selectedIds, { actor: "L&F Officer" });
+    const parts: string[] = [];
+    if (res.handedOver) parts.push(`${res.handedOver} handed over to Delivery`);
+    if (res.alreadyHandedOver) parts.push(`${res.alreadyHandedOver} already handed over`);
+    if (res.skipped) parts.push(`${res.skipped} skipped`);
+    toast.success(parts.join(" · ") || "No cases to hand over");
+    clearSelection();
+  }
+
+  function runPriority(p: Priority) {
+    bulkUpdateCases(selectedIds, { priority: p });
+    toast.success(`Priority set to ${p} for ${selectedIds.length} case(s)`);
+    setPriorityDialogOpen(false);
+    clearSelection();
+  }
+
+  function runAssignOfficer(officerName: string) {
+    const name = officerName.trim();
+    if (!name) return;
+    bulkUpdateCases(selectedIds, { internal: { assignedOfficer: name } as never });
+    toast.success(`${selectedIds.length} case(s) assigned to ${name}`);
+    setAssignOfficerOpen(false);
+    clearSelection();
+  }
+
+  function runExportSelected() {
+    toast.info("Use the Export menu — bulk export is scoped to the selected rows.");
+  }
+  function runPrint() { window.print(); }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -249,6 +297,50 @@ function LostFoundPage() {
         <Kpi label="Delivered / Closed" value={kpis.delivered} tone="emerald" />
         <Kpi label="VIP Passengers" value={kpis.vip} tone="indigo" />
       </div>
+
+      {selected.size > 0 && (
+        <BulkToolbar
+          count={selected.size}
+          noun="Case"
+          onCancel={clearSelection}
+          actions={[
+            {
+              key: "assign-delivery",
+              label: "Assign Delivery",
+              icon: Truck,
+              onClick: runAssignDelivery,
+            },
+            {
+              key: "assign-officer",
+              label: "Assign Officer",
+              icon: UserCheck,
+              variant: "outline",
+              onClick: () => setAssignOfficerOpen(true),
+            },
+            {
+              key: "priority",
+              label: "Change Priority",
+              icon: Flag,
+              variant: "outline",
+              onClick: () => setPriorityDialogOpen(true),
+            },
+            {
+              key: "export",
+              label: "Export Selected",
+              icon: Download,
+              variant: "outline",
+              onClick: runExportSelected,
+            },
+            {
+              key: "print",
+              label: "Print",
+              icon: Printer,
+              variant: "outline",
+              onClick: runPrint,
+            },
+          ]}
+        />
+      )}
 
       {/* Simplified filter bar */}
       <Card>
@@ -380,11 +472,6 @@ function LostFoundPage() {
                   ))}
                 </DropdownMenuContent>
               </DropdownMenu>
-              <BulkActions
-                selected={selected}
-                onDone={() => setSelected(new Set())}
-                totalDeliveriesForBag={(bagId) => deliveries.some((d) => d.bagId === bagId)}
-              />
             </div>
           </div>
         </CardHeader>
@@ -442,6 +529,20 @@ function LostFoundPage() {
           </div>
         </CardContent>
       </Card>
+
+      <AssignOfficerDialog
+        open={assignOfficerOpen}
+        onOpenChange={setAssignOfficerOpen}
+        officers={officers}
+        count={selected.size}
+        onSubmit={runAssignOfficer}
+      />
+      <ChangePriorityDialog
+        open={priorityDialogOpen}
+        onOpenChange={setPriorityDialogOpen}
+        count={selected.size}
+        onSubmit={runPriority}
+      />
     </div>
   );
 }
@@ -568,81 +669,88 @@ function Row({
   );
 }
 
-function BulkActions({
-  selected, onDone, totalDeliveriesForBag,
+function AssignOfficerDialog({
+  open, onOpenChange, officers, count, onSubmit,
 }: {
-  selected: Set<string>;
-  onDone: () => void;
-  totalDeliveriesForBag: (bagId: string) => boolean;
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  officers: string[];
+  count: number;
+  onSubmit: (name: string) => void;
 }) {
-  const count = selected.size;
-  const disabled = count === 0;
-  const ids = Array.from(selected);
-
-  function bulkAssignOfficer() {
-    const officer = window.prompt("Assign officer for selected cases:");
-    if (!officer) return;
-    bulkUpdateCases(ids, { internal: { assignedOfficer: officer } as never });
-    toast.success(`${count} cases assigned to ${officer}`);
-    onDone();
-  }
-  function bulkPriority(p: Priority) {
-    bulkUpdateCases(ids, { priority: p });
-    toast.success(`Priority set to ${p} for ${count} cases`);
-    onDone();
-  }
-  function bulkClose() {
-    for (const id of ids) updateLfStatus(id, "Closed", { note: "Bulk close", force: true });
-    toast.success(`${count} cases closed`);
-    onDone();
-  }
-  function bulkExport() {
-    toast.info("Use the Export menu — bulk export is scoped to the selected rows.");
-  }
-  function bulkPrint() { window.print(); }
-  function bulkNotify() { toast.success(`Queued bulk notification for ${count} cases`); }
-  function bulkAssignDelivery() {
-    let created = 0;
-    for (const id of ids) { if (!totalDeliveriesForBag(id)) created++; }
-    toast.info(
-      created > 0
-        ? `${created} cases ready for delivery assignment — open Delivery Management to schedule.`
-        : "Selected cases already have delivery records.",
-    );
-    onDone();
-  }
-
+  const [name, setName] = useState("");
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="default" size="sm" className="h-9 gap-1.5" disabled={disabled}>
-          <Filter className="h-3.5 w-3.5" /> Bulk ({count})
-          <ChevronDown className="h-3.5 w-3.5" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56">
-        <DropdownMenuLabel>Bulk actions</DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={bulkAssignOfficer}>Assign Officer</DropdownMenuItem>
-        <DropdownMenuItem onClick={bulkAssignDelivery}>Assign Delivery</DropdownMenuItem>
-        <DropdownMenuItem onClick={bulkNotify}>Send Notification</DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuLabel className="text-xs text-muted-foreground font-normal">
-          Change priority
-        </DropdownMenuLabel>
-        {(["Low", "Normal", "High", "VIP"] as Priority[]).map((p) => (
-          <DropdownMenuItem key={p} onClick={() => bulkPriority(p)}>
-            Set priority · {p}
-          </DropdownMenuItem>
-        ))}
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={bulkExport}>Export selected</DropdownMenuItem>
-        <DropdownMenuItem onClick={bulkPrint}>Print</DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={bulkClose} className="text-rose-600">
-          Close cases
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Assign Officer</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3 py-2">
+          <p className="text-sm text-muted-foreground">
+            Assign {count} selected case{count === 1 ? "" : "s"} to an officer.
+          </p>
+          {officers.length > 0 && (
+            <div className="space-y-1.5">
+              <Label className="text-xs">Existing officers</Label>
+              <Select value="" onValueChange={setName}>
+                <SelectTrigger className="h-9">
+                  <SelectValue placeholder="Pick an officer" />
+                </SelectTrigger>
+                <SelectContent>
+                  {officers.map((o) => (
+                    <SelectItem key={o} value={o}>{o}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          <div className="space-y-1.5">
+            <Label className="text-xs">Officer name</Label>
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Ahmed Salah" />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button onClick={() => onSubmit(name)} disabled={!name.trim()}>Assign</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function ChangePriorityDialog({
+  open, onOpenChange, count, onSubmit,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  count: number;
+  onSubmit: (p: Priority) => void;
+}) {
+  const [p, setP] = useState<Priority>("Normal");
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Change Priority</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3 py-2">
+          <p className="text-sm text-muted-foreground">
+            Set priority for {count} selected case{count === 1 ? "" : "s"}.
+          </p>
+          <Select value={p} onValueChange={(v) => setP(v as Priority)}>
+            <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {(["Low", "Normal", "High", "VIP"] as Priority[]).map((x) => (
+                <SelectItem key={x} value={x}>{x}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button onClick={() => onSubmit(p)}>Apply</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

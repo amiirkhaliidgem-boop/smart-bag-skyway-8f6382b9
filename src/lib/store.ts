@@ -1145,6 +1145,46 @@ export function bulkUpdateCases(bagIds: string[], patch: Partial<BaggageCase>) {
   emit();
 }
 
+// ----------------------------------------------------------------------
+// Bulk hand-off from Lost & Found to Delivery Management.
+// Drives each selected case through the SAME "Ready for Delivery"
+// transition the PIR wizard uses, so the Workflow Engine remains the
+// single source of truth: it bootstraps the Delivery record, mirrors
+// the status through the workflow, and fires the automatic passenger
+// notification. No manual notifications, no direct delivery mutations.
+export function bulkAssignDelivery(
+  bagIds: string[],
+  opts: { actor?: string; role?: Role } = {},
+): { handedOver: number; alreadyHandedOver: number; skipped: number } {
+  let handedOver = 0;
+  let alreadyHandedOver = 0;
+  let skipped = 0;
+  for (const bagId of bagIds) {
+    const c = state.cases.find((x) => x.bagId === bagId);
+    if (!c) {
+      skipped++;
+      continue;
+    }
+    const current = c.lfStatus ?? "Open";
+    if (current === "Ready for Delivery" || state.deliveries.some((d) => d.bagId === bagId)) {
+      alreadyHandedOver++;
+      continue;
+    }
+    if (current === "Delivered" || current === "Closed") {
+      skipped++;
+      continue;
+    }
+    updateLfStatus(bagId, "Ready for Delivery", {
+      actor: opts.actor,
+      role: opts.role,
+      note: "Bulk hand-off to Delivery Management",
+      force: true,
+    });
+    handedOver++;
+  }
+  return { handedOver, alreadyHandedOver, skipped };
+}
+
 export function assignStorage(
   bagId: string,
   storage: { zone: string; shelf: string; position: string },

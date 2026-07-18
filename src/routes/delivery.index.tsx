@@ -18,6 +18,7 @@ import {
 import { renderTemplate, type NotificationChannel } from "@/lib/notifications/templates";
 import type { WorkflowStatus } from "@/lib/workflow/statuses";
 import { Textarea } from "@/components/ui/textarea";
+import { BulkToolbar as SharedBulkToolbar } from "@/components/bulk/bulk-toolbar";
 import {
   DELIVERY_STAGES,
   STAGE_LABELS,
@@ -183,7 +184,7 @@ function DispatchCenter() {
       </div>
 
       {selected.size > 0 && (
-        <BulkToolbar
+        <DeliveryBulkToolbar
           deliveries={deliveries.filter((d) => selected.has(d.deliveryId))}
           onAssign={() => setBulkAssignOpen(true)}
           onNotify={() => setBulkNotifyOpen(true)}
@@ -658,7 +659,7 @@ function BulkAssignDialog({
   );
 }
 
-function BulkToolbar({
+function DeliveryBulkToolbar({
   deliveries,
   onAssign,
   onNotify,
@@ -674,27 +675,27 @@ function BulkToolbar({
     deliveries.every((d) => d.driver && d.driver !== "—");
   const mode: "assign" | "reassign" = allAssigned ? "reassign" : "assign";
   return (
-    <div className="sticky top-2 z-20 flex flex-wrap items-center gap-3 rounded-lg border border-primary/30 bg-primary/5 px-4 py-2.5 shadow-sm">
-      <div className="text-sm">
-        <span className="text-muted-foreground">Selected:</span>{" "}
-        <span className="font-semibold">
-          {deliveries.length} {deliveries.length === 1 ? "Delivery" : "Deliveries"}
-        </span>
-      </div>
-      <div className="ml-auto flex flex-wrap items-center gap-2">
-        <Button size="sm" onClick={onAssign} className="gap-1.5">
-          <UserCheck className="h-3.5 w-3.5" />
-          {mode === "reassign" ? "Bulk Reassign" : "Bulk Assign"}
-        </Button>
-        <Button size="sm" variant="outline" onClick={onNotify} className="gap-1.5">
-          <Bell className="h-3.5 w-3.5" />
-          Bulk Notify Passenger
-        </Button>
-        <Button size="sm" variant="ghost" onClick={onCancel}>
-          Cancel Selection
-        </Button>
-      </div>
-    </div>
+    <SharedBulkToolbar
+      count={deliveries.length}
+      noun="Delivery"
+      pluralNoun="Deliveries"
+      onCancel={onCancel}
+      actions={[
+        {
+          key: "assign",
+          label: mode === "reassign" ? "Bulk Reassign" : "Bulk Assign",
+          icon: UserCheck,
+          onClick: onAssign,
+        },
+        {
+          key: "notify",
+          label: "Bulk Notify Passenger",
+          icon: Bell,
+          variant: "outline",
+          onClick: onNotify,
+        },
+      ]}
+    />
   );
 }
 
