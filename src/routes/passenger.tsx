@@ -92,10 +92,10 @@ export function PassengerPortal({
 
   return (
     <div
-      className="-mx-4 -my-4 sm:-mx-6 sm:-my-6 lg:-mx-8 lg:-my-8 min-h-[calc(100vh-3.5rem)] font-[family-name:var(--font-sans)] text-[color:var(--iab-ink)]"
+      className="iab-grain relative -mx-4 -my-4 sm:-mx-6 sm:-my-6 lg:-mx-8 lg:-my-8 min-h-[calc(100vh-3.5rem)] font-[family-name:var(--font-sans)] text-[color:var(--iab-ink)]"
       style={{
         background:
-          "radial-gradient(1200px 600px at 10% -10%, color-mix(in oklab, #1B2A5B 12%, transparent), transparent 60%), radial-gradient(900px 500px at 110% 10%, color-mix(in oklab, #D6284B 10%, transparent), transparent 60%), var(--iab-ivory)",
+          "radial-gradient(1000px 500px at 10% -10%, color-mix(in oklab, #0B1B3B 6%, transparent), transparent 60%), var(--iab-ivory)",
       }}
     >
       <BrandHeader />
