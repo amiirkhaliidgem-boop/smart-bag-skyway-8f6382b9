@@ -632,11 +632,21 @@ function StatusHero({ delivery, kase }: { delivery: Delivery; kase: BaggageCase 
       transition={{ duration: 0.6, ease: [0.2, 0.7, 0.2, 1] }}
       className="iab-grain relative overflow-hidden rounded-[32px] px-6 py-8 sm:px-10 sm:py-10 text-white"
       style={{
-        background: "var(--gradient-iab-hero)",
+        background:
+          "linear-gradient(180deg, #0B2247 0%, #081C3A 55%, #050F24 100%)",
         boxShadow:
-          "0 40px 100px -40px rgba(6,15,38,0.75), 0 20px 40px -25px rgba(6,15,38,0.35)",
+          "0 40px 100px -40px rgba(8,28,58,0.75), 0 20px 40px -25px rgba(8,28,58,0.35)",
       }}
     >
+      {/* Gold hairline top border */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-8 top-0 h-px"
+        style={{
+          background:
+            "linear-gradient(90deg, transparent, color-mix(in oklab, #C9A84C 70%, transparent), transparent)",
+        }}
+      />
       {/* Soft dot pattern */}
       <div
         className="pointer-events-none absolute inset-0 opacity-20"
@@ -671,7 +681,7 @@ function StatusHero({ delivery, kase }: { delivery: Delivery; kase: BaggageCase 
               style={{
                 background: delivered
                   ? "var(--iab-emerald)"
-                  : "var(--iab-crimson)",
+                  : "var(--iab-gold, #C9A84C)",
               }}
             />
             <p
