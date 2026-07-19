@@ -146,13 +146,7 @@ export function PassengerPortal({
 
 function BrandHeader() {
   return (
-    <header
-      className="w-full bg-white"
-      style={{
-        borderBottom:
-          "1px solid color-mix(in oklab, #0B1B3B 8%, transparent)",
-      }}
-    >
+    <header className="w-full bg-white">
       <div className="relative mx-auto w-full max-w-2xl px-4 sm:px-6 py-4 flex items-center gap-4">
         <div
           className="rounded-xl bg-[color:var(--iab-ivory-soft)] grid place-items-center overflow-hidden shrink-0 ring-1 ring-[color:var(--iab-navy)]/10"
