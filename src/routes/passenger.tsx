@@ -222,7 +222,7 @@ function BrandHeader() {
         >
           <span
             className="h-1.5 w-1.5 rounded-full"
-            style={{ background: "var(--iab-crimson)" }}
+            style={{ background: "var(--iab-gold, #C9A84C)" }}
           />
           Secure
         </div>
