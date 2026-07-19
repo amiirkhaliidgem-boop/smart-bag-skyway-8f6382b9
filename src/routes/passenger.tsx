@@ -973,7 +973,7 @@ function ExpectedDeliveryCard() {
     <div className="relative overflow-hidden rounded-3xl p-6 sm:p-7 iab-glass">
       <div
         className="absolute -bottom-14 -right-14 h-40 w-40 rounded-full opacity-20 blur-2xl"
-        style={{ background: "var(--iab-crimson)" }}
+        style={{ background: "var(--iab-navy)" }}
       />
       <div className="relative flex items-start gap-4">
         <div
