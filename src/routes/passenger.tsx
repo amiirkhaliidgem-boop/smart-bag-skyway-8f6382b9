@@ -320,17 +320,17 @@ function TrackScreen({
         hidden: {},
         show: { transition: { staggerChildren: 0.08, delayChildren: 0.05 } },
       }}
-      className="space-y-5 sm:space-y-6"
+      className="space-y-6 sm:space-y-8"
     >
-      <StatusHero delivery={delivery} kase={kase} />
+      <MotionSection>
+        <WelcomeCard delivery={delivery} kase={kase} />
+      </MotionSection>
+      <MotionSection>
+        <StatusHero delivery={delivery} kase={kase} />
+      </MotionSection>
       <MotionSection>
         <SimpleTimeline delivery={delivery} kase={kase} />
       </MotionSection>
-      {showExpected && (
-        <MotionSection>
-          <ExpectedDeliveryCard />
-        </MotionSection>
-      )}
       <MotionSection>
         <OtpHeroCard
         code={delivery.otpCode}
