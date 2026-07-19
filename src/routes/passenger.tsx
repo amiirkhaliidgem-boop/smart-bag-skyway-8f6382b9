@@ -350,14 +350,6 @@ function Bi({
 // Welcome card — the emotional entrance: greeting, name, elegant pills.
 // ---------------------------------------------------------------------------
 
-function greetingForNow(): { en: string; ar: string } {
-  const h = new Date().getHours();
-  if (h < 5) return { en: "Good Evening", ar: "مساء الخير" };
-  if (h < 12) return { en: "Good Morning", ar: "صباح الخير" };
-  if (h < 17) return { en: "Good Afternoon", ar: "طاب يومك" };
-  return { en: "Good Evening", ar: "مساء الخير" };
-}
-
 function WelcomeCard({ delivery, kase }: { delivery: Delivery; kase: BaggageCase }) {
   const bagTag =
     kase.baggage?.bagTags?.filter(Boolean).join(" · ") ??
