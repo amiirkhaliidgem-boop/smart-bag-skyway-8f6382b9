@@ -24,7 +24,6 @@ import {
   PackageCheck,
   Truck,
   Sparkles,
-  Copy,
   PhoneCall,
   MessageCircle,
   Mail,
@@ -860,13 +859,6 @@ function OtpHeroCard({
   onConfirm: () => void;
 }) {
   const digits = (code ?? "").padEnd(4, "•").slice(0, 4).split("");
-  function copyCode() {
-    if (!code) return;
-    navigator.clipboard?.writeText(code).then(
-      () => toast.success("Code copied · تم نسخ الرمز"),
-      () => toast.error("Copy failed"),
-    );
-  }
   return (
     <div
       className="iab-grain relative overflow-hidden rounded-[32px] px-6 py-8 sm:px-10 sm:py-10 text-white"
@@ -922,16 +914,6 @@ function OtpHeroCard({
               </span>
             </div>
           ))}
-        </div>
-
-        <div className="mt-3 flex items-center justify-center">
-          <button
-            type="button"
-            onClick={copyCode}
-            className="inline-flex items-center gap-1.5 rounded-full bg-white/10 hover:bg-white/15 active:scale-[0.98] transition px-3 py-1.5 text-[11px] uppercase tracking-[0.18em] text-white/85"
-          >
-            <Copy className="h-3 w-3" /> Copy
-          </button>
         </div>
 
         <div className="mt-5 text-center">
@@ -999,14 +981,14 @@ function OtpHeroCard({
           onClick={onConfirm}
           className={cn(
             "mt-6 w-full h-14 rounded-2xl font-semibold text-base transition-all",
-            "flex items-center justify-center gap-2",
+            "flex items-center justify-center gap-2 whitespace-nowrap text-center",
             allChecked
               ? "bg-white text-[color:var(--iab-navy)] hover:brightness-105 active:scale-[0.99] shadow-[0_18px_40px_-12px_rgba(255,255,255,0.45)]"
               : "bg-white/10 text-white/50 cursor-not-allowed",
           )}
         >
-          <PackageCheck className="h-5 w-5" />
-          Confirm Baggage Received · تأكيد استلام الأمتعة
+          <PackageCheck className="h-5 w-5 shrink-0" />
+          <span className="whitespace-nowrap">Baggage Received • تم الاستلام</span>
         </button>
         {!allChecked && (
           <p className="mt-2 text-center text-[11px] text-white/60">
@@ -1060,8 +1042,8 @@ function ContactCard({ delivery }: { delivery: Delivery }) {
   const tiles = [
     {
       icon: PhoneCall,
-      en: "Call Airport",
-      ar: "اتصل بالمطار",
+      en: "Call Us",
+      ar: "اتصل بنا",
       href: "tel:+20226960000",
       value: "+20 2 2696 0000",
     },
@@ -1088,24 +1070,6 @@ function ContactCard({ delivery }: { delivery: Delivery }) {
       transition={{ duration: 0.5, ease: [0.2, 0.7, 0.2, 1] }}
       className="space-y-3"
     >
-      <div className="flex items-center justify-between px-1">
-        <div>
-          <p className="text-[10px] uppercase tracking-[0.28em] font-semibold text-[color:var(--iab-navy)]/70">
-            Support
-          </p>
-          <p
-            className="text-[12px] text-[color:var(--iab-navy)]/70 mt-0.5"
-            dir="rtl"
-            lang="ar"
-            style={{ fontFamily: "var(--font-arabic)" }}
-          >
-            المساعدة والدعم
-          </p>
-        </div>
-        <p className="text-[10px] uppercase tracking-[0.2em] text-[color:var(--iab-navy)]/50">
-          24 / 7
-        </p>
-      </div>
       <div className="grid grid-cols-3 gap-2 sm:gap-3">
         {tiles.map((t, i) => (
           <motion.a
@@ -1136,7 +1100,10 @@ function ContactCard({ delivery }: { delivery: Delivery }) {
           >
             <div
               className="h-11 w-11 rounded-2xl grid place-items-center text-white shrink-0 transition-transform group-hover:scale-105"
-              style={{ background: "var(--gradient-iab-hero)" }}
+              style={{
+                background:
+                  "linear-gradient(180deg, #0B2247 0%, #081C3A 55%, #050F24 100%)",
+              }}
             >
               <t.icon className="h-5 w-5" strokeWidth={1.75} />
             </div>
