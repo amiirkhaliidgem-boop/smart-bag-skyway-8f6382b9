@@ -1563,7 +1563,7 @@ function RatingRow({
               className={cn(
                 "h-8 w-8 transition-all duration-200",
                 n <= value
-                  ? "fill-[color:var(--iab-crimson)] text-[color:var(--iab-crimson)] drop-shadow-[0_4px_10px_rgba(214,40,75,0.35)]"
+                  ? "fill-[color:var(--iab-navy)] text-[color:var(--iab-navy)] drop-shadow-[0_4px_10px_rgba(8,28,58,0.30)]"
                   : "text-[color:var(--iab-navy)]/25",
               )}
             />
