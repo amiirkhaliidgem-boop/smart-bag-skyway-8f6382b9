@@ -570,7 +570,7 @@ function StatusHero({ delivery, kase }: { delivery: Delivery; kase: BaggageCase 
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.2, duration: 0.7 }}
           className={cn(
-            "relative shrink-0 w-32 sm:w-48 md:w-52 aspect-square",
+            "relative shrink-0 w-36 sm:w-56 md:w-60 aspect-square",
             !reduce && "iab-float",
           )}
         >
