@@ -376,7 +376,7 @@ function WelcomeCard({ delivery, kase }: { delivery: Delivery; kase: BaggageCase
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.7, ease }}
       aria-label="Welcome"
-      className="relative overflow-hidden rounded-[32px] px-6 py-10 sm:px-10 sm:py-12"
+      className="relative overflow-hidden rounded-[32px] px-6 py-7 sm:px-10 sm:py-9"
       style={{
         background:
           "linear-gradient(180deg, color-mix(in oklab, #FBF7EE 96%, white) 0%, var(--iab-ivory-soft) 60%, color-mix(in oklab, #F6F1E7 92%, #0B1B3B 2%) 100%)",
@@ -384,42 +384,9 @@ function WelcomeCard({ delivery, kase }: { delivery: Delivery; kase: BaggageCase
         boxShadow: "var(--shadow-iab-soft)",
       }}
     >
-      <motion.p
-        {...rise(0.05)}
-        className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-[color:var(--iab-navy)]/75"
-      >
-        <span
-          style={{
-            fontFamily: "var(--font-passenger-display)",
-            fontStyle: "italic",
-            fontWeight: 400,
-            fontSize: "clamp(1rem, 2.4vw, 1.25rem)",
-            letterSpacing: "0.01em",
-          }}
-        >
-          {g.en}
-        </span>
-        <span
-          aria-hidden
-          className="inline-block h-1 w-1 rounded-full"
-          style={{ background: "color-mix(in oklab, #0B1B3B 35%, transparent)" }}
-        />
-        <span
-          dir="rtl"
-          lang="ar"
-          style={{
-            fontFamily: "var(--font-arabic-display)",
-            fontWeight: 500,
-            fontSize: "clamp(1rem, 2.4vw, 1.25rem)",
-          }}
-        >
-          {g.ar}
-        </span>
-      </motion.p>
-
       <motion.h1
-        {...rise(0.15)}
-        className="mt-4 text-[color:var(--iab-navy)]"
+        {...rise(0.1)}
+        className="text-[color:var(--iab-navy)]"
         style={{
           fontFamily: "var(--font-passenger-display)",
           fontOpticalSizing: "auto",
@@ -433,28 +400,12 @@ function WelcomeCard({ delivery, kase }: { delivery: Delivery; kase: BaggageCase
         {delivery.passengerName}
       </motion.h1>
 
-      <motion.p
-        {...rise(0.22)}
-        className="mt-2 text-[color:var(--iab-navy)]/85"
-        dir="rtl"
-        lang="ar"
-        style={{
-          fontFamily: "var(--font-arabic-display)",
-          fontSize: "clamp(1.15rem, 3.5vw, 1.6rem)",
-          fontWeight: 500,
-          lineHeight: 1.15,
-        }}
-      >
-        أهلاً بك، {delivery.passengerName}
-      </motion.p>
-
-      <motion.div {...rise(0.3)} className="mt-6 space-y-2">
+      <motion.div {...rise(0.2)} className="mt-4 space-y-1">
         <p
           className="text-[color:var(--iab-navy)]/75"
           style={{
             fontFamily: "var(--font-passenger-display)",
-            fontStyle: "italic",
-            fontWeight: 350,
+            fontWeight: 400,
             fontSize: "clamp(1.05rem, 2.6vw, 1.35rem)",
             lineHeight: 1.35,
             letterSpacing: "0.005em",
@@ -473,11 +424,11 @@ function WelcomeCard({ delivery, kase }: { delivery: Delivery; kase: BaggageCase
             lineHeight: 1.45,
           }}
         >
-          أمتعتك بأمان بعهدة فريق IAB.
+          امتعتك بأمان بعهدة فريق IAB.
         </p>
       </motion.div>
 
-      <motion.div {...rise(0.4)} className="mt-8">
+      <motion.div {...rise(0.3)} className="mt-6">
         <div
           className="h-px w-full"
           style={{ background: "color-mix(in oklab, #0B1B3B 12%, transparent)" }}
