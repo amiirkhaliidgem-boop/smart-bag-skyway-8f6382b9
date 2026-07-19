@@ -115,18 +115,6 @@ export function PassengerPortal({
     >
       <BrandHeader />
       <div className="mx-auto w-full max-w-2xl px-4 sm:px-6 py-6 sm:py-10 space-y-6">
-        {active.length > 1 && !deliveryIdOverride && (
-          <DemoSwitcher
-            active={active}
-            selectedId={delivery.deliveryId}
-            onChange={(id) => {
-              setSelectedId(id);
-              const d = active.find((x) => x.deliveryId === id);
-              setScreen(d?.status === "Delivered" ? "feedback" : "track");
-            }}
-          />
-        )}
-
         {screen === "track" && (
           <TrackScreen
             delivery={delivery}
