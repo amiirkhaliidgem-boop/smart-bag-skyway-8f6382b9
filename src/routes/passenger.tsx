@@ -158,13 +158,13 @@ function BrandHeader() {
       )}
       style={{
         background: scrolled
-          ? "color-mix(in oklab, #0F1830 88%, transparent)"
+          ? "color-mix(in oklab, #060F26 92%, transparent)"
           : "var(--gradient-iab-hero)",
-        boxShadow: scrolled ? "0 10px 30px -20px rgba(15,24,48,0.5)" : "none",
+        boxShadow: scrolled ? "0 10px 30px -20px rgba(6,15,38,0.55)" : "none",
       }}
     >
       <div
-        className="pointer-events-none absolute inset-0 opacity-70"
+        className="pointer-events-none absolute inset-0 opacity-40"
         style={{ background: "var(--gradient-iab-aurora)" }}
       />
       <div className="relative mx-auto w-full max-w-2xl px-4 sm:px-6 py-4 sm:py-5 flex items-center gap-4">
@@ -172,7 +172,7 @@ function BrandHeader() {
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ duration: 0.5, ease: [0.2, 0.7, 0.2, 1] }}
-          className="rounded-2xl bg-white grid place-items-center overflow-hidden shrink-0 ring-1 ring-white/40 shadow-[0_20px_50px_-20px_rgba(214,40,75,0.5)]"
+          className="rounded-2xl bg-[color:var(--iab-ivory-soft)] grid place-items-center overflow-hidden shrink-0 ring-1 ring-white/30 shadow-[0_20px_50px_-20px_rgba(6,15,38,0.6)]"
           style={{
             height: scrolled ? 44 : 64,
             width: scrolled ? 44 : 64,
@@ -186,19 +186,25 @@ function BrandHeader() {
           />
         </motion.div>
         <div className="min-w-0 flex-1">
-          <p className="text-[10px] uppercase tracking-[0.32em] text-white/70 leading-none font-medium">
+          <p
+            className="text-[10px] uppercase tracking-[0.32em] text-white/70 leading-none font-medium"
+            style={{ fontFamily: "var(--font-heading)" }}
+          >
             Official Airport Service
           </p>
           <p
-            className="text-[13px] text-white/80 mt-1 leading-none"
+            className="text-[12px] text-white/80 mt-1.5 leading-none"
             dir="rtl"
             lang="ar"
-            style={{ fontFamily: "var(--font-arabic)" }}
+            style={{ fontFamily: "var(--font-arabic-display)" }}
           >
             خدمة رسمية معتمدة بالمطار
           </p>
         </div>
-        <div className="hidden sm:flex items-center gap-2 text-[10px] uppercase tracking-[0.22em] text-white/70">
+        <div
+          className="hidden sm:flex items-center gap-2 text-[10px] uppercase tracking-[0.22em] text-white/70"
+          style={{ fontFamily: "var(--font-heading)" }}
+        >
           <span
             className="h-1.5 w-1.5 rounded-full"
             style={{ background: "var(--iab-crimson)" }}
