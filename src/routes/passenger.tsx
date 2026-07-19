@@ -195,35 +195,6 @@ function BrandHeader() {
   );
 }
 
-function DemoSwitcher({
-  active,
-  selectedId,
-  onChange,
-}: {
-  active: Delivery[];
-  selectedId: string;
-  onChange: (id: string) => void;
-}) {
-  return (
-    <div className="rounded-2xl border border-dashed border-[color:var(--iab-navy)]/20 bg-white/60 backdrop-blur px-4 py-2.5 flex items-center gap-3 text-xs">
-      <span className="uppercase tracking-[0.18em] text-[10px] font-semibold text-[color:var(--iab-navy)]/70">
-        Demo passenger
-      </span>
-      <select
-        value={selectedId}
-        onChange={(e) => onChange(e.target.value)}
-        className="ml-auto bg-transparent font-medium focus:outline-none"
-      >
-        {active.map((d) => (
-          <option key={d.deliveryId} value={d.deliveryId}>
-            {d.passengerName} · {d.deliveryId}
-          </option>
-        ))}
-      </select>
-    </div>
-  );
-}
-
 // ---------------------------------------------------------------------------
 // Track screen
 // ---------------------------------------------------------------------------
