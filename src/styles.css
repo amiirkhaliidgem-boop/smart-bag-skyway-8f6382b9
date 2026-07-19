@@ -69,11 +69,11 @@
   --color-iab-platinum: var(--iab-platinum);
   --color-iab-platinum-soft: var(--iab-platinum-soft);
   --color-iab-emerald: var(--iab-emerald);
-  --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
-  --font-heading: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
-  --font-sans: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
-  --font-arabic: "IBM Plex Sans Arabic", "Space Grotesk", system-ui, sans-serif;
-  --font-arabic-display: "IBM Plex Sans Arabic", "Space Grotesk", system-ui, sans-serif;
+  --font-display: "Fraunces", ui-serif, Georgia, serif;
+  --font-heading: "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Inter", "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --font-arabic: "Noto Naskh Arabic", "Reem Kufi", system-ui, sans-serif;
+  --font-arabic-display: "Reem Kufi", "Noto Naskh Arabic", system-ui, sans-serif;
 }
 
 :root {
