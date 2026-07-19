@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import iabLogo from "@/assets/iab-logo.jpeg.asset.json";
+import suitcaseImg from "@/assets/passenger-suitcase.png";
 import {
   CheckCircle2,
   Circle,
@@ -31,6 +32,8 @@ import {
   Star,
   Plane,
   ChevronRight,
+  MapPin,
+  Headphones,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -89,10 +92,10 @@ export function PassengerPortal({
 
   return (
     <div
-      className="-mx-4 -my-4 sm:-mx-6 sm:-my-6 lg:-mx-8 lg:-my-8 min-h-[calc(100vh-3.5rem)] font-[family-name:var(--font-sans)] text-[color:var(--iab-ink)]"
+      className="iab-grain relative -mx-4 -my-4 sm:-mx-6 sm:-my-6 lg:-mx-8 lg:-my-8 min-h-[calc(100vh-3.5rem)] font-[family-name:var(--font-sans)] text-[color:var(--iab-ink)]"
       style={{
         background:
-          "radial-gradient(1200px 600px at 10% -10%, color-mix(in oklab, #1B2A5B 12%, transparent), transparent 60%), radial-gradient(900px 500px at 110% 10%, color-mix(in oklab, #D6284B 10%, transparent), transparent 60%), var(--iab-ivory)",
+          "radial-gradient(1000px 500px at 10% -10%, color-mix(in oklab, #0B1B3B 6%, transparent), transparent 60%), var(--iab-ivory)",
       }}
     >
       <BrandHeader />
@@ -155,13 +158,13 @@ function BrandHeader() {
       )}
       style={{
         background: scrolled
-          ? "color-mix(in oklab, #0F1830 88%, transparent)"
+          ? "color-mix(in oklab, #060F26 92%, transparent)"
           : "var(--gradient-iab-hero)",
-        boxShadow: scrolled ? "0 10px 30px -20px rgba(15,24,48,0.5)" : "none",
+        boxShadow: scrolled ? "0 10px 30px -20px rgba(6,15,38,0.55)" : "none",
       }}
     >
       <div
-        className="pointer-events-none absolute inset-0 opacity-70"
+        className="pointer-events-none absolute inset-0 opacity-40"
         style={{ background: "var(--gradient-iab-aurora)" }}
       />
       <div className="relative mx-auto w-full max-w-2xl px-4 sm:px-6 py-4 sm:py-5 flex items-center gap-4">
@@ -169,7 +172,7 @@ function BrandHeader() {
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ duration: 0.5, ease: [0.2, 0.7, 0.2, 1] }}
-          className="rounded-2xl bg-white grid place-items-center overflow-hidden shrink-0 ring-1 ring-white/40 shadow-[0_20px_50px_-20px_rgba(214,40,75,0.5)]"
+          className="rounded-2xl bg-[color:var(--iab-ivory-soft)] grid place-items-center overflow-hidden shrink-0 ring-1 ring-white/30 shadow-[0_20px_50px_-20px_rgba(6,15,38,0.6)]"
           style={{
             height: scrolled ? 44 : 64,
             width: scrolled ? 44 : 64,
@@ -183,19 +186,25 @@ function BrandHeader() {
           />
         </motion.div>
         <div className="min-w-0 flex-1">
-          <p className="text-[10px] uppercase tracking-[0.32em] text-white/70 leading-none font-medium">
+          <p
+            className="text-[10px] uppercase tracking-[0.32em] text-white/70 leading-none font-medium"
+            style={{ fontFamily: "var(--font-heading)" }}
+          >
             Official Airport Service
           </p>
           <p
-            className="text-[13px] text-white/80 mt-1 leading-none"
+            className="text-[12px] text-white/80 mt-1.5 leading-none"
             dir="rtl"
             lang="ar"
-            style={{ fontFamily: "var(--font-arabic)" }}
+            style={{ fontFamily: "var(--font-arabic-display)" }}
           >
             خدمة رسمية معتمدة بالمطار
           </p>
         </div>
-        <div className="hidden sm:flex items-center gap-2 text-[10px] uppercase tracking-[0.22em] text-white/70">
+        <div
+          className="hidden sm:flex items-center gap-2 text-[10px] uppercase tracking-[0.22em] text-white/70"
+          style={{ fontFamily: "var(--font-heading)" }}
+        >
           <span
             className="h-1.5 w-1.5 rounded-full"
             style={{ background: "var(--iab-crimson)" }}
@@ -257,11 +266,7 @@ function TrackScreen({
 
   const allChecked = tags && sealed && otpAfter && noBribe;
   const stage = getDeliveryStage(delivery);
-  const showExpected =
-    stage === "Assigned" ||
-    stage === "Driver Accepted" ||
-    stage === "Collected Bag" ||
-    stage === "Out for Delivery";
+  void stage;
 
   function handleNoBribeChange(next: boolean) {
     setNoBribe(next);
@@ -311,17 +316,17 @@ function TrackScreen({
         hidden: {},
         show: { transition: { staggerChildren: 0.08, delayChildren: 0.05 } },
       }}
-      className="space-y-5 sm:space-y-6"
+      className="space-y-6 sm:space-y-8"
     >
-      <StatusHero delivery={delivery} kase={kase} />
+      <MotionSection>
+        <WelcomeCard delivery={delivery} kase={kase} />
+      </MotionSection>
+      <MotionSection>
+        <StatusHero delivery={delivery} kase={kase} />
+      </MotionSection>
       <MotionSection>
         <SimpleTimeline delivery={delivery} kase={kase} />
       </MotionSection>
-      {showExpected && (
-        <MotionSection>
-          <ExpectedDeliveryCard />
-        </MotionSection>
-      )}
       <MotionSection>
         <OtpHeroCard
         code={delivery.otpCode}
@@ -399,148 +404,293 @@ function Bi({
 }
 
 // ---------------------------------------------------------------------------
-// Status hero — big navy gradient card with the passenger's name.
+// Welcome card — the emotional entrance: greeting, name, elegant pills.
+// ---------------------------------------------------------------------------
+
+function greetingForNow(): { en: string; ar: string } {
+  const h = new Date().getHours();
+  if (h < 5) return { en: "Good Evening", ar: "مساء الخير" };
+  if (h < 12) return { en: "Good Morning", ar: "صباح الخير" };
+  if (h < 17) return { en: "Good Afternoon", ar: "طاب يومك" };
+  return { en: "Good Evening", ar: "مساء الخير" };
+}
+
+function WelcomeCard({ delivery, kase }: { delivery: Delivery; kase: BaggageCase }) {
+  const g = greetingForNow();
+  const bagTag =
+    kase.baggage?.bagTags?.filter(Boolean).join(" · ") ??
+    kase.bagTagNumber ??
+    "—";
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.6, ease: [0.2, 0.7, 0.2, 1] }}
+      className="relative rounded-[32px] px-6 py-10 sm:px-10 sm:py-14"
+      style={{
+        background: "var(--iab-ivory-soft)",
+        border: "1px solid color-mix(in oklab, #0B1B3B 8%, transparent)",
+        boxShadow: "var(--shadow-iab-soft)",
+      }}
+    >
+      <p
+        className="text-[10px] uppercase tracking-[0.32em] font-medium text-[color:var(--iab-navy)]/60"
+        style={{ fontFamily: "var(--font-heading)" }}
+      >
+        {g.en}
+      </p>
+      <p
+        className="mt-1.5 text-[13px] text-[color:var(--iab-navy)]/70"
+        dir="rtl"
+        lang="ar"
+        style={{ fontFamily: "var(--font-arabic-display)", letterSpacing: "0.02em" }}
+      >
+        {g.ar}
+      </p>
+
+      <h1
+        className="mt-5 leading-[1.02] tracking-tight text-[color:var(--iab-navy)]"
+        style={{
+          fontFamily: "var(--font-display)",
+          fontOpticalSizing: "auto",
+          fontVariationSettings: '"opsz" 144, "SOFT" 30',
+          fontSize: "clamp(2.25rem, 8vw, 3.5rem)",
+          fontWeight: 400,
+        }}
+      >
+        {delivery.passengerName}
+      </h1>
+      <p
+        className="mt-2 text-[color:var(--iab-navy)]/85 leading-tight"
+        dir="rtl"
+        lang="ar"
+        style={{
+          fontFamily: "var(--font-arabic-display)",
+          fontSize: "clamp(1.5rem, 5.5vw, 2.25rem)",
+          fontWeight: 500,
+        }}
+      >
+        أهلاً بك، {delivery.passengerName}
+      </p>
+
+      <div className="mt-6">
+        <Bi
+          en="Your baggage is in the care of IAB Concierge."
+          ar="أمتعتك بعهدة كونسيرج IAB."
+          size="base"
+          className="text-[color:var(--iab-navy)]/75"
+        />
+      </div>
+
+      <div
+        className="mt-8 flex flex-wrap gap-2 text-[11px] uppercase font-medium"
+        style={{ fontFamily: "var(--font-heading)", letterSpacing: "0.16em" }}
+      >
+        <ElegantPill icon={<Plane className="h-3 w-3" />}>
+          Flight {kase.flightNumber ?? "—"}
+        </ElegantPill>
+        <ElegantPill>PIR {delivery.pirNumber}</ElegantPill>
+        <ElegantPill>Tag {bagTag}</ElegantPill>
+      </div>
+    </motion.div>
+  );
+}
+
+function ElegantPill({
+  icon,
+  children,
+}: {
+  icon?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <span
+      className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 tabular-nums text-[color:var(--iab-navy)]/85"
+      style={{
+        background: "transparent",
+        border: "1px solid color-mix(in oklab, #0B1B3B 15%, transparent)",
+      }}
+    >
+      {icon}
+      {children}
+    </span>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Status hero — navy gradient card with 3D floating suitcase.
 // ---------------------------------------------------------------------------
 
 function StatusHero({ delivery, kase }: { delivery: Delivery; kase: BaggageCase }) {
   const stage = getDeliveryStage(delivery);
   const heroCopy = heroCopyForStage(stage);
   const reduce = useReducedMotion();
-  const bagTag =
-    kase.baggage?.bagTags?.filter(Boolean).join(" · ") ?? kase.bagTagNumber ?? "—";
+  void kase;
+  const delivered = stage === "Delivered";
   return (
     <motion.div
       initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.6, ease: [0.2, 0.7, 0.2, 1] }}
-      className="iab-grain relative overflow-hidden rounded-[32px] px-6 py-8 sm:px-10 sm:py-12 text-white"
+      className="iab-grain relative overflow-hidden rounded-[32px] px-6 py-8 sm:px-10 sm:py-10 text-white"
       style={{
         background: "var(--gradient-iab-hero)",
         boxShadow:
-          "0 40px 100px -40px rgba(15,24,48,0.7), 0 20px 40px -25px rgba(214,40,75,0.35)",
+          "0 40px 100px -40px rgba(6,15,38,0.75), 0 20px 40px -25px rgba(6,15,38,0.35)",
       }}
     >
-      {/* Aurora glow layers */}
+      {/* Soft dot pattern */}
       <div
-        className={cn(
-          "pointer-events-none absolute -top-24 -right-20 h-72 w-72 rounded-full blur-3xl opacity-50",
-          !reduce && "iab-aurora",
-        )}
-        style={{ background: "var(--iab-crimson)" }}
-      />
-      <div
-        className={cn(
-          "pointer-events-none absolute -bottom-24 -left-24 h-80 w-80 rounded-full blur-3xl opacity-30",
-          !reduce && "iab-aurora",
-        )}
+        className="pointer-events-none absolute inset-0 opacity-20"
         style={{
-          background: "radial-gradient(closest-side, #5978DC, transparent)",
-          animationDelay: "3s",
+          backgroundImage:
+            "radial-gradient(circle at 1px 1px, rgba(255,255,255,0.35) 1px, transparent 0)",
+          backgroundSize: "22px 22px",
+          maskImage:
+            "radial-gradient(120% 90% at 10% 10%, black, transparent 65%)",
         }}
       />
       <div
-        className="pointer-events-none absolute inset-0 opacity-40"
+        className="pointer-events-none absolute inset-0 opacity-30"
         style={{
           background:
-            "radial-gradient(120% 60% at 0% 0%, rgba(255,255,255,0.18), transparent 55%)",
+            "radial-gradient(120% 60% at 0% 0%, rgba(255,255,255,0.14), transparent 55%)",
         }}
       />
+      <MapPin
+        className="absolute top-5 right-5 h-5 w-5 text-white/60"
+        strokeWidth={1.5}
+      />
 
-      <div className="relative">
-        <motion.p
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.05, duration: 0.4 }}
-          className="text-[10px] uppercase tracking-[0.32em] text-white/70 font-medium"
-        >
-          Welcome · مرحباً
-        </motion.p>
-        <motion.h1
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.12, duration: 0.55, ease: [0.2, 0.7, 0.2, 1] }}
-          className="mt-3 leading-[1.02] tracking-tight text-white"
-          style={{
-            fontFamily: "var(--font-display)",
-            fontOpticalSizing: "auto",
-            fontVariationSettings: '"opsz" 96, "SOFT" 30',
-            fontSize: "clamp(2.25rem, 8.2vw, 3.5rem)",
-            fontWeight: 400,
-          }}
-        >
-          {delivery.passengerName}
-        </motion.h1>
-        <motion.p
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2, duration: 0.5 }}
-          className="mt-1 text-white/85"
-          dir="rtl"
-          lang="ar"
-          style={{
-            fontFamily: "var(--font-arabic-display)",
-            fontSize: "clamp(1.5rem, 5vw, 2.25rem)",
-            fontWeight: 500,
-            lineHeight: 1.15,
-          }}
-        >
-          أهلاً بك {delivery.passengerName}
-        </motion.p>
-
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3, duration: 0.5 }}
-          className="mt-8"
-        >
-          <p
-            className="text-white leading-tight"
+      <div className="relative grid grid-cols-[1fr_auto] gap-4 items-center">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <span
+              className={cn(
+                "h-2 w-2 rounded-full",
+                !reduce && !delivered && "iab-pulse-ring",
+              )}
+              style={{
+                background: delivered
+                  ? "var(--iab-emerald)"
+                  : "var(--iab-crimson)",
+              }}
+            />
+            <p
+              className="text-[10px] uppercase tracking-[0.28em] text-white/70 font-medium"
+              style={{ fontFamily: "var(--font-heading)" }}
+            >
+              Current Status
+            </p>
+          </div>
+          <motion.h2
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15, duration: 0.55 }}
+            className="mt-3 text-white leading-[1.02]"
             style={{
               fontFamily: "var(--font-display)",
-              fontVariationSettings: '"opsz" 48',
-              fontSize: "clamp(1.35rem, 5.4vw, 1.9rem)",
+              fontVariationSettings: '"opsz" 96',
+              fontSize: "clamp(1.9rem, 7.2vw, 3rem)",
               fontWeight: 400,
+              letterSpacing: "-0.01em",
             }}
           >
             {heroCopy.en}
-          </p>
-          <p
-            className="text-white/90 mt-1 leading-tight"
+          </motion.h2>
+          <motion.p
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.25, duration: 0.5 }}
+            className="mt-2 text-white/90 leading-tight"
             dir="rtl"
             lang="ar"
             style={{
               fontFamily: "var(--font-arabic-display)",
-              fontSize: "clamp(1.15rem, 4.6vw, 1.6rem)",
+              fontSize: "clamp(1.35rem, 5.4vw, 2rem)",
               fontWeight: 500,
             }}
           >
             {heroCopy.ar}
-          </p>
-        </motion.div>
+          </motion.p>
+        </div>
 
         <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4, duration: 0.5 }}
-          className="mt-7 flex flex-wrap gap-2 text-[11px] uppercase tracking-[0.16em]"
+          initial={{ opacity: 0, x: 10 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.2, duration: 0.7 }}
+          className={cn(
+            "relative shrink-0 w-28 sm:w-40 md:w-44 aspect-square",
+            !reduce && "iab-float",
+          )}
         >
-          <Chip icon={<Plane className="h-3 w-3" />}>
-            Flight {kase.flightNumber ?? "—"}
-          </Chip>
-          <Chip>PIR {delivery.pirNumber}</Chip>
-          <Chip>Tag {bagTag}</Chip>
+          <div
+            className="absolute inset-x-6 bottom-1 h-3 rounded-full blur-lg opacity-60"
+            style={{
+              background:
+                "radial-gradient(closest-side, rgba(0,0,0,0.55), transparent)",
+            }}
+          />
+          <img
+            src={suitcaseImg}
+            alt="Suitcase"
+            width={512}
+            height={512}
+            loading="lazy"
+            className="relative h-full w-full object-contain drop-shadow-[0_20px_35px_rgba(0,0,0,0.45)]"
+          />
         </motion.div>
       </div>
-    </motion.div>
-  );
-}
 
-function Chip({ icon, children }: { icon?: React.ReactNode; children: React.ReactNode }) {
-  return (
-    <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-white/90 backdrop-blur">
-      {icon}
-      {children}
-    </span>
+      <div
+        className="relative mt-8 pt-5 flex items-center gap-6"
+        style={{ borderTop: "1px solid rgba(255,255,255,0.10)" }}
+      >
+        {delivered ? (
+          <div className="flex items-center gap-3">
+            <span
+              className="inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-[11px] uppercase tracking-[0.22em] text-white"
+              style={{
+                background: "var(--iab-emerald)",
+                fontFamily: "var(--font-heading)",
+              }}
+            >
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              Delivered · تم التسليم
+            </span>
+          </div>
+        ) : (
+          <>
+            <div>
+              <p
+                className="text-[10px] uppercase tracking-[0.28em] text-white/60"
+                style={{ fontFamily: "var(--font-heading)" }}
+              >
+                Expected
+              </p>
+              <p
+                className="mt-1 text-white leading-tight"
+                style={{
+                  fontFamily: "var(--font-display)",
+                  fontSize: "1.4rem",
+                  fontWeight: 400,
+                }}
+              >
+                Today
+              </p>
+              <p
+                className="text-white/75 text-sm leading-tight"
+                dir="rtl"
+                lang="ar"
+                style={{ fontFamily: "var(--font-arabic-display)" }}
+              >
+                متوقع اليوم
+              </p>
+            </div>
+          </>
+        )}
+      </div>
+    </motion.div>
   );
 }
 
@@ -550,18 +700,18 @@ function heroCopyForStage(stage: ReturnType<typeof getDeliveryStage>): {
 } {
   switch (stage) {
     case "Delivered":
-      return { en: "Your baggage has arrived. Thank you for flying with IAB.", ar: "لقد وصلت أمتعتك. شكراً لسفرك مع IAB." };
+      return { en: "Delivered", ar: "تم التسليم" };
     case "Out for Delivery":
-      return { en: "Your baggage is on the way to you.", ar: "أمتعتك في الطريق إليك الآن." };
+      return { en: "Out for Delivery", ar: "في الطريق إليك" };
     case "Collected Bag":
     case "Driver Accepted":
     case "Assigned":
-      return { en: "Your baggage is prepared and awaiting dispatch.", ar: "تم تجهيز أمتعتك وستُشحن قريباً." };
+      return { en: "Assigned to Delivery", ar: "تم التعيين للتسليم" };
     case "Scheduled":
     case "Ready for Delivery":
-      return { en: "Your baggage is ready and will be dispatched shortly.", ar: "أمتعتك جاهزة للتسليم قريباً." };
+      return { en: "Ready for Dispatch", ar: "جاهزة للإرسال" };
     default:
-      return { en: "We are locating your baggage.", ar: "نعمل على تحديد موقع أمتعتك." };
+      return { en: "Locating Your Baggage", ar: "جارٍ تحديد موقع أمتعتك" };
   }
 }
 
@@ -572,59 +722,99 @@ function heroCopyForStage(stage: ReturnType<typeof getDeliveryStage>): {
 function SimpleTimeline({ delivery, kase }: { delivery: Delivery; kase: BaggageCase }) {
   const steps: { en: string; ar: string; reached: boolean; current: boolean }[] =
     passengerSteps(delivery, kase);
+  const reduce = useReducedMotion();
+  const delivered = steps[steps.length - 1]?.reached;
   return (
-    <div className="iab-glass rounded-3xl p-6 sm:p-7">
-      <div className="flex items-center gap-2 mb-5">
-        <Sparkles className="h-4 w-4" style={{ color: "var(--iab-crimson)" }} />
-        <p className="text-[11px] uppercase tracking-[0.22em] font-semibold text-[color:var(--iab-navy)]">
-          Journey · الرحلة
+    <div
+      className="rounded-[28px] p-7 sm:p-9"
+      style={{
+        background: "var(--iab-ivory-soft)",
+        border: "1px solid color-mix(in oklab, #0B1B3B 8%, transparent)",
+        boxShadow: "var(--shadow-iab-soft)",
+      }}
+    >
+      <div className="flex items-baseline justify-between mb-7">
+        <p
+          className="text-[color:var(--iab-navy)] italic"
+          style={{
+            fontFamily: "var(--font-display)",
+            fontSize: "1.5rem",
+            fontWeight: 400,
+          }}
+        >
+          Your Journey
+        </p>
+        <p
+          className="text-[color:var(--iab-navy)]/70"
+          dir="rtl"
+          lang="ar"
+          style={{
+            fontFamily: "var(--font-arabic-display)",
+            fontSize: "1.15rem",
+          }}
+        >
+          رحلتك
         </p>
       </div>
-      <ol className="space-y-4">
+      <ol className="relative">
         {steps.map((step, i) => (
-          <li key={step.en} className="flex items-start gap-4">
-            <div className="relative">
-              <div
+          <li
+            key={step.en}
+            className="relative flex items-start gap-4 pb-7 last:pb-0"
+          >
+            {/* Rail */}
+            {i < steps.length - 1 && (
+              <span
                 className={cn(
-                  "h-9 w-9 rounded-full grid place-items-center shrink-0 transition-all",
-                  step.reached && !step.current && "text-white",
-                  step.current && "text-white iab-pulse-ring",
-                  !step.reached && "bg-[color:var(--iab-mist)] text-[color:var(--iab-navy)]/40",
+                  "absolute left-[5px] top-3 w-px h-full",
                 )}
-                style={
-                  step.current
-                    ? { background: "var(--gradient-iab-crimson)" }
-                    : step.reached
-                      ? { background: "var(--iab-navy)" }
-                      : undefined
-                }
-              >
-                {step.reached && !step.current ? (
-                  <CheckCircle2 className="h-4 w-4" />
-                ) : step.current ? (
-                  <PackageSearch className="h-4 w-4" />
-                ) : (
-                  <Circle className="h-4 w-4" />
-                )}
-              </div>
-              {i < steps.length - 1 && (
-                <span
-                  className={cn(
-                    "absolute left-1/2 top-9 -translate-x-1/2 w-px h-6",
-                    step.reached
-                      ? "bg-[color:var(--iab-navy)]/30"
-                      : "bg-[color:var(--iab-navy)]/10",
-                  )}
-                />
-              )}
-            </div>
+                style={{
+                  background: step.reached
+                    ? "color-mix(in oklab, #0B1B3B 45%, transparent)"
+                    : "var(--iab-platinum)",
+                }}
+              />
+            )}
+            {/* Dot */}
             <div
               className={cn(
-                "flex-1 pt-1",
-                !step.reached && "opacity-50",
+                "relative mt-1.5 h-3 w-3 rounded-full shrink-0 transition-all",
+                step.current && !reduce && "iab-pulse-ring",
               )}
-            >
-              <Bi en={step.en} ar={step.ar} size="sm" />
+              style={{
+                background: step.reached
+                  ? delivered && i === steps.length - 1
+                    ? "var(--iab-emerald)"
+                    : "var(--iab-navy)"
+                  : "transparent",
+                border: step.reached
+                  ? "none"
+                  : "1.5px solid var(--iab-platinum)",
+              }}
+            />
+            <div className={cn("flex-1", !step.reached && "opacity-55")}>
+              <p
+                className="text-[color:var(--iab-navy)] leading-tight"
+                style={{
+                  fontFamily: "var(--font-heading)",
+                  fontSize: "0.95rem",
+                  fontWeight: step.current ? 600 : 500,
+                }}
+              >
+                {step.en}
+              </p>
+              <p
+                className="text-[color:var(--iab-navy)]/85 leading-tight mt-0.5"
+                dir="rtl"
+                lang="ar"
+                style={{
+                  fontFamily: "var(--font-arabic-display)",
+                  fontSize: "0.95rem",
+                  fontWeight: 500,
+                }}
+              >
+                {step.ar}
+              </p>
             </div>
           </li>
         ))}
@@ -1024,7 +1214,7 @@ function ContactCard({ delivery }: { delivery: Delivery }) {
             </div>
             <span
               className="pointer-events-none absolute inset-x-0 bottom-0 h-[2px] scale-x-0 origin-left transition-transform duration-300 group-hover:scale-x-100"
-              style={{ background: "var(--gradient-iab-crimson)" }}
+              style={{ background: "var(--iab-navy)" }}
             />
           </motion.a>
         ))}
@@ -1059,7 +1249,10 @@ function DeliveredCelebration({
         </div>
         <div
           className="mx-auto mt-6 h-20 w-20 rounded-full grid place-items-center text-white"
-          style={{ background: "var(--gradient-iab-crimson)", boxShadow: "var(--shadow-iab-crimson)" }}
+          style={{
+            background: "var(--iab-emerald)",
+            boxShadow: "var(--shadow-iab-emerald)",
+          }}
         >
           <svg width="42" height="42" viewBox="0 0 42 42" fill="none">
             <path

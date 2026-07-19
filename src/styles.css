@@ -66,10 +66,14 @@
   --color-iab-ivory: var(--iab-ivory);
   --color-iab-mist: var(--iab-mist);
   --color-iab-ink: var(--iab-ink);
-  --font-display: "Instrument Serif", ui-serif, Georgia, serif;
+  --color-iab-platinum: var(--iab-platinum);
+  --color-iab-platinum-soft: var(--iab-platinum-soft);
+  --color-iab-emerald: var(--iab-emerald);
+  --font-display: "Fraunces", ui-serif, Georgia, serif;
+  --font-heading: "Manrope", "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-arabic: "IBM Plex Sans Arabic", "Inter", system-ui, sans-serif;
-  --font-arabic-display: "Reem Kufi", "IBM Plex Sans Arabic", system-ui, sans-serif;
+  --font-arabic-display: "Noto Naskh Arabic", "IBM Plex Sans Arabic", ui-serif, serif;
 }
 
 :root {
@@ -110,19 +114,24 @@
   --sidebar-border: oklch(0.32 0.08 262);
   --sidebar-ring: oklch(0.62 0.22 18);
   /* IAB brand tokens — extracted from the official IAB logo */
-  --iab-navy: #1B2A5B;
-  --iab-navy-deep: #0F1830;
-  --iab-crimson: #D6284B;
-  --iab-crimson-soft: #F26B84;
-  --iab-ivory: #F7F5F0;
-  --iab-mist: #E8ECF3;
-  --iab-ink: #0F1830;
-  --gradient-iab-hero: linear-gradient(140deg, #0F1830 0%, #1B2A5B 55%, #2A3D7A 100%);
-  --gradient-iab-crimson: linear-gradient(135deg, #D6284B 0%, #F26B84 100%);
-  --gradient-iab-aurora: radial-gradient(60% 60% at 20% 20%, rgba(214,40,75,0.35) 0%, transparent 60%), radial-gradient(60% 60% at 80% 80%, rgba(89,120,220,0.35) 0%, transparent 60%);
-  --shadow-iab-glass: 0 24px 60px -30px color-mix(in oklab, #1B2A5B 40%, transparent), 0 8px 24px -12px color-mix(in oklab, #1B2A5B 22%, transparent);
-  --shadow-iab-crimson: 0 18px 40px -14px color-mix(in oklab, #D6284B 45%, transparent);
-  --shadow-iab-soft: 0 8px 24px -12px color-mix(in oklab, #1B2A5B 18%, transparent);
+  --iab-navy: #0B1B3B;
+  --iab-navy-deep: #060F26;
+  --iab-crimson: #8B1E2D;
+  --iab-crimson-soft: #B84A5A;
+  --iab-ivory: #F6F1E7;
+  --iab-ivory-soft: #FBF7EE;
+  --iab-mist: #E8E6E0;
+  --iab-platinum: #C9CBD1;
+  --iab-platinum-soft: #E8E6E0;
+  --iab-emerald: #1F6B4A;
+  --iab-ink: #0B1B3B;
+  --gradient-iab-hero: radial-gradient(120% 90% at 20% 10%, #12224A 0%, #060F26 60%, #030820 100%);
+  --gradient-iab-crimson: linear-gradient(135deg, #8B1E2D 0%, #B84A5A 100%);
+  --gradient-iab-aurora: radial-gradient(60% 60% at 20% 20%, rgba(255,255,255,0.06) 0%, transparent 60%), radial-gradient(60% 60% at 80% 80%, rgba(89,120,220,0.20) 0%, transparent 60%);
+  --shadow-iab-glass: 0 24px 60px -30px color-mix(in oklab, #0B1B3B 45%, transparent), 0 8px 24px -12px color-mix(in oklab, #0B1B3B 22%, transparent);
+  --shadow-iab-crimson: 0 18px 40px -14px color-mix(in oklab, #8B1E2D 40%, transparent);
+  --shadow-iab-soft: 0 8px 24px -12px color-mix(in oklab, #0B1B3B 18%, transparent);
+  --shadow-iab-emerald: 0 18px 40px -14px color-mix(in oklab, #1F6B4A 40%, transparent);
 }
 
 .dark {
@@ -177,13 +186,13 @@
   100% { background-position: 200% 0; }
 }
 @keyframes iab-float {
-  0%,100% { transform: translateY(0); }
-  50% { transform: translateY(-4px); }
+  0%,100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-8px) rotate(-0.4deg); }
 }
 @keyframes iab-pulse-ring {
-  0% { box-shadow: 0 0 0 0 color-mix(in oklab, #D6284B 55%, transparent); }
-  70% { box-shadow: 0 0 0 14px color-mix(in oklab, #D6284B 0%, transparent); }
-  100% { box-shadow: 0 0 0 0 color-mix(in oklab, #D6284B 0%, transparent); }
+  0% { box-shadow: 0 0 0 0 color-mix(in oklab, #8B1E2D 55%, transparent); }
+  70% { box-shadow: 0 0 0 10px color-mix(in oklab, #8B1E2D 0%, transparent); }
+  100% { box-shadow: 0 0 0 0 color-mix(in oklab, #8B1E2D 0%, transparent); }
 }
 @keyframes iab-check-draw {
   from { stroke-dashoffset: 60; }
@@ -210,8 +219,8 @@
   border: 1px solid color-mix(in oklab, white 12%, transparent);
 }
 .iab-rise { animation: iab-rise 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
-.iab-float { animation: iab-float 3.5s ease-in-out infinite; }
-.iab-pulse-ring { animation: iab-pulse-ring 2s ease-out infinite; }
+.iab-float { animation: iab-float 6s ease-in-out infinite; }
+.iab-pulse-ring { animation: iab-pulse-ring 2.4s ease-in-out infinite; }
 @keyframes iab-aurora {
   0%,100% { transform: translate3d(0,0,0) scale(1); }
   33% { transform: translate3d(-4%, 3%, 0) scale(1.08); }
