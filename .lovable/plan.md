@@ -1,58 +1,55 @@
-## Scope
+# Passenger Portal Typography — Free-Font Fix
 
-Visual-only redesign of the Passenger Portal (`src/routes/passenger.tsx` and its font links in `src/routes/__root.tsx`). No changes to business logic, workflow, backend, navigation, data flow, component APIs, or any other route. The reference image is used strictly as a quality/aesthetic benchmark — its layout and elements are not reproduced.
+Investigation confirmed that Telegraf and Glacial Indifference are **not actually loaded** in the browser. The portal currently falls back to Fraunces (display) and General Sans (body). This plan replaces the unsupported commercial fonts with the user-selected free stack, keeping the luxury editorial look intact.
 
-## Design language
+**Final font stack (portal only, unchanged elsewhere):**
+- Display / passenger name / section titles → **General Sans** (already loaded via Fontshare, weights 300/400/500/600)
+- UI / body / meta / buttons → **Manrope** (already loaded via Google Fonts, weights 400/500/600/700)
+- Arabic mirror → **IBM Plex Sans Arabic** (already loaded, unchanged)
 
-Apple × Emirates First Class × Aman: quiet, editorial, generous whitespace, high-precision typography, soft light, subtle depth. Two card styles only:
+Both replacements are already downloaded by `src/routes/__root.tsx`, so **no new font links, no new packages, no self-hosted files** are required.
 
-1. **Ivory/white card** — off-white surface (`#FFFFFF` on ivory page), hairline navy border at ~6% opacity, ultra-soft ambient shadow.
-2. **Deep navy card** — `#081C3A` background, faint inner top highlight, subtle gold hairline dividers.
+## Scope (visual/typography only)
 
-Accents: **navy `#081C3A`**, **ivory `#F6F1E7`**, **gold `#C9A84C`** (used only for hairlines, tiny dots, and a single icon stroke). **No crimson anywhere in the portal.** No random accent hues.
+Only the two files identified in the investigation are touched. No business logic, workflow, backend, routing, or component API changes.
 
-## Typography
+## Changes
 
-- **Display**: Telegraf (weights 300/400/500) — passenger name, section titles, hero headline.
-- **UI**: Glacial Indifference (regular/bold) — body, labels, meta, buttons.
-- **Arabic**: keep IBM Plex Sans Arabic, sized to match optical weight of Telegraf; equal visual importance.
+### 1. `src/routes/__root.tsx`
+- Remove the Fontshare Telegraf request. Change:
+  `f[]=telegraf@300,400,500,700&f[]=general-sans@300,400,500,600`
+  to:
+  `f[]=general-sans@300,400,500,600`
+  (drops the dead Telegraf fetch; keeps General Sans working).
+- No other edits to the head/links/meta.
 
-Load via Fontshare CDN in `src/routes/__root.tsx` (both fonts are hosted there). Scope them to the portal only via CSS variables on the portal root:
-- `--font-passenger-display: "Telegraf", ...`
-- `--font-passenger-ui: "Glacial Indifference", ...`
-Global `--font-display / --font-heading / --font-sans` are not modified — the rest of the app keeps its current typography.
+### 2. `src/routes/passenger.tsx`
+Update only the font-stack strings — all layout, spacing, weights, colors, motion, and component structure remain identical.
 
-Scale (portal only): eyebrow 10px / 0.28em tracking; body 14–15px; section title 18–20px; hero headline `clamp(2rem, 5vw, 2.75rem)`; passenger name `clamp(2.75rem, 8vw, 4.5rem)`, weight 300, tight leading 1.02.
+- Portal root `style` block:
+  - `--font-passenger-display: "General Sans", "Fraunces", ui-serif, Georgia, serif`
+  - `--font-passenger-ui: "Manrope", "Inter", ui-sans-serif, system-ui, sans-serif`
+  - Arabic variables keep `"IBM Plex Sans Arabic"` first; drop the `"Glacial Indifference"` fallback.
+- Any inline `fontFamily` in subcomponents that still hard-codes `"Telegraf"` or `"Glacial Indifference"` is rewritten to reference the CSS variables (`var(--font-passenger-display)` / `var(--font-passenger-ui)`) so the portal has a single source of truth.
+- Optional micro-adjustments to preserve the editorial feel with the new metrics (still typography-only):
+  - Passenger-name headline: weight **300**, `letter-spacing: -0.02em` (General Sans reads tighter than Telegraf at display size).
+  - Small-caps eyebrows / meta strip: Manrope 500, `letter-spacing: 0.24em`, `text-transform: uppercase`.
+  - Line-height on hero name stays 1.02.
 
-## Card-by-card changes
+### 3. `.lovable/plan.md` (doc only)
+- Update the outdated statement that Telegraf + Glacial Indifference are loaded via Fontshare; note the final free-font decision.
 
-**BrandHeader** — thinner navy bar, remove crimson "Secure" dot (use a hairline gold dot instead), gold-hairline underline beneath the logo lockup.
+## Explicitly NOT changing
 
-**WelcomeCard** — ivory card. Rebuild inner hierarchy: tiny eyebrow ("IAB Concierge · Cairo"), bilingual greeting on one line with hairline dot separator, large Telegraf passenger name, Arabic name directly under at matched optical weight, italic Telegraf welcome line + Arabic mirror, and a hairline-divided meta strip (Flight · PIR · Bag Tag · Date) in Glacial small-caps. Remove the current crimson dot ornament at the top; replace with a gold hairline.
-
-**StatusHero** — keep the animated suitcase illustration and its motion untouched. Convert the card to the deep-navy style (`#081C3A`), refine typography (Telegraf headline, Glacial subline, matched Arabic), reduce chip clutter, remove any crimson tints/glows, replace with cool navy-to-ink gradient and a faint gold hairline top border. Corner radius unified to 28px.
-
-**SimpleTimeline** — ivory card. Thinner rail (1px, navy at 15% opacity, gold at 40% for completed segments), smaller circles (12px), active step gets a soft navy pulse (no red). Labels in Glacial small-caps + Arabic mirror.
-
-**OtpHeroCard** — adopt the exact StatusHero visual language: deep navy `#081C3A`, same radius, same shadow, same top hairline. OTP digits in Telegraf light at large size, spaced generously. Checklist rows restyled with hairline dividers and gold check marks; confirm button becomes an ivory pill on navy. Preserve all existing logic (checks, incident reporting, `confirm()`).
-
-**ContactCard / ExpectedDeliveryCard / DemoSwitcher / PortalFooter** — restyled to the two-card system, Glacial typography, hairline dividers, no crimson.
-
-**FeedbackScreen / ThanksScreen / DeliveredCelebration** — same two-card system and typography; celebration keeps its motion but swaps any red/emerald flourish for gold-on-navy.
-
-## Motion
-
-Keep existing `MotionSection` stagger and suitcase float. Remove shimmer/red pulses. Add a single subtle gold hairline sweep on the navy cards (very low opacity, 8s loop, respects `prefers-reduced-motion`).
-
-## Files touched
-
-- `src/routes/passenger.tsx` — restyle all portal subcomponents listed above; add portal-scoped `--font-passenger-display` / `--font-passenger-ui` variables; remove crimson usages inside the portal; unify radii and shadows.
-- `src/routes/__root.tsx` — add Telegraf + Glacial Indifference `<link>` tags (Fontshare) alongside existing font links. No other change.
-
-Nothing else is modified. `src/styles.css` global tokens, other routes, and all business logic remain untouched.
+- `src/styles.css` global tokens, `--font-display`, `--font-heading`, `--font-sans`.
+- Any route other than `/passenger/*`.
+- `package.json`, no new dependencies, no `@fontsource-*` installs, no `public/fonts/*`.
+- All Passenger Portal components' structure, colors (ivory/navy/gold), motion, OTP flow, feedback flow.
 
 ## Verification
 
-- `/passenger/<token>` on mobile and desktop: ivory + navy cards only, no red, Telegraf on names/headlines, Glacial on body, Arabic balanced.
-- Every other route (`/`, `/lost-found`, `/delivery`, `/driver-portal`, `/admin`, …) is visually unchanged.
-- OTP flow, feedback flow, incident reporting, and delivery confirmation still work end-to-end.
+1. Reload `/passenger/<token>` on mobile + desktop.
+2. Confirm via DevTools computed styles: hero `h1` → `General Sans`; body `p` → `Manrope`; Arabic → `IBM Plex Sans Arabic`.
+3. `document.fonts` should show `General Sans`, `Manrope`, `IBM Plex Sans Arabic` in `loaded` state; no Telegraf / Glacial entries expected or needed.
+4. Spot-check every other route (`/`, `/lost-found`, `/delivery`, `/driver-portal`, `/admin`) — typography unchanged.
+5. Run through OTP + feedback + delivery confirmation to confirm no behavioral regression.
