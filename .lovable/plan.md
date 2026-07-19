@@ -1,35 +1,31 @@
-## Plan: Passenger Portal Refinements Only
+## Passenger Portal — Targeted Refinements
 
-Scope: `src/routes/passenger.tsx`. No workflow, route, or Status Card redesign changes. Only the listed visual tweaks.
+Scope: `src/routes/passenger.tsx` only. No workflow, typography, Welcome Card, or Status Card layout changes.
 
-### 1. Page Background
-- Change the root container background from the ivory/navy radial gradient to pure `#FFFFFF`.
-- Remove the header's bottom border so the white header and white page read as one continuous surface.
+### 1. OTP Card — remove Copy button
+- Delete the `<button onClick={copyCode}>` "Copy" element and its wrapping `<div className="mt-3 flex items-center justify-center">` (lines ~927–935).
+- Remove the now-unused `copyCode` handler and the `Copy` icon import (line 27) if not referenced elsewhere.
+- Four large OTP digits remain untouched.
 
-### 2. Header
-- Keep logo, "IAB Baggage Delivery Service", and "Official Airport Service / خدمة رسمية معتمدة بالمطار".
-- Header remains non-sticky and scrolls with the page.
-- Confirm no demo indicators remain in this file.
+### 2. Confirmation Button — single-line bilingual, mobile-safe
+- Replace the button label `Confirm Baggage Received · تأكيد استلام الأمتعة` with `Baggage Received • تم الاستلام`.
+- Keep the button height (`h-14`) and existing styling.
+- Add `whitespace-nowrap` and `text-center` on the button; wrap the label in a `<span>` with `whitespace-nowrap` to prevent wrapping on narrow viewports.
+- Keep the leading `PackageCheck` icon; ensure `justify-center` remains so the label reads perfectly centered.
 
-### 3. Welcome Card
-- Reduce card height by ~25% by tightening padding (e.g., `py-7 sm:py-9` instead of `py-10 sm:py-12`) and reducing internal margins.
-- Remove the "Good Morning / صباح الخير" greeting row and the Arabic "أهلاً بك، {name}" line so the passenger name appears exactly once.
-- Keep the large passenger name as the sole heading.
-- Remove all `fontStyle: "italic"` and decorative styling from the welcome message.
-- Use normal font weight throughout the card.
-- Replace the message with:
-  - EN: `Your baggage is safely with the IAB Baggage Team.`
-  - AR: `امتعتك بأمان بعهدة فريق IAB.`
-- Leave Flight / PIR / Bag Tag meta strip unchanged.
+### 3. Support Section — strip header, rename Call tile
+- Remove the entire header row (lines ~1091–1108) containing `Support`, `المساعدة والدعم`, and `24 / 7`. The section starts directly with the 3-tile grid.
+- In the `tiles` array, change the first tile:
+  - `en: "Call Us"`
+  - `ar: "اتصل بنا"`
+  - Keep `href` and `value` unchanged.
+- WhatsApp and Email tiles untouched.
 
-### 4. Current Status Card
-- Do not change the card's navy gradient, layout, gold hairline, or floating animation.
-- Increase suitcase container width by ~20% (e.g., `w-36 sm:w-56 md:w-60`).
-- Keep the same `iab-float` animation speed.
-- Center the Arabic subtitle (`heroCopy.ar`) directly under the English status title.
-- In the Expected section, show only `Today`; remove the Arabic `متوقع اليوم` line.
+### 4. Color Consistency — unify navy across Status, OTP, and Contact icons
+- Status Card and OTP Card already share the same navy gradient (`linear-gradient(180deg, #0B2247 0%, #081C3A 55%, #050F24 100%)`) — leave both as-is.
+- Update the Contact tile icon chip (line ~1139) from `background: "var(--gradient-iab-hero)"` to the same navy gradient string, so all three surfaces share the identical navy treatment. No new token created.
 
-### 5. General Guardrails
-- Do not touch typography, colors, animations, or spacing outside the specific elements above.
-- Do not modify `OtpHeroCard`, `ContactCard`, `FeedbackScreen`, `ThanksScreen`, `PortalFooter`, `EmptyState`, store calls, or route definition.
-- Verify by visually inspecting the Passenger Portal preview after changes.
+### Verification
+- Read the file back after edits to confirm imports are clean (no unused `Copy`) and JSX balance is intact.
+- Run project typecheck.
+- No other components, styles, or logic touched.
