@@ -109,8 +109,7 @@ export function PassengerPortal({
           '"Manrope", "Inter", ui-sans-serif, system-ui, sans-serif',
         ["--iab-gold" as any]: "#C9A84C",
         ["--iab-navy-card" as any]: "#081C3A",
-        background:
-          "radial-gradient(1200px 600px at 10% -10%, color-mix(in oklab, #081C3A 5%, transparent), transparent 60%), #FBF7EE",
+        background: "#FFFFFF",
       }}
     >
       <BrandHeader />
