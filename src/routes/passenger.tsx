@@ -91,7 +91,7 @@ export function PassengerPortal({
 
   return (
     <div
-      className="iab-grain relative -mx-4 -my-4 sm:-mx-6 sm:-my-6 lg:-mx-8 lg:-my-8 min-h-[calc(100vh-3.5rem)] font-[family-name:var(--font-sans)] text-[color:var(--iab-ink)]"
+      className="iab-grain relative -mx-4 sm:-mx-6 lg:-mx-8 min-h-[calc(100vh-3.5rem)] font-[family-name:var(--font-sans)] text-[color:var(--iab-ink)]"
       style={{
         ["--font-display" as any]:
           '"General Sans", "Fraunces", ui-serif, Georgia, serif',
@@ -109,8 +109,7 @@ export function PassengerPortal({
           '"Manrope", "Inter", ui-sans-serif, system-ui, sans-serif',
         ["--iab-gold" as any]: "#C9A84C",
         ["--iab-navy-card" as any]: "#081C3A",
-        background:
-          "radial-gradient(1200px 600px at 10% -10%, color-mix(in oklab, #081C3A 5%, transparent), transparent 60%), #FBF7EE",
+        background: "#FFFFFF",
       }}
     >
       <BrandHeader />
@@ -147,13 +146,7 @@ export function PassengerPortal({
 
 function BrandHeader() {
   return (
-    <header
-      className="w-full bg-white"
-      style={{
-        borderBottom:
-          "1px solid color-mix(in oklab, #0B1B3B 8%, transparent)",
-      }}
-    >
+    <header className="w-full bg-white">
       <div className="relative mx-auto w-full max-w-2xl px-4 sm:px-6 py-4 flex items-center gap-4">
         <div
           className="rounded-xl bg-[color:var(--iab-ivory-soft)] grid place-items-center overflow-hidden shrink-0 ring-1 ring-[color:var(--iab-navy)]/10"
@@ -357,16 +350,7 @@ function Bi({
 // Welcome card — the emotional entrance: greeting, name, elegant pills.
 // ---------------------------------------------------------------------------
 
-function greetingForNow(): { en: string; ar: string } {
-  const h = new Date().getHours();
-  if (h < 5) return { en: "Good Evening", ar: "مساء الخير" };
-  if (h < 12) return { en: "Good Morning", ar: "صباح الخير" };
-  if (h < 17) return { en: "Good Afternoon", ar: "طاب يومك" };
-  return { en: "Good Evening", ar: "مساء الخير" };
-}
-
 function WelcomeCard({ delivery, kase }: { delivery: Delivery; kase: BaggageCase }) {
-  const g = greetingForNow();
   const bagTag =
     kase.baggage?.bagTags?.filter(Boolean).join(" · ") ??
     kase.bagTagNumber ??
@@ -383,7 +367,7 @@ function WelcomeCard({ delivery, kase }: { delivery: Delivery; kase: BaggageCase
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.7, ease }}
       aria-label="Welcome"
-      className="relative overflow-hidden rounded-[32px] px-6 py-10 sm:px-10 sm:py-12"
+      className="relative overflow-hidden rounded-[32px] px-6 py-7 sm:px-10 sm:py-9"
       style={{
         background:
           "linear-gradient(180deg, color-mix(in oklab, #FBF7EE 96%, white) 0%, var(--iab-ivory-soft) 60%, color-mix(in oklab, #F6F1E7 92%, #0B1B3B 2%) 100%)",
@@ -391,42 +375,9 @@ function WelcomeCard({ delivery, kase }: { delivery: Delivery; kase: BaggageCase
         boxShadow: "var(--shadow-iab-soft)",
       }}
     >
-      <motion.p
-        {...rise(0.05)}
-        className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-[color:var(--iab-navy)]/75"
-      >
-        <span
-          style={{
-            fontFamily: "var(--font-passenger-display)",
-            fontStyle: "italic",
-            fontWeight: 400,
-            fontSize: "clamp(1rem, 2.4vw, 1.25rem)",
-            letterSpacing: "0.01em",
-          }}
-        >
-          {g.en}
-        </span>
-        <span
-          aria-hidden
-          className="inline-block h-1 w-1 rounded-full"
-          style={{ background: "color-mix(in oklab, #0B1B3B 35%, transparent)" }}
-        />
-        <span
-          dir="rtl"
-          lang="ar"
-          style={{
-            fontFamily: "var(--font-arabic-display)",
-            fontWeight: 500,
-            fontSize: "clamp(1rem, 2.4vw, 1.25rem)",
-          }}
-        >
-          {g.ar}
-        </span>
-      </motion.p>
-
       <motion.h1
-        {...rise(0.15)}
-        className="mt-4 text-[color:var(--iab-navy)]"
+        {...rise(0.1)}
+        className="text-[color:var(--iab-navy)]"
         style={{
           fontFamily: "var(--font-passenger-display)",
           fontOpticalSizing: "auto",
@@ -440,28 +391,12 @@ function WelcomeCard({ delivery, kase }: { delivery: Delivery; kase: BaggageCase
         {delivery.passengerName}
       </motion.h1>
 
-      <motion.p
-        {...rise(0.22)}
-        className="mt-2 text-[color:var(--iab-navy)]/85"
-        dir="rtl"
-        lang="ar"
-        style={{
-          fontFamily: "var(--font-arabic-display)",
-          fontSize: "clamp(1.15rem, 3.5vw, 1.6rem)",
-          fontWeight: 500,
-          lineHeight: 1.15,
-        }}
-      >
-        أهلاً بك، {delivery.passengerName}
-      </motion.p>
-
-      <motion.div {...rise(0.3)} className="mt-6 space-y-2">
+      <motion.div {...rise(0.2)} className="mt-4 space-y-1">
         <p
           className="text-[color:var(--iab-navy)]/75"
           style={{
             fontFamily: "var(--font-passenger-display)",
-            fontStyle: "italic",
-            fontWeight: 350,
+            fontWeight: 400,
             fontSize: "clamp(1.05rem, 2.6vw, 1.35rem)",
             lineHeight: 1.35,
             letterSpacing: "0.005em",
@@ -480,11 +415,11 @@ function WelcomeCard({ delivery, kase }: { delivery: Delivery; kase: BaggageCase
             lineHeight: 1.45,
           }}
         >
-          أمتعتك بأمان بعهدة فريق IAB.
+          امتعتك بأمان بعهدة فريق IAB.
         </p>
       </motion.div>
 
-      <motion.div {...rise(0.4)} className="mt-8">
+      <motion.div {...rise(0.3)} className="mt-6">
         <div
           className="h-px w-full"
           style={{ background: "color-mix(in oklab, #0B1B3B 12%, transparent)" }}
@@ -617,7 +552,7 @@ function StatusHero({ delivery, kase }: { delivery: Delivery; kase: BaggageCase 
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.25, duration: 0.5 }}
-            className="mt-2 text-white/90 leading-tight"
+            className="mt-2 text-white/90 leading-tight text-center"
             dir="rtl"
             lang="ar"
             style={{
@@ -635,7 +570,7 @@ function StatusHero({ delivery, kase }: { delivery: Delivery; kase: BaggageCase 
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.2, duration: 0.7 }}
           className={cn(
-            "relative shrink-0 w-32 sm:w-48 md:w-52 aspect-square",
+            "relative shrink-0 w-36 sm:w-56 md:w-60 aspect-square",
             !reduce && "iab-float",
           )}
         >
@@ -692,14 +627,6 @@ function StatusHero({ delivery, kase }: { delivery: Delivery; kase: BaggageCase 
                 }}
               >
                 Today
-              </p>
-              <p
-                className="text-white/75 text-sm leading-tight"
-                dir="rtl"
-                lang="ar"
-                style={{ fontFamily: "var(--font-arabic-display)" }}
-              >
-                متوقع اليوم
               </p>
             </div>
           </>
