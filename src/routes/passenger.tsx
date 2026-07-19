@@ -94,6 +94,11 @@ export function PassengerPortal({
     <div
       className="iab-grain relative -mx-4 -my-4 sm:-mx-6 sm:-my-6 lg:-mx-8 lg:-my-8 min-h-[calc(100vh-3.5rem)] font-[family-name:var(--font-sans)] text-[color:var(--iab-ink)]"
       style={{
+        ["--font-display" as any]: '"Space Grotesk", ui-sans-serif, system-ui, sans-serif',
+        ["--font-heading" as any]: '"Space Grotesk", ui-sans-serif, system-ui, sans-serif',
+        ["--font-sans" as any]: '"Space Grotesk", ui-sans-serif, system-ui, sans-serif',
+        ["--font-arabic" as any]: '"IBM Plex Sans Arabic", "Space Grotesk", system-ui, sans-serif',
+        ["--font-arabic-display" as any]: '"IBM Plex Sans Arabic", "Space Grotesk", system-ui, sans-serif',
         background:
           "radial-gradient(1000px 500px at 10% -10%, color-mix(in oklab, #0B1B3B 6%, transparent), transparent 60%), var(--iab-ivory)",
       }}
