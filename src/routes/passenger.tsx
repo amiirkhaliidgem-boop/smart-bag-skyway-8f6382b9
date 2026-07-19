@@ -878,8 +878,8 @@ function SimpleTimeline({ delivery, kase }: { delivery: Delivery; kase: BaggageC
                 )}
                 style={{
                   background: step.reached
-                    ? "color-mix(in oklab, #0B1B3B 45%, transparent)"
-                    : "var(--iab-platinum)",
+                    ? "color-mix(in oklab, #081C3A 40%, transparent)"
+                    : "color-mix(in oklab, #081C3A 12%, transparent)",
                 }}
               />
             )}
