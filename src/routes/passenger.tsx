@@ -30,7 +30,6 @@ import {
   Mail,
   AlertTriangle,
   Star,
-  Plane,
   ChevronRight,
   MapPin,
   Headphones,
@@ -604,27 +603,6 @@ function MetaCell({ label, value }: { label: string; value: string }) {
         {value}
       </dd>
     </div>
-  );
-}
-
-function ElegantPill({
-  icon,
-  children,
-}: {
-  icon?: React.ReactNode;
-  children: React.ReactNode;
-}) {
-  return (
-    <span
-      className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 tabular-nums text-[color:var(--iab-navy)]/85"
-      style={{
-        background: "transparent",
-        border: "1px solid color-mix(in oklab, #0B1B3B 15%, transparent)",
-      }}
-    >
-      {icon}
-      {children}
-    </span>
   );
 }
 
