@@ -359,7 +359,6 @@ function greetingForNow(): { en: string; ar: string } {
 }
 
 function WelcomeCard({ delivery, kase }: { delivery: Delivery; kase: BaggageCase }) {
-  const g = greetingForNow();
   const bagTag =
     kase.baggage?.bagTags?.filter(Boolean).join(" · ") ??
     kase.bagTagNumber ??
