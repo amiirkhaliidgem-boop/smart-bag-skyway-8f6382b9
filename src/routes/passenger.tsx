@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import iabLogo from "@/assets/iab-logo.jpeg.asset.json";
+import suitcaseImg from "@/assets/passenger-suitcase.png";
 import {
   CheckCircle2,
   Circle,
@@ -31,6 +32,8 @@ import {
   Star,
   Plane,
   ChevronRight,
+  MapPin,
+  Headphones,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
