@@ -266,11 +266,7 @@ function TrackScreen({
 
   const allChecked = tags && sealed && otpAfter && noBribe;
   const stage = getDeliveryStage(delivery);
-  const showExpected =
-    stage === "Assigned" ||
-    stage === "Driver Accepted" ||
-    stage === "Collected Bag" ||
-    stage === "Out for Delivery";
+  void stage;
 
   function handleNoBribeChange(next: boolean) {
     setNoBribe(next);
