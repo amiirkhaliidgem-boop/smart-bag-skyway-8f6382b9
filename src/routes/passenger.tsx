@@ -93,15 +93,24 @@ export function PassengerPortal({
     <div
       className="iab-grain relative -mx-4 -my-4 sm:-mx-6 sm:-my-6 lg:-mx-8 lg:-my-8 min-h-[calc(100vh-3.5rem)] font-[family-name:var(--font-sans)] text-[color:var(--iab-ink)]"
       style={{
-        ["--font-display" as any]: '"Space Grotesk", ui-sans-serif, system-ui, sans-serif',
-        ["--font-heading" as any]: '"Space Grotesk", ui-sans-serif, system-ui, sans-serif',
-        ["--font-sans" as any]: '"Space Grotesk", ui-sans-serif, system-ui, sans-serif',
-        ["--font-arabic" as any]: '"IBM Plex Sans Arabic", "Space Grotesk", system-ui, sans-serif',
-        ["--font-arabic-display" as any]: '"IBM Plex Sans Arabic", "Space Grotesk", system-ui, sans-serif',
+        ["--font-display" as any]:
+          '"Telegraf", "Fraunces", ui-serif, Georgia, serif',
+        ["--font-heading" as any]:
+          '"Glacial Indifference", "General Sans", "Inter", ui-sans-serif, system-ui, sans-serif',
+        ["--font-sans" as any]:
+          '"Glacial Indifference", "General Sans", "Inter", ui-sans-serif, system-ui, sans-serif',
+        ["--font-arabic" as any]:
+          '"IBM Plex Sans Arabic", "Glacial Indifference", system-ui, sans-serif',
+        ["--font-arabic-display" as any]:
+          '"IBM Plex Sans Arabic", "Glacial Indifference", system-ui, sans-serif',
         ["--font-passenger-display" as any]:
-          '"Fraunces", ui-serif, "Times New Roman", Georgia, serif',
+          '"Telegraf", "Fraunces", ui-serif, Georgia, serif',
+        ["--font-passenger-ui" as any]:
+          '"Glacial Indifference", "General Sans", "Inter", ui-sans-serif, system-ui, sans-serif',
+        ["--iab-gold" as any]: "#C9A84C",
+        ["--iab-navy-card" as any]: "#081C3A",
         background:
-          "radial-gradient(1000px 500px at 10% -10%, color-mix(in oklab, #0B1B3B 6%, transparent), transparent 60%), var(--iab-ivory)",
+          "radial-gradient(1200px 600px at 10% -10%, color-mix(in oklab, #081C3A 5%, transparent), transparent 60%), #FBF7EE",
       }}
     >
       <BrandHeader />
