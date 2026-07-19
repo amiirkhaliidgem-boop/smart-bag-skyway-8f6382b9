@@ -1,35 +1,31 @@
-# Passenger Portal — Unify Typography on Space Grotesk
+## Scope
 
-Scope: **Passenger Portal only** (`/passenger/:token` and its components). No workflow, data, or logic changes. Future Passenger enhancements will continue in this same module until you confirm it's finalized.
-
-## Font decision
-
-- English display + headings + body → **Space Grotesk** (weights 400/500/600/700).
-- Arabic parity → **IBM Plex Sans Arabic** (already loaded) at matched weight and size, so Arabic never feels secondary.
-- Retire Fraunces, Manrope, Inter, Reem Kufi, and Noto Naskh Arabic from Passenger surfaces.
+Revert the global font tokens back to what the rest of the system used before, and scope the Space Grotesk / IBM Plex Sans Arabic change to the Passenger Portal only.
 
 ## Changes
 
-1. `src/routes/__root.tsx`
-   - Replace the current Google Fonts `<link>` with a single request that loads **Space Grotesk 400;500;600;700** + **IBM Plex Sans Arabic 400;500;600;700** (keep `preconnect` links).
-   - Leave other fonts referenced by non-passenger surfaces intact only if used elsewhere; otherwise drop them.
+1. `src/styles.css`
+   - Restore the original system typography tokens:
+     - `--font-display` → Fraunces (editorial serif, as before)
+     - `--font-heading` / `--font-sans` → Manrope / Inter stack (previous system fonts)
+     - `--font-arabic` / `--font-arabic-display` → previous Arabic pairing (Reem Kufi / Noto Naskh Arabic)
+   - Add Passenger-only tokens: `--font-passenger`, `--font-passenger-arabic` mapped to Space Grotesk + IBM Plex Sans Arabic.
+   - No color, layout, or animation changes.
 
-2. `src/styles.css`
-   - Update font tokens so every family points to Space Grotesk / IBM Plex Sans Arabic:
-     - `--font-display`, `--font-heading`, `--font-sans` → `"Space Grotesk", ui-sans-serif, system-ui, sans-serif`
-     - `--font-arabic`, `--font-arabic-display` → `"IBM Plex Sans Arabic", system-ui, sans-serif`
-   - No color, spacing, animation, or layout changes.
+2. `src/routes/__root.tsx`
+   - Extend the Google Fonts `<link>` to load both sets: the restored system fonts (Fraunces, Manrope, Inter, Reem Kufi, Noto Naskh Arabic) AND Space Grotesk + IBM Plex Sans Arabic for the portal.
 
-3. Passenger components
-   - `src/routes/passenger.tsx`, `src/components/passenger/*` (welcome/status/timeline/otp/contact/celebration/bilingual): remove any hard-coded `font-display` / `font-serif` / Fraunces class usage and rely on the tokens above. Keep sizes, weights, and rhythm exactly as they are today — only the family changes.
-   - `Bi` component keeps equal-weight pairing; both sides now use their Space Grotesk / IBM Plex Sans Arabic families at the same size and weight.
+3. Passenger Portal surfaces only (`src/routes/passenger.tsx`, `src/routes/passenger.$token.tsx`, `src/components/passenger/*`)
+   - Apply Space Grotesk / IBM Plex Sans Arabic via a scoped wrapper (e.g. `font-[var(--font-passenger)]` on the portal root and `[&_[dir=rtl]]:font-[var(--font-passenger-arabic)]` or on the `Bi` Arabic side).
+   - Remove any leftover explicit Fraunces/serif class usage inside portal components so the portal reads as pure Grotesk.
+   - Keep sizes, weights, spacing, and layout exactly as they are today.
 
 ## Out of scope
 
-- Workflow, statuses, OTP, timeline data, notifications, feedback.
-- Non-passenger surfaces (dispatcher, driver, L&F, warehouse, admin) — their fonts stay unchanged unless the token swap in `styles.css` cascades naturally.
-- Colors, spacing, animations, and copy remain as approved.
+- Dispatcher, Driver Portal, L&F, Warehouse, Admin, Auth, etc. — these go back to the fonts they had before the last change.
+- Workflow, data, colors, animations, copy.
 
-## Note on future work
+## Verification
 
-All subsequent Passenger Experience enhancements will be scoped to this module until you confirm it's finalized.
+- Load `/passenger/<token>` → all text (English + Arabic) renders in Space Grotesk / IBM Plex Sans Arabic.
+- Load `/`, `/lost-found`, `/delivery`, `/driver-portal`, `/auth` → typography matches the pre-Grotesk system look (Fraunces display, Manrope/Inter body).
