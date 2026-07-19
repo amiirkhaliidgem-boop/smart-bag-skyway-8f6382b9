@@ -115,18 +115,6 @@ export function PassengerPortal({
     >
       <BrandHeader />
       <div className="mx-auto w-full max-w-2xl px-4 sm:px-6 py-6 sm:py-10 space-y-6">
-        {active.length > 1 && !deliveryIdOverride && (
-          <DemoSwitcher
-            active={active}
-            selectedId={delivery.deliveryId}
-            onChange={(id) => {
-              setSelectedId(id);
-              const d = active.find((x) => x.deliveryId === id);
-              setScreen(d?.status === "Delivered" ? "feedback" : "track");
-            }}
-          />
-        )}
-
         {screen === "track" && (
           <TrackScreen
             delivery={delivery}
@@ -158,57 +146,43 @@ export function PassengerPortal({
 }
 
 function BrandHeader() {
-  const [scrolled, setScrolled] = useState(false);
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 12);
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
   return (
     <header
-      className={cn(
-        "sticky top-0 z-40 w-full transition-all duration-300",
-        scrolled ? "backdrop-blur-xl" : "",
-      )}
+      className="w-full bg-white"
       style={{
-        background: scrolled
-          ? "color-mix(in oklab, #060F26 92%, transparent)"
-          : "var(--gradient-iab-hero)",
-        boxShadow: scrolled ? "0 10px 30px -20px rgba(6,15,38,0.55)" : "none",
+        borderBottom:
+          "1px solid color-mix(in oklab, #0B1B3B 8%, transparent)",
       }}
     >
-      <div
-        className="pointer-events-none absolute inset-0 opacity-40"
-        style={{ background: "var(--gradient-iab-aurora)" }}
-      />
-      <div className="relative mx-auto w-full max-w-2xl px-4 sm:px-6 py-4 sm:py-5 flex items-center gap-4">
-        <motion.div
-          initial={{ scale: 0.9, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ duration: 0.5, ease: [0.2, 0.7, 0.2, 1] }}
-          className="rounded-2xl bg-[color:var(--iab-ivory-soft)] grid place-items-center overflow-hidden shrink-0 ring-1 ring-white/30 shadow-[0_20px_50px_-20px_rgba(6,15,38,0.6)]"
-          style={{
-            height: scrolled ? 44 : 64,
-            width: scrolled ? 44 : 64,
-            transition: "height 300ms, width 300ms",
-          }}
+      <div className="relative mx-auto w-full max-w-2xl px-4 sm:px-6 py-4 flex items-center gap-4">
+        <div
+          className="rounded-xl bg-[color:var(--iab-ivory-soft)] grid place-items-center overflow-hidden shrink-0 ring-1 ring-[color:var(--iab-navy)]/10"
+          style={{ height: 48, width: 48 }}
         >
           <img
             src={iabLogo.url}
             alt="IAB"
             className="h-full w-full object-contain p-1"
           />
-        </motion.div>
+        </div>
         <div className="min-w-0 flex-1">
           <p
-            className="text-[10px] uppercase tracking-[0.32em] text-white/70 leading-none font-medium"
+            className="text-[14px] sm:text-[15px] font-medium leading-tight text-[color:var(--iab-navy)]"
             style={{ fontFamily: "var(--font-heading)" }}
+          >
+            IAB Baggage Delivery Service
+          </p>
+          <p
+            className="mt-1 text-[9.5px] uppercase leading-none text-[color:var(--iab-navy)]/60 font-medium"
+            style={{
+              fontFamily: "var(--font-heading)",
+              letterSpacing: "0.28em",
+            }}
           >
             Official Airport Service
           </p>
           <p
-            className="text-[12px] text-white/80 mt-1.5 leading-none"
+            className="text-[11px] mt-1 leading-none text-[color:var(--iab-navy)]/60"
             dir="rtl"
             lang="ar"
             style={{ fontFamily: "var(--font-arabic-display)" }}
@@ -216,47 +190,8 @@ function BrandHeader() {
             خدمة رسمية معتمدة بالمطار
           </p>
         </div>
-        <div
-          className="hidden sm:flex items-center gap-2 text-[10px] uppercase tracking-[0.22em] text-white/70"
-          style={{ fontFamily: "var(--font-heading)" }}
-        >
-          <span
-            className="h-1.5 w-1.5 rounded-full"
-            style={{ background: "var(--iab-gold, #C9A84C)" }}
-          />
-          Secure
-        </div>
       </div>
     </header>
-  );
-}
-
-function DemoSwitcher({
-  active,
-  selectedId,
-  onChange,
-}: {
-  active: Delivery[];
-  selectedId: string;
-  onChange: (id: string) => void;
-}) {
-  return (
-    <div className="rounded-2xl border border-dashed border-[color:var(--iab-navy)]/20 bg-white/60 backdrop-blur px-4 py-2.5 flex items-center gap-3 text-xs">
-      <span className="uppercase tracking-[0.18em] text-[10px] font-semibold text-[color:var(--iab-navy)]/70">
-        Demo passenger
-      </span>
-      <select
-        value={selectedId}
-        onChange={(e) => onChange(e.target.value)}
-        className="ml-auto bg-transparent font-medium focus:outline-none"
-      >
-        {active.map((d) => (
-          <option key={d.deliveryId} value={d.deliveryId}>
-            {d.passengerName} · {d.deliveryId}
-          </option>
-        ))}
-      </select>
-    </div>
   );
 }
 
@@ -448,7 +383,7 @@ function WelcomeCard({ delivery, kase }: { delivery: Delivery; kase: BaggageCase
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.7, ease }}
       aria-label="Welcome"
-      className="relative overflow-hidden rounded-[32px] px-6 py-16 sm:px-12 sm:py-20"
+      className="relative overflow-hidden rounded-[32px] px-6 py-10 sm:px-10 sm:py-12"
       style={{
         background:
           "linear-gradient(180deg, color-mix(in oklab, #FBF7EE 96%, white) 0%, var(--iab-ivory-soft) 60%, color-mix(in oklab, #F6F1E7 92%, #0B1B3B 2%) 100%)",
@@ -456,37 +391,9 @@ function WelcomeCard({ delivery, kase }: { delivery: Delivery; kase: BaggageCase
         boxShadow: "var(--shadow-iab-soft)",
       }}
     >
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-10 top-0 flex items-center gap-3"
-      >
-        <span
-          className="h-px flex-1"
-          style={{ background: "color-mix(in oklab, #0B1B3B 18%, transparent)" }}
-        />
-        <span
-          className="text-[10px] leading-none"
-          style={{ color: "var(--iab-gold, #C9A84C)", fontFamily: "var(--font-passenger-display)" }}
-        >
-          ·
-        </span>
-        <span
-          className="h-px flex-1"
-          style={{ background: "color-mix(in oklab, #0B1B3B 18%, transparent)" }}
-        />
-      </div>
-
       <motion.p
         {...rise(0.05)}
-        className="text-[10px] uppercase font-medium text-[color:var(--iab-navy)]/60"
-        style={{ fontFamily: "var(--font-heading)", letterSpacing: "0.32em" }}
-      >
-        IAB Concierge · Cairo
-      </motion.p>
-
-      <motion.p
-        {...rise(0.13)}
-        className="mt-4 flex flex-wrap items-baseline gap-x-3 gap-y-1 text-[color:var(--iab-navy)]/75"
+        className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-[color:var(--iab-navy)]/75"
       >
         <span
           style={{
@@ -518,15 +425,15 @@ function WelcomeCard({ delivery, kase }: { delivery: Delivery; kase: BaggageCase
       </motion.p>
 
       <motion.h1
-        {...rise(0.22)}
-        className="mt-6 text-[color:var(--iab-navy)]"
+        {...rise(0.15)}
+        className="mt-4 text-[color:var(--iab-navy)]"
         style={{
           fontFamily: "var(--font-passenger-display)",
           fontOpticalSizing: "auto",
           fontVariationSettings: '"opsz" 144, "SOFT" 40',
-          fontSize: "clamp(2.75rem, 9vw, 4.75rem)",
-          fontWeight: 380,
-          lineHeight: 0.98,
+          fontSize: "clamp(1.85rem, 5.5vw, 2.75rem)",
+          fontWeight: 400,
+          lineHeight: 1.05,
           letterSpacing: "-0.015em",
         }}
       >
@@ -534,13 +441,13 @@ function WelcomeCard({ delivery, kase }: { delivery: Delivery; kase: BaggageCase
       </motion.h1>
 
       <motion.p
-        {...rise(0.3)}
-        className="mt-3 text-[color:var(--iab-navy)]/85"
+        {...rise(0.22)}
+        className="mt-2 text-[color:var(--iab-navy)]/85"
         dir="rtl"
         lang="ar"
         style={{
           fontFamily: "var(--font-arabic-display)",
-          fontSize: "clamp(1.5rem, 5vw, 2.5rem)",
+          fontSize: "clamp(1.15rem, 3.5vw, 1.6rem)",
           fontWeight: 500,
           lineHeight: 1.15,
         }}
@@ -548,7 +455,7 @@ function WelcomeCard({ delivery, kase }: { delivery: Delivery; kase: BaggageCase
         أهلاً بك، {delivery.passengerName}
       </motion.p>
 
-      <motion.div {...rise(0.4)} className="mt-8 space-y-2">
+      <motion.div {...rise(0.3)} className="mt-6 space-y-2">
         <p
           className="text-[color:var(--iab-navy)]/75"
           style={{
@@ -560,7 +467,7 @@ function WelcomeCard({ delivery, kase }: { delivery: Delivery; kase: BaggageCase
             letterSpacing: "0.005em",
           }}
         >
-          Your baggage is in the care of IAB Concierge.
+          Your baggage is safely with the IAB Baggage Team.
         </p>
         <p
           dir="rtl"
@@ -573,11 +480,11 @@ function WelcomeCard({ delivery, kase }: { delivery: Delivery; kase: BaggageCase
             lineHeight: 1.45,
           }}
         >
-          أمتعتك بعهدة كونسيرج IAB.
+          أمتعتك بأمان بعهدة فريق IAB.
         </p>
       </motion.div>
 
-      <motion.div {...rise(0.5)} className="mt-10">
+      <motion.div {...rise(0.4)} className="mt-8">
         <div
           className="h-px w-full"
           style={{ background: "color-mix(in oklab, #0B1B3B 12%, transparent)" }}
@@ -728,7 +635,7 @@ function StatusHero({ delivery, kase }: { delivery: Delivery; kase: BaggageCase 
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.2, duration: 0.7 }}
           className={cn(
-            "relative shrink-0 w-28 sm:w-40 md:w-44 aspect-square",
+            "relative shrink-0 w-32 sm:w-48 md:w-52 aspect-square",
             !reduce && "iab-float",
           )}
         >
@@ -834,41 +741,18 @@ function SimpleTimeline({ delivery, kase }: { delivery: Delivery; kase: BaggageC
   const delivered = steps[steps.length - 1]?.reached;
   return (
     <div
-      className="rounded-[28px] p-7 sm:p-9"
+      className="rounded-[28px] pt-5 pb-7 px-7 sm:pt-6 sm:pb-9 sm:px-9"
       style={{
         background: "var(--iab-ivory-soft)",
         border: "1px solid color-mix(in oklab, #0B1B3B 8%, transparent)",
         boxShadow: "var(--shadow-iab-soft)",
       }}
     >
-      <div className="flex items-baseline justify-between mb-7">
-        <p
-          className="text-[color:var(--iab-navy)] italic"
-          style={{
-            fontFamily: "var(--font-display)",
-            fontSize: "1.5rem",
-            fontWeight: 400,
-          }}
-        >
-          Your Journey
-        </p>
-        <p
-          className="text-[color:var(--iab-navy)]/70"
-          dir="rtl"
-          lang="ar"
-          style={{
-            fontFamily: "var(--font-arabic-display)",
-            fontSize: "1.15rem",
-          }}
-        >
-          رحلتك
-        </p>
-      </div>
       <ol className="relative">
         {steps.map((step, i) => (
           <li
             key={step.en}
-            className="relative flex items-start gap-4 pb-7 last:pb-0"
+            className="relative flex items-start gap-6 pb-7 last:pb-0"
           >
             {/* Rail */}
             {i < steps.length - 1 && (
