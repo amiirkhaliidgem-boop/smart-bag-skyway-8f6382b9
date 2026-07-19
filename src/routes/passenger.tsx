@@ -628,14 +628,6 @@ function StatusHero({ delivery, kase }: { delivery: Delivery; kase: BaggageCase 
               >
                 Today
               </p>
-              <p
-                className="text-white/75 text-sm leading-tight"
-                dir="rtl"
-                lang="ar"
-                style={{ fontFamily: "var(--font-arabic-display)" }}
-              >
-                متوقع اليوم
-              </p>
             </div>
           </>
         )}
