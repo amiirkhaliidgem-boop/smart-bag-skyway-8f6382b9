@@ -30,7 +30,6 @@ import {
   Mail,
   AlertTriangle,
   Star,
-  Plane,
   ChevronRight,
   MapPin,
   Headphones,
@@ -99,6 +98,8 @@ export function PassengerPortal({
         ["--font-sans" as any]: '"Space Grotesk", ui-sans-serif, system-ui, sans-serif',
         ["--font-arabic" as any]: '"IBM Plex Sans Arabic", "Space Grotesk", system-ui, sans-serif',
         ["--font-arabic-display" as any]: '"IBM Plex Sans Arabic", "Space Grotesk", system-ui, sans-serif',
+        ["--font-passenger-display" as any]:
+          '"Fraunces", ui-serif, "Times New Roman", Georgia, serif',
         background:
           "radial-gradient(1000px 500px at 10% -10%, color-mix(in oklab, #0B1B3B 6%, transparent), transparent 60%), var(--iab-ivory)",
       }}
@@ -426,99 +427,182 @@ function WelcomeCard({ delivery, kase }: { delivery: Delivery; kase: BaggageCase
     kase.baggage?.bagTags?.filter(Boolean).join(" · ") ??
     kase.bagTagNumber ??
     "—";
+  const ease = [0.2, 0.7, 0.2, 1] as const;
+  const rise = (delay: number) => ({
+    initial: { opacity: 0, y: 10 },
+    animate: { opacity: 1, y: 0 },
+    transition: { duration: 0.6, ease, delay },
+  });
   return (
-    <motion.div
+    <motion.section
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.6, ease: [0.2, 0.7, 0.2, 1] }}
-      className="relative rounded-[32px] px-6 py-10 sm:px-10 sm:py-14"
+      transition={{ duration: 0.7, ease }}
+      aria-label="Welcome"
+      className="relative overflow-hidden rounded-[32px] px-6 py-16 sm:px-12 sm:py-20"
       style={{
-        background: "var(--iab-ivory-soft)",
+        background:
+          "linear-gradient(180deg, color-mix(in oklab, #FBF7EE 96%, white) 0%, var(--iab-ivory-soft) 60%, color-mix(in oklab, #F6F1E7 92%, #0B1B3B 2%) 100%)",
         border: "1px solid color-mix(in oklab, #0B1B3B 8%, transparent)",
         boxShadow: "var(--shadow-iab-soft)",
       }}
     >
-      <p
-        className="text-[10px] uppercase tracking-[0.32em] font-medium text-[color:var(--iab-navy)]/60"
-        style={{ fontFamily: "var(--font-heading)" }}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-10 top-0 flex items-center gap-3"
       >
-        {g.en}
-      </p>
-      <p
-        className="mt-1.5 text-[13px] text-[color:var(--iab-navy)]/70"
-        dir="rtl"
-        lang="ar"
-        style={{ fontFamily: "var(--font-arabic-display)", letterSpacing: "0.02em" }}
-      >
-        {g.ar}
-      </p>
+        <span
+          className="h-px flex-1"
+          style={{ background: "color-mix(in oklab, #0B1B3B 18%, transparent)" }}
+        />
+        <span
+          className="text-[10px] leading-none"
+          style={{ color: "var(--iab-crimson)", fontFamily: "var(--font-passenger-display)" }}
+        >
+          ·
+        </span>
+        <span
+          className="h-px flex-1"
+          style={{ background: "color-mix(in oklab, #0B1B3B 18%, transparent)" }}
+        />
+      </div>
 
-      <h1
-        className="mt-5 leading-[1.02] tracking-tight text-[color:var(--iab-navy)]"
+      <motion.p
+        {...rise(0.05)}
+        className="text-[10px] uppercase font-medium text-[color:var(--iab-navy)]/60"
+        style={{ fontFamily: "var(--font-heading)", letterSpacing: "0.32em" }}
+      >
+        IAB Concierge · Cairo
+      </motion.p>
+
+      <motion.p
+        {...rise(0.13)}
+        className="mt-4 flex flex-wrap items-baseline gap-x-3 gap-y-1 text-[color:var(--iab-navy)]/75"
+      >
+        <span
+          style={{
+            fontFamily: "var(--font-passenger-display)",
+            fontStyle: "italic",
+            fontWeight: 400,
+            fontSize: "clamp(1rem, 2.4vw, 1.25rem)",
+            letterSpacing: "0.01em",
+          }}
+        >
+          {g.en}
+        </span>
+        <span
+          aria-hidden
+          className="inline-block h-1 w-1 rounded-full"
+          style={{ background: "color-mix(in oklab, #0B1B3B 35%, transparent)" }}
+        />
+        <span
+          dir="rtl"
+          lang="ar"
+          style={{
+            fontFamily: "var(--font-arabic-display)",
+            fontWeight: 500,
+            fontSize: "clamp(1rem, 2.4vw, 1.25rem)",
+          }}
+        >
+          {g.ar}
+        </span>
+      </motion.p>
+
+      <motion.h1
+        {...rise(0.22)}
+        className="mt-6 text-[color:var(--iab-navy)]"
         style={{
-          fontFamily: "var(--font-display)",
+          fontFamily: "var(--font-passenger-display)",
           fontOpticalSizing: "auto",
-          fontVariationSettings: '"opsz" 144, "SOFT" 30',
-          fontSize: "clamp(2.25rem, 8vw, 3.5rem)",
-          fontWeight: 400,
+          fontVariationSettings: '"opsz" 144, "SOFT" 40',
+          fontSize: "clamp(2.75rem, 9vw, 4.75rem)",
+          fontWeight: 380,
+          lineHeight: 0.98,
+          letterSpacing: "-0.015em",
         }}
       >
         {delivery.passengerName}
-      </h1>
-      <p
-        className="mt-2 text-[color:var(--iab-navy)]/85 leading-tight"
+      </motion.h1>
+
+      <motion.p
+        {...rise(0.3)}
+        className="mt-3 text-[color:var(--iab-navy)]/85"
         dir="rtl"
         lang="ar"
         style={{
           fontFamily: "var(--font-arabic-display)",
-          fontSize: "clamp(1.5rem, 5.5vw, 2.25rem)",
+          fontSize: "clamp(1.5rem, 5vw, 2.5rem)",
           fontWeight: 500,
+          lineHeight: 1.15,
         }}
       >
         أهلاً بك، {delivery.passengerName}
-      </p>
+      </motion.p>
 
-      <div className="mt-6">
-        <Bi
-          en="Your baggage is in the care of IAB Concierge."
-          ar="أمتعتك بعهدة كونسيرج IAB."
-          size="base"
+      <motion.div {...rise(0.4)} className="mt-8 space-y-2">
+        <p
           className="text-[color:var(--iab-navy)]/75"
-        />
-      </div>
+          style={{
+            fontFamily: "var(--font-passenger-display)",
+            fontStyle: "italic",
+            fontWeight: 350,
+            fontSize: "clamp(1.05rem, 2.6vw, 1.35rem)",
+            lineHeight: 1.35,
+            letterSpacing: "0.005em",
+          }}
+        >
+          Your baggage is in the care of IAB Concierge.
+        </p>
+        <p
+          dir="rtl"
+          lang="ar"
+          className="text-[color:var(--iab-navy)]/70"
+          style={{
+            fontFamily: "var(--font-arabic)",
+            fontWeight: 400,
+            fontSize: "clamp(0.95rem, 2.3vw, 1.2rem)",
+            lineHeight: 1.45,
+          }}
+        >
+          أمتعتك بعهدة كونسيرج IAB.
+        </p>
+      </motion.div>
 
-      <div
-        className="mt-8 flex flex-wrap gap-2 text-[11px] uppercase font-medium"
-        style={{ fontFamily: "var(--font-heading)", letterSpacing: "0.16em" }}
-      >
-        <ElegantPill icon={<Plane className="h-3 w-3" />}>
-          Flight {kase.flightNumber ?? "—"}
-        </ElegantPill>
-        <ElegantPill>PIR {delivery.pirNumber}</ElegantPill>
-        <ElegantPill>Tag {bagTag}</ElegantPill>
-      </div>
-    </motion.div>
+      <motion.div {...rise(0.5)} className="mt-10">
+        <div
+          className="h-px w-full"
+          style={{ background: "color-mix(in oklab, #0B1B3B 12%, transparent)" }}
+        />
+        <dl
+          className="mt-4 grid grid-cols-3 gap-4 text-[color:var(--iab-navy)]/70"
+          style={{ fontFamily: "var(--font-heading)" }}
+        >
+          <MetaCell label="Flight" value={kase.flightNumber ?? "—"} />
+          <MetaCell label="PIR" value={delivery.pirNumber} />
+          <MetaCell label="Bag Tag" value={bagTag} />
+        </dl>
+      </motion.div>
+    </motion.section>
   );
 }
 
-function ElegantPill({
-  icon,
-  children,
-}: {
-  icon?: React.ReactNode;
-  children: React.ReactNode;
-}) {
+function MetaCell({ label, value }: { label: string; value: string }) {
   return (
-    <span
-      className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 tabular-nums text-[color:var(--iab-navy)]/85"
-      style={{
-        background: "transparent",
-        border: "1px solid color-mix(in oklab, #0B1B3B 15%, transparent)",
-      }}
-    >
-      {icon}
-      {children}
-    </span>
+    <div className="min-w-0">
+      <dt
+        className="text-[9.5px] uppercase font-semibold text-[color:var(--iab-navy)]/55"
+        style={{ letterSpacing: "0.24em" }}
+      >
+        {label}
+      </dt>
+      <dd
+        className="mt-1 truncate text-[13px] font-medium text-[color:var(--iab-navy)]"
+        style={{ letterSpacing: "0.02em" }}
+        title={value}
+      >
+        {value}
+      </dd>
+    </div>
   );
 }
 
