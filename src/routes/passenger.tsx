@@ -91,7 +91,7 @@ export function PassengerPortal({
 
   return (
     <div
-      className="iab-grain relative -mx-4 -my-4 sm:-mx-6 sm:-my-6 lg:-mx-8 lg:-my-8 min-h-[calc(100vh-3.5rem)] font-[family-name:var(--font-sans)] text-[color:var(--iab-ink)]"
+      className="iab-grain relative -mx-4 sm:-mx-6 lg:-mx-8 min-h-[calc(100vh-3.5rem)] font-[family-name:var(--font-sans)] text-[color:var(--iab-ink)]"
       style={{
         ["--font-display" as any]:
           '"General Sans", "Fraunces", ui-serif, Georgia, serif',
