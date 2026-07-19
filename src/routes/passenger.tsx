@@ -383,7 +383,7 @@ function WelcomeCard({ delivery, kase }: { delivery: Delivery; kase: BaggageCase
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.7, ease }}
       aria-label="Welcome"
-      className="relative overflow-hidden rounded-[32px] px-6 py-16 sm:px-12 sm:py-20"
+      className="relative overflow-hidden rounded-[32px] px-6 py-10 sm:px-10 sm:py-12"
       style={{
         background:
           "linear-gradient(180deg, color-mix(in oklab, #FBF7EE 96%, white) 0%, var(--iab-ivory-soft) 60%, color-mix(in oklab, #F6F1E7 92%, #0B1B3B 2%) 100%)",
@@ -391,37 +391,9 @@ function WelcomeCard({ delivery, kase }: { delivery: Delivery; kase: BaggageCase
         boxShadow: "var(--shadow-iab-soft)",
       }}
     >
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-10 top-0 flex items-center gap-3"
-      >
-        <span
-          className="h-px flex-1"
-          style={{ background: "color-mix(in oklab, #0B1B3B 18%, transparent)" }}
-        />
-        <span
-          className="text-[10px] leading-none"
-          style={{ color: "var(--iab-gold, #C9A84C)", fontFamily: "var(--font-passenger-display)" }}
-        >
-          ·
-        </span>
-        <span
-          className="h-px flex-1"
-          style={{ background: "color-mix(in oklab, #0B1B3B 18%, transparent)" }}
-        />
-      </div>
-
       <motion.p
         {...rise(0.05)}
-        className="text-[10px] uppercase font-medium text-[color:var(--iab-navy)]/60"
-        style={{ fontFamily: "var(--font-heading)", letterSpacing: "0.32em" }}
-      >
-        IAB Concierge · Cairo
-      </motion.p>
-
-      <motion.p
-        {...rise(0.13)}
-        className="mt-4 flex flex-wrap items-baseline gap-x-3 gap-y-1 text-[color:var(--iab-navy)]/75"
+        className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-[color:var(--iab-navy)]/75"
       >
         <span
           style={{
@@ -453,15 +425,15 @@ function WelcomeCard({ delivery, kase }: { delivery: Delivery; kase: BaggageCase
       </motion.p>
 
       <motion.h1
-        {...rise(0.22)}
-        className="mt-6 text-[color:var(--iab-navy)]"
+        {...rise(0.15)}
+        className="mt-4 text-[color:var(--iab-navy)]"
         style={{
           fontFamily: "var(--font-passenger-display)",
           fontOpticalSizing: "auto",
           fontVariationSettings: '"opsz" 144, "SOFT" 40',
-          fontSize: "clamp(2.75rem, 9vw, 4.75rem)",
-          fontWeight: 380,
-          lineHeight: 0.98,
+          fontSize: "clamp(1.85rem, 5.5vw, 2.75rem)",
+          fontWeight: 400,
+          lineHeight: 1.05,
           letterSpacing: "-0.015em",
         }}
       >
@@ -469,13 +441,13 @@ function WelcomeCard({ delivery, kase }: { delivery: Delivery; kase: BaggageCase
       </motion.h1>
 
       <motion.p
-        {...rise(0.3)}
-        className="mt-3 text-[color:var(--iab-navy)]/85"
+        {...rise(0.22)}
+        className="mt-2 text-[color:var(--iab-navy)]/85"
         dir="rtl"
         lang="ar"
         style={{
           fontFamily: "var(--font-arabic-display)",
-          fontSize: "clamp(1.5rem, 5vw, 2.5rem)",
+          fontSize: "clamp(1.15rem, 3.5vw, 1.6rem)",
           fontWeight: 500,
           lineHeight: 1.15,
         }}
@@ -483,7 +455,7 @@ function WelcomeCard({ delivery, kase }: { delivery: Delivery; kase: BaggageCase
         أهلاً بك، {delivery.passengerName}
       </motion.p>
 
-      <motion.div {...rise(0.4)} className="mt-8 space-y-2">
+      <motion.div {...rise(0.3)} className="mt-6 space-y-2">
         <p
           className="text-[color:var(--iab-navy)]/75"
           style={{
@@ -495,7 +467,7 @@ function WelcomeCard({ delivery, kase }: { delivery: Delivery; kase: BaggageCase
             letterSpacing: "0.005em",
           }}
         >
-          Your baggage is in the care of IAB Concierge.
+          Your baggage is safely with the IAB Baggage Team.
         </p>
         <p
           dir="rtl"
@@ -508,11 +480,11 @@ function WelcomeCard({ delivery, kase }: { delivery: Delivery; kase: BaggageCase
             lineHeight: 1.45,
           }}
         >
-          أمتعتك بعهدة كونسيرج IAB.
+          أمتعتك بأمان بعهدة فريق IAB.
         </p>
       </motion.div>
 
-      <motion.div {...rise(0.5)} className="mt-10">
+      <motion.div {...rise(0.4)} className="mt-8">
         <div
           className="h-px w-full"
           style={{ background: "color-mix(in oklab, #0B1B3B 12%, transparent)" }}
