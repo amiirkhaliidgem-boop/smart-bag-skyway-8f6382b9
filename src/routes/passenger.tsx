@@ -552,7 +552,7 @@ function StatusHero({ delivery, kase }: { delivery: Delivery; kase: BaggageCase 
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.25, duration: 0.5 }}
-            className="mt-2 text-white/90 leading-tight"
+            className="mt-2 text-white/90 leading-tight text-center"
             dir="rtl"
             lang="ar"
             style={{
