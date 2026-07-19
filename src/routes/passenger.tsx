@@ -1214,7 +1214,7 @@ function ContactCard({ delivery }: { delivery: Delivery }) {
             </div>
             <span
               className="pointer-events-none absolute inset-x-0 bottom-0 h-[2px] scale-x-0 origin-left transition-transform duration-300 group-hover:scale-x-100"
-              style={{ background: "var(--gradient-iab-crimson)" }}
+              style={{ background: "var(--iab-navy)" }}
             />
           </motion.a>
         ))}
@@ -1249,7 +1249,10 @@ function DeliveredCelebration({
         </div>
         <div
           className="mx-auto mt-6 h-20 w-20 rounded-full grid place-items-center text-white"
-          style={{ background: "var(--gradient-iab-crimson)", boxShadow: "var(--shadow-iab-crimson)" }}
+          style={{
+            background: "var(--iab-emerald)",
+            boxShadow: "var(--shadow-iab-emerald)",
+          }}
         >
           <svg width="42" height="42" viewBox="0 0 42 42" fill="none">
             <path
