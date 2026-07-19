@@ -1,49 +1,58 @@
-## Scope (strict)
+## Scope
 
-Only two things change on `/passenger/$token`:
+Visual-only redesign of the Passenger Portal (`src/routes/passenger.tsx` and its font links in `src/routes/__root.tsx`). No changes to business logic, workflow, backend, navigation, data flow, component APIs, or any other route. The reference image is used strictly as a quality/aesthetic benchmark — its layout and elements are not reproduced.
 
-1. The **Welcome Hero** — the `WelcomeCard` component in `src/routes/passenger.tsx` (currently ~lines 423–502, rendered at line 327).
-2. The **portal-scoped typography tokens** — the inline CSS variables on the portal root (`src/routes/passenger.tsx` lines 95–101).
+## Design language
 
-Nothing else is touched: no Workflow, OTP, Notifications, Supabase, Auth, L&F, Delivery, Driver Portal, and no other section of the portal (StatusHero, Timeline, Concierge, OTP, Delivered celebration, footer). Data props, layout position in the page, and the surrounding `Bi` bilingual pattern stay identical.
+Apple × Emirates First Class × Aman: quiet, editorial, generous whitespace, high-precision typography, soft light, subtle depth. Two card styles only:
 
-## Design direction — "editorial concierge"
+1. **Ivory/white card** — off-white surface (`#FFFFFF` on ivory page), hairline navy border at ~6% opacity, ultra-soft ambient shadow.
+2. **Deep navy card** — `#081C3A` background, faint inner top highlight, subtle gold hairline dividers.
 
-Reference vocabulary: Emirates First Class print collateral, Aman welcome cards, Apple product pages. The hero should read like the inside cover of a premium travel folio, not a SaaS card.
+Accents: **navy `#081C3A`**, **ivory `#F6F1E7`**, **gold `#C9A84C`** (used only for hairlines, tiny dots, and a single icon stroke). **No crimson anywhere in the portal.** No random accent hues.
 
-Visual moves:
+## Typography
 
-- **Editorial serif for the passenger name.** Reintroduce **Fraunces** (already loaded in `__root.tsx`) as `--font-passenger-display` scoped to the portal only. Name renders in Fraunces at large optical size, weight 300–400, tight tracking, generous line-height. Sans (Space Grotesk) stays for eyebrows/pills; Arabic stays on IBM Plex Sans Arabic but paired weight-for-weight with the serif so both scripts feel equal.
-- **Quiet luxury palette.** Keep ivory background. Replace the flat card with a soft warm ivory gradient plus a hair-thin navy rule at the top and a small crimson serif ornament (a single `·` or thin vertical hairline) as the only accent — no crimson elsewhere in the hero.
-- **Breathing room.** Increase vertical padding (py-14 → py-16/20), widen inner rhythm, remove the current dense pill row from the primary field of view.
-- **Hierarchy rebuild** (top to bottom):
-  1. Tiny eyebrow: "IAB Concierge · Cairo" (uppercase, 10px, 0.32em tracking, navy/60).
-  2. Bilingual greeting on one refined line: `Good Morning — صباح الخير` separated by a hairline dot, both scripts same visual weight.
-  3. **Passenger name** as the emotional anchor — Fraunces, `clamp(2.75rem, 9vw, 4.75rem)`, weight 380, `font-variation-settings: "opsz" 144, "SOFT" 40`, tight leading (0.98), navy ink.
-  4. Arabic name directly under, IBM Plex Sans Arabic, weight 500, sized to match optical weight of the serif (~55% of English size).
-  5. A single italic Fraunces welcome line: *"Your baggage is in the care of IAB Concierge."* with Arabic mirror below in a lighter Plex weight. Replaces the current sans sentence.
-  6. Flight / PIR / Tag metadata demoted to a **thin bottom meta strip** separated by a hairline divider — small sans caps, generous letter-spacing, no pill chips. This preserves the same three data points (`flightNumber`, `pirNumber`, `bagTag`) already shown today.
-- **Motion.** Keep the existing single `motion.div` entrance (opacity + y). Add a subtle staggered reveal for eyebrow → greeting → name → welcome → meta (0.08s stagger, same easing). No parallax, no floating, no shimmer in the hero.
+- **Display**: Telegraf (weights 300/400/500) — passenger name, section titles, hero headline.
+- **UI**: Glacial Indifference (regular/bold) — body, labels, meta, buttons.
+- **Arabic**: keep IBM Plex Sans Arabic, sized to match optical weight of Telegraf; equal visual importance.
 
-Everything below the hero (StatusHero and onward) is untouched and continues to consume the same portal-scoped font variables.
+Load via Fontshare CDN in `src/routes/__root.tsx` (both fonts are hosted there). Scope them to the portal only via CSS variables on the portal root:
+- `--font-passenger-display: "Telegraf", ...`
+- `--font-passenger-ui: "Glacial Indifference", ...`
+Global `--font-display / --font-heading / --font-sans` are not modified — the rest of the app keeps its current typography.
 
-## Files to change
+Scale (portal only): eyebrow 10px / 0.28em tracking; body 14–15px; section title 18–20px; hero headline `clamp(2rem, 5vw, 2.75rem)`; passenger name `clamp(2.75rem, 8vw, 4.5rem)`, weight 300, tight leading 1.02.
 
-- `src/routes/passenger.tsx`
-  - Extend the portal root style object (lines 95–101) with two additional scoped vars: `--font-passenger-display` (Fraunces stack) and `--font-passenger-serif-italic` alias. Keep the existing Space Grotesk / IBM Plex Sans Arabic vars for `--font-sans`, `--font-heading`, `--font-arabic*` so no other section changes appearance.
-  - Rewrite the `WelcomeCard` component body (only) to the hierarchy above. Same props signature (`{ delivery, kase }`), same data fields consumed, same position in `PortalContent`.
-  - Remove the `ElegantPill` chip usage from inside the hero. Leave the `ElegantPill` component defined (may be reused elsewhere) — do not delete it unless unreferenced after the edit.
+## Card-by-card changes
 
-No other files change. No new dependencies. Fraunces is already linked in `src/routes/__root.tsx`.
+**BrandHeader** — thinner navy bar, remove crimson "Secure" dot (use a hairline gold dot instead), gold-hairline underline beneath the logo lockup.
 
-## Out of scope
+**WelcomeCard** — ivory card. Rebuild inner hierarchy: tiny eyebrow ("IAB Concierge · Cairo"), bilingual greeting on one line with hairline dot separator, large Telegraf passenger name, Arabic name directly under at matched optical weight, italic Telegraf welcome line + Arabic mirror, and a hairline-divided meta strip (Flight · PIR · Bag Tag · Date) in Glacial small-caps. Remove the current crimson dot ornament at the top; replace with a gold hairline.
 
-- StatusHero (navy suitcase card), SimpleTimeline, Concierge card, OTP hero, DeliveredCelebration, BrandHeader, language toggle, footer.
-- Global `src/styles.css` tokens.
-- Any business logic, data fetch, tokens, or routes.
+**StatusHero** — keep the animated suitcase illustration and its motion untouched. Convert the card to the deep-navy style (`#081C3A`), refine typography (Telegraf headline, Glacial subline, matched Arabic), reduce chip clutter, remove any crimson tints/glows, replace with cool navy-to-ink gradient and a faint gold hairline top border. Corner radius unified to 28px.
+
+**SimpleTimeline** — ivory card. Thinner rail (1px, navy at 15% opacity, gold at 40% for completed segments), smaller circles (12px), active step gets a soft navy pulse (no red). Labels in Glacial small-caps + Arabic mirror.
+
+**OtpHeroCard** — adopt the exact StatusHero visual language: deep navy `#081C3A`, same radius, same shadow, same top hairline. OTP digits in Telegraf light at large size, spaced generously. Checklist rows restyled with hairline dividers and gold check marks; confirm button becomes an ivory pill on navy. Preserve all existing logic (checks, incident reporting, `confirm()`).
+
+**ContactCard / ExpectedDeliveryCard / DemoSwitcher / PortalFooter** — restyled to the two-card system, Glacial typography, hairline dividers, no crimson.
+
+**FeedbackScreen / ThanksScreen / DeliveredCelebration** — same two-card system and typography; celebration keeps its motion but swaps any red/emerald flourish for gold-on-navy.
+
+## Motion
+
+Keep existing `MotionSection` stagger and suitcase float. Remove shimmer/red pulses. Add a single subtle gold hairline sweep on the navy cards (very low opacity, 8s loop, respects `prefers-reduced-motion`).
+
+## Files touched
+
+- `src/routes/passenger.tsx` — restyle all portal subcomponents listed above; add portal-scoped `--font-passenger-display` / `--font-passenger-ui` variables; remove crimson usages inside the portal; unify radii and shadows.
+- `src/routes/__root.tsx` — add Telegraf + Glacial Indifference `<link>` tags (Fontshare) alongside existing font links. No other change.
+
+Nothing else is modified. `src/styles.css` global tokens, other routes, and all business logic remain untouched.
 
 ## Verification
 
-- Load `/passenger/<token>` on mobile and desktop widths: hero reads as an editorial welcome, name in Fraunces, bilingual greeting balanced, meta strip minimal.
-- Load `/`, `/lost-found`, `/delivery`, `/driver-portal`: unchanged (portal font overrides remain scoped to the portal root).
-- Arabic (RTL) toggle still renders correctly with equal visual weight in the hero.
+- `/passenger/<token>` on mobile and desktop: ivory + navy cards only, no red, Telegraf on names/headlines, Glacial on body, Arabic balanced.
+- Every other route (`/`, `/lost-found`, `/delivery`, `/driver-portal`, `/admin`, …) is visually unchanged.
+- OTP flow, feedback flow, incident reporting, and delivery confirmation still work end-to-end.
