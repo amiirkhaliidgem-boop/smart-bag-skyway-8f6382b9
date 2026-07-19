@@ -147,16 +147,12 @@ function BrandHeader() {
   return (
     <header className="w-full bg-white">
       <div className="relative mx-auto w-full max-w-2xl px-4 sm:px-6 py-4 flex items-center gap-4">
-        <div
-          className="rounded-xl bg-[color:var(--iab-ivory-soft)] grid place-items-center overflow-hidden shrink-0 ring-1 ring-[color:var(--iab-navy)]/10"
+        <img
+          src={iabLogo.url}
+          alt="IAB"
+          className="h-12 w-12 object-contain shrink-0"
           style={{ height: 48, width: 48 }}
-        >
-          <img
-            src={iabLogo.url}
-            alt="IAB"
-            className="h-full w-full object-contain p-1"
-          />
-        </div>
+        />
         <div className="min-w-0 flex-1">
           <p
             className="text-[14px] sm:text-[15px] font-medium leading-tight text-[color:var(--iab-navy)]"
@@ -374,6 +370,19 @@ function WelcomeCard({ delivery, kase }: { delivery: Delivery; kase: BaggageCase
         boxShadow: "var(--shadow-iab-soft)",
       }}
     >
+      <motion.p
+        {...rise(0.05)}
+        className="text-[color:var(--iab-navy)]/70"
+        style={{
+          fontFamily: "var(--font-passenger-display)",
+          fontSize: "clamp(1rem, 2.4vw, 1.25rem)",
+          fontWeight: 400,
+          lineHeight: 1.2,
+          letterSpacing: "0.01em",
+        }}
+      >
+        Welcome
+      </motion.p>
       <motion.h1
         {...rise(0.1)}
         className="text-[color:var(--iab-navy)]"
@@ -486,17 +495,6 @@ function StatusHero({ delivery, kase }: { delivery: Delivery; kase: BaggageCase 
         style={{
           background:
             "linear-gradient(90deg, transparent, color-mix(in oklab, #C9A84C 70%, transparent), transparent)",
-        }}
-      />
-      {/* Soft dot pattern */}
-      <div
-        className="pointer-events-none absolute inset-0 opacity-20"
-        style={{
-          backgroundImage:
-            "radial-gradient(circle at 1px 1px, rgba(255,255,255,0.35) 1px, transparent 0)",
-          backgroundSize: "22px 22px",
-          maskImage:
-            "radial-gradient(120% 90% at 10% 10%, black, transparent 65%)",
         }}
       />
       <div

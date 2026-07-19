@@ -1,31 +1,27 @@
-## Passenger Portal — Targeted Refinements
+Scope: `src/routes/passenger.tsx` only. No workflow, typography, color palette, spacing, or Status Card layout changes.
 
-Scope: `src/routes/passenger.tsx` only. No workflow, typography, Welcome Card, or Status Card layout changes.
+### 1. Header — logo on bare white background
+- In `BrandHeader`, remove the rounded ivory container (`rounded-xl bg-[color:var(--iab-ivory-soft)] ring-1 ...`) that currently wraps the `<img>` logo.
+- Render the `<img>` logo directly against the white header background, with no card, border, shadow, or separate container.
+- Keep the logo dimensions at 48×48 and the existing `object-contain` treatment.
+- Preserve the text block exactly as-is:
+  - "IAB Baggage Delivery Service"
+  - "Official Airport Service"
+  - "خدمة رسمية معتمدة بالمطار"
 
-### 1. OTP Card — remove Copy button
-- Delete the `<button onClick={copyCode}>` "Copy" element and its wrapping `<div className="mt-3 flex items-center justify-center">` (lines ~927–935).
-- Remove the now-unused `copyCode` handler and the `Copy` icon import (line 27) if not referenced elsewhere.
-- Four large OTP digits remain untouched.
+### 2. Welcome Card — add a single "Welcome" greeting
+- Above the existing passenger name (`Hassan El-Shenawy`), insert a single "Welcome" line using the same Passenger Portal typography (`var(--font-passenger-display)`).
+- Use normal font weight, no italics.
+- Do not duplicate the passenger name; the name remains exactly once below "Welcome".
+- Leave the message copy, Flight/PIR/Bag Tag meta strip, spacing, colors, card background, and animation unchanged.
 
-### 2. Confirmation Button — single-line bilingual, mobile-safe
-- Replace the button label `Confirm Baggage Received · تأكيد استلام الأمتعة` with `Baggage Received • تم الاستلام`.
-- Keep the button height (`h-14`) and existing styling.
-- Add `whitespace-nowrap` and `text-center` on the button; wrap the label in a `<span>` with `whitespace-nowrap` to prevent wrapping on narrow viewports.
-- Keep the leading `PackageCheck` icon; ensure `justify-center` remains so the label reads perfectly centered.
-
-### 3. Support Section — strip header, rename Call tile
-- Remove the entire header row (lines ~1091–1108) containing `Support`, `المساعدة والدعم`, and `24 / 7`. The section starts directly with the 3-tile grid.
-- In the `tiles` array, change the first tile:
-  - `en: "Call Us"`
-  - `ar: "اتصل بنا"`
-  - Keep `href` and `value` unchanged.
-- WhatsApp and Email tiles untouched.
-
-### 4. Color Consistency — unify navy across Status, OTP, and Contact icons
-- Status Card and OTP Card already share the same navy gradient (`linear-gradient(180deg, #0B2247 0%, #081C3A 55%, #050F24 100%)`) — leave both as-is.
-- Update the Contact tile icon chip (line ~1139) from `background: "var(--gradient-iab-hero)"` to the same navy gradient string, so all three surfaces share the identical navy treatment. No new token created.
+### 3. Current Status Card — remove decorative dot pattern
+- Remove the dot-pattern overlay in `StatusHero` (the `radial-gradient(circle at 1px 1px, rgba(255,255,255,0.35) 1px, transparent 0)` block with `backgroundSize: "22px 22px"` and `maskImage`).
+- Keep the navy gradient background exactly as-is (`linear-gradient(180deg, #0B2247 0%, #081C3A 55%, #050F24 100%)`).
+- Keep the gold hairline top border, the soft light-wash radial gradient (already identical to the OTP card), the rounded card shape, the suitcase animation, and all typography/layout.
+- Result: the Status Card and OTP Card share the same clean, solid navy treatment.
 
 ### Verification
-- Read the file back after edits to confirm imports are clean (no unused `Copy`) and JSX balance is intact.
+- Read back the edited JSX to confirm the logo container is removed, the Welcome greeting is inserted without duplicating the name, and the dot-pattern block is deleted while tag balance remains intact.
 - Run project typecheck.
-- No other components, styles, or logic touched.
+- No other components, styles, business logic, or routes touched.
