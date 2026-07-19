@@ -146,73 +146,49 @@ export function PassengerPortal({
 }
 
 function BrandHeader() {
-  const [scrolled, setScrolled] = useState(false);
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 12);
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
   return (
     <header
-      className={cn(
-        "sticky top-0 z-40 w-full transition-all duration-300",
-        scrolled ? "backdrop-blur-xl" : "",
-      )}
+      className="w-full bg-white"
       style={{
-        background: scrolled
-          ? "color-mix(in oklab, #060F26 92%, transparent)"
-          : "var(--gradient-iab-hero)",
-        boxShadow: scrolled ? "0 10px 30px -20px rgba(6,15,38,0.55)" : "none",
+        borderBottom:
+          "1px solid color-mix(in oklab, #0B1B3B 8%, transparent)",
       }}
     >
-      <div
-        className="pointer-events-none absolute inset-0 opacity-40"
-        style={{ background: "var(--gradient-iab-aurora)" }}
-      />
-      <div className="relative mx-auto w-full max-w-2xl px-4 sm:px-6 py-4 sm:py-5 flex items-center gap-4">
-        <motion.div
-          initial={{ scale: 0.9, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ duration: 0.5, ease: [0.2, 0.7, 0.2, 1] }}
-          className="rounded-2xl bg-[color:var(--iab-ivory-soft)] grid place-items-center overflow-hidden shrink-0 ring-1 ring-white/30 shadow-[0_20px_50px_-20px_rgba(6,15,38,0.6)]"
-          style={{
-            height: scrolled ? 44 : 64,
-            width: scrolled ? 44 : 64,
-            transition: "height 300ms, width 300ms",
-          }}
+      <div className="relative mx-auto w-full max-w-2xl px-4 sm:px-6 py-4 flex items-center gap-4">
+        <div
+          className="rounded-xl bg-[color:var(--iab-ivory-soft)] grid place-items-center overflow-hidden shrink-0 ring-1 ring-[color:var(--iab-navy)]/10"
+          style={{ height: 48, width: 48 }}
         >
           <img
             src={iabLogo.url}
             alt="IAB"
             className="h-full w-full object-contain p-1"
           />
-        </motion.div>
+        </div>
         <div className="min-w-0 flex-1">
           <p
-            className="text-[10px] uppercase tracking-[0.32em] text-white/70 leading-none font-medium"
+            className="text-[14px] sm:text-[15px] font-medium leading-tight text-[color:var(--iab-navy)]"
             style={{ fontFamily: "var(--font-heading)" }}
+          >
+            IAB Baggage Delivery Service
+          </p>
+          <p
+            className="mt-1 text-[9.5px] uppercase leading-none text-[color:var(--iab-navy)]/60 font-medium"
+            style={{
+              fontFamily: "var(--font-heading)",
+              letterSpacing: "0.28em",
+            }}
           >
             Official Airport Service
           </p>
           <p
-            className="text-[12px] text-white/80 mt-1.5 leading-none"
+            className="text-[11px] mt-1 leading-none text-[color:var(--iab-navy)]/60"
             dir="rtl"
             lang="ar"
             style={{ fontFamily: "var(--font-arabic-display)" }}
           >
             خدمة رسمية معتمدة بالمطار
           </p>
-        </div>
-        <div
-          className="hidden sm:flex items-center gap-2 text-[10px] uppercase tracking-[0.22em] text-white/70"
-          style={{ fontFamily: "var(--font-heading)" }}
-        >
-          <span
-            className="h-1.5 w-1.5 rounded-full"
-            style={{ background: "var(--iab-gold, #C9A84C)" }}
-          />
-          Secure
         </div>
       </div>
     </header>
