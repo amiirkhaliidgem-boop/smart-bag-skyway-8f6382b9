@@ -1058,19 +1058,37 @@ function OtpHeroCard({
   }
   return (
     <div
-      className="relative overflow-hidden rounded-3xl p-6 sm:p-8 text-white"
+      className="iab-grain relative overflow-hidden rounded-[32px] px-6 py-8 sm:px-10 sm:py-10 text-white"
       style={{
-        background: "var(--gradient-iab-hero)",
-        boxShadow: "0 40px 80px -30px rgba(15,24,48,0.55)",
+        background:
+          "linear-gradient(180deg, #0B2247 0%, #081C3A 55%, #050F24 100%)",
+        boxShadow:
+          "0 40px 100px -40px rgba(8,28,58,0.75), 0 20px 40px -25px rgba(8,28,58,0.35)",
       }}
     >
+      {/* Gold hairline top border */}
       <div
-        className="absolute -top-20 -left-20 h-56 w-56 rounded-full opacity-30 blur-3xl"
-        style={{ background: "var(--iab-crimson)" }}
+        aria-hidden
+        className="pointer-events-none absolute inset-x-8 top-0 h-px"
+        style={{
+          background:
+            "linear-gradient(90deg, transparent, color-mix(in oklab, #C9A84C 70%, transparent), transparent)",
+        }}
+      />
+      {/* Soft light wash */}
+      <div
+        className="pointer-events-none absolute inset-0 opacity-30"
+        style={{
+          background:
+            "radial-gradient(120% 60% at 0% 0%, rgba(255,255,255,0.14), transparent 55%)",
+        }}
       />
       <div className="relative">
-        <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.22em] text-white/70">
-          <ShieldCheck className="h-3.5 w-3.5" />
+        <div
+          className="flex items-center gap-2 text-[10px] uppercase tracking-[0.28em] text-white/70 font-medium"
+          style={{ fontFamily: "var(--font-heading)" }}
+        >
+          <ShieldCheck className="h-3.5 w-3.5" strokeWidth={1.5} />
           Verification · رمز التحقق
         </div>
 
@@ -1078,12 +1096,16 @@ function OtpHeroCard({
           {digits.map((d, i) => (
             <div
               key={i}
-              className="h-16 w-14 sm:h-20 sm:w-16 rounded-2xl grid place-items-center bg-white/10 border border-white/15 backdrop-blur"
+              className="h-16 w-14 sm:h-20 sm:w-16 rounded-2xl grid place-items-center bg-white/[0.06] border border-white/10 backdrop-blur"
               style={{ boxShadow: "inset 0 1px 0 rgba(255,255,255,0.15)" }}
             >
               <span
                 className="text-4xl sm:text-5xl tabular-nums text-white"
-                style={{ fontFamily: "var(--font-display)" }}
+                style={{
+                  fontFamily: "var(--font-passenger-display)",
+                  fontWeight: 300,
+                  letterSpacing: "0.02em",
+                }}
               >
                 {d}
               </span>
@@ -1145,8 +1167,8 @@ function OtpHeroCard({
             <div
               className="mt-3 rounded-xl border p-3 flex gap-2"
               style={{
-                background: "color-mix(in oklab, #D6284B 15%, transparent)",
-                borderColor: "color-mix(in oklab, #D6284B 45%, transparent)",
+                background: "color-mix(in oklab, #C9A84C 12%, transparent)",
+                borderColor: "color-mix(in oklab, #C9A84C 40%, transparent)",
               }}
             >
               <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0 text-white" />
