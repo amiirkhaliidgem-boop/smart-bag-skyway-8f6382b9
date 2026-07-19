@@ -741,41 +741,18 @@ function SimpleTimeline({ delivery, kase }: { delivery: Delivery; kase: BaggageC
   const delivered = steps[steps.length - 1]?.reached;
   return (
     <div
-      className="rounded-[28px] p-7 sm:p-9"
+      className="rounded-[28px] pt-5 pb-7 px-7 sm:pt-6 sm:pb-9 sm:px-9"
       style={{
         background: "var(--iab-ivory-soft)",
         border: "1px solid color-mix(in oklab, #0B1B3B 8%, transparent)",
         boxShadow: "var(--shadow-iab-soft)",
       }}
     >
-      <div className="flex items-baseline justify-between mb-7">
-        <p
-          className="text-[color:var(--iab-navy)] italic"
-          style={{
-            fontFamily: "var(--font-display)",
-            fontSize: "1.5rem",
-            fontWeight: 400,
-          }}
-        >
-          Your Journey
-        </p>
-        <p
-          className="text-[color:var(--iab-navy)]/70"
-          dir="rtl"
-          lang="ar"
-          style={{
-            fontFamily: "var(--font-arabic-display)",
-            fontSize: "1.15rem",
-          }}
-        >
-          رحلتك
-        </p>
-      </div>
       <ol className="relative">
         {steps.map((step, i) => (
           <li
             key={step.en}
-            className="relative flex items-start gap-4 pb-7 last:pb-0"
+            className="relative flex items-start gap-6 pb-7 last:pb-0"
           >
             {/* Rail */}
             {i < steps.length - 1 && (
