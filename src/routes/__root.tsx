@@ -109,7 +109,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       {
         rel: "stylesheet",
-        href: "https://api.fontshare.com/v2/css?f[]=telegraf@300,400,500,700&f[]=general-sans@300,400,500,600&display=swap",
+        href: "https://api.fontshare.com/v2/css?f[]=general-sans@300,400,500,600&display=swap",
       },
     ],
   }),
