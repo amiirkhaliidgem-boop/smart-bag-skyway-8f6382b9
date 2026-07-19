@@ -466,7 +466,7 @@ function WelcomeCard({ delivery, kase }: { delivery: Delivery; kase: BaggageCase
         />
         <span
           className="text-[10px] leading-none"
-          style={{ color: "var(--iab-crimson)", fontFamily: "var(--font-passenger-display)" }}
+          style={{ color: "var(--iab-gold, #C9A84C)", fontFamily: "var(--font-passenger-display)" }}
         >
           ·
         </span>
