@@ -722,59 +722,99 @@ function heroCopyForStage(stage: ReturnType<typeof getDeliveryStage>): {
 function SimpleTimeline({ delivery, kase }: { delivery: Delivery; kase: BaggageCase }) {
   const steps: { en: string; ar: string; reached: boolean; current: boolean }[] =
     passengerSteps(delivery, kase);
+  const reduce = useReducedMotion();
+  const delivered = steps[steps.length - 1]?.reached;
   return (
-    <div className="iab-glass rounded-3xl p-6 sm:p-7">
-      <div className="flex items-center gap-2 mb-5">
-        <Sparkles className="h-4 w-4" style={{ color: "var(--iab-crimson)" }} />
-        <p className="text-[11px] uppercase tracking-[0.22em] font-semibold text-[color:var(--iab-navy)]">
-          Journey · الرحلة
+    <div
+      className="rounded-[28px] p-7 sm:p-9"
+      style={{
+        background: "var(--iab-ivory-soft)",
+        border: "1px solid color-mix(in oklab, #0B1B3B 8%, transparent)",
+        boxShadow: "var(--shadow-iab-soft)",
+      }}
+    >
+      <div className="flex items-baseline justify-between mb-7">
+        <p
+          className="text-[color:var(--iab-navy)] italic"
+          style={{
+            fontFamily: "var(--font-display)",
+            fontSize: "1.5rem",
+            fontWeight: 400,
+          }}
+        >
+          Your Journey
+        </p>
+        <p
+          className="text-[color:var(--iab-navy)]/70"
+          dir="rtl"
+          lang="ar"
+          style={{
+            fontFamily: "var(--font-arabic-display)",
+            fontSize: "1.15rem",
+          }}
+        >
+          رحلتك
         </p>
       </div>
-      <ol className="space-y-4">
+      <ol className="relative">
         {steps.map((step, i) => (
-          <li key={step.en} className="flex items-start gap-4">
-            <div className="relative">
-              <div
+          <li
+            key={step.en}
+            className="relative flex items-start gap-4 pb-7 last:pb-0"
+          >
+            {/* Rail */}
+            {i < steps.length - 1 && (
+              <span
                 className={cn(
-                  "h-9 w-9 rounded-full grid place-items-center shrink-0 transition-all",
-                  step.reached && !step.current && "text-white",
-                  step.current && "text-white iab-pulse-ring",
-                  !step.reached && "bg-[color:var(--iab-mist)] text-[color:var(--iab-navy)]/40",
+                  "absolute left-[5px] top-3 w-px h-full",
                 )}
-                style={
-                  step.current
-                    ? { background: "var(--gradient-iab-crimson)" }
-                    : step.reached
-                      ? { background: "var(--iab-navy)" }
-                      : undefined
-                }
-              >
-                {step.reached && !step.current ? (
-                  <CheckCircle2 className="h-4 w-4" />
-                ) : step.current ? (
-                  <PackageSearch className="h-4 w-4" />
-                ) : (
-                  <Circle className="h-4 w-4" />
-                )}
-              </div>
-              {i < steps.length - 1 && (
-                <span
-                  className={cn(
-                    "absolute left-1/2 top-9 -translate-x-1/2 w-px h-6",
-                    step.reached
-                      ? "bg-[color:var(--iab-navy)]/30"
-                      : "bg-[color:var(--iab-navy)]/10",
-                  )}
-                />
-              )}
-            </div>
+                style={{
+                  background: step.reached
+                    ? "color-mix(in oklab, #0B1B3B 45%, transparent)"
+                    : "var(--iab-platinum)",
+                }}
+              />
+            )}
+            {/* Dot */}
             <div
               className={cn(
-                "flex-1 pt-1",
-                !step.reached && "opacity-50",
+                "relative mt-1.5 h-3 w-3 rounded-full shrink-0 transition-all",
+                step.current && !reduce && "iab-pulse-ring",
               )}
-            >
-              <Bi en={step.en} ar={step.ar} size="sm" />
+              style={{
+                background: step.reached
+                  ? delivered && i === steps.length - 1
+                    ? "var(--iab-emerald)"
+                    : "var(--iab-navy)"
+                  : "transparent",
+                border: step.reached
+                  ? "none"
+                  : "1.5px solid var(--iab-platinum)",
+              }}
+            />
+            <div className={cn("flex-1", !step.reached && "opacity-55")}>
+              <p
+                className="text-[color:var(--iab-navy)] leading-tight"
+                style={{
+                  fontFamily: "var(--font-heading)",
+                  fontSize: "0.95rem",
+                  fontWeight: step.current ? 600 : 500,
+                }}
+              >
+                {step.en}
+              </p>
+              <p
+                className="text-[color:var(--iab-navy)]/85 leading-tight mt-0.5"
+                dir="rtl"
+                lang="ar"
+                style={{
+                  fontFamily: "var(--font-arabic-display)",
+                  fontSize: "0.95rem",
+                  fontWeight: 500,
+                }}
+              >
+                {step.ar}
+              </p>
             </div>
           </li>
         ))}
