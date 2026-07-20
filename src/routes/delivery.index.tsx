@@ -724,12 +724,13 @@ function BulkNotifyDialog({
   const preview = useMemo(() => {
     const sample = deliveries[0];
     if (!sample) return null;
+    const token = ensurePassengerToken(sample.deliveryId);
     return renderTemplate(status, channel, "en", {
       passengerName: sample.passengerName,
       pirNumber: sample.pirNumber,
       driverName: sample.driver,
       otp: sample.otpCode,
-      trackingUrl: `/passenger/${sample.deliveryId.toLowerCase()}`,
+      trackingUrl: token ? `/passenger/${token}` : undefined,
     });
   }, [deliveries, status, channel]);
 

@@ -624,7 +624,7 @@ function defaults(): State {
     deliveryId: d.deliveryId,
     bagId: d.bagId,
     status: fromDeliveryStatus(d.status),
-    token: `${d.deliveryId.toLowerCase().replace(/[^a-z0-9]/g, "")}-demo${d.deliveryId.slice(-4)}`,
+    token: generateTrackingToken(d.deliveryId),
     history: [
       {
         status: fromDeliveryStatus(d.status),
@@ -697,6 +697,9 @@ function applyRemote(payload: unknown, _version: number) {
 
 function ensureBootstrap() {
   if (bootstrapped || typeof window === "undefined") return;
+  // Public token portals use a server-side, token-scoped projection. Never
+  // hydrate the airport-wide staff snapshot into a passenger's browser.
+  if (window.location.pathname.startsWith("/passenger/")) return;
   bootstrapped = true;
   // Prime state to defaults so seed data is visible before auth completes;
   // once signed in, remote state (if any) replaces it.

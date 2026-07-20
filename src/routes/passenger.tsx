@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import {
@@ -11,6 +12,7 @@ import {
   type Delivery,
   type BaggageCase,
 } from "@/lib/store";
+import { mutatePassengerView } from "@/lib/passenger.functions";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
@@ -54,7 +56,15 @@ type Screen = "track" | "celebrating" | "feedback" | "thanks";
 
 export function PassengerPortal({
   deliveryIdOverride,
-}: { deliveryIdOverride?: string } = {}) {
+  token,
+  resolvedDelivery,
+  resolvedCase,
+}: {
+  deliveryIdOverride?: string;
+  token?: string;
+  resolvedDelivery?: Delivery;
+  resolvedCase?: BaggageCase;
+} = {}) {
   const deliveries = useStore((s) => s.deliveries);
   const cases = useStore((s) => s.cases);
 
@@ -70,15 +80,16 @@ export function PassengerPortal({
     [deliveries],
   );
 
-  const [selectedId, setSelectedId] = useState(
+  const selectedId =
     deliveryIdOverride ??
-      active.find((d) => d.status === "Out For Delivery")?.deliveryId ??
-      active[0]?.deliveryId ??
-      "",
-  );
+    active.find((d) => d.status === "Out For Delivery")?.deliveryId ??
+    active[0]?.deliveryId ??
+    "";
 
-  const delivery = active.find((d) => d.deliveryId === selectedId) ?? active[0];
-  const kase = delivery ? cases.find((c) => c.bagId === delivery.bagId) : undefined;
+  // A token-scoped portal must render only the server-resolved pair. It must
+  // never substitute the first staff delivery when a record is unavailable.
+  const delivery = resolvedDelivery ?? active.find((d) => d.deliveryId === selectedId);
+  const kase = resolvedCase ?? (delivery ? cases.find((c) => c.bagId === delivery.bagId) : undefined);
 
   const [screen, setScreen] = useState<Screen>(
     delivery?.status === "Delivered" ? "feedback" : "track",
@@ -117,6 +128,7 @@ export function PassengerPortal({
           <TrackScreen
             delivery={delivery}
             kase={kase}
+            token={token}
             onConfirmed={() => setScreen("celebrating")}
           />
         )}
@@ -131,6 +143,7 @@ export function PassengerPortal({
         {screen === "feedback" && (
           <FeedbackScreen
             delivery={delivery}
+            token={token}
             onSubmit={() => setScreen("thanks")}
           />
         )}
@@ -173,10 +186,12 @@ function BrandHeader() {
 function TrackScreen({
   delivery,
   kase,
+  token,
   onConfirmed,
 }: {
   delivery: Delivery;
   kase: BaggageCase;
+  token?: string;
   onConfirmed: () => void;
 }) {
   const [tags, setTags] = useState(false);
@@ -184,15 +199,19 @@ function TrackScreen({
   const [otpAfter, setOtpAfter] = useState(false);
   const [noBribe, setNoBribe] = useState(true);
   const [reported, setReported] = useState(false);
+  const mutatePassenger = useServerFn(mutatePassengerView);
 
   const allChecked = tags && sealed && otpAfter && noBribe;
   const stage = getDeliveryStage(delivery);
   void stage;
 
-  function handleNoBribeChange(next: boolean) {
+  async function handleNoBribeChange(next: boolean) {
     setNoBribe(next);
     if (!next && !reported) {
-      addQualityIncident({
+      if (token) {
+        await mutatePassenger({ data: { token, action: "report-misconduct" } });
+      } else {
+        addQualityIncident({
         bagId: delivery.bagId,
         deliveryId: delivery.deliveryId,
         passengerName: delivery.passengerName,
@@ -202,8 +221,8 @@ function TrackScreen({
         status: "Open",
         description:
           "Passenger indicated an employee requested money, tips, gifts or unofficial payment during delivery. Auto-flagged from Passenger Portal.",
-      });
-      addCallLog({
+        });
+        addCallLog({
         passengerName: delivery.passengerName,
         phone: delivery.mobile,
         pirNumber: delivery.pirNumber,
@@ -213,7 +232,8 @@ function TrackScreen({
         durationSec: 0,
         notes:
           "HIGH PRIORITY — Possible misconduct reported via Passenger Portal. Escalated to Contact Center Supervisor.",
-      });
+        });
+      }
       setReported(true);
       toast.error(
         "High priority incident created. Contact Center Supervisor notified.",
@@ -221,11 +241,15 @@ function TrackScreen({
     }
   }
 
-  function confirm() {
-    updateDelivery(delivery.deliveryId, {
-      status: "Delivered",
-      otpStatus: "Verified",
-    });
+  async function confirm() {
+    if (token) {
+      await mutatePassenger({ data: { token, action: "confirm-delivery" } });
+    } else {
+      updateDelivery(delivery.deliveryId, {
+        status: "Delivered",
+        otpStatus: "Verified",
+      });
+    }
     onConfirmed();
   }
 
@@ -1173,9 +1197,11 @@ function DeliveredCelebration({
 
 function FeedbackScreen({
   delivery,
+  token,
   onSubmit,
 }: {
   delivery: Delivery;
+  token?: string;
   onSubmit: () => void;
 }) {
   const [overall, setOverall] = useState(5);
@@ -1184,19 +1210,33 @@ function FeedbackScreen({
   const [safe, setSafe] = useState<"yes" | "no">("yes");
   const [recommend, setRecommend] = useState<"yes" | "no">("yes");
   const [comments, setComments] = useState("");
+  const mutatePassenger = useServerFn(mutatePassengerView);
 
-  function submit(e: React.FormEvent) {
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
     const avg = Math.round((overall + prof + time) / 3);
-    addFeedback({
-      bagId: delivery.bagId,
-      passengerName: delivery.passengerName,
-      resolved: safe === "yes",
-      rating: avg,
-      comments:
-        `Overall ${overall}★ · Professionalism ${prof}★ · Time ${time}★ · Safe: ${safe} · Recommend: ${recommend}` +
-        (comments ? ` — ${comments}` : ""),
-    });
+    const feedbackComments =
+      `Overall ${overall}★ · Professionalism ${prof}★ · Time ${time}★ · Safe: ${safe} · Recommend: ${recommend}` +
+      (comments ? ` — ${comments}` : "");
+    if (token) {
+      await mutatePassenger({
+        data: {
+          token,
+          action: "submit-feedback",
+          resolved: safe === "yes",
+          rating: avg,
+          comments: feedbackComments,
+        },
+      });
+    } else {
+      addFeedback({
+        bagId: delivery.bagId,
+        passengerName: delivery.passengerName,
+        resolved: safe === "yes",
+        rating: avg,
+        comments: feedbackComments,
+      });
+    }
     onSubmit();
   }
 

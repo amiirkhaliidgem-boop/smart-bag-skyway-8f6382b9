@@ -8,6 +8,7 @@ import {
   addCaseDocument,
   removeCaseDocument,
   createTestNotification,
+  ensurePassengerToken,
   type BaggageCase,
   type CaseDocument,
   type NotificationEvent,
@@ -153,7 +154,8 @@ function CaseDetailsPage() {
   }
 
   // ---- Quick Actions ----
-  const trackingUrl = wf ? `${window.location.origin}/passenger/${wf.token}` : null;
+  const token = linkedDelivery ? ensurePassengerToken(linkedDelivery.deliveryId) : wf?.token;
+  const trackingUrl = token ? `${window.location.origin}/passenger/${token}` : null;
 
   function copyTrackingLink() {
     if (!trackingUrl) {
