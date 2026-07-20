@@ -150,32 +150,15 @@ function BrandHeader() {
         <img
           src={iabLogo.url}
           alt="IAB"
-          className="h-12 w-12 object-contain shrink-0"
-          style={{ height: 48, width: 48 }}
+          className="h-[60px] w-[60px] object-contain shrink-0"
+          style={{ height: 60, width: 60 }}
         />
         <div className="min-w-0 flex-1">
           <p
-            className="text-[14px] sm:text-[15px] font-medium leading-tight text-[color:var(--iab-navy)]"
+            className="text-[17px] sm:text-[18px] font-medium leading-tight text-[color:var(--iab-navy)]"
             style={{ fontFamily: "var(--font-heading)" }}
           >
             IAB Baggage Delivery Service
-          </p>
-          <p
-            className="mt-1 text-[9.5px] uppercase leading-none text-[color:var(--iab-navy)]/60 font-medium"
-            style={{
-              fontFamily: "var(--font-heading)",
-              letterSpacing: "0.28em",
-            }}
-          >
-            Official Airport Service
-          </p>
-          <p
-            className="text-[11px] mt-1 leading-none text-[color:var(--iab-navy)]/60"
-            dir="rtl"
-            lang="ar"
-            style={{ fontFamily: "var(--font-arabic-display)" }}
-          >
-            خدمة رسمية معتمدة بالمطار
           </p>
         </div>
       </div>
@@ -477,10 +460,11 @@ function StatusHero({ delivery, kase }: { delivery: Delivery; kase: BaggageCase 
       className="iab-grain relative overflow-hidden rounded-[32px] px-6 py-8 sm:px-10 sm:py-10 text-white"
       style={{
         background:
-          "linear-gradient(180deg, #0B2247 0%, #081C3A 55%, #050F24 100%)",
+          "linear-gradient(180deg, #0E2C5C 0%, #0A2248 55%, #06142E 100%)",
         boxShadow:
-          "0 40px 100px -40px rgba(8,28,58,0.75), 0 20px 40px -25px rgba(8,28,58,0.35)",
+          "0 40px 100px -40px rgba(8,28,58,0.70), 0 20px 40px -25px rgba(8,28,58,0.30)",
       }}
+
     >
       {/* Gold hairline top border */}
       <div
@@ -851,10 +835,11 @@ function OtpHeroCard({
       className="iab-grain relative overflow-hidden rounded-[32px] px-6 py-8 sm:px-10 sm:py-10 text-white"
       style={{
         background:
-          "linear-gradient(180deg, #0B2247 0%, #081C3A 55%, #050F24 100%)",
+          "linear-gradient(180deg, #0E2C5C 0%, #0A2248 55%, #06142E 100%)",
         boxShadow:
-          "0 40px 100px -40px rgba(8,28,58,0.75), 0 20px 40px -25px rgba(8,28,58,0.35)",
+          "0 40px 100px -40px rgba(8,28,58,0.70), 0 20px 40px -25px rgba(8,28,58,0.30)",
       }}
+
     >
       {/* Gold hairline top border */}
       <div
