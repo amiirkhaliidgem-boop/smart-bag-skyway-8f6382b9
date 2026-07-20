@@ -1,6 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { getPassengerViewByToken } from "@/lib/passenger.functions";
 import { useStore } from "@/lib/store";
+import { isHydrated, onHydrated } from "@/lib/persistence";
+import iabLogo from "@/assets/iab-logo.jpeg.asset.json";
 import { PassengerPortal } from "./passenger.index";
 
 export const Route = createFileRoute("/passenger/$token")({
@@ -34,14 +37,50 @@ function TokenPortal() {
   const delivery = view.delivery ?? storeDelivery;
   const kase = view.case ?? storeCase;
 
-  if (!workflow || !delivery || !kase) return <TokenNotFound />;
+  const resolved = Boolean(workflow && delivery && kase);
+
+  const [hydrated, setHydrated] = useState(() =>
+    typeof window === "undefined" ? false : isHydrated(),
+  );
+  useEffect(() => {
+    if (hydrated) return;
+    return onHydrated(() => setHydrated(true));
+  }, [hydrated]);
+
+  if (resolved) {
+    return (
+      <PassengerPortal
+        deliveryIdOverride={workflow!.deliveryId}
+        token={token}
+        resolvedDelivery={delivery!}
+        resolvedCase={kase!}
+      />
+    );
+  }
+
+  // Loader has run (view is present). If the server resolved it, `resolved`
+  // would be true above. Otherwise we need the client store to finish
+  // hydrating before we can declare the token invalid.
+  if (!hydrated) return <TokenLoading />;
+  return <TokenNotFound />;
+}
+
+function TokenLoading() {
   return (
-    <PassengerPortal
-      deliveryIdOverride={workflow.deliveryId}
-      token={token}
-      resolvedDelivery={delivery}
-      resolvedCase={kase}
-    />
+    <div className="min-h-[60vh] grid place-items-center px-6 text-center">
+      <div className="flex flex-col items-center gap-4">
+        <img
+          src={iabLogo.url}
+          alt="IAB"
+          className="h-12 w-auto opacity-90"
+        />
+        <div
+          aria-hidden
+          className="h-6 w-6 rounded-full border-2 border-neutral-200 border-t-neutral-900 animate-spin"
+        />
+        <p className="text-sm text-muted-foreground">Loading your delivery…</p>
+      </div>
+    </div>
   );
 }
 
