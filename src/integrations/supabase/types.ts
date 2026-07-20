@@ -38,6 +38,105 @@ export type Database = {
         }
         Relationships: []
       }
+      delivery_public_view: {
+        Row: {
+          airline: string | null
+          bag_id: string | null
+          bag_tag: string | null
+          delivery_id: string
+          flight_date: string | null
+          flight_no: string | null
+          otp_code: string | null
+          passenger_name: string | null
+          stage: string | null
+          status: string | null
+          updated_at: string
+        }
+        Insert: {
+          airline?: string | null
+          bag_id?: string | null
+          bag_tag?: string | null
+          delivery_id: string
+          flight_date?: string | null
+          flight_no?: string | null
+          otp_code?: string | null
+          passenger_name?: string | null
+          stage?: string | null
+          status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          airline?: string | null
+          bag_id?: string | null
+          bag_tag?: string | null
+          delivery_id?: string
+          flight_date?: string | null
+          flight_no?: string | null
+          otp_code?: string | null
+          passenger_name?: string | null
+          stage?: string | null
+          status?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      passenger_feedback: {
+        Row: {
+          comments: string
+          created_at: string
+          delivery_id: string
+          id: string
+          rating: number
+          resolved: boolean
+          token: string
+        }
+        Insert: {
+          comments?: string
+          created_at?: string
+          delivery_id: string
+          id?: string
+          rating: number
+          resolved?: boolean
+          token: string
+        }
+        Update: {
+          comments?: string
+          created_at?: string
+          delivery_id?: string
+          id?: string
+          rating?: number
+          resolved?: boolean
+          token?: string
+        }
+        Relationships: []
+      }
+      passenger_links: {
+        Row: {
+          channel: string
+          delivery_id: string
+          expires_at: string | null
+          issued_at: string
+          revoked_at: string | null
+          token: string
+        }
+        Insert: {
+          channel?: string
+          delivery_id: string
+          expires_at?: string | null
+          issued_at?: string
+          revoked_at?: string | null
+          token: string
+        }
+        Update: {
+          channel?: string
+          delivery_id?: string
+          expires_at?: string | null
+          issued_at?: string
+          revoked_at?: string | null
+          token?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -64,10 +163,32 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      _passenger_apply_action: {
+        Args: { p_action: string; p_token: string }
+        Returns: boolean
+      }
+      get_passenger_view: { Args: { p_token: string }; Returns: Json }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
+        }
+        Returns: boolean
+      }
+      passenger_confirm_delivery: {
+        Args: { p_token: string }
+        Returns: boolean
+      }
+      passenger_report_misconduct: {
+        Args: { p_token: string }
+        Returns: boolean
+      }
+      passenger_submit_feedback: {
+        Args: {
+          p_comments: string
+          p_rating: number
+          p_resolved: boolean
+          p_token: string
         }
         Returns: boolean
       }
