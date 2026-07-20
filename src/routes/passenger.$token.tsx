@@ -63,14 +63,14 @@ function synthesizeFromView(view: PassengerView): {
     driver: "—",
     priority: "Normal",
     status,
-    stage: view.stage,
     otpCode: view.otpCode ?? "",
     otpStatus: view.otpCode ? "Sent" : "Pending",
-  };
+  } as unknown as Delivery;
   const kase: BaggageCase = {
     bagId: "",
     pirNumber: "",
     passengerName: view.passengerName,
+    email: "",
     contact: "",
     flightNumber: view.flightNo ?? "",
     arrivalDate: view.flightDate ?? "",
@@ -78,12 +78,12 @@ function synthesizeFromView(view: PassengerView): {
     priority: "Normal",
     status: statusToCaseStatus(view.status),
     bagTagNumber: view.bagTag ?? "",
+    storage: null,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-    lfStatus: (view.stage as never) ?? undefined,
     flight: view.airline ? { airline: view.airline } : undefined,
     baggage: view.bagTag ? { bagTags: [view.bagTag] } : undefined,
-  } as BaggageCase;
+  } as unknown as BaggageCase;
   return { delivery, kase };
 }
 
