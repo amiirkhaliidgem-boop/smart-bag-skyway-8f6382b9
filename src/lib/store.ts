@@ -774,6 +774,9 @@ function ensureWorkflow(deliveryId: string): WorkflowRecord {
     ],
   };
   state = { ...state, workflow: [...state.workflow, rec] };
+  // Persist newly bootstrapped workflow (incl. passenger tracking token) to
+  // Supabase via the same push path used by every other workflow update.
+  emit();
   return rec;
 }
 
