@@ -1,27 +1,37 @@
-Scope: `src/routes/passenger.tsx` only. No workflow, typography, color palette, spacing, or Status Card layout changes.
+Final visual refinement for the Passenger Portal only.
 
-### 1. Header — logo on bare white background
-- In `BrandHeader`, remove the rounded ivory container (`rounded-xl bg-[color:var(--iab-ivory-soft)] ring-1 ...`) that currently wraps the `<img>` logo.
-- Render the `<img>` logo directly against the white header background, with no card, border, shadow, or separate container.
-- Keep the logo dimensions at 48×48 and the existing `object-contain` treatment.
-- Preserve the text block exactly as-is:
-  - "IAB Baggage Delivery Service"
-  - "Official Airport Service"
-  - "خدمة رسمية معتمدة بالمطار"
+Scope
+- File: `src/routes/passenger.tsx`
+- No layout, typography, animation, icon, or workflow changes.
+- Only white-card surface treatment and color-system consistency.
 
-### 2. Welcome Card — add a single "Welcome" greeting
-- Above the existing passenger name (`Hassan El-Shenawy`), insert a single "Welcome" line using the same Passenger Portal typography (`var(--font-passenger-display)`).
-- Use normal font weight, no italics.
-- Do not duplicate the passenger name; the name remains exactly once below "Welcome".
-- Leave the message copy, Flight/PIR/Bag Tag meta strip, spacing, colors, card background, and animation unchanged.
+Changes
+1. Card color system
+   - Welcome Card: background -> pure white (`#FFFFFF`).
+   - Timeline Card (`SimpleTimeline`): background -> pure white (`#FFFFFF`).
+   - Contact Cards: keep white; unify with the same glass treatment.
+   - Current Status Card (`StatusHero`) and OTP Card (`OtpHeroCard`): keep existing navy gradient; no color changes.
 
-### 3. Current Status Card — remove decorative dot pattern
-- Remove the dot-pattern overlay in `StatusHero` (the `radial-gradient(circle at 1px 1px, rgba(255,255,255,0.35) 1px, transparent 0)` block with `backgroundSize: "22px 22px"` and `maskImage`).
-- Keep the navy gradient background exactly as-is (`linear-gradient(180deg, #0B2247 0%, #081C3A 55%, #050F24 100%)`).
-- Keep the gold hairline top border, the soft light-wash radial gradient (already identical to the OTP card), the rounded card shape, the suitcase animation, and all typography/layout.
-- Result: the Status Card and OTP Card share the same clean, solid navy treatment.
+2. iPhone glass treatment for every white card
+   Apply a subtle, consistent glass style to Welcome, Timeline, and Contact cards:
+   - soft white background
+   - very light border (navy-tinted at very low opacity)
+   - gentle `backdrop-blur`
+   - soft layered shadow
+   - premium glossy reflection via a subtle top/left radial light wash
+   - smooth rounded corners (preserve existing radii)
+   No glassmorphism exaggeration; effect stays minimal and premium.
 
-### Verification
-- Read back the edited JSX to confirm the logo container is removed, the Welcome greeting is inserted without duplicating the name, and the dot-pattern block is deleted while tag balance remains intact.
-- Run project typecheck.
-- No other components, styles, business logic, or routes touched.
+3. Consistency
+   - White cards: Welcome, Timeline, Contact.
+   - Navy cards: Current Status, OTP Verification.
+   - All cards share the same rounded-corner language, border weight, and shadow family so they feel like one Apple-inspired product.
+
+4. Implementation approach
+   - Introduce a scoped helper class/inline style pattern inside `src/routes/passenger.tsx` (or a lightweight CSS utility in `src/styles.css`) named e.g. `iab-white-glass` that composes the above properties.
+   - Apply it to `WelcomeCard`, `SimpleTimeline`, and the `ContactCard` tiles.
+   - Remove/adjust any existing ivory/ivory-soft backgrounds or conflicting shadows on those three components.
+
+5. Verification
+   - Run TypeScript typecheck.
+   - Capture preview screenshots of the Passenger Portal to confirm Welcome, Timeline, and Contact cards read as white glass while Status and OTP cards remain navy.

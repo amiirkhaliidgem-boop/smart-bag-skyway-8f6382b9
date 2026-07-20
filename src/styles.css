@@ -213,6 +213,17 @@
   border: 1px solid color-mix(in oklab, #1B2A5B 10%, transparent);
   box-shadow: var(--shadow-iab-glass);
 }
+.iab-white-glass {
+  background:
+    radial-gradient(120% 80% at 0% 0%, rgba(255, 255, 255, 0.55), transparent 50%),
+    rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(24px) saturate(160%);
+  border: 1px solid color-mix(in oklab, #0B1B3B 6%, transparent);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.65) inset,
+    0 8px 32px -12px color-mix(in oklab, #0B1B3B 16%, transparent),
+    0 2px 8px -4px color-mix(in oklab, #0B1B3B 6%, transparent);
+}
 .iab-glass-dark {
   background: color-mix(in oklab, #0F1830 82%, transparent);
   backdrop-filter: saturate(140%) blur(18px);
