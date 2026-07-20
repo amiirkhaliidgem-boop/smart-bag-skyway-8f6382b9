@@ -17,7 +17,6 @@ import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as RouteTrackingRouteImport } from './routes/route-tracking'
 import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as QrScanRouteImport } from './routes/qr-scan'
-import { Route as PassengerRouteImport } from './routes/passenger'
 import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as LostFoundRouteImport } from './routes/lost-found'
 import { Route as IntegrationsRouteImport } from './routes/integrations'
@@ -31,6 +30,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ApiStatusRouteImport } from './routes/api-status'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as PassengerIndexRouteImport } from './routes/passenger.index'
 import { Route as LostFoundIndexRouteImport } from './routes/lost-found.index'
 import { Route as DeliveryIndexRouteImport } from './routes/delivery.index'
 import { Route as PassengerTokenRouteImport } from './routes/passenger.$token'
@@ -75,11 +75,6 @@ const ReportsRoute = ReportsRouteImport.update({
 const QrScanRoute = QrScanRouteImport.update({
   id: '/qr-scan',
   path: '/qr-scan',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PassengerRoute = PassengerRouteImport.update({
-  id: '/passenger',
-  path: '/passenger',
   getParentRoute: () => rootRouteImport,
 } as any)
 const NotificationsRoute = NotificationsRouteImport.update({
@@ -147,6 +142,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PassengerIndexRoute = PassengerIndexRouteImport.update({
+  id: '/passenger/',
+  path: '/passenger/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LostFoundIndexRoute = LostFoundIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -158,9 +158,9 @@ const DeliveryIndexRoute = DeliveryIndexRouteImport.update({
   getParentRoute: () => DeliveryRoute,
 } as any)
 const PassengerTokenRoute = PassengerTokenRouteImport.update({
-  id: '/$token',
-  path: '/$token',
-  getParentRoute: () => PassengerRoute,
+  id: '/passenger/$token',
+  path: '/passenger/$token',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const LostFoundBagIdRoute = LostFoundBagIdRouteImport.update({
   id: '/$bagId',
@@ -187,7 +187,6 @@ export interface FileRoutesByFullPath {
   '/integrations': typeof IntegrationsRoute
   '/lost-found': typeof LostFoundRouteWithChildren
   '/notifications': typeof NotificationsRoute
-  '/passenger': typeof PassengerRouteWithChildren
   '/qr-scan': typeof QrScanRoute
   '/reports': typeof ReportsRoute
   '/route-tracking': typeof RouteTrackingRoute
@@ -201,6 +200,7 @@ export interface FileRoutesByFullPath {
   '/passenger/$token': typeof PassengerTokenRoute
   '/delivery/': typeof DeliveryIndexRoute
   '/lost-found/': typeof LostFoundIndexRoute
+  '/passenger/': typeof PassengerIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -214,7 +214,6 @@ export interface FileRoutesByTo {
   '/feedback': typeof FeedbackRoute
   '/integrations': typeof IntegrationsRoute
   '/notifications': typeof NotificationsRoute
-  '/passenger': typeof PassengerRouteWithChildren
   '/qr-scan': typeof QrScanRoute
   '/reports': typeof ReportsRoute
   '/route-tracking': typeof RouteTrackingRoute
@@ -228,6 +227,7 @@ export interface FileRoutesByTo {
   '/passenger/$token': typeof PassengerTokenRoute
   '/delivery': typeof DeliveryIndexRoute
   '/lost-found': typeof LostFoundIndexRoute
+  '/passenger': typeof PassengerIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -244,7 +244,6 @@ export interface FileRoutesById {
   '/integrations': typeof IntegrationsRoute
   '/lost-found': typeof LostFoundRouteWithChildren
   '/notifications': typeof NotificationsRoute
-  '/passenger': typeof PassengerRouteWithChildren
   '/qr-scan': typeof QrScanRoute
   '/reports': typeof ReportsRoute
   '/route-tracking': typeof RouteTrackingRoute
@@ -258,6 +257,7 @@ export interface FileRoutesById {
   '/passenger/$token': typeof PassengerTokenRoute
   '/delivery/': typeof DeliveryIndexRoute
   '/lost-found/': typeof LostFoundIndexRoute
+  '/passenger/': typeof PassengerIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -275,7 +275,6 @@ export interface FileRouteTypes {
     | '/integrations'
     | '/lost-found'
     | '/notifications'
-    | '/passenger'
     | '/qr-scan'
     | '/reports'
     | '/route-tracking'
@@ -289,6 +288,7 @@ export interface FileRouteTypes {
     | '/passenger/$token'
     | '/delivery/'
     | '/lost-found/'
+    | '/passenger/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -302,7 +302,6 @@ export interface FileRouteTypes {
     | '/feedback'
     | '/integrations'
     | '/notifications'
-    | '/passenger'
     | '/qr-scan'
     | '/reports'
     | '/route-tracking'
@@ -316,6 +315,7 @@ export interface FileRouteTypes {
     | '/passenger/$token'
     | '/delivery'
     | '/lost-found'
+    | '/passenger'
   id:
     | '__root__'
     | '/'
@@ -331,7 +331,6 @@ export interface FileRouteTypes {
     | '/integrations'
     | '/lost-found'
     | '/notifications'
-    | '/passenger'
     | '/qr-scan'
     | '/reports'
     | '/route-tracking'
@@ -345,6 +344,7 @@ export interface FileRouteTypes {
     | '/passenger/$token'
     | '/delivery/'
     | '/lost-found/'
+    | '/passenger/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -361,7 +361,6 @@ export interface RootRouteChildren {
   IntegrationsRoute: typeof IntegrationsRoute
   LostFoundRoute: typeof LostFoundRouteWithChildren
   NotificationsRoute: typeof NotificationsRoute
-  PassengerRoute: typeof PassengerRouteWithChildren
   QrScanRoute: typeof QrScanRoute
   ReportsRoute: typeof ReportsRoute
   RouteTrackingRoute: typeof RouteTrackingRoute
@@ -370,6 +369,8 @@ export interface RootRouteChildren {
   TimelineRoute: typeof TimelineRoute
   TrackingRoute: typeof TrackingRoute
   WorkflowMonitorRoute: typeof WorkflowMonitorRoute
+  PassengerTokenRoute: typeof PassengerTokenRoute
+  PassengerIndexRoute: typeof PassengerIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -428,13 +429,6 @@ declare module '@tanstack/react-router' {
       path: '/qr-scan'
       fullPath: '/qr-scan'
       preLoaderRoute: typeof QrScanRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/passenger': {
-      id: '/passenger'
-      path: '/passenger'
-      fullPath: '/passenger'
-      preLoaderRoute: typeof PassengerRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/notifications': {
@@ -528,6 +522,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/passenger/': {
+      id: '/passenger/'
+      path: '/passenger'
+      fullPath: '/passenger/'
+      preLoaderRoute: typeof PassengerIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/lost-found/': {
       id: '/lost-found/'
       path: '/'
@@ -544,10 +545,10 @@ declare module '@tanstack/react-router' {
     }
     '/passenger/$token': {
       id: '/passenger/$token'
-      path: '/$token'
+      path: '/passenger/$token'
       fullPath: '/passenger/$token'
       preLoaderRoute: typeof PassengerTokenRouteImport
-      parentRoute: typeof PassengerRoute
+      parentRoute: typeof rootRouteImport
     }
     '/lost-found/$bagId': {
       id: '/lost-found/$bagId'
@@ -594,18 +595,6 @@ const LostFoundRouteWithChildren = LostFoundRoute._addFileChildren(
   LostFoundRouteChildren,
 )
 
-interface PassengerRouteChildren {
-  PassengerTokenRoute: typeof PassengerTokenRoute
-}
-
-const PassengerRouteChildren: PassengerRouteChildren = {
-  PassengerTokenRoute: PassengerTokenRoute,
-}
-
-const PassengerRouteWithChildren = PassengerRoute._addFileChildren(
-  PassengerRouteChildren,
-)
-
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
@@ -620,7 +609,6 @@ const rootRouteChildren: RootRouteChildren = {
   IntegrationsRoute: IntegrationsRoute,
   LostFoundRoute: LostFoundRouteWithChildren,
   NotificationsRoute: NotificationsRoute,
-  PassengerRoute: PassengerRouteWithChildren,
   QrScanRoute: QrScanRoute,
   ReportsRoute: ReportsRoute,
   RouteTrackingRoute: RouteTrackingRoute,
@@ -629,6 +617,8 @@ const rootRouteChildren: RootRouteChildren = {
   TimelineRoute: TimelineRoute,
   TrackingRoute: TrackingRoute,
   WorkflowMonitorRoute: WorkflowMonitorRoute,
+  PassengerTokenRoute: PassengerTokenRoute,
+  PassengerIndexRoute: PassengerIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

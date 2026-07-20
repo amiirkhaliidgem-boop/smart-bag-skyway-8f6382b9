@@ -38,7 +38,7 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-export const Route = createFileRoute("/passenger")({
+export const Route = createFileRoute("/passenger/")({
   head: () => ({
     meta: [
       { title: "Passenger Portal — IAB Smart Baggage Delivery" },
