@@ -14,6 +14,27 @@ let lastPayload: string | null = null;
 let suppressNext = false;
 let channel: ReturnType<typeof supabase.channel> | null = null;
 
+let hydrated = false;
+const hydrationListeners = new Set<() => void>();
+function markHydrated() {
+  if (hydrated) return;
+  hydrated = true;
+  hydrationListeners.forEach((fn) => {
+    try { fn(); } catch { /* noop */ }
+  });
+  hydrationListeners.clear();
+}
+
+export function isHydrated(): boolean {
+  return hydrated;
+}
+
+export function onHydrated(fn: () => void): () => void {
+  if (hydrated) { fn(); return () => {}; }
+  hydrationListeners.add(fn);
+  return () => hydrationListeners.delete(fn);
+}
+
 export function markRemoteApply() {
   // Prevent the emit that follows a remote apply from echoing back.
   suppressNext = true;
@@ -38,6 +59,7 @@ export async function initPersistence(
   });
 
   if (session) await bootstrap(applyRemote);
+  markHydrated();
 }
 
 async function bootstrap(
