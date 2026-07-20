@@ -955,7 +955,7 @@ function OtpHeroCard({
             "mt-6 w-full h-14 rounded-2xl font-semibold text-base transition-all",
             "flex items-center justify-center gap-2 whitespace-nowrap text-center",
             allChecked
-              ? "bg-white text-[color:var(--iab-navy)] hover:brightness-105 active:scale-[0.99] shadow-[0_18px_40px_-12px_rgba(255,255,255,0.45)]"
+              ? "bg-white text-[color:var(--iab-navy)] active:scale-[0.99]"
               : "bg-white/10 text-white/50 cursor-not-allowed",
           )}
         >
@@ -1231,7 +1231,7 @@ function FeedbackScreen({
         className="flex items-center gap-2 text-[10px] uppercase tracking-[0.28em] text-white/70 font-medium"
         style={{ fontFamily: "var(--font-heading)" }}
       >
-        Feedback · تقييم
+        Feedback
       </div>
       <h2
         className="mt-3 text-2xl sm:text-3xl text-white leading-tight"
@@ -1283,7 +1283,7 @@ function FeedbackScreen({
         <Button
           type="submit"
           size="lg"
-          className="w-full h-14 rounded-2xl text-base bg-white text-[color:var(--iab-navy)] hover:brightness-105 active:scale-[0.99] shadow-[0_18px_40px_-12px_rgba(255,255,255,0.35)]"
+          className="w-full h-14 rounded-2xl text-base bg-white text-[color:var(--iab-navy)] active:scale-[0.99]"
         >
           Submit Feedback · إرسال التقييم
         </Button>
@@ -1330,7 +1330,7 @@ function RatingRow({
               className={cn(
                 "h-6 w-6 sm:h-8 sm:w-8 transition-all duration-200",
                 n <= value
-                  ? "fill-white text-white drop-shadow-[0_4px_10px_rgba(255,255,255,0.25)]"
+                  ? "fill-white text-white"
                   : "text-white/30",
               )}
             />
