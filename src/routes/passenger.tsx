@@ -1201,25 +1201,46 @@ function FeedbackScreen({
   }
 
   return (
-    <div className="iab-glass rounded-3xl p-6 sm:p-8 iab-rise">
-      <div className="flex items-center gap-3">
-        <div className="h-11 w-11 rounded-2xl bg-white grid place-items-center overflow-hidden ring-1 ring-black/5">
-          <img src={iabLogo.url} alt="IAB" className="h-10 w-10 object-contain" />
-        </div>
-        <div>
-          <p className="text-[10px] uppercase tracking-[0.22em] text-[color:var(--iab-navy)]/60 font-semibold">
-            Feedback · تقييم
-          </p>
-          <h2
-            className="text-2xl text-[color:var(--iab-navy)] leading-tight"
-            style={{ fontFamily: "var(--font-display)" }}
-          >
-            How was your delivery?
-          </h2>
-        </div>
+    <div
+      className="iab-grain relative overflow-hidden rounded-[32px] px-6 py-8 sm:px-10 sm:py-10 text-white iab-rise"
+      style={{
+        background:
+          "linear-gradient(180deg, #0E2C5C 0%, #0A2248 55%, #06142E 100%)",
+        boxShadow:
+          "0 20px 50px -30px rgba(8,28,58,0.45), 0 8px 20px -14px rgba(8,28,58,0.18)",
+      }}
+    >
+      {/* Gold hairline top border */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-8 top-0 h-px"
+        style={{
+          background:
+            "linear-gradient(90deg, transparent, color-mix(in oklab, #C9A84C 70%, transparent), transparent)",
+        }}
+      />
+      <div
+        className="pointer-events-none absolute inset-0 opacity-30"
+        style={{
+          background:
+            "radial-gradient(120% 60% at 0% 0%, rgba(255,255,255,0.14), transparent 55%)",
+        }}
+      />
+      <div className="relative">
+      <div
+        className="flex items-center gap-2 text-[10px] uppercase tracking-[0.28em] text-white/70 font-medium"
+        style={{ fontFamily: "var(--font-heading)" }}
+      >
+        Feedback · تقييم
       </div>
+      <h2
+        className="mt-3 text-2xl sm:text-3xl text-white leading-tight"
+        style={{ fontFamily: "var(--font-display)" }}
+      >
+        How was your delivery?
+      </h2>
       <p
-        className="mt-2 text-lg text-[color:var(--iab-navy)]/80"
+        className="mt-1 text-base sm:text-lg text-white/80"
         dir="rtl"
         lang="ar"
         style={{ fontFamily: "var(--font-arabic)" }}
@@ -1227,7 +1248,7 @@ function FeedbackScreen({
         كيف كانت تجربتك؟
       </p>
 
-      <form onSubmit={submit} className="mt-6 space-y-6">
+      <form onSubmit={submit} className="mt-6 space-y-5">
         <RatingRow label="Overall Service" ar="التقييم العام" value={overall} onChange={setOverall} />
         <RatingRow label="Delivery Professionalism" ar="احترافية التسليم" value={prof} onChange={setProf} />
         <RatingRow label="Delivery Time" ar="وقت التسليم" value={time} onChange={setTime} />
@@ -1246,14 +1267,14 @@ function FeedbackScreen({
         />
 
         <div>
-          <label className="text-sm font-medium text-[color:var(--iab-navy)]">
+          <label className="text-sm font-medium text-white">
             Comments · ملاحظات
           </label>
           <Textarea
             value={comments}
             onChange={(e) => setComments(e.target.value)}
             placeholder="Share anything you'd like the team to know…"
-            className="mt-2 rounded-2xl border-[color:var(--iab-mist)] bg-white/70 min-h-24"
+            className="mt-2 w-full rounded-2xl border-white/10 bg-white/[0.06] text-white placeholder:text-white/50 backdrop-blur min-h-24 focus-visible:ring-white/30"
             rows={4}
             maxLength={500}
           />
@@ -1262,15 +1283,12 @@ function FeedbackScreen({
         <Button
           type="submit"
           size="lg"
-          className="w-full h-14 rounded-2xl text-base"
-          style={{
-            background: "var(--gradient-iab-hero)",
-            boxShadow: "var(--shadow-iab-glass)",
-          }}
+          className="w-full h-14 rounded-2xl text-base bg-white text-[color:var(--iab-navy)] hover:brightness-105 active:scale-[0.99] shadow-[0_18px_40px_-12px_rgba(255,255,255,0.35)]"
         >
           Submit Feedback · إرسال التقييم
         </Button>
       </form>
+      </div>
     </div>
   );
 }
@@ -1287,11 +1305,11 @@ function RatingRow({
   onChange: (v: number) => void;
 }) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3">
-      <div>
-        <p className="text-sm font-medium text-[color:var(--iab-navy)]">{label}</p>
+    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
+      <div className="min-w-0">
+        <p className="text-sm font-medium text-white truncate">{label}</p>
         <p
-          className="text-sm text-[color:var(--iab-navy)]/70"
+          className="text-sm text-white/70 truncate"
           dir="rtl"
           lang="ar"
           style={{ fontFamily: "var(--font-arabic)" }}
@@ -1299,21 +1317,21 @@ function RatingRow({
           {ar}
         </p>
       </div>
-      <div className="flex items-center gap-0.5">
+      <div className="flex items-center gap-0.5 shrink-0">
         {[1, 2, 3, 4, 5].map((n) => (
           <button
             key={n}
             type="button"
             onClick={() => onChange(n)}
-            className="p-1.5 active:scale-90 transition-transform"
+            className="p-1 sm:p-1.5 active:scale-90 transition-transform"
             aria-label={`${n} star`}
           >
             <Star
               className={cn(
-                "h-8 w-8 transition-all duration-200",
+                "h-6 w-6 sm:h-8 sm:w-8 transition-all duration-200",
                 n <= value
-                  ? "fill-[color:var(--iab-navy)] text-[color:var(--iab-navy)] drop-shadow-[0_4px_10px_rgba(8,28,58,0.30)]"
-                  : "text-[color:var(--iab-navy)]/25",
+                  ? "fill-white text-white drop-shadow-[0_4px_10px_rgba(255,255,255,0.25)]"
+                  : "text-white/30",
               )}
             />
           </button>
@@ -1335,25 +1353,22 @@ function YesNoRow({
   onChange: (v: "yes" | "no") => void;
 }) {
   return (
-    <div className="flex items-center justify-between gap-3 flex-wrap">
-      <Bi en={en} ar={ar} size="sm" className="text-[color:var(--iab-navy)]" />
-      <div className="inline-flex rounded-full border border-[color:var(--iab-mist)] bg-white/70 p-1">
+    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
+      <div className="min-w-0">
+        <Bi en={en} ar={ar} size="sm" className="text-white" />
+      </div>
+      <div className="inline-flex shrink-0 rounded-full border border-white/15 bg-white/[0.06] p-1 backdrop-blur">
         {(["yes", "no"] as const).map((v) => (
           <button
             key={v}
             type="button"
             onClick={() => onChange(v)}
             className={cn(
-              "px-4 py-1.5 text-sm font-medium capitalize rounded-full transition-all",
+              "px-3 sm:px-4 py-1.5 text-sm font-medium capitalize rounded-full transition-all",
               value === v
-                ? "text-white shadow-sm"
-                : "text-[color:var(--iab-navy)]/70 hover:text-[color:var(--iab-navy)]",
+                ? "bg-white text-[color:var(--iab-navy)] shadow-sm"
+                : "text-white/70 hover:text-white",
             )}
-            style={
-              value === v
-                ? { background: "var(--gradient-iab-hero)" }
-                : undefined
-            }
           >
             {v}
           </button>
