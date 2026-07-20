@@ -31,6 +31,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ApiStatusRouteImport } from './routes/api-status'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as PassengerIndexRouteImport } from './routes/passenger.index'
 import { Route as LostFoundIndexRouteImport } from './routes/lost-found.index'
 import { Route as DeliveryIndexRouteImport } from './routes/delivery.index'
 import { Route as PassengerTokenRouteImport } from './routes/passenger.$token'
@@ -147,6 +148,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PassengerIndexRoute = PassengerIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => PassengerRoute,
+} as any)
 const LostFoundIndexRoute = LostFoundIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -201,6 +207,7 @@ export interface FileRoutesByFullPath {
   '/passenger/$token': typeof PassengerTokenRoute
   '/delivery/': typeof DeliveryIndexRoute
   '/lost-found/': typeof LostFoundIndexRoute
+  '/passenger/': typeof PassengerIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -214,7 +221,6 @@ export interface FileRoutesByTo {
   '/feedback': typeof FeedbackRoute
   '/integrations': typeof IntegrationsRoute
   '/notifications': typeof NotificationsRoute
-  '/passenger': typeof PassengerRouteWithChildren
   '/qr-scan': typeof QrScanRoute
   '/reports': typeof ReportsRoute
   '/route-tracking': typeof RouteTrackingRoute
@@ -228,6 +234,7 @@ export interface FileRoutesByTo {
   '/passenger/$token': typeof PassengerTokenRoute
   '/delivery': typeof DeliveryIndexRoute
   '/lost-found': typeof LostFoundIndexRoute
+  '/passenger': typeof PassengerIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -258,6 +265,7 @@ export interface FileRoutesById {
   '/passenger/$token': typeof PassengerTokenRoute
   '/delivery/': typeof DeliveryIndexRoute
   '/lost-found/': typeof LostFoundIndexRoute
+  '/passenger/': typeof PassengerIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -289,6 +297,7 @@ export interface FileRouteTypes {
     | '/passenger/$token'
     | '/delivery/'
     | '/lost-found/'
+    | '/passenger/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -302,7 +311,6 @@ export interface FileRouteTypes {
     | '/feedback'
     | '/integrations'
     | '/notifications'
-    | '/passenger'
     | '/qr-scan'
     | '/reports'
     | '/route-tracking'
@@ -316,6 +324,7 @@ export interface FileRouteTypes {
     | '/passenger/$token'
     | '/delivery'
     | '/lost-found'
+    | '/passenger'
   id:
     | '__root__'
     | '/'
@@ -345,6 +354,7 @@ export interface FileRouteTypes {
     | '/passenger/$token'
     | '/delivery/'
     | '/lost-found/'
+    | '/passenger/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -528,6 +538,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/passenger/': {
+      id: '/passenger/'
+      path: '/'
+      fullPath: '/passenger/'
+      preLoaderRoute: typeof PassengerIndexRouteImport
+      parentRoute: typeof PassengerRoute
+    }
     '/lost-found/': {
       id: '/lost-found/'
       path: '/'
@@ -596,10 +613,12 @@ const LostFoundRouteWithChildren = LostFoundRoute._addFileChildren(
 
 interface PassengerRouteChildren {
   PassengerTokenRoute: typeof PassengerTokenRoute
+  PassengerIndexRoute: typeof PassengerIndexRoute
 }
 
 const PassengerRouteChildren: PassengerRouteChildren = {
   PassengerTokenRoute: PassengerTokenRoute,
+  PassengerIndexRoute: PassengerIndexRoute,
 }
 
 const PassengerRouteWithChildren = PassengerRoute._addFileChildren(
