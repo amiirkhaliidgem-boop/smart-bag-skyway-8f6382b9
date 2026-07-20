@@ -1,5 +1,6 @@
-import { createFileRoute, notFound } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { getPassengerViewByToken } from "@/lib/passenger.functions";
+import { useStore } from "@/lib/store";
 import { PassengerPortal } from "./passenger.index";
 
 export const Route = createFileRoute("/passenger/$token")({
@@ -21,13 +22,25 @@ export const Route = createFileRoute("/passenger/$token")({
 function TokenPortal() {
   const { token } = Route.useParams();
   const view = Route.useLoaderData();
-  if (!view.found || !view.workflow || !view.delivery || !view.case) throw notFound();
+  const storeWorkflow = useStore((s) => s.workflow.find((w) => w.token === token));
+  const storeDelivery = useStore((s) =>
+    storeWorkflow ? s.deliveries.find((d) => d.deliveryId === storeWorkflow.deliveryId) : undefined,
+  );
+  const storeCase = useStore((s) =>
+    storeDelivery ? s.cases.find((c) => c.bagId === storeDelivery.bagId) : undefined,
+  );
+
+  const workflow = view.found && view.workflow ? view.workflow : storeWorkflow;
+  const delivery = view.delivery ?? storeDelivery;
+  const kase = view.case ?? storeCase;
+
+  if (!workflow || !delivery || !kase) return <TokenNotFound />;
   return (
     <PassengerPortal
-      deliveryIdOverride={view.workflow.deliveryId}
+      deliveryIdOverride={workflow.deliveryId}
       token={token}
-      resolvedDelivery={view.delivery}
-      resolvedCase={view.case}
+      resolvedDelivery={delivery}
+      resolvedCase={kase}
     />
   );
 }
