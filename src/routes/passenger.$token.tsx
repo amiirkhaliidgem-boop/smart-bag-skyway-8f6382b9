@@ -1,6 +1,6 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
 import { getPassengerViewByToken } from "@/lib/passenger.functions";
-import { PassengerPortal } from "./passenger";
+import { PassengerPortal } from "./passenger.index";
 
 export const Route = createFileRoute("/passenger/$token")({
   head: () => ({
