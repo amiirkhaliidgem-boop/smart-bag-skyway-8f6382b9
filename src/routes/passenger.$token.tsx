@@ -1,8 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import { getPassengerViewByToken } from "@/lib/passenger.functions";
-import { useStore } from "@/lib/store";
-import { isHydrated, onHydrated } from "@/lib/persistence";
+import {
+  getPassengerViewByToken,
+  type PassengerView,
+} from "@/lib/passenger.functions";
+import type {
+  BaggageCase,
+  Delivery,
+  DeliveryStatus,
+} from "@/lib/store";
 import iabLogo from "@/assets/iab-logo.jpeg.asset.json";
 import { PassengerPortal } from "./passenger.index";
 
@@ -25,44 +30,89 @@ export const Route = createFileRoute("/passenger/$token")({
 function TokenPortal() {
   const { token } = Route.useParams();
   const view = Route.useLoaderData();
-  const storeWorkflow = useStore((s) => s.workflow.find((w) => w.token === token));
-  const storeDelivery = useStore((s) =>
-    storeWorkflow ? s.deliveries.find((d) => d.deliveryId === storeWorkflow.deliveryId) : undefined,
+
+  if (!view.found) return <TokenNotFound />;
+
+  const { delivery, kase } = synthesizeFromView(view);
+  return (
+    <PassengerPortal
+      token={token}
+      resolvedDelivery={delivery}
+      resolvedCase={kase}
+    />
   );
-  const storeCase = useStore((s) =>
-    storeDelivery ? s.cases.find((c) => c.bagId === storeDelivery.bagId) : undefined,
-  );
+}
 
-  const workflow = view.found && view.workflow ? view.workflow : storeWorkflow;
-  const delivery = view.delivery ?? storeDelivery;
-  const kase = view.case ?? storeCase;
+// Reshape the minimum passenger-facing fields returned by the RPC into the
+// Delivery / BaggageCase shapes that PassengerPortal was originally written
+// against. Fields that are not exposed publicly (deliveryId, mobile, driver,
+// PIR, bagId) are intentionally left empty — the portal degrades gracefully.
+function synthesizeFromView(view: PassengerView): {
+  delivery: Delivery;
+  kase: BaggageCase;
+} {
+  const status = normaliseDeliveryStatus(view.status);
+  const delivery: Delivery = {
+    deliveryId: "",
+    bagId: "",
+    pirNumber: "",
+    passengerName: view.passengerName,
+    mobile: "",
+    address: "",
+    method: "Home Delivery",
+    driver: "—",
+    priority: "Normal",
+    status,
+    stage: view.stage,
+    otpCode: view.otpCode ?? "",
+    otpStatus: view.otpCode ? "Sent" : "Pending",
+  };
+  const kase: BaggageCase = {
+    bagId: "",
+    pirNumber: "",
+    passengerName: view.passengerName,
+    contact: "",
+    flightNumber: view.flightNo ?? "",
+    arrivalDate: view.flightDate ?? "",
+    description: "",
+    priority: "Normal",
+    status: statusToCaseStatus(view.status),
+    bagTagNumber: view.bagTag ?? "",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    lfStatus: (view.stage as never) ?? undefined,
+    flight: view.airline ? { airline: view.airline } : undefined,
+    baggage: view.bagTag ? { bagTags: [view.bagTag] } : undefined,
+  } as BaggageCase;
+  return { delivery, kase };
+}
 
-  const resolved = Boolean(workflow && delivery && kase);
-
-  const [hydrated, setHydrated] = useState(() =>
-    typeof window === "undefined" ? false : isHydrated(),
-  );
-  useEffect(() => {
-    if (hydrated) return;
-    return onHydrated(() => setHydrated(true));
-  }, [hydrated]);
-
-  if (resolved) {
-    return (
-      <PassengerPortal
-        deliveryIdOverride={workflow!.deliveryId}
-        token={token}
-        resolvedDelivery={delivery!}
-        resolvedCase={kase!}
-      />
-    );
+function normaliseDeliveryStatus(s: string): DeliveryStatus {
+  switch (s) {
+    case "Delivered":
+      return "Delivered";
+    case "Out For Delivery":
+    case "Out for Delivery":
+      return "Out For Delivery";
+    case "Picked Up":
+      return "Picked Up";
+    case "Assigned":
+      return "Assigned";
+    default:
+      return "Pending";
   }
+}
 
-  // Loader has run (view is present). If the server resolved it, `resolved`
-  // would be true above. Otherwise we need the client store to finish
-  // hydrating before we can declare the token invalid.
-  if (!hydrated) return <TokenLoading />;
-  return <TokenNotFound />;
+function statusToCaseStatus(s: string): BaggageCase["status"] {
+  switch (s) {
+    case "Delivered":
+      return "Delivered";
+    case "Out For Delivery":
+    case "Out for Delivery":
+      return "Out For Delivery";
+    default:
+      return "Ready For Delivery";
+  }
 }
 
 function TokenLoading() {
