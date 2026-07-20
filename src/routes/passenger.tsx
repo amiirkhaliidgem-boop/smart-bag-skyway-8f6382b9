@@ -237,7 +237,7 @@ function TrackScreen({
         hidden: {},
         show: { transition: { staggerChildren: 0.08, delayChildren: 0.05 } },
       }}
-      className="space-y-6 sm:space-y-8"
+      className="space-y-4 sm:space-y-5"
     >
       <MotionSection>
         <WelcomeCard delivery={delivery} kase={kase} />
@@ -462,7 +462,7 @@ function StatusHero({ delivery, kase }: { delivery: Delivery; kase: BaggageCase 
         background:
           "linear-gradient(180deg, #0E2C5C 0%, #0A2248 55%, #06142E 100%)",
         boxShadow:
-          "0 40px 100px -40px rgba(8,28,58,0.70), 0 20px 40px -25px rgba(8,28,58,0.30)",
+          "0 20px 50px -30px rgba(8,28,58,0.45), 0 8px 20px -14px rgba(8,28,58,0.18)",
       }}
 
     >
@@ -837,7 +837,7 @@ function OtpHeroCard({
         background:
           "linear-gradient(180deg, #0E2C5C 0%, #0A2248 55%, #06142E 100%)",
         boxShadow:
-          "0 40px 100px -40px rgba(8,28,58,0.70), 0 20px 40px -25px rgba(8,28,58,0.30)",
+          "0 20px 50px -30px rgba(8,28,58,0.45), 0 8px 20px -14px rgba(8,28,58,0.18)",
       }}
 
     >
