@@ -697,9 +697,11 @@ function applyRemote(payload: unknown, _version: number) {
 
 function ensureBootstrap() {
   if (bootstrapped || typeof window === "undefined") return;
-  // Public token portals use a server-side, token-scoped projection. Never
-  // hydrate the airport-wide staff snapshot into a passenger's browser.
-  if (window.location.pathname.startsWith("/passenger/")) return;
+  // Note: we intentionally do NOT short-circuit on `/passenger/` here.
+  // Passenger visitors are unauthenticated, so `initPersistence` won't
+  // fetch or push the staff snapshot (session gate + RLS). Staff previewing
+  // a case are authenticated and need the store hydrated to resolve the
+  // token → case fallback in TokenPortal.
   bootstrapped = true;
   // Prime state to defaults so seed data is visible before auth completes;
   // once signed in, remote state (if any) replaces it.
