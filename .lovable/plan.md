@@ -1,31 +1,28 @@
-## Root cause (confirmed)
+## Root cause
 
-`src/lib/store.ts` → `ensureWorkflow()` (lines 758–778) mutates `state.workflow` when it bootstraps a new record but never calls `emit()`. Every other state mutation in this file goes through `emit()`, which triggers `scheduleRemotePush()` to persist the snapshot to Supabase `app_state`. Because the bootstrap path skips `emit()`, the new workflow (and its passenger tracking token) lives only in the current tab's memory. Another tab / device / refresh hits `TokenPortal`, looks up the token in the freshly hydrated store, finds nothing, and renders "Tracking link not found".
+`src/routes/passenger.$token.tsx` (`TokenPortal`) renders `<TokenNotFound />` synchronously whenever `workflow`, `delivery`, or `case` is missing. On first load the server loader returns `{found:false}` in local dev (no service role) and the client store hasn't hydrated from Supabase yet, so the not-found screen flashes for a moment before the store hydrates and the real portal appears.
 
-## Fix (single, minimal change)
+## Fix (scope: only `src/routes/passenger.$token.tsx`)
 
-In `src/lib/store.ts`, inside `ensureWorkflow()`, after appending the new record to `state.workflow` and BEFORE `return rec`, call `emit()` so the new workflow + token is persisted through the exact same path used by every other workflow update.
+Gate the not-found render on a definitive "lookup finished" signal. Never render `<TokenNotFound />` until both sources have completed.
 
-```ts
-state = { ...state, workflow: [...state.workflow, rec] };
-emit(); // persist newly bootstrapped workflow (incl. passenger token) to Supabase
-return rec;
-```
+1. Track hydration state from persistence. Expose (or reuse) a "hydrated" flag on the Zustand store — set to `true` after `initPersistence` finishes its first `bootstrap()` apply (or immediately if the user is unauthenticated and there is nothing to hydrate). If a suitable flag already exists in `src/lib/persistence.ts` / `src/lib/store.ts`, reuse it; otherwise add a minimal `hydrated: boolean` flag flipped once bootstrap resolves.
 
-Nothing else changes:
-- `ensurePassengerToken()` untouched.
-- Token generation untouched (tokens are only generated when the record does not yet exist, so they never change afterwards).
-- No UI, no Passenger Experience, no schema, no SQL, no re-scan.
-- Existing SMS/WhatsApp links continue to work because the token value is unchanged — it's just now written to Supabase.
+2. In `TokenPortal`:
+   - Read `hydrated` from the store.
+   - Compute `resolved = workflow && delivery && kase`.
+   - Compute `lookupFinished = view is present (loader ran) AND hydrated is true`.
+   - While `!resolved && !lookupFinished` → render a branded loading screen (logo + subtle skeleton, no error copy, no layout shift vs. the real portal shell).
+   - When `resolved` → render `<PassengerPortal />`.
+   - Only when `lookupFinished && !resolved` → render `<TokenNotFound />`.
+
+3. Loading screen: minimal, uses the same white background, logo, and card frame as the portal so there is no layout shift when the real content mounts. No text like "not found" or "expired". A single subtle "Loading your delivery…" line under the logo is acceptable.
+
+4. No changes to Passenger Portal UI, no changes to server functions, no schema/SQL, no changes to other routes.
 
 ## Verification
 
-Using the running preview, sign in as staff and:
-
-1. Open L&F case backing `DEL-50001` → click "View Passenger Portal" → confirm portal renders that passenger's data (Workflow created ✔, Token persisted ✔, View Passenger Portal ✔).
-2. Hard refresh the portal tab → still renders same passenger (Browser refresh ✔).
-3. Copy the URL, open in a fresh incognito/second browser context → renders same passenger (Direct URL ✔).
-4. Repeat 1–3 for `DEL-50023` and confirm it shows a different passenger than `DEL-50001` (Different passenger opens different data ✔).
-5. Cross-check Supabase `app_state.payload.workflow` contains both records with their tokens after step 1.
-
-If any step fails, stop and report the exact failing function rather than layering more fixes.
+- Fresh load of a valid `/passenger/<token>` URL (signed-in staff): shows loading → portal, never flashes not-found.
+- Hard refresh: same — loading → portal.
+- Invalid token: loading → not-found (after hydration completes).
+- Signed-out visitor with a valid token in prod (server view resolves): loading → portal without waiting for client store.
