@@ -362,13 +362,7 @@ function WelcomeCard({ delivery, kase }: { delivery: Delivery; kase: BaggageCase
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.7, ease }}
       aria-label="Welcome"
-      className="relative overflow-hidden rounded-[32px] px-6 py-7 sm:px-10 sm:py-9"
-      style={{
-        background:
-          "linear-gradient(180deg, color-mix(in oklab, #FBF7EE 96%, white) 0%, var(--iab-ivory-soft) 60%, color-mix(in oklab, #F6F1E7 92%, #0B1B3B 2%) 100%)",
-        border: "1px solid color-mix(in oklab, #0B1B3B 8%, transparent)",
-        boxShadow: "var(--shadow-iab-soft)",
-      }}
+      className="iab-white-glass rounded-[32px] px-6 py-7 sm:px-10 sm:py-9"
     >
       <motion.p
         {...rise(0.05)}
@@ -665,12 +659,7 @@ function SimpleTimeline({ delivery, kase }: { delivery: Delivery; kase: BaggageC
   const delivered = steps[steps.length - 1]?.reached;
   return (
     <div
-      className="rounded-[28px] pt-5 pb-7 px-7 sm:pt-6 sm:pb-9 sm:px-9"
-      style={{
-        background: "var(--iab-ivory-soft)",
-        border: "1px solid color-mix(in oklab, #0B1B3B 8%, transparent)",
-        boxShadow: "var(--shadow-iab-soft)",
-      }}
+      className="iab-white-glass rounded-[28px] pt-5 pb-7 px-7 sm:pt-6 sm:pb-9 sm:px-9"
     >
       <ol className="relative">
         {steps.map((step, i) => (
@@ -1081,8 +1070,7 @@ function ContactCard({ delivery }: { delivery: Delivery }) {
             transition={{ delay: i * 0.06, duration: 0.4 }}
             whileHover={{ y: -3 }}
             whileTap={{ scale: 0.97 }}
-            className="iab-glass iab-ripple group relative rounded-3xl p-4 sm:p-5 flex flex-col items-center text-center gap-2 overflow-hidden"
-            style={{ boxShadow: "var(--shadow-iab-soft)" }}
+            className="iab-white-glass iab-ripple group relative rounded-3xl p-4 sm:p-5 flex flex-col items-center text-center gap-2 overflow-hidden"
             onPointerDown={(e) => {
               const target = e.currentTarget;
               const rect = target.getBoundingClientRect();
