@@ -1,55 +1,37 @@
-## Workflow Integrity Remediation Plan
+# Restore Passenger Portal
 
-### Confirmed audit findings
-- Supabase currently has 13 cases, 12 deliveries, and 12 unique workflow tokens; no orphan deliveries, workflow links, notifications, feedback, or audit records were found.
-- `/passenger/$token` currently resolves the token from the global client store instead of using the existing server-side token-scoped reader.
-- `PassengerPortal` can silently fall back to the first active delivery when the requested delivery is missing or not in its status filter. This explains one case showing another passenger’s information.
-- The public passenger route can initialize the shared staff store, which risks loading unrelated passenger records into the browser.
-- Initial workflow records still use predictable `*-demo####` tracking tokens.
-- Delivery stages, L&F projections, and legacy delivery status fields are mutable copies of the canonical workflow state, creating synchronization risk.
+## Root cause (verified)
 
-### 1. Enforce strict passenger identity resolution
-- Load `/passenger/$token` through `getPassengerViewByToken` on the server.
-- Return only the workflow record, delivery, case, case-linked timeline, case-linked feedback, and allowed notification-derived state for that exact token.
-- Never initialize or subscribe the public passenger route to the global staff store.
-- Remove all first-record and first-active fallbacks. Invalid, expired, or inconsistent tokens must return the existing not-found state rather than another passenger.
-- Keep the Passenger Portal markup, styling, spacing, colors, typography, animations, and layout unchanged.
+- `/passenger/$token` runs a loader that calls the `getPassengerViewByToken` server function.
+- That handler does `await import("@/integrations/supabase/client.server")`, which requires `SUPABASE_SERVICE_ROLE_KEY` at first use.
+- The dev sandbox `.env` (verified) contains only `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, and their `VITE_*` twins. `SUPABASE_SERVICE_ROLE_KEY` is a Lovable project secret so it exists in the deployed runtime, but it is not injected into the sandbox dev preview.
+- With the key missing, the server function throws `Missing Supabase environment variable(s): SUPABASE_SERVICE_ROLE_KEY` (confirmed in the browser console for `/passenger/not-a-valid-token`). Because the loader throws, TanStack Router renders the default error boundary — the "This page didn't load" screen the user is seeing.
+- The publishable/anon key cannot substitute for the service role here: `public.app_state` RLS requires `auth.uid() IS NOT NULL`, so anon reads return zero rows. Changing RLS is disallowed by the user, and so is DB work.
+- Secondary: `TokenPortal` reads `Route.useLoaderData()` unconditionally and immediately `throw notFound()` on any non-happy shape, so a caught server error still surfaces as a broken page.
 
-### 2. Bind all portal fields to the resolved case
-- Feed Name, PIR, Bag Tag, Airline, Flight, OTP, status, timeline, and feedback from the one resolved case/delivery/workflow bundle.
-- Convert passenger actions—baggage confirmation, incident reporting, call-log creation, and feedback submission—to token-scoped server mutations that resolve the delivery and Case ID again on the server before writing.
-- Ensure feedback and incidents always carry the resolved Bag/Case ID and cannot be submitted for another record.
+## Repair scope
 
-### 3. Make links case-specific and secure
-- Standardize all L&F and Delivery “View Passenger Portal,” copy-link, SMS, and WhatsApp paths on `ensurePassengerToken(deliveryId)` and the linked delivery’s workflow token.
-- Remove ID-derived and demo URL construction from notification previews and sends.
-- Backfill predictable `*-demo####` tokens in the live `app_state` snapshot with cryptographically random per-delivery tokens while preserving the delivery-to-case relationship.
-- Ensure token generation remains one-to-one per Delivery ID and never silently rotates an active token.
+No UI, no schema, no data changes. Only make the passenger route tolerant of a missing server-side read and keep the previously working staff-preview path alive.
 
-### 4. Establish workflow status as the only mutable status
-- Treat `WorkflowRecord.status` as the canonical operational status.
-- Derive Delivery stage, legacy delivery status, Passenger status, and the read-only L&F downstream projection from that workflow status instead of independently mutating each field.
-- Keep L&F ownership capped at Ready for Delivery; after handover, Delivery/Driver actions transition only through the Workflow Engine.
-- Centralize each transition so one transaction updates the workflow event history and linked projections together.
+### 1. `src/lib/passenger.functions.ts`
+- Wrap the `getPassengerViewByToken` handler body in a `try/catch`. On any thrown error (missing env, network, RLS), log server-side and return `{ found: false, workflow: null, delivery: null, case: null, feedback: [] }` instead of throwing. The loader then resolves cleanly and the route can decide what to render.
+- Leave `mutatePassengerView` unchanged; passenger mutations still legitimately fail without the service key, and the toast surface already handles that.
 
-### 5. Centralize automatic case-linked records
-- For each workflow transition, create timeline/history and audit entries with the same Delivery ID and Bag/Case ID.
-- Generate and store OTPs only against the linked delivery; verification must resolve through the same workflow/case identity.
-- Dispatch automatic SMS/WhatsApp records through the Notification Engine with the exact token URL and linked IDs.
-- Ensure feedback submission emits its workflow, timeline, and audit events for the same Case ID.
+### 2. `src/routes/passenger.$token.tsx`
+- Keep the server loader as the primary path.
+- In `TokenPortal`, if `view.found` is false OR `view.delivery`/`view.case` are null, fall back to a client-side lookup: `useStore(s => s.workflow.find(w => w.token === token))` plus the matching delivery/case from the store. This restores the previously working staff-preview behaviour (authenticated staff already hydrate `app_state` client-side).
+- Only render `TokenNotFound` when both the server view and the client store lookup fail.
+- Pass through the resolved delivery/case exactly as before — no prop shape changes.
 
-### 6. Harden shared Supabase persistence
-- Prevent unauthenticated passenger pages from reading or subscribing to `public.app_state`; staff persistence remains authenticated and RLS-protected.
-- Add conflict-safe version handling so stale tabs cannot overwrite newer workflow changes.
-- Normalize hydrated snapshots to repair missing workflow links without reintroducing seed/demo bindings.
+### 3. Sanity checks (no code changes expected)
+- Confirm `src/routes/passenger.tsx` still exists as the pathless layout with `<Outlet />` and that `src/routes/passenger.index.tsx` owns `/passenger/`. This split is already in place; just re-verify after the edits.
+- Confirm `getPassengerViewByToken` and `mutatePassengerView` are the only imports from `@/lib/passenger.functions`. No other route needs updating.
+- Confirm `View Passenger Portal` in `src/routes/delivery.$deliveryId.tsx` still opens `/passenger/{token}` via `ensurePassengerToken` — no change required, this path is what the fix targets.
 
-### 7. Integrity tests and live verification
-- Add tests with at least two passengers proving each token returns only its own Name, PIR, Bag Tag, Flight, OTP, timeline, and feedback.
-- Test invalid tokens and inactive/Ready deliveries to confirm there is no fallback to another case.
-- Test L&F handover, driver assignment, Out for Delivery, OTP delivery completion, and feedback submission across Workflow, L&F, Dispatch, Driver, Passenger, Timeline, Audit, and Notifications.
-- Validate two browser contexts plus refresh/realtime behavior against Supabase and re-run database integrity queries for duplicate tokens, mismatched IDs, orphans, and status divergence.
+## Verification
 
-### Scope control
-- No Passenger Portal visual or interaction-design changes.
-- No new passenger route and no duplicated portal UI.
-- No unrelated module redesign.
+- `bunx tsgo --noEmit` — must pass.
+- `bunx vitest run src/lib/__tests__/otp-flow.test.ts` — must pass (unrelated regression guard).
+- Playwright against `http://localhost:8080/passenger/<real-token>` — expect the portal to render using the client-store fallback (server fn returns `found:false` in the sandbox), no error boundary.
+- Playwright against `http://localhost:8080/passenger/not-a-valid-token` — expect the `TokenNotFound` component ("Tracking link not found"), not the generic "This page didn't load".
+- In the deployed preview where `SUPABASE_SERVICE_ROLE_KEY` is present, the server path resolves the pair directly with no fallback needed; behaviour is unchanged from the prior audit.

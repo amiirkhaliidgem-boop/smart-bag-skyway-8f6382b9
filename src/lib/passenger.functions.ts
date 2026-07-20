@@ -29,13 +29,30 @@ export interface PassengerView {
 export const getPassengerViewByToken = createServerFn({ method: "GET" })
   .inputValidator((input) => z.object({ token: z.string().min(4) }).parse(input))
   .handler(async ({ data }): Promise<PassengerView> => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: row, error } = await supabaseAdmin
-      .from("app_state")
-      .select("payload")
-      .eq("id", "global")
-      .maybeSingle();
-    if (error) throw new Error(error.message);
+    const empty: PassengerView = {
+      found: false,
+      workflow: null,
+      delivery: null,
+      case: null,
+      feedback: [],
+    };
+    let row: { payload?: unknown } | null = null;
+    try {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const res = await supabaseAdmin
+        .from("app_state")
+        .select("payload")
+        .eq("id", "global")
+        .maybeSingle();
+      if (res.error) throw new Error(res.error.message);
+      row = res.data;
+    } catch (err) {
+      // Missing service role key or transient RLS/network failure: return an
+      // empty view so the loader resolves cleanly. The route falls back to a
+      // client-side store lookup for authenticated staff previews.
+      console.warn("[passenger] server view unavailable:", err);
+      return empty;
+    }
 
     const payload = (row?.payload ?? {}) as {
       workflow?: Array<Record<string, unknown> & { deliveryId: string; token: string }>;
