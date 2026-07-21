@@ -637,46 +637,6 @@ function BulkAssignDialog({
   );
 }
 
-function DeliveryBulkToolbar({
-  deliveries,
-  onAssign,
-  onNotify,
-  onCancel,
-}: {
-  deliveries: Delivery[];
-  onAssign: () => void;
-  onNotify: () => void;
-  onCancel: () => void;
-}) {
-  const allAssigned =
-    deliveries.length > 0 &&
-    deliveries.every((d) => d.driver && d.driver !== "—");
-  const mode: "assign" | "reassign" = allAssigned ? "reassign" : "assign";
-  return (
-    <SharedBulkToolbar
-      count={deliveries.length}
-      noun="Delivery"
-      pluralNoun="Deliveries"
-      onCancel={onCancel}
-      actions={[
-        {
-          key: "assign",
-          label: mode === "reassign" ? "Bulk Reassign" : "Bulk Assign",
-          icon: UserCheck,
-          onClick: onAssign,
-        },
-        {
-          key: "notify",
-          label: "Bulk Notify Passenger",
-          icon: Bell,
-          variant: "outline",
-          onClick: onNotify,
-        },
-      ]}
-    />
-  );
-}
-
 const NOTIFY_TEMPLATES: { status: WorkflowStatus; label: string }[] = [
   { status: "DELIVERY_APPROVED", label: "Delivery Approved" },
   { status: "DRIVER_ASSIGNED", label: "Driver Assigned (Portal + OTP)" },
