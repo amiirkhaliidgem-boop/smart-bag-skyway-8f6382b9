@@ -303,11 +303,6 @@ function CaseDetailsPage() {
           <TabsTrigger value="baggage">Baggage</TabsTrigger>
           <TabsTrigger value="delivery">Delivery</TabsTrigger>
           <TabsTrigger value="communication">Communication</TabsTrigger>
-          <TabsTrigger value="documents">
-            Documents {c.documents?.length ? `(${c.documents.length})` : ""}
-          </TabsTrigger>
-          <TabsTrigger value="timeline">Timeline</TabsTrigger>
-          <TabsTrigger value="audit">Audit</TabsTrigger>
         </TabsList>
 
         {/* OVERVIEW */}
