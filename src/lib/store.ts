@@ -1310,6 +1310,7 @@ export function setDeliveryStage(
       });
     }
   }
+  recomputeAllDriverRoutes();
   emit();
 }
 
