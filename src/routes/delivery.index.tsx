@@ -7,7 +7,6 @@ import {
   bulkAssignDriver,
   getDeliveryStage,
   type Delivery,
-  type Priority,
 } from "@/lib/store";
 import {
   closeDelivery,
@@ -28,10 +27,17 @@ import {
   type DeliveryQueueId,
   type DeliveryStage,
 } from "@/lib/delivery/stages";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select as UISelect,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -43,13 +49,11 @@ import {
 import {
   Truck,
   UserCheck,
-  CheckCircle2,
   XCircle,
-  Package,
-  Clock,
   Search,
   Bell,
   Repeat,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
