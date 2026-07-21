@@ -42,12 +42,8 @@ export type PirWizardMode = "create" | "edit";
 
 type F = {
   firstName: string;
-  middleName: string;
   lastName: string;
-  nationality: string;
-  passportNumber: string;
   pnr: string;
-  ticketNumber: string;
   mobile: string;
   mobile2: string;
   email: string;
@@ -64,9 +60,6 @@ type F = {
   type: string;
   distinctiveMarks: string;
   priority: Priority;
-  vipPassenger: boolean;
-  rushDelivery: boolean;
-  fragile: boolean;
   method: DeliveryMethod;
   fullAddress: string;
   station: string;
@@ -78,15 +71,14 @@ type F = {
 
 function empty(): F {
   return {
-    firstName: "", middleName: "", lastName: "", nationality: "",
-    passportNumber: "", pnr: "", ticketNumber: "", mobile: "", mobile2: "",
+    firstName: "", lastName: "", pnr: "", mobile: "", mobile2: "",
     email: "",
     airline: "", flightNumber: "",
     flightDate: new Date().toISOString().slice(0, 10),
     originAirport: "", destinationAirport: "CAI",
     pirNumber: "", numberOfBags: "1", bagTags: [""], weightKg: "",
     color: "", type: "", distinctiveMarks: "",
-    priority: "Normal", vipPassenger: false, rushDelivery: false, fragile: false,
+    priority: "Normal",
     method: "Home Delivery",
     fullAddress: "",
     station: "CAI - Cairo International Airport",
@@ -104,12 +96,10 @@ function fromCase(c: BaggageCase): F {
   // Best-effort split of legacy passengerName when no structured names exist.
   let firstName = p.firstName ?? "";
   let lastName = p.lastName ?? "";
-  let middleName = p.middleName ?? "";
   if (!firstName && !lastName && c.passengerName) {
     const parts = c.passengerName.trim().split(/\s+/);
     firstName = parts[0] ?? "";
     lastName = parts.length > 1 ? parts[parts.length - 1] : "";
-    middleName = parts.slice(1, -1).join(" ");
   }
   const legacyAddress = [
     d.building, d.street, d.district, d.city, d.governorate, d.country,
@@ -119,12 +109,13 @@ function fromCase(c: BaggageCase): F {
     ? b.bagTags
     : (c.bagTagNumber ? [c.bagTagNumber] : [""]);
   const bagTags = Array.from({ length: nBags }, (_, idx) => existingTags[idx] ?? "");
+  const rawPriority = c.priority ?? "Normal";
+  const priority: Priority = rawPriority === "VIP" ? "VIP" : "Normal";
+  const rawCasePriority = i.casePriority ?? c.priority ?? "Normal";
+  const casePriority: Priority = rawCasePriority === "VIP" ? "VIP" : "Normal";
   return {
-    firstName, middleName, lastName,
-    nationality: p.nationality ?? "",
-    passportNumber: p.passportNumber ?? "",
+    firstName, lastName,
     pnr: p.pnr ?? "",
-    ticketNumber: p.ticketNumber ?? "",
     mobile: c.contact ?? "",
     mobile2: p.mobile2 ?? "",
     email: c.email ?? "",
@@ -140,16 +131,13 @@ function fromCase(c: BaggageCase): F {
     color: b.color ?? "",
     type: b.type ?? "",
     distinctiveMarks: b.distinctiveMarks ?? "",
-    priority: c.priority ?? "Normal",
-    vipPassenger: !!b.vipPassenger,
-    rushDelivery: !!b.rushDelivery,
-    fragile: !!b.fragile,
+    priority,
     method: d.method ?? "Home Delivery",
     fullAddress: d.fullAddress ?? legacyAddress,
     station: i.station ?? "CAI - Cairo International Airport",
     department: i.department ?? "Lost & Found",
     internalNotes: i.internalNotes ?? "",
-    casePriority: i.casePriority ?? c.priority ?? "Normal",
+    casePriority,
     createdBy: i.createdBy ?? "Ops Console",
   };
 }
@@ -248,7 +236,7 @@ export function PirWizard({
   function prev() { setStep((s) => Math.max(0, s - 1)); }
 
   function passengerName(): string {
-    return [form.firstName, form.middleName, form.lastName]
+    return [form.firstName, form.lastName]
       .map((s) => s.trim()).filter(Boolean).join(" ");
   }
   function description(): string {
@@ -289,9 +277,8 @@ export function PirWizard({
       description: description(),
       priority: form.priority,
       passenger: {
-        firstName: form.firstName, middleName: form.middleName, lastName: form.lastName,
-        nationality: form.nationality, passportNumber: form.passportNumber,
-        pnr: form.pnr, ticketNumber: form.ticketNumber, mobile2: form.mobile2,
+        firstName: form.firstName, lastName: form.lastName,
+        pnr: form.pnr, mobile2: form.mobile2,
       },
       flight: {
         airline: form.airline,
@@ -303,7 +290,6 @@ export function PirWizard({
         color: form.color, type: form.type,
         bagTags: cleanTags,
         distinctiveMarks: form.distinctiveMarks,
-        vipPassenger: form.vipPassenger, rushDelivery: form.rushDelivery, fragile: form.fragile,
       },
       delivery: {
         method: form.method,
