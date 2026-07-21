@@ -51,6 +51,7 @@ import {
   Search,
   Plus,
   Columns3,
+  Star as StarIcon,
   ChevronDown,
   X,
   UserCheck,
