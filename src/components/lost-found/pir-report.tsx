@@ -67,13 +67,15 @@ export function PirReport({ caseRecord }: { caseRecord: BaggageCase }) {
     ? [c.bagTagNumber]
     : [];
 
-  const lifecycle = Object.keys(LF_STATUS_ORDER) as (keyof typeof LF_STATUS_ORDER)[];
-  const currentIdx = LF_STATUS_ORDER[lfs];
-
   return (
     <article className="pir-print">
       <header className="pir-header">
-        <div>
+        <img
+          src={iabLogo.url}
+          alt="IAB"
+          className="pir-logo"
+        />
+        <div className="pir-header-title">
           <div className="pir-brand">IAB · Smart Baggage Ecosystem</div>
           <h1 className="pir-title">Property Irregularity Report</h1>
           <div className="pir-sub">
