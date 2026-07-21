@@ -1,20 +1,25 @@
 ## Scope
-Lost & Found → Case Details → Quick Actions menu only. No other files, modules, or behavior touched.
+Fix Edit PIR only. Do NOT touch workflow, timeline, notifications, audit, or any status logic. Single file: `src/components/lost-found/pir-wizard.tsx`.
 
-## Changes (single file: `src/routes/lost-found.$bagId.tsx`)
+## Root cause
+`PirWizard` treats every step as locked until the previous one passes `validateStep()`. This sequential gate was designed for Create (fresh intake), but it is reused as-is for Edit. Result: opening Edit PIR on any existing case surfaces "Complete the previous steps first" whenever a legacy/optional field is missing, even though Edit PIR is not a workflow transition.
 
-1. Remove three menu items from the Quick Actions dropdown (lines 305–313):
-   - Notify Passenger
-   - Generate Tracking Link
-   - Copy Tracking Link
+## Change (edit mode only — create flow untouched)
 
-2. Delete the now-unused handlers:
-   - `notifyPassenger` (l. 175–187)
-   - `generateTrackingLink` (l. 168–174)
-   - `copyTrackingLink` (l. 160–167)
-   - Also drop the `token` / `trackingUrl` locals (l. 157–158) that only these handlers used, if no other reference remains.
+In `src/components/lost-found/pir-wizard.tsx`:
 
-3. Clean up now-unused imports: `Bell`, `Link as LinkIcon`, `Copy`, `ensurePassengerToken`, `createTestNotification` — only remove each if it has no other usage in the file.
+1. Make step locking conditional on mode. In the stepper (l. 350–385), compute `locked = mode === "create" && i > step`. In `create` mode nothing changes; in `edit` mode every step is freely reachable (no lock icon, no disabled button, no "Complete the previous steps first" tooltip).
+
+2. In `goToStep` (l. 223–238), when `mode === "edit"` jump directly to the target step without running `validateStep` on the intermediate steps. Create mode keeps its current sequential gate.
+
+3. Leave `next()` / `validateStep()` untouched — the Next button in edit mode still nudges the user through missing required fields, but it is no longer the only way to move.
+
+4. Leave `submit()` and `canSubmit` untouched. Saving still requires the same core required fields (names, PIR, mobile, airline, flight, bag tags, address). `editCase` already preserves workflow status (see `l. 344` header copy), so no store change is needed.
+
+## Explicitly NOT changing
+- `src/lib/store.ts`, workflow engine, `editCase`, LF status handlers.
+- Create flow (new PIR intake keeps sequential gate).
+- Any other route, notification, timeline, or audit code path.
 
 ## Result
-Quick Actions menu contains: Edit PIR, Assign Officer, (separator), Print PIR, Export Case. Nothing else in the case details page, workflow, notifications, delivery, or passenger portal is touched.
+Edit PIR opens on any case at any lifecycle stage (Open → Closed), all 5 steps immediately clickable, no "Complete the previous steps first" message. Saving still validates required fields and preserves the current workflow stage.
