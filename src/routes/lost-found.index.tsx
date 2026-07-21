@@ -4,13 +4,16 @@ import {
   useStore,
   bulkUpdateCases,
   bulkAssignDelivery,
+  updateLfStatus,
   type BaggageCase,
   type Priority,
   type DeliveryMethod,
 } from "@/lib/store";
 import {
   LF_STATUSES,
+  LF_OWNED_STATUSES,
   deriveLfFromCase,
+  canTransitionLf,
   type LFStatus,
 } from "@/lib/lost-found/statuses";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -60,7 +63,7 @@ import {
   SlidersHorizontal,
   UserCheck,
   Truck,
-  Flag,
+  ListChecks,
   Download,
   Printer,
 } from "lucide-react";
@@ -114,7 +117,7 @@ function LostFoundPage() {
   const [openNew, setOpenNew] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [assignOfficerOpen, setAssignOfficerOpen] = useState(false);
-  const [priorityDialogOpen, setPriorityDialogOpen] = useState(false);
+  const [statusDialogOpen, setStatusDialogOpen] = useState(false);
   const [sortKey, setSortKey] = useState<ColKey>("created");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [visible, setVisible] = useState<Record<ColKey, boolean>>(
@@ -237,10 +240,25 @@ function LostFoundPage() {
     clearSelection();
   }
 
-  function runPriority(p: Priority) {
-    bulkUpdateCases(selectedIds, { priority: p });
-    toast.success(`Priority set to ${p} for ${selectedIds.length} case(s)`);
-    setPriorityDialogOpen(false);
+  function runChangeStatus(next: LFStatus) {
+    let applied = 0;
+    let skipped = 0;
+    for (const id of selectedIds) {
+      const c = cases.find((x) => x.bagId === id);
+      if (!c) { skipped++; continue; }
+      const current = c.lfStatus ?? deriveLfFromCase(c);
+      if (current === next || !canTransitionLf(current, next)) {
+        skipped++;
+        continue;
+      }
+      updateLfStatus(id, next, { actor: "L&F Officer" });
+      applied++;
+    }
+    const parts: string[] = [];
+    if (applied) parts.push(`${applied} updated`);
+    if (skipped) parts.push(`${skipped} skipped`);
+    toast.success(parts.join(" · ") || "No cases updated");
+    setStatusDialogOpen(false);
     clearSelection();
   }
 
@@ -318,11 +336,11 @@ function LostFoundPage() {
               onClick: () => setAssignOfficerOpen(true),
             },
             {
-              key: "priority",
-              label: "Change Priority",
-              icon: Flag,
+              key: "status",
+              label: "Change Status",
+              icon: ListChecks,
               variant: "outline",
-              onClick: () => setPriorityDialogOpen(true),
+              onClick: () => setStatusDialogOpen(true),
             },
             {
               key: "export",
@@ -537,11 +555,11 @@ function LostFoundPage() {
         count={selected.size}
         onSubmit={runAssignOfficer}
       />
-      <ChangePriorityDialog
-        open={priorityDialogOpen}
-        onOpenChange={setPriorityDialogOpen}
+      <ChangeStatusDialog
+        open={statusDialogOpen}
+        onOpenChange={setStatusDialogOpen}
         count={selected.size}
-        onSubmit={runPriority}
+        onSubmit={runChangeStatus}
       />
     </div>
   );
@@ -718,29 +736,30 @@ function AssignOfficerDialog({
   );
 }
 
-function ChangePriorityDialog({
+function ChangeStatusDialog({
   open, onOpenChange, count, onSubmit,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   count: number;
-  onSubmit: (p: Priority) => void;
+  onSubmit: (s: LFStatus) => void;
 }) {
-  const [p, setP] = useState<Priority>("Normal");
+  const [s, setS] = useState<LFStatus>("Open");
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Change Priority</DialogTitle>
+          <DialogTitle>Change Status</DialogTitle>
         </DialogHeader>
         <div className="space-y-3 py-2">
           <p className="text-sm text-muted-foreground">
-            Set priority for {count} selected case{count === 1 ? "" : "s"}.
+            Move {count} selected case{count === 1 ? "" : "s"} to a new status.
+            Cases already past the target or handed over to Delivery will be skipped.
           </p>
-          <Select value={p} onValueChange={(v) => setP(v as Priority)}>
+          <Select value={s} onValueChange={(v) => setS(v as LFStatus)}>
             <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
             <SelectContent>
-              {(["Low", "Normal", "High", "VIP"] as Priority[]).map((x) => (
+              {LF_OWNED_STATUSES.map((x) => (
                 <SelectItem key={x} value={x}>{x}</SelectItem>
               ))}
             </SelectContent>
@@ -748,7 +767,7 @@ function ChangePriorityDialog({
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={() => onSubmit(p)}>Apply</Button>
+          <Button onClick={() => onSubmit(s)}>Apply</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
