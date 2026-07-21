@@ -53,6 +53,7 @@ import {
 import { LfStatusBadge } from "@/components/lf-status-badge";
 import { PirWizard } from "@/components/lost-found/pir-wizard";
 import { BulkToolbar } from "@/components/bulk/bulk-toolbar";
+import { PirPrintHost, pirPrintBus } from "@/components/lost-found/pir-print-host";
 import {
   Search,
   Plus,
