@@ -6,8 +6,6 @@ import {
   bulkAssignDelivery,
   updateLfStatus,
   type BaggageCase,
-  type Priority,
-  type DeliveryMethod,
 } from "@/lib/store";
 import {
   LF_STATUSES,
@@ -45,11 +43,6 @@ import {
   DropdownMenuTrigger,
   DropdownMenuCheckboxItem,
 } from "@/components/ui/dropdown-menu";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import { LfStatusBadge } from "@/components/lf-status-badge";
 import { PirWizard } from "@/components/lost-found/pir-wizard";
 import { BulkToolbar } from "@/components/bulk/bulk-toolbar";
@@ -61,7 +54,6 @@ import {
   Star as StarIcon,
   ChevronDown,
   X,
-  SlidersHorizontal,
   UserCheck,
   Truck,
   ListChecks,
@@ -109,12 +101,6 @@ function LostFoundPage() {
   const cases = useStore((s) => s.cases);
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<LFStatus | "all">("all");
-  const [priority, setPriority] = useState<Priority | "all">("all");
-  const [method, setMethod] = useState<DeliveryMethod | "all">("all");
-  const [officer, setOfficer] = useState<string>("all");
-  const [station, setStation] = useState<string>("all");
-  const [createdBy, setCreatedBy] = useState<string>("all");
-  const [vipOnly, setVipOnly] = useState(false);
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [openNew, setOpenNew] = useState(false);
@@ -133,33 +119,12 @@ function LostFoundPage() {
     for (const c of cases) if (c.internal?.assignedOfficer) s.add(c.internal.assignedOfficer);
     return Array.from(s).sort();
   }, [cases]);
-  const stations = useMemo(() => {
-    const s = new Set<string>();
-    for (const c of cases) if (c.internal?.station) s.add(c.internal.station);
-    return Array.from(s).sort();
-  }, [cases]);
-  const creators = useMemo(() => {
-    const s = new Set<string>();
-    for (const c of cases) if (c.internal?.createdBy) s.add(c.internal.createdBy);
-    return Array.from(s).sort();
-  }, [cases]);
-
-  const activeAdvanced =
-    priority !== "all" || method !== "all" || officer !== "all" ||
-    station !== "all" || createdBy !== "all" || vipOnly;
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return cases.filter((c) => {
       const lfs = deriveLfFromCase(c);
       if (status !== "all" && lfs !== status) return false;
-      const p = c.priority ?? c.internal?.casePriority ?? "Normal";
-      if (priority !== "all" && p !== priority) return false;
-      if (method !== "all" && c.delivery?.method !== method) return false;
-      if (officer !== "all" && (c.internal?.assignedOfficer ?? "") !== officer) return false;
-      if (station !== "all" && (c.internal?.station ?? "") !== station) return false;
-      if (createdBy !== "all" && (c.internal?.createdBy ?? "") !== createdBy) return false;
-      if (vipOnly && !(c.baggage?.vipPassenger || p === "VIP")) return false;
       if (from && c.createdAt.slice(0, 10) < from) return false;
       if (to && c.createdAt.slice(0, 10) > to) return false;
       if (!q) return true;
@@ -170,7 +135,7 @@ function LostFoundPage() {
       ].filter(Boolean).join(" ").toLowerCase();
       return hay.includes(q);
     });
-  }, [cases, query, status, priority, method, officer, station, createdBy, vipOnly, from, to]);
+  }, [cases, query, status, from, to]);
 
   const sorted = useMemo(() => {
     const arr = [...filtered];
@@ -211,9 +176,7 @@ function LostFoundPage() {
     else { setSortKey(key); setSortDir("asc"); }
   }
   function resetFilters() {
-    setQuery(""); setStatus("all"); setPriority("all"); setMethod("all");
-    setOfficer("all"); setStation("all"); setCreatedBy("all");
-    setVipOnly(false); setFrom(""); setTo("");
+    setQuery(""); setStatus("all"); setFrom(""); setTo("");
   }
 
   const kpis = useMemo(() => {
@@ -403,88 +366,23 @@ function LostFoundPage() {
             </Select>
             <div className="flex items-center gap-1.5">
               <Label className="text-xs text-muted-foreground">From</Label>
-              <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="h-9 w-[145px]" />
+              <Input
+                type="date"
+                value={from}
+                onChange={(e) => setFrom(e.target.value)}
+                className={`h-9 w-[145px] ${!from ? "[&::-webkit-datetime-edit]:text-transparent" : ""}`}
+              />
               <Label className="text-xs text-muted-foreground">To</Label>
-              <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="h-9 w-[145px]" />
+              <Input
+                type="date"
+                value={to}
+                onChange={(e) => setTo(e.target.value)}
+                className={`h-9 w-[145px] ${!to ? "[&::-webkit-datetime-edit]:text-transparent" : ""}`}
+              />
+              <Button variant="ghost" size="sm" onClick={resetFilters} className="h-9 gap-1.5">
+                <X className="h-3.5 w-3.5" /> Reset
+              </Button>
             </div>
-
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant={activeAdvanced ? "default" : "outline"} size="sm" className="h-9 gap-1.5">
-                  <SlidersHorizontal className="h-3.5 w-3.5" />
-                  Advanced Filters
-                  {activeAdvanced && (
-                    <span className="ml-1 rounded-full bg-primary-foreground/20 px-1.5 py-0.5 text-[10px]">
-                      ON
-                    </span>
-                  )}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent align="end" className="w-[320px] space-y-3">
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Officer</Label>
-                  <Select value={officer} onValueChange={setOfficer}>
-                    <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Officers</SelectItem>
-                      {officers.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Station</Label>
-                  <Select value={station} onValueChange={setStation}>
-                    <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Stations</SelectItem>
-                      {stations.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Priority</Label>
-                  <Select value={priority} onValueChange={(v) => setPriority(v as Priority | "all")}>
-                    <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Priorities</SelectItem>
-                      {(["Low", "Normal", "High", "VIP"] as Priority[]).map((p) => (
-                        <SelectItem key={p} value={p}>{p}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Delivery Method</Label>
-                  <Select value={method} onValueChange={(v) => setMethod(v as DeliveryMethod | "all")}>
-                    <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Methods</SelectItem>
-                      <SelectItem value="Home Delivery">Home Delivery</SelectItem>
-                      <SelectItem value="Airport Pickup">Airport Pickup</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Created By</Label>
-                  <Select value={createdBy} onValueChange={setCreatedBy}>
-                    <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Anyone</SelectItem>
-                      {creators.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <label className="inline-flex items-center gap-2 text-sm pt-1">
-                  <Checkbox checked={vipOnly} onCheckedChange={(v) => setVipOnly(Boolean(v))} />
-                  <StarIcon className="h-3.5 w-3.5 text-amber-500" />
-                  VIP passengers only
-                </label>
-              </PopoverContent>
-            </Popover>
-
-            <Button variant="ghost" size="sm" onClick={resetFilters} className="h-9 gap-1.5">
-              <X className="h-3.5 w-3.5" /> Reset
-            </Button>
             <div className="ml-auto flex items-center gap-2">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
