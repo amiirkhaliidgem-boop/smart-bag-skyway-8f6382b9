@@ -511,32 +511,25 @@ function fmt(iso: string) {
 function Kpi({
   label,
   value,
-  icon,
   tone,
 }: {
   label: string;
   value: number | string;
-  icon: React.ReactNode;
-  tone: "primary" | "emerald" | "indigo" | "amber" | "rose" | "cyan" | "blue" | "slate";
+  tone?: "slate" | "rose" | "amber" | "violet" | "emerald" | "indigo";
 }) {
-  const tones: Record<string, string> = {
-    primary: "bg-primary/10 text-primary",
-    emerald: "bg-emerald-100 text-emerald-700",
-    indigo: "bg-indigo-100 text-indigo-700",
-    amber: "bg-amber-100 text-amber-700",
-    rose: "bg-rose-100 text-rose-700",
-    cyan: "bg-cyan-100 text-cyan-700",
-    blue: "bg-blue-100 text-blue-700",
-    slate: "bg-slate-100 text-slate-700",
+  const map: Record<string, string> = {
+    slate: "text-slate-700",
+    rose: "text-rose-600",
+    amber: "text-amber-600",
+    violet: "text-violet-600",
+    emerald: "text-emerald-600",
+    indigo: "text-indigo-600",
   };
   return (
     <Card>
-      <CardContent className="p-3 flex items-center gap-3">
-        <div className={cn("h-9 w-9 rounded-lg grid place-items-center", tones[tone])}>{icon}</div>
-        <div className="min-w-0">
-          <p className="text-[11px] text-muted-foreground truncate">{label}</p>
-          <p className="text-xl font-bold tabular-nums">{value}</p>
-        </div>
+      <CardContent className="p-4">
+        <p className="text-xs text-muted-foreground">{label}</p>
+        <p className={cn("text-2xl font-bold tabular-nums mt-1", map[tone ?? "slate"])}>{value}</p>
       </CardContent>
     </Card>
   );
