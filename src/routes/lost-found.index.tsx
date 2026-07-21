@@ -4,13 +4,16 @@ import {
   useStore,
   bulkUpdateCases,
   bulkAssignDelivery,
+  updateLfStatus,
   type BaggageCase,
   type Priority,
   type DeliveryMethod,
 } from "@/lib/store";
 import {
   LF_STATUSES,
+  LF_OWNED_STATUSES,
   deriveLfFromCase,
+  canTransitionLf,
   type LFStatus,
 } from "@/lib/lost-found/statuses";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -60,7 +63,7 @@ import {
   SlidersHorizontal,
   UserCheck,
   Truck,
-  Flag,
+  ListChecks,
   Download,
   Printer,
 } from "lucide-react";
