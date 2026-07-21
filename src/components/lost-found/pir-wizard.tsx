@@ -375,12 +375,8 @@ export function PirWizard({
         {step === 0 && (
           <Grid>
             <Fld label="First Name" required><Input value={form.firstName} onChange={(e) => set("firstName", e.target.value)} /></Fld>
-            <Fld label="Middle Name"><Input value={form.middleName} onChange={(e) => set("middleName", e.target.value)} /></Fld>
             <Fld label="Last Name" required><Input value={form.lastName} onChange={(e) => set("lastName", e.target.value)} /></Fld>
-            <Fld label="Nationality"><Input value={form.nationality} onChange={(e) => set("nationality", e.target.value)} /></Fld>
-            <Fld label="Passport Number"><Input value={form.passportNumber} onChange={(e) => set("passportNumber", e.target.value)} /></Fld>
             <Fld label="PNR"><Input value={form.pnr} onChange={(e) => set("pnr", e.target.value)} /></Fld>
-            <Fld label="Ticket Number"><Input value={form.ticketNumber} onChange={(e) => set("ticketNumber", e.target.value)} /></Fld>
             <Fld label="Mobile Number 1" required><Input value={form.mobile} onChange={(e) => set("mobile", e.target.value)} /></Fld>
             <Fld label="Mobile Number 2"><Input value={form.mobile2} onChange={(e) => set("mobile2", e.target.value)} /></Fld>
             <Fld label="Email"><Input type="email" value={form.email} onChange={(e) => set("email", e.target.value)} /></Fld>
@@ -414,14 +410,14 @@ export function PirWizard({
               <Select value={form.priority} onValueChange={(v) => set("priority", v as Priority)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {(["Low", "Normal", "High", "VIP"] as Priority[]).map((p) => (
+                  {(["Normal", "VIP"] as Priority[]).map((p) => (
                     <SelectItem key={p} value={p}>{p}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </Fld>
             <Fld label="Color"><Input value={form.color} onChange={(e) => set("color", e.target.value)} /></Fld>
-            <Fld label="Type"><Input value={form.type} onChange={(e) => set("type", e.target.value)} placeholder="Hardshell / Softshell" /></Fld>
+            <Fld label="Type"><Input value={form.type} onChange={(e) => set("type", e.target.value)} /></Fld>
             <Fld label="Distinctive Marks" wide><Textarea rows={2} value={form.distinctiveMarks} onChange={(e) => set("distinctiveMarks", e.target.value)} /></Fld>
             <div className="sm:col-span-3 space-y-2 pt-1">
               <Label className="font-semibold">
@@ -444,11 +440,6 @@ export function PirWizard({
                   </div>
                 ))}
               </div>
-            </div>
-            <div className="sm:col-span-3 flex flex-wrap gap-4 pt-1">
-              <Toggle label="VIP Passenger" checked={form.vipPassenger} onChange={(v) => set("vipPassenger", v)} />
-              <Toggle label="Rush Delivery" checked={form.rushDelivery} onChange={(v) => set("rushDelivery", v)} />
-              <Toggle label="Fragile" checked={form.fragile} onChange={(v) => set("fragile", v)} />
             </div>
             <Fld label="Internal Notes" wide><Textarea rows={2} value={form.internalNotes} onChange={(e) => set("internalNotes", e.target.value)} /></Fld>
           </Grid>
@@ -490,9 +481,7 @@ export function PirWizard({
           <div className="space-y-4 text-sm">
             <ReviewGroup title="Passenger" onEdit={() => setStep(0)}>
               <ReviewKV k="Full Name" v={passengerName()} />
-              <ReviewKV k="Nationality" v={form.nationality} />
-              <ReviewKV k="Passport" v={form.passportNumber} />
-              <ReviewKV k="PNR / Ticket" v={[form.pnr, form.ticketNumber].filter(Boolean).join(" · ")} />
+              <ReviewKV k="PNR" v={form.pnr} />
               <ReviewKV k="Mobile" v={form.mobile} />
               <ReviewKV k="Email" v={form.email} />
             </ReviewGroup>
