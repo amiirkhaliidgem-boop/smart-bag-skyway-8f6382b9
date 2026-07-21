@@ -398,6 +398,9 @@ function LostFoundPage() {
                   ))}
                 </DropdownMenuContent>
               </DropdownMenu>
+              <Button variant="ghost" size="sm" onClick={resetFilters} className="h-9 gap-1.5">
+                <X className="h-3.5 w-3.5" /> Reset
+              </Button>
             </div>
           </div>
         </CardHeader>
