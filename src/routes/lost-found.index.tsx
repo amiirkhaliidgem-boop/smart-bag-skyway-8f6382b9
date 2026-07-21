@@ -276,8 +276,7 @@ function LostFoundPage() {
   }
   function runPrint() {
     if (selectedIds.length === 0) return;
-    const ids = selectedIds.map(encodeURIComponent).join(",");
-    window.open(`/print/pir?ids=${ids}`, "_blank");
+    pirPrintBus.print(selectedIds);
   }
 
   return (
