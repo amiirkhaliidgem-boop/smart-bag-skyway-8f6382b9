@@ -736,29 +736,30 @@ function AssignOfficerDialog({
   );
 }
 
-function ChangePriorityDialog({
+function ChangeStatusDialog({
   open, onOpenChange, count, onSubmit,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   count: number;
-  onSubmit: (p: Priority) => void;
+  onSubmit: (s: LFStatus) => void;
 }) {
-  const [p, setP] = useState<Priority>("Normal");
+  const [s, setS] = useState<LFStatus>("Open");
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Change Priority</DialogTitle>
+          <DialogTitle>Change Status</DialogTitle>
         </DialogHeader>
         <div className="space-y-3 py-2">
           <p className="text-sm text-muted-foreground">
-            Set priority for {count} selected case{count === 1 ? "" : "s"}.
+            Move {count} selected case{count === 1 ? "" : "s"} to a new status.
+            Cases already past the target or handed over to Delivery will be skipped.
           </p>
-          <Select value={p} onValueChange={(v) => setP(v as Priority)}>
+          <Select value={s} onValueChange={(v) => setS(v as LFStatus)}>
             <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
             <SelectContent>
-              {(["Low", "Normal", "High", "VIP"] as Priority[]).map((x) => (
+              {LF_OWNED_STATUSES.map((x) => (
                 <SelectItem key={x} value={x}>{x}</SelectItem>
               ))}
             </SelectContent>
@@ -766,7 +767,7 @@ function ChangePriorityDialog({
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={() => onSubmit(p)}>Apply</Button>
+          <Button onClick={() => onSubmit(s)}>Apply</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
