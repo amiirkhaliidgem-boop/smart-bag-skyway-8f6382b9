@@ -112,10 +112,6 @@ function teardownChannel() {
 
 export function scheduleRemotePush(getSnapshot: () => unknown): void {
   if (typeof window === "undefined") return;
-  if (suppressNext) {
-    suppressNext = false;
-    return;
-  }
   if (!session) return; // not signed in yet — no push
   if (pushTimer) return;
   pushTimer = setTimeout(() => {
@@ -126,7 +122,17 @@ export function scheduleRemotePush(getSnapshot: () => unknown): void {
 
 async function pushNow(snapshot: unknown) {
   const serialized = JSON.stringify(snapshot);
-  if (serialized === lastPayload) return; // no-op
+  if (serialized === lastPayload) {
+    // Snapshot matches last known remote payload — genuine echo, nothing to persist.
+    // Consume any pending suppression so it can't leak into a later real mutation.
+    suppressNext = false;
+    return;
+  }
+  if (suppressNext) {
+    // A remote apply landed but the store diverged (real user mutation).
+    // Clear the flag and persist the divergence.
+    suppressNext = false;
+  }
   lastPayload = serialized;
   const nextVersion = localVersion + 1;
   const { error } = await supabase
