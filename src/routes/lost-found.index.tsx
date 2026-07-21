@@ -282,6 +282,7 @@ function LostFoundPage() {
 
   return (
     <div className="space-y-6">
+      <PirPrintHost />
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
