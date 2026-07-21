@@ -719,6 +719,20 @@ function applyRemote(payload: unknown, _version: number) {
     driverPositions: parsed.driverPositions ?? base.driverPositions,
     driverRoutes: parsed.driverRoutes ?? base.driverRoutes,
   };
+  // Coerce legacy Cairo-specific L&F statuses persisted before the
+  // airport-neutral rename into the current canonical values.
+  if (state.cases?.length) {
+    state = {
+      ...state,
+      cases: state.cases.map((c) => {
+        const v = c.lfStatus as unknown as string | undefined;
+        if (v === "In Transit to Cairo" || v === "Arrived at Cairo") {
+          return { ...c, lfStatus: "Arrived at Airport" as LFStatus };
+        }
+        return c;
+      }),
+    };
+  }
   listeners.forEach((l) => l());
 }
 

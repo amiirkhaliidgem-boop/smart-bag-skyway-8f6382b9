@@ -1,36 +1,49 @@
-# Fix: First mutation after bootstrap never persists
+## Lost & Found Status Terminology — Airport-Neutral Update
 
-## Root cause (recap)
+Scope: Lost & Found module only. No changes to Workflow Engine, Delivery, Notifications, or Database schema.
 
-`bootstrap()` in `src/lib/persistence.ts` calls `markRemoteApply()` before applying the remote snapshot to the store, which sets `suppressNext = true` to swallow the echo emit. But `applyRemote` in the store path does not always trigger an emit (e.g. when hydrating an empty local state to matching remote state, or when the initial apply short-circuits). The `suppressNext` flag therefore lingers, and the **first real user mutation** hits `scheduleRemotePush()`, which unconditionally consumes the flag and returns without scheduling a push. The mutation lives only in memory and vanishes on refresh.
+### Status changes
 
-## Fix (single file: `src/lib/persistence.ts`)
+- **Remove:** `In Transit to Cairo`
+- **Rename:** `Arrived at Cairo` → `Arrived at Airport`
 
-Move the echo-suppression decision from "next scheduled push" to "does the snapshot actually match the last known remote payload". The compare already exists in `pushNow()` via `lastPayload`.
+Canonical L&F status list becomes:
+`Open`, `Tracing`, `Located`, `Arrived at Airport`, `Waiting Customs Clearance`, `Ready for Delivery`, `Assigned Driver`, `Out for Delivery`, `Delivered`, `Closed`.
 
-Change `scheduleRemotePush()`:
-- Remove the early `if (suppressNext) { suppressNext = false; return; }` block. Always schedule the debounced push when signed in.
+L&F-owned (user-selectable) subset:
+`Open`, `Tracing`, `Located`, `Arrived at Airport`, `Waiting Customs Clearance`, `Ready for Delivery`.
 
-Change `pushNow()`:
-- When `serialized === lastPayload` (true echo), clear `suppressNext` and return — nothing to persist.
-- When the snapshot differs, clear `suppressNext` (in case it was set) and proceed with the update.
+### Files to update
 
-Net effect:
-- Genuine echoes from `applyRemote` are still no-ops because the snapshot matches `lastPayload`.
-- Genuine user mutations always diverge from `lastPayload` and are always persisted, regardless of the flag state.
-- No workaround, no schema/workflow/architecture change.
+1. **`src/lib/lost-found/statuses.ts`** — single source of truth
+   - Remove `"In Transit to Cairo"` from `LF_STATUSES` and `LF_OWNED_STATUSES`.
+   - Rename `"Arrived at Cairo"` → `"Arrived at Airport"` in `LF_STATUSES`, `LF_OWNED_STATUSES`, `LF_STATUS_COLOR`, and `LF_TO_WORKFLOW` (both map to existing workflow states — `Arrived at Airport` → `DELIVERY_APPROVED`, matching prior `Arrived at Cairo`).
+   - `LF_STATUS_ORDER` regenerates automatically from `LF_STATUSES`.
 
-## Verification
+2. **Migration of any persisted values** (in-memory only, no DB migration)
+   - Add a one-time normalizer in the L&F store hydration path so any existing case with `lfStatus === "In Transit to Cairo"` or `"Arrived at Cairo"` is coerced to `"Arrived at Airport"` on load. Keeps historical data valid without a SQL migration.
 
-After the edit, in the running preview:
-1. Hard refresh, sign in, then create a new L&F case → refresh → case still present.
-2. Edit an existing case field → refresh → edit still present.
-3. Delete a case (where supported) → refresh → still gone.
-4. Repeat step 1 as the very first action after a fresh page load to confirm the "first mutation" path.
-5. Confirm `public.app_state.version` increments after each mutation via a quick read query.
+3. **Consumers** — no code changes expected because they read from `LF_STATUSES` / `LF_OWNED_STATUSES` / `LF_STATUS_COLOR`:
+   - `src/components/lost-found/status-stepper.tsx`
+   - `src/components/lf-status-badge.tsx`
+   - `src/routes/lost-found.index.tsx` (filters, table, Change Status dropdown)
+   - `src/routes/lost-found.$bagId.tsx` (Change Status dialog)
+   - Bulk toolbar Change Status action
 
-## Files touched
+   Grep will confirm no hardcoded `"In Transit to Cairo"` or `"Arrived at Cairo"` strings remain; any found will be updated or removed.
 
-- `src/lib/persistence.ts` — `scheduleRemotePush()` and `pushNow()` only.
+### Verification
 
-No other files, no SQL, no workflow/store changes.
+- Grep the repo for `"In Transit to Cairo"` and `"Arrived at Cairo"` — must return zero matches after the change.
+- Open L&F case → Change Status: dropdown shows the new 6-item owned list.
+- Bulk selection → Change Status: same 6-item list.
+- Filter dropdown on L&F index: same list.
+- Status badges render `Arrived at Airport` with existing blue styling.
+- Existing cases previously in `In Transit to Cairo` or `Arrived at Cairo` render as `Arrived at Airport`.
+
+### Deliverable summary (post-implementation)
+
+- Removed: `In Transit to Cairo`
+- Renamed: `Arrived at Cairo` → `Arrived at Airport`
+- Files touched: `src/lib/lost-found/statuses.ts` (+ store hydration normalizer if the store references legacy values directly)
+- Confirmation: single canonical list drives every L&F dropdown, filter, badge, and bulk action.
