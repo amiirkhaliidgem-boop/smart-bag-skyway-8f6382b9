@@ -374,6 +374,7 @@ function DispatchCenter() {
         deliveryId={assignFor}
         onClose={() => setAssignFor(null)}
       />
+      <PodPrintHost />
     </div>
   );
 }
