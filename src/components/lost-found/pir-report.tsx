@@ -1,5 +1,6 @@
 import type { BaggageCase } from "@/lib/store";
-import { deriveLfFromCase, LF_STATUS_ORDER } from "@/lib/lost-found/statuses";
+import { deriveLfFromCase } from "@/lib/lost-found/statuses";
+import iabLogo from "@/assets/iab-logo.jpeg.asset.json";
 
 // Standalone printable PIR Report template.
 //
@@ -12,12 +13,10 @@ function fmtDate(iso?: string) {
   if (!iso) return "—";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleString("en-GB", {
+  return d.toLocaleDateString("en-GB", {
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
   });
 }
 
