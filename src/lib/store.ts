@@ -286,6 +286,8 @@ interface State {
   audit: AuditEntry[];
   ioAudit: ImportAuditEntry[];
   station: Station;
+  driverPositions: Record<string, DriverPosition>;
+  driverRoutes: Record<string, DriverRoute>;
 }
 
 // Station (airport) configuration — origin for route optimization and the
@@ -304,6 +306,25 @@ export const DEFAULT_STATION: Station = {
   lat: 30.1219,
   lng: 31.4056,
 };
+
+// Live driver position reported by the Driver Portal. The Workflow
+// Engine reads this when it recomputes a driver's optimized route.
+export interface DriverPosition {
+  lat: number;
+  lng: number;
+  accuracy?: number;
+  at: string;
+}
+
+// Route optimized by the Workflow Engine for a specific driver.
+// The Driver Portal is a pure consumer — it never runs optimization
+// itself, it only renders `stops` in this order.
+export interface DriverRoute {
+  driver: string;
+  origin: { lat: number; lng: number; source: "gps" | "lastStop" | "station" };
+  stops: string[]; // deliveryId in visit order
+  computedAt: string;
+}
 
 const driverPool = [
   "Ahmed Mostafa",
@@ -645,6 +666,8 @@ function defaults(): State {
     audit: [],
     ioAudit: [],
     station: DEFAULT_STATION,
+    driverPositions: {},
+    driverRoutes: {},
   };
 }
 
@@ -661,6 +684,8 @@ function load(): State {
     audit: [],
     ioAudit: [],
     station: DEFAULT_STATION,
+    driverPositions: {},
+    driverRoutes: {},
   };
   // Always start from defaults on both server and client so SSR HTML
   // matches the first client render. localStorage is merged in after
@@ -691,6 +716,8 @@ function applyRemote(payload: unknown, _version: number) {
     audit: parsed.audit ?? base.audit,
     ioAudit: parsed.ioAudit ?? base.ioAudit,
     station: parsed.station ?? base.station,
+    driverPositions: parsed.driverPositions ?? base.driverPositions,
+    driverRoutes: parsed.driverRoutes ?? base.driverRoutes,
   };
   listeners.forEach((l) => l());
 }
@@ -1283,6 +1310,7 @@ export function setDeliveryStage(
       });
     }
   }
+  recomputeAllDriverRoutes();
   emit();
 }
 
@@ -1636,8 +1664,90 @@ export function logIoAudit(entry: Omit<ImportAuditEntry, "id" | "at">) {
 // Airport so the platform can be deployed at any airport.
 export function setStation(patch: Partial<Station>) {
   state = { ...state, station: { ...state.station, ...patch } };
+  recomputeAllDriverRoutes();
   emit();
   return state.station;
+}
+
+// ---------- Route Optimization Engine ----------
+// The Workflow Engine owns route optimization. It runs whenever the
+// inputs change: driver assignment, delivery stage, station config, or
+// a new position report from the Driver Portal. Drivers only ever read
+// `driverRoutes[driver]` — they never optimize their own routes.
+import { optimizeRoute } from "./routing/optimize";
+
+function computeDriverRoute(driver: string): DriverRoute | null {
+  const open = state.deliveries.filter(
+    (d) =>
+      d.driver === driver &&
+      getDeliveryStage(d) !== "Delivered" &&
+      getDeliveryStage(d) !== "Delivery Failed" &&
+      getDeliveryStage(d) !== "Returned to Airport",
+  );
+  if (!open.length) return null;
+  const gps = state.driverPositions[driver];
+  const lastCompleted = [...state.deliveries]
+    .filter((d) => d.driver === driver && getDeliveryStage(d) === "Delivered")
+    .sort((a, b) => (a.deliveredAt ?? "").localeCompare(b.deliveredAt ?? ""))
+    .reverse()
+    .find((d) => d.destination)?.destination;
+  let origin: DriverRoute["origin"];
+  if (gps) {
+    origin = { lat: gps.lat, lng: gps.lng, source: "gps" };
+  } else if (lastCompleted) {
+    origin = { lat: lastCompleted.lat, lng: lastCompleted.lng, source: "lastStop" };
+  } else {
+    origin = { lat: state.station.lat, lng: state.station.lng, source: "station" };
+  }
+  const ordered = optimizeRoute(open, { lat: origin.lat, lng: origin.lng });
+  return {
+    driver,
+    origin,
+    stops: ordered.map((d) => d.deliveryId),
+    computedAt: new Date().toISOString(),
+  };
+}
+
+function affectedDrivers(): string[] {
+  const set = new Set<string>();
+  for (const d of state.deliveries) if (d.driver && d.driver !== "—") set.add(d.driver);
+  for (const k of Object.keys(state.driverPositions)) set.add(k);
+  for (const k of Object.keys(state.driverRoutes)) set.add(k);
+  return [...set];
+}
+
+function recomputeAllDriverRoutes() {
+  const next: Record<string, DriverRoute> = {};
+  for (const driver of affectedDrivers()) {
+    const r = computeDriverRoute(driver);
+    if (r) next[driver] = r;
+  }
+  state = { ...state, driverRoutes: next };
+}
+
+// Called by the Driver Portal after acquiring / refreshing GPS. Throttling
+// is the caller's responsibility — the store simply records the fix and
+// triggers a recompute for that driver.
+export function reportDriverPosition(
+  driver: string,
+  pos: { lat: number; lng: number; accuracy?: number },
+) {
+  if (!driver || !Number.isFinite(pos.lat) || !Number.isFinite(pos.lng)) return;
+  state = {
+    ...state,
+    driverPositions: {
+      ...state.driverPositions,
+      [driver]: { lat: pos.lat, lng: pos.lng, accuracy: pos.accuracy, at: new Date().toISOString() },
+    },
+  };
+  const r = computeDriverRoute(driver);
+  state = {
+    ...state,
+    driverRoutes: r
+      ? { ...state.driverRoutes, [driver]: r }
+      : Object.fromEntries(Object.entries(state.driverRoutes).filter(([k]) => k !== driver)),
+  };
+  emit();
 }
 
 // ---------- Notification helpers ----------

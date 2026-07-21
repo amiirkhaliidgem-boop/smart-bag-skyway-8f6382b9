@@ -1,14 +1,19 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   useStore,
   driverStartTrip,
   driverMarkDelivered,
   driverPool,
+  reportDriverPosition,
   type Delivery,
 } from "@/lib/store";
 import { getDeliveryStage } from "@/lib/store";
-import { optimizeRoute, navigationHref } from "@/lib/routing/optimize";
+import {
+  stopNavigationHref,
+  routeNavigationHref,
+  type LatLng,
+} from "@/lib/routing/optimize";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,6 +35,8 @@ import {
   LogOut,
   Navigation,
   Package,
+  Crosshair,
+  Route as RouteIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -108,25 +115,65 @@ function DriverLogin({
 }
 
 function DriverDashboard({ driver, onSignOut }: { driver: string; onSignOut: () => void }) {
+  // Route optimization is owned by the Workflow Engine (see
+  // `computeDriverRoute` in src/lib/store.ts). The Driver Portal only
+  // reads `driverRoutes[driver]` and reports live GPS back to the engine.
   const mine = useStore((s) => s.deliveries.filter((d) => d.driver === driver));
-  const station = useStore((s) => s.station);
-
-  // Today's Route — every stop assigned to this driver that has not been
-  // delivered yet, optimized nearest-neighbor. Once the trip is under way
-  // we re-anchor from the last completed stop's coordinates so the visit
-  // order stays stable as the driver progresses; before any completion we
-  // anchor from the airport.
+  const engineRoute = useStore((s) => s.driverRoutes[driver]);
   const completed = mine.filter((d) => getDeliveryStage(d) === "Delivered");
-  const route = useMemo(() => {
-    const open = mine.filter((d) => getDeliveryStage(d) !== "Delivered");
-    const anchor = [...completed]
-      .reverse()
-      .find((d) => d.destination)?.destination;
-    // Trip in progress → re-optimize from the driver's last completed
-    // stop (a proxy for current position); otherwise anchor at the
-    // configured station.
-    return optimizeRoute(open, anchor ?? { lat: station.lat, lng: station.lng });
-  }, [mine, completed, station.lat, station.lng]);
+  const route: Delivery[] = useMemo(() => {
+    if (!engineRoute) return [];
+    const byId = new Map(mine.map((d) => [d.deliveryId, d]));
+    return engineRoute.stops
+      .map((id) => byId.get(id))
+      .filter((d): d is Delivery => !!d);
+  }, [engineRoute, mine]);
+  const origin: LatLng | null = engineRoute
+    ? { lat: engineRoute.origin.lat, lng: engineRoute.origin.lng }
+    : null;
+  const originSource = engineRoute?.origin.source ?? null;
+
+  // GPS reporter — pushes throttled position fixes to the Workflow Engine.
+  const [gpsStatus, setGpsStatus] = useState<
+    "idle" | "requesting" | "on" | "denied" | "unsupported" | "error"
+  >("idle");
+  const lastFixRef = useRef<{ lat: number; lng: number; at: number } | null>(null);
+  useEffect(() => {
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      setGpsStatus("unsupported");
+      return;
+    }
+    setGpsStatus("requesting");
+    const push = (p: GeolocationPosition) => {
+      const { latitude, longitude, accuracy } = p.coords;
+      const now = Date.now();
+      const last = lastFixRef.current;
+      // Throttle: only report if moved >75m or 30s elapsed.
+      if (last) {
+        const dt = now - last.at;
+        const dLat = (latitude - last.lat) * 111_320;
+        const dLng = (longitude - last.lng) * 111_320 * Math.cos((latitude * Math.PI) / 180);
+        const distM = Math.sqrt(dLat * dLat + dLng * dLng);
+        if (dt < 30_000 && distM < 75) return;
+      }
+      lastFixRef.current = { lat: latitude, lng: longitude, at: now };
+      setGpsStatus("on");
+      reportDriverPosition(driver, { lat: latitude, lng: longitude, accuracy });
+    };
+    const onError = (e: GeolocationPositionError) => {
+      setGpsStatus(e.code === e.PERMISSION_DENIED ? "denied" : "error");
+    };
+    navigator.geolocation.getCurrentPosition(push, onError, {
+      enableHighAccuracy: true,
+      timeout: 10_000,
+      maximumAge: 15_000,
+    });
+    const watchId = navigator.geolocation.watchPosition(push, onError, {
+      enableHighAccuracy: true,
+      maximumAge: 10_000,
+    });
+    return () => navigator.geolocation.clearWatch(watchId);
+  }, [driver]);
 
   return (
     <div className="space-y-6">
@@ -153,7 +200,12 @@ function DriverDashboard({ driver, onSignOut }: { driver: string; onSignOut: () 
         <Kpi label="Completed" value={completed.length} icon={<CheckCircle2 />} tone="emerald" />
       </div>
 
-      <RouteSection route={route} />
+      <RouteSection
+        route={route}
+        origin={origin}
+        originSource={originSource}
+        gpsStatus={gpsStatus}
+      />
       <Section title="Completed" items={completed} empty="No deliveries completed yet." />
     </div>
   );
@@ -190,14 +242,49 @@ function Kpi({
   );
 }
 
-function RouteSection({ route }: { route: Delivery[] }) {
+function RouteSection({
+  route,
+  origin,
+  originSource,
+  gpsStatus,
+}: {
+  route: Delivery[];
+  origin: LatLng | null;
+  originSource: "gps" | "lastStop" | "station" | null;
+  gpsStatus: "idle" | "requesting" | "on" | "denied" | "unsupported" | "error";
+}) {
+  const fullRouteHref = origin ? routeNavigationHref(origin, route) : null;
+  const originLabel =
+    originSource === "gps"
+      ? "Live GPS"
+      : originSource === "lastStop"
+        ? "Last completed stop"
+        : originSource === "station"
+          ? "Station (no GPS yet)"
+          : "—";
+  const gpsBadge =
+    gpsStatus === "on"
+      ? { text: "GPS on", tone: "bg-emerald-100 text-emerald-700" }
+      : gpsStatus === "requesting"
+        ? { text: "Locating…", tone: "bg-amber-100 text-amber-700" }
+        : gpsStatus === "denied"
+          ? { text: "Location off", tone: "bg-slate-100 text-slate-600" }
+          : gpsStatus === "unsupported"
+            ? { text: "GPS unsupported", tone: "bg-slate-100 text-slate-600" }
+            : gpsStatus === "error"
+              ? { text: "GPS error", tone: "bg-rose-100 text-rose-700" }
+              : { text: "GPS idle", tone: "bg-slate-100 text-slate-600" };
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base flex items-center gap-2">
+        <CardTitle className="text-base flex flex-wrap items-center gap-2">
           <Navigation className="h-4 w-4" /> Today's Route
+          <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${gpsBadge.tone}`}>
+            <Crosshair className="inline h-3 w-3 mr-1" />
+            {gpsBadge.text}
+          </span>
           <span className="ml-auto text-xs font-normal text-muted-foreground">
-            {route.length} {route.length === 1 ? "stop" : "stops"} · optimized from airport
+            {route.length} {route.length === 1 ? "stop" : "stops"} · from {originLabel}
           </span>
         </CardTitle>
       </CardHeader>
@@ -207,12 +294,29 @@ function RouteSection({ route }: { route: Delivery[] }) {
             No stops assigned. New deliveries will appear here automatically.
           </p>
         )}
+        {route.length > 0 && fullRouteHref && (
+          <a
+            href={fullRouteHref}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1.5 h-9 px-3 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90"
+          >
+            <RouteIcon className="h-4 w-4" /> Navigate Full Route
+          </a>
+        )}
         {route.map((d, i) => (
           <DeliveryCard
             key={d.deliveryId}
             d={d}
             stopNumber={i + 1}
             isCurrent={i === 0}
+            legOrigin={
+              i === 0
+                ? origin
+                : route[i - 1].destination
+                  ? { lat: route[i - 1].destination!.lat, lng: route[i - 1].destination!.lng }
+                  : origin
+            }
           />
         ))}
       </CardContent>
@@ -248,10 +352,12 @@ function DeliveryCard({
   d,
   stopNumber,
   isCurrent,
+  legOrigin,
 }: {
   d: Delivery;
   stopNumber?: number;
   isCurrent?: boolean;
+  legOrigin?: LatLng | null;
 }) {
   const [otpOpen, setOtpOpen] = useState(false);
   const stage = getDeliveryStage(d);
@@ -306,14 +412,16 @@ function DeliveryCard({
         <p className="flex items-center gap-2"><Phone className="h-4 w-4 text-muted-foreground" />{d.mobile}</p>
       </div>
       <div className="flex flex-wrap gap-2 mt-3">
-        <a
-          href={navigationHref(d)}
-          target="_blank"
-          rel="noreferrer"
-          className="inline-flex items-center gap-1.5 h-9 px-3 rounded-md border border-input bg-background text-sm font-medium hover:bg-muted"
-        >
-          <Navigation className="h-4 w-4" /> Open Navigation
-        </a>
+        {legOrigin && (
+          <a
+            href={stopNavigationHref(legOrigin, d)}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1.5 h-9 px-3 rounded-md border border-input bg-background text-sm font-medium hover:bg-muted"
+          >
+            <Navigation className="h-4 w-4" /> Navigate to Stop
+          </a>
+        )}
         {stage === "Assigned" && (
           <Button
             size="sm"
