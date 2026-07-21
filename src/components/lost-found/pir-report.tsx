@@ -1,5 +1,6 @@
 import type { BaggageCase } from "@/lib/store";
-import { deriveLfFromCase, LF_STATUS_ORDER } from "@/lib/lost-found/statuses";
+import { deriveLfFromCase } from "@/lib/lost-found/statuses";
+import iabLogo from "@/assets/iab-logo.jpeg.asset.json";
 
 // Standalone printable PIR Report template.
 //
@@ -12,12 +13,10 @@ function fmtDate(iso?: string) {
   if (!iso) return "—";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleString("en-GB", {
+  return d.toLocaleDateString("en-GB", {
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
   });
 }
 
@@ -68,13 +67,15 @@ export function PirReport({ caseRecord }: { caseRecord: BaggageCase }) {
     ? [c.bagTagNumber]
     : [];
 
-  const lifecycle = Object.keys(LF_STATUS_ORDER) as (keyof typeof LF_STATUS_ORDER)[];
-  const currentIdx = LF_STATUS_ORDER[lfs];
-
   return (
     <article className="pir-print">
       <header className="pir-header">
-        <div>
+        <img
+          src={iabLogo.url}
+          alt="IAB"
+          className="pir-logo"
+        />
+        <div className="pir-header-title">
           <div className="pir-brand">IAB · Smart Baggage Ecosystem</div>
           <h1 className="pir-title">Property Irregularity Report</h1>
           <div className="pir-sub">
@@ -140,22 +141,6 @@ export function PirReport({ caseRecord }: { caseRecord: BaggageCase }) {
         <Row k="Preferred Time" v={c.delivery?.preferredDeliveryTime} />
         <Row k="Storage Location" v={c.storage ? `Zone ${c.storage.zone} · Shelf ${c.storage.shelf} · Pos ${c.storage.position}` : "—"} />
       </Section>
-
-      <Section title="Case Lifecycle">
-        <div className="pir-lifecycle">
-          {lifecycle.map((s, i) => (
-            <span key={s} className={`pir-stage ${i <= currentIdx ? "reached" : ""}`}>
-              {i + 1}. {s}
-            </span>
-          ))}
-        </div>
-      </Section>
-
-      {c.description && (
-        <Section title="Description / Notes">
-          <div className="pir-description">{c.description}</div>
-        </Section>
-      )}
 
       <section className="pir-signatures">
         <div>
