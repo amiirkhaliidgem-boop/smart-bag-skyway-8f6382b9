@@ -1,9 +1,10 @@
-import { addCase, updateCase, getState, type CaseStatus } from "@/lib/store";
+import { addCase, getState, type CaseStatus } from "@/lib/store";
 import type { DatasetSchema, FieldDef } from "./types";
 
 // Priority mirrors delivery Priority type but decoupled here to keep the
 // framework independent of consumer types.
-const PRIORITY_VALUES = ["Low", "Normal", "High", "VIP"] as const;
+const PRIORITY_VALUES = ["Normal", "VIP"] as const;
+const DELIVERY_METHOD_VALUES = ["Home Delivery", "Airport Pickup"] as const;
 const CASE_STATUS_VALUES: CaseStatus[] = [
   "Missing",
   "Located",
@@ -14,46 +15,35 @@ const CASE_STATUS_VALUES: CaseStatus[] = [
 ];
 
 // ---------------- Lost & Found ----------------
-// Real airport ops: mandatory fields only. Everything else is optional and
-// completed later by an agent. We never reject the whole case because a
-// passport number or delivery address is missing at import time.
+// Bulk case creation template — mirrors the current PIR wizard data model.
+// Mandatory fields are the minimum needed to open a case; the rest can be
+// completed later. PIR Number and Bag Tag are unique — duplicates against
+// existing records or within the file are rejected during validation.
 const lostFoundFields: FieldDef[] = [
-  { key: "pirNumber", label: "PIR Number", type: "string", required: true, example: "CAIMS12045" },
-  { key: "passengerFirstName", label: "Passenger First Name", type: "string", required: true, example: "Mariam" },
-  { key: "passengerLastName", label: "Passenger Last Name", type: "string", required: true, example: "Hossam" },
-  { key: "contact", label: "Mobile Number", type: "phone", required: true, example: "+20 100 234 5512" },
+  { key: "pirNumber", label: "PIR Number", type: "string", required: true, unique: true, example: "CAIMS12045" },
+  { key: "passengerName", label: "Passenger Name", type: "string", required: true, example: "Mariam Hossam" },
+  { key: "mobile1", label: "Mobile 1", type: "phone", required: true, example: "+20 100 234 5512" },
+  { key: "mobile2", label: "Mobile 2", type: "phone", example: "+20 101 998 2210" },
   { key: "email", label: "Email", type: "email", example: "passenger@example.com" },
+  { key: "pnr", label: "PNR", type: "string", example: "X7K2QA" },
   { key: "airline", label: "Airline", type: "airlineCode", required: true, example: "MS" },
   { key: "flightNumber", label: "Flight Number", type: "string", required: true, example: "MS985" },
   { key: "flightDate", label: "Flight Date", type: "date", required: true, example: "2026-06-18" },
-  { key: "originAirport", label: "Origin Airport", type: "airportCode", required: true, example: "JFK" },
-  { key: "destinationAirport", label: "Destination Airport", type: "airportCode", required: true, example: "CAI" },
-  { key: "bagTagNumber", label: "Bag Tag Number", type: "string", required: true, example: "MS548921" },
-  { key: "numberOfBags", label: "Number Of Bags", type: "integer", example: "1" },
-  { key: "bagColor", label: "Bag Color", type: "string", example: "Black" },
+  { key: "origin", label: "Origin", type: "airportCode", required: true, example: "JFK" },
+  { key: "destination", label: "Destination", type: "airportCode", required: true, example: "CAI" },
+  { key: "bagTag", label: "Bag Tag", type: "string", required: true, unique: true, example: "MS548921" },
+  { key: "numberOfBags", label: "Number of Bags", type: "integer", example: "1" },
+  { key: "bagColor", label: "Color", type: "string", example: "Black" },
+  { key: "weightKg", label: "Weight (kg)", type: "number", example: "18.5" },
   { key: "bagType", label: "Bag Type", type: "string", example: "Hardshell" },
-  { key: "deliveryRequired", label: "Delivery Required", type: "boolean", example: "true" },
-  { key: "deliveryAddress", label: "Delivery Address", type: "string", example: "14 Road 9, Maadi" },
-  { key: "city", label: "City", type: "string", example: "Cairo" },
-  { key: "country", label: "Country", type: "string", example: "Egypt" },
+  { key: "deliveryMethod", label: "Delivery Method", type: "enum", enumValues: DELIVERY_METHOD_VALUES, example: "Home Delivery" },
+  { key: "deliveryAddress", label: "Delivery Address", type: "string", example: "14 Road 9, Maadi, Cairo" },
   { key: "priority", label: "Priority", type: "enum", enumValues: PRIORITY_VALUES, example: "Normal" },
-  { key: "currentStatus", label: "Current Status", type: "enum", enumValues: CASE_STATUS_VALUES, example: "Missing" },
-  { key: "remarks", label: "Remarks", type: "string", example: "Silver Delsey cabin trolley" },
+  { key: "notes", label: "Notes", type: "string", example: "Silver Delsey cabin trolley" },
 ];
 
-// Optional fields the operator can complete after import. Missing values
-// generate warnings only — never a rejection.
-const LF_OPTIONAL_FIELDS: { key: string; label: string }[] = [
-  { key: "email", label: "Email" },
-  { key: "numberOfBags", label: "Number of Bags" },
-  { key: "bagColor", label: "Bag Color" },
-  { key: "bagType", label: "Bag Type" },
-  { key: "deliveryAddress", label: "Delivery Address" },
-  { key: "city", label: "City" },
-  { key: "country", label: "Country" },
-  { key: "priority", label: "Priority" },
-  { key: "remarks", label: "Remarks" },
-];
+// Reserved for future read-only exports referencing legacy case status.
+void CASE_STATUS_VALUES;
 
 function isBlank(v: unknown) {
   return v === undefined || v === null || String(v).trim() === "";
@@ -62,65 +52,86 @@ function isBlank(v: unknown) {
 export const lostFoundSchema: DatasetSchema = {
   id: "lost-found",
   label: "Lost & Found",
-  description: "PIR baggage cases — passenger, flight, tag, and status.",
-  templateVersion: "1.1",
+  description: "Bulk PIR case creation — passenger, flight, baggage, and delivery.",
+  templateVersion: "2.0",
   fields: lostFoundFields,
   read: () => getState().cases as unknown as Record<string, unknown>[],
-  apply: (rows: Record<string, unknown>[]) => {
+  apply: (rows: Record<string, unknown>[], ctx) => {
     const ids: string[] = [];
     let created = 0;
-    let updated = 0;
     let warnings = 0;
-    const existing = getState().cases;
+    const optional: { key: string; label: string }[] = [
+      { key: "mobile2", label: "Mobile 2" },
+      { key: "email", label: "Email" },
+      { key: "pnr", label: "PNR" },
+      { key: "numberOfBags", label: "Number of Bags" },
+      { key: "bagColor", label: "Color" },
+      { key: "weightKg", label: "Weight" },
+      { key: "bagType", label: "Bag Type" },
+      { key: "deliveryMethod", label: "Delivery Method" },
+      { key: "deliveryAddress", label: "Delivery Address" },
+      { key: "priority", label: "Priority" },
+      { key: "notes", label: "Notes" },
+    ];
     for (const raw of rows) {
-      const first = String(raw.passengerFirstName ?? "").trim();
-      const last = String(raw.passengerLastName ?? "").trim();
-      const description = [raw.bagColor, raw.bagType, raw.remarks]
-        .filter((v) => v !== undefined && v !== null && String(v).trim() !== "")
-        .join(" — ");
-      const missingFields = LF_OPTIONAL_FIELDS
-        .filter((f) => isBlank(raw[f.key]))
-        .map((f) => f.label);
+      const missingFields = optional.filter((f) => isBlank(raw[f.key])).map((f) => f.label);
       const incomplete = missingFields.length > 0;
       if (incomplete) warnings++;
 
-      const pirNumber = String(raw.pirNumber ?? "").trim();
-      const dup = existing.find((c) => c.pirNumber && c.pirNumber === pirNumber);
-      if (dup) {
-        // Duplicate PIR → update existing case in place (never reject).
-        updateCase(dup.bagId, {
-          passengerName: `${first} ${last}`.trim() || dup.passengerName,
-          flightNumber: String(raw.flightNumber ?? dup.flightNumber),
-          bagTagNumber: String(raw.bagTagNumber ?? dup.bagTagNumber),
-          arrivalDate: String(raw.flightDate ?? dup.arrivalDate),
-          contact: String(raw.contact ?? dup.contact),
-          email: String(raw.email ?? dup.email),
-          description: description || dup.description,
-          incomplete,
-          missingFields: incomplete ? missingFields : undefined,
-        });
-        ids.push(dup.bagId);
-        updated++;
-        continue;
-      }
+      const bagTag = String(raw.bagTag ?? "").trim();
+      const numBags = Number(raw.numberOfBags) > 0 ? Number(raw.numberOfBags) : 1;
+      const rawPriority = raw.priority ? String(raw.priority) : "Normal";
+      const priority: "Normal" | "VIP" = rawPriority === "VIP" ? "VIP" : "Normal";
+      const method = raw.deliveryMethod as "Home Delivery" | "Airport Pickup" | undefined;
+      const description = [raw.bagColor, raw.bagType, raw.notes]
+        .filter((v) => v !== undefined && v !== null && String(v).trim() !== "")
+        .join(" — ");
 
       const c = addCase({
-        passengerName: `${first} ${last}`.trim(),
+        passengerName: String(raw.passengerName ?? "").trim(),
         flightNumber: String(raw.flightNumber ?? ""),
-        pirNumber,
-        bagTagNumber: String(raw.bagTagNumber ?? ""),
+        pirNumber: String(raw.pirNumber ?? "").trim(),
+        bagTagNumber: bagTag,
         arrivalDate: String(raw.flightDate ?? new Date().toISOString().slice(0, 10)),
-        contact: String(raw.contact ?? ""),
+        contact: String(raw.mobile1 ?? ""),
         email: String(raw.email ?? ""),
         description,
+        priority,
+        passenger: {
+          firstName: String(raw.passengerName ?? "").trim().split(/\s+/)[0] ?? "",
+          lastName: String(raw.passengerName ?? "").trim().split(/\s+/).slice(1).join(" "),
+          mobile2: raw.mobile2 ? String(raw.mobile2) : undefined,
+          pnr: raw.pnr ? String(raw.pnr) : undefined,
+        },
+        flight: {
+          airline: raw.airline ? String(raw.airline) : undefined,
+          originAirport: raw.origin ? String(raw.origin) : undefined,
+          destinationAirport: raw.destination ? String(raw.destination) : undefined,
+        },
+        baggage: {
+          numberOfBags: numBags,
+          weightKg: raw.weightKg ? Number(raw.weightKg) : undefined,
+          color: raw.bagColor ? String(raw.bagColor) : undefined,
+          type: raw.bagType ? String(raw.bagType) : undefined,
+          vipPassenger: priority === "VIP",
+          bagTags: [bagTag],
+        },
+        delivery: {
+          method,
+          fullAddress: raw.deliveryAddress ? String(raw.deliveryAddress) : undefined,
+        },
+        internal: {
+          createdBy: ctx.actor,
+          casePriority: priority,
+          internalNotes: raw.notes ? String(raw.notes) : undefined,
+        },
+        incomplete: incomplete || undefined,
+        missingFields: incomplete ? missingFields : undefined,
       });
-      if (incomplete) {
-        updateCase(c.bagId, { incomplete: true, missingFields });
-      }
       ids.push(c.bagId);
       created++;
     }
-    return { created, updated, skipped: 0, warnings, rejected: 0, ids };
+    return { created, updated: 0, skipped: 0, warnings, rejected: 0, ids };
   },
 };
 
