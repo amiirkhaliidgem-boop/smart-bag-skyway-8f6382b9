@@ -555,11 +555,11 @@ function LostFoundPage() {
         count={selected.size}
         onSubmit={runAssignOfficer}
       />
-      <ChangePriorityDialog
-        open={priorityDialogOpen}
-        onOpenChange={setPriorityDialogOpen}
+      <ChangeStatusDialog
+        open={statusDialogOpen}
+        onOpenChange={setStatusDialogOpen}
         count={selected.size}
-        onSubmit={runPriority}
+        onSubmit={runChangeStatus}
       />
     </div>
   );
