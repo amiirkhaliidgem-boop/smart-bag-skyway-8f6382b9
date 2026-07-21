@@ -85,7 +85,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Smart Baggage Ecosystem — Cairo International Airport" },
+      { title: "Smart Baggage Ecosystem" },
       { name: "description", content: "Enterprise baggage operations platform: lost & found, storage control, passenger tracking, and home delivery." },
       { name: "author", content: "Cairo Ground Services" },
       { property: "og:title", content: "Smart Baggage Ecosystem" },

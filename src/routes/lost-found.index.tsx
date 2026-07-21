@@ -73,7 +73,7 @@ export const Route = createFileRoute("/lost-found/")({
       {
         name: "description",
         content:
-          "Enterprise Lost & Found (AHL/PIR) registry — tracing, customs, delivery assignment, and full case lifecycle for Cairo International Airport.",
+          "Enterprise Lost & Found (AHL/PIR) registry — tracing, customs, delivery assignment, and full case lifecycle.",
       },
     ],
   }),
@@ -283,13 +283,12 @@ function LostFoundPage() {
       </div>
 
       {/* KPI strip */}
-      <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <Kpi label="Total Cases" value={kpis.total} />
         <Kpi label="Open" value={kpis.open} tone="rose" />
         <Kpi label="Tracing" value={kpis.tracing} tone="amber" />
         <Kpi label="Ready / Assigned" value={kpis.readyDelivery} tone="violet" />
         <Kpi label="Delivered / Closed" value={kpis.delivered} tone="emerald" />
-        <Kpi label="VIP Passengers" value={kpis.vip} tone="indigo" />
       </div>
 
       {selected.size > 0 && (

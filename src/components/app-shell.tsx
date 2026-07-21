@@ -242,7 +242,6 @@ export function AppShell() {
               className="hidden sm:block h-8 w-8 rounded-md object-contain bg-white ring-1 ring-border p-0.5"
             />
             <div className="min-w-0">
-              <p className="text-xs text-muted-foreground leading-none">Cairo International Airport</p>
               <p className="text-sm font-semibold truncate">Smart Baggage Ecosystem</p>
             </div>
           </div>

@@ -30,7 +30,7 @@ export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "Executive Dashboard — Smart Baggage Ecosystem" },
-      { name: "description", content: "Real-time KPIs across baggage operations at Cairo International Airport." },
+      { name: "description", content: "Real-time KPIs across baggage operations." },
     ],
   }),
   component: Index,
@@ -127,7 +127,7 @@ function Index() {
       <div>
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Executive Dashboard</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Live baggage operations overview · Cairo International Airport
+          Live baggage operations overview
         </p>
       </div>
 
