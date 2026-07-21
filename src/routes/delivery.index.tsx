@@ -54,9 +54,11 @@ import {
   Bell,
   Repeat,
   X,
+  Printer,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { PodPrintHost, podPrintBus } from "@/components/delivery/pod-print-host";
 
 export const Route = createFileRoute("/delivery/")({
   head: () => ({
@@ -207,6 +209,13 @@ function DispatchCenter() {
               icon: Bell,
               variant: "outline",
               onClick: () => setBulkNotifyOpen(true),
+            },
+            {
+              key: "print",
+              label: "Print POD",
+              icon: Printer,
+              variant: "outline",
+              onClick: () => podPrintBus.print(Array.from(selected)),
             },
           ]}
         />
