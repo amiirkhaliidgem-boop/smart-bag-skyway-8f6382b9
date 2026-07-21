@@ -666,6 +666,8 @@ function defaults(): State {
     audit: [],
     ioAudit: [],
     station: DEFAULT_STATION,
+    driverPositions: {},
+    driverRoutes: {},
   };
 }
 
@@ -682,6 +684,8 @@ function load(): State {
     audit: [],
     ioAudit: [],
     station: DEFAULT_STATION,
+    driverPositions: {},
+    driverRoutes: {},
   };
   // Always start from defaults on both server and client so SSR HTML
   // matches the first client render. localStorage is merged in after
@@ -712,6 +716,8 @@ function applyRemote(payload: unknown, _version: number) {
     audit: parsed.audit ?? base.audit,
     ioAudit: parsed.ioAudit ?? base.ioAudit,
     station: parsed.station ?? base.station,
+    driverPositions: parsed.driverPositions ?? base.driverPositions,
+    driverRoutes: parsed.driverRoutes ?? base.driverRoutes,
   };
   listeners.forEach((l) => l());
 }
