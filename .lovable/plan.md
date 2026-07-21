@@ -1,45 +1,51 @@
-## Delivery Management — UI Cleanup & Standardization
+## Delivery Details — UI Cleanup Only
 
-Scope: `src/routes/delivery.index.tsx` only. No changes to workflow, store, notifications, business logic, or the Delivery Details page.
+Scope: `src/routes/delivery.$deliveryId.tsx` only. No changes to workflow, delivery engine, notifications, timeline, audit, database, or status handling.
 
-### 1. Header
-- Remove the descriptive subtitle ("Operational back office for home baggage delivery…").
-- Keep only the H1 "Delivery Dispatch Center", matching L&F's header style.
+### 1. Header field strip
+Remove the following metadata fields from the header grid:
+- Station
+- Created
+- Type (Home Delivery)
 
-### 2. KPI cards
-- Replace the current 6-card strip with a 5-card grid (`md:grid-cols-5`) using the same `Kpi` visual style as L&F (label + colored value, no icons/tone-blocks):
-  - Ready for Delivery (slate)
-  - Assigned (indigo)
-  - Out for Delivery (amber/cyan)
-  - Delivered (emerald) — renamed from "Delivered Today", counts all Delivered
-  - Active (violet)
-- Remove: "Avg Delivery Time" card and the "Delivered Today" concept.
+Keep:
+- Driver
+- Priority
+- Last Updated
+- OTP Status
 
-### 3. Filter bar
-- Rewrite to match L&F's `Card > CardHeader` layout with the same spacing, sizing, typography, and shadcn `Select` components.
-- Keep only: Search, Status (all delivery stages), From date, To date, Reset (right-aligned, ghost, ✕ icon).
-- Remove: Driver filter, More/Advanced filters toggle, Priority, Station, Type, VIP only, "Clear filters" text button, "Showing X of Y" counter line.
-- Keep the queue tabs (All / Ready / Assigned / Out / Completed) above the filter bar since they are the primary operational lens — implemented as they are today but visually matched to L&F's tab treatment.
+### 2. Header button strip
+Remove from the top-right action group:
+- Export (JSON download button)
+- Close
 
-### 4. Bulk actions
-- Replace the local `DeliveryBulkToolbar` with the shared `BulkToolbar` from `@/components/bulk/bulk-toolbar` (same one L&F uses) with `noun="Delivery"`.
-- Actions (operational only):
-  - Assign Driver (primary)
-  - Resend OTP (outline)
-  - Notify Passenger (outline)
-- Delete the local `DeliveryBulkToolbar` component.
+Keep:
+- Assign / Reassign (existing dispatch action)
+- Resend OTP
+- Notify Passenger
+- View Passenger Portal
+- Open Navigation
+- Print
 
-### 5. Table / row / status badges
-- Keep table columns and row logic unchanged (functional).
-- Swap the inline stage pill for the shared badge style used in L&F (same radius, padding, typography) — reusing `STAGE_STYLES` colors.
-- Keep the existing per-row Actions menu (already stage-aware); no behavioral changes.
+> Rationale: Export/Close are non-operational for dispatchers; Assign/Resend/Notify remain because they are the core dispatch actions and were not requested for removal.
 
-### 6. Visual consistency
-- Match L&F's spacing (`space-y-6`, `Card` + `CardHeader pb-3`), typography, button sizes (`h-9`), dropdown styles, card radius, and hover states.
-- Date inputs use L&F's transparent-placeholder pattern.
+### 3. Tab strip
+Remove the following tabs and their panels:
+- Timeline
+- Audit
+- History
 
-### Out of scope
-- Workflow engine, store, notification templates, database, timeline, driver portal, delivery details page, dialogs' business logic (BulkAssignDialog, BulkNotifyDialog, SingleAssignDialog remain functionally identical).
+Keep:
+- Overview
+- Passenger
+- Delivery
+- Notes
+- Notifications
+
+Update the `Tab` union type and the tab navigation array accordingly.
+
+### 4. Dead-code cleanup
+Remove imports that become unused after the tab/button removals (e.g., `Download`, `XCircle`, `WORKFLOW_LABELS`, `closeDelivery`). Leave all data-fetching hooks and business-logic helpers untouched.
 
 ### Files touched
-- `src/routes/delivery.index.tsx` (only)
+- `src/routes/delivery.$deliveryId.tsx`

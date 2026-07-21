@@ -1,11 +1,10 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import {
   useStore,
   driverPool,
   assignDriver,
   resendOtp,
-  closeDelivery,
   createTestNotification,
   ensurePassengerToken,
   getDeliveryStage,
@@ -19,7 +18,6 @@ import {
   actionsForStage,
   type DeliveryStage,
 } from "@/lib/delivery/stages";
-import { WORKFLOW_LABELS } from "@/lib/workflow/statuses";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,8 +34,6 @@ import {
   UserCheck,
   Repeat,
   Printer,
-  Download,
-  XCircle,
   Bell,
   Navigation,
   StickyNote,
@@ -74,17 +70,13 @@ export const Route = createFileRoute("/delivery/$deliveryId")({
   ),
 });
 
-type Tab = "overview" | "passenger" | "delivery" | "notes" | "timeline" | "notifications" | "audit" | "history";
+type Tab = "overview" | "passenger" | "delivery" | "notes" | "notifications";
 
 function DeliveryDetails() {
   const { deliveryId } = Route.useParams();
   const delivery = useStore((s) => s.deliveries.find((d) => d.deliveryId === deliveryId));
-  const workflow = useStore((s) => s.workflow.find((w) => w.deliveryId === deliveryId));
   const notifications = useStore((s) =>
     s.notifications.filter((n) => n.deliveryId === deliveryId),
-  );
-  const audit = useStore((s) =>
-    s.audit.filter((a) => a.entityId === deliveryId || a.entityId === delivery?.bagId),
   );
   const kase = useStore((s) => s.cases.find((c) => c.bagId === delivery?.bagId));
 
@@ -130,31 +122,31 @@ function DeliveryDetails() {
               )}
               {acts.resendOtp && (
                 <Button
-                size="sm"
-                variant="outline"
-                className="gap-1.5"
-                onClick={() => {
-                  resendOtp(deliveryId, { actor: "Delivery Coordinator" });
-                  toast.success("Passenger Portal link resent");
-                }}
+                  size="sm"
+                  variant="outline"
+                  className="gap-1.5"
+                  onClick={() => {
+                    resendOtp(deliveryId, { actor: "Delivery Coordinator" });
+                    toast.success("Passenger Portal link resent");
+                  }}
                 >
                   <Repeat className="h-3.5 w-3.5" /> Resend OTP
                 </Button>
               )}
               {acts.notify && (
                 <Button
-                size="sm"
-                variant="outline"
-                className="gap-1.5"
-                onClick={() => {
-                  ensurePassengerToken(deliveryId);
-                  const events = createTestNotification({
-                    deliveryId,
-                    channel: "sms",
-                    operator: "Delivery Coordinator",
-                  });
-                  toast.success(events.length ? "Passenger notified" : "No template available");
-                }}
+                  size="sm"
+                  variant="outline"
+                  className="gap-1.5"
+                  onClick={() => {
+                    ensurePassengerToken(deliveryId);
+                    const events = createTestNotification({
+                      deliveryId,
+                      channel: "sms",
+                      operator: "Delivery Coordinator",
+                    });
+                    toast.success(events.length ? "Passenger notified" : "No template available");
+                  }}
                 >
                   <Bell className="h-3.5 w-3.5" /> Notify Passenger
                 </Button>
@@ -185,44 +177,12 @@ function DeliveryDetails() {
               <Button size="sm" variant="outline" className="gap-1.5" onClick={() => window.print()}>
                 <Printer className="h-3.5 w-3.5" /> Print
               </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                className="gap-1.5"
-                onClick={() => {
-                  const blob = new Blob([JSON.stringify(delivery, null, 2)], { type: "application/json" });
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement("a");
-                  a.href = url;
-                  a.download = `${delivery.deliveryId}.json`;
-                  a.click();
-                  URL.revokeObjectURL(url);
-                }}
-              >
-                <Download className="h-3.5 w-3.5" /> Export
-              </Button>
-              {acts.close && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="gap-1.5"
-                  onClick={() => {
-                    closeDelivery(deliveryId, { actor: "Delivery Coordinator", role: "DeliveryCoordinator" });
-                    toast.success("Delivery closed");
-                  }}
-                >
-                  <XCircle className="h-3.5 w-3.5" /> Close
-                </Button>
-              )}
             </div>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 text-xs">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
             <Field label="Driver" value={delivery.driver && delivery.driver !== "—" ? delivery.driver : "Unassigned"} />
-            <Field label="Station" value={delivery.station ?? "—"} />
-            <Field label="Type" value={delivery.deliveryType ?? "Home Delivery"} />
             <Field label="Priority" value={delivery.priority} />
-            <Field label="Created" value={fmt(delivery.createdAt ?? "")} />
             <Field label="Last Updated" value={fmt(delivery.lastUpdatedAt ?? "")} />
             <Field label="OTP Status" value={delivery.otpStatus} />
           </div>
@@ -231,7 +191,7 @@ function DeliveryDetails() {
 
       <div className="border-b border-border">
         <nav className="flex flex-wrap gap-1">
-          {(["overview", "passenger", "delivery", "notes", "timeline", "notifications", "audit", "history"] as Tab[]).map((t) => (
+          {(["overview", "passenger", "delivery", "notes", "notifications"] as Tab[]).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -250,13 +210,7 @@ function DeliveryDetails() {
       {tab === "passenger" && <PassengerTab d={delivery} kase={kase} />}
       {tab === "delivery" && <DeliveryTab d={delivery} />}
       {tab === "notes" && <NotesTab d={delivery} />}
-      {tab === "timeline" && workflow && <TimelineTab workflow={workflow} />}
-      {tab === "timeline" && !workflow && (
-        <p className="text-sm text-muted-foreground">No timeline entries yet.</p>
-      )}
       {tab === "notifications" && <NotificationsTab notifications={notifications} />}
-      {tab === "audit" && <AuditTab entries={audit} />}
-      {tab === "history" && workflow && <HistoryTab workflow={workflow} />}
 
       <AssignDialog open={assignOpen} onOpenChange={setAssignOpen} delivery={delivery} />
     </div>
@@ -314,7 +268,6 @@ function OverviewTab({ d, kase }: { d: Delivery; kase?: BaggageCase }) {
         <CardContent className="text-sm space-y-1 pt-0">
           <Row label="Passenger" value={d.passengerName} />
           <Row label="Address" value={<span className="text-xs">{d.address}</span>} />
-          <Row label="Delivery Type" value={d.deliveryType ?? "Home Delivery"} />
           <Row label="Priority" value={d.priority} />
           <Row label="Driver" value={d.driver && d.driver !== "—" ? d.driver : "Unassigned"} />
         </CardContent>
@@ -344,33 +297,12 @@ function DeliveryTab({ d }: { d: Delivery }) {
     <Card>
       <CardContent className="p-4 text-sm space-y-1">
         <Row label="Address" value={d.address} />
-        <Row label="Type" value={d.deliveryType ?? "Home Delivery"} />
-        <Row label="Station" value={d.station ?? "—"} />
         <Row label="OTP Code" value={<span className="font-mono">{d.otpCode}</span>} />
         <Row label="OTP Status" value={d.otpStatus} />
         <Row label="Accepted At" value={fmt(d.acceptedAt)} />
         <Row label="Collected At" value={fmt(d.collectedAt)} />
         <Row label="Delivered At" value={fmt(d.deliveredAt)} />
         {d.failureReason && <Row label="Failure Reason" value={d.failureReason} />}
-      </CardContent>
-    </Card>
-  );
-}
-
-function TimelineTab({ workflow }: { workflow: NonNullable<ReturnType<typeof useStore<any>>> }) {
-  const w = workflow as any;
-  return (
-    <Card>
-      <CardContent className="p-4">
-        <ol className="relative border-l border-border ml-2 space-y-4">
-          {w.history.map((h: any, i: number) => (
-            <li key={i} className="ml-4">
-              <div className="absolute w-2 h-2 rounded-full -left-1 mt-2 bg-primary" />
-              <p className="text-sm font-medium">{WORKFLOW_LABELS[h.status as keyof typeof WORKFLOW_LABELS]?.en ?? h.status}</p>
-              <p className="text-xs text-muted-foreground">{fmt(h.at)} · {h.actor}{h.role ? ` (${h.role})` : ""}</p>
-            </li>
-          ))}
-        </ol>
       </CardContent>
     </Card>
   );
@@ -406,40 +338,6 @@ function NotificationsTab({ notifications }: { notifications: any[] }) {
       </CardContent>
     </Card>
   );
-}
-
-function AuditTab({ entries }: { entries: any[] }) {
-  if (!entries.length) return <p className="text-sm text-muted-foreground">No audit entries yet.</p>;
-  return (
-    <Card>
-      <CardContent className="p-0">
-        <table className="w-full text-sm">
-          <thead className="bg-muted/60 text-xs uppercase text-muted-foreground">
-            <tr>
-              <th className="text-left px-3 py-2 font-medium">At</th>
-              <th className="text-left px-3 py-2 font-medium">Action</th>
-              <th className="text-left px-3 py-2 font-medium">Actor</th>
-              <th className="text-left px-3 py-2 font-medium">Note</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {entries.map((e) => (
-              <tr key={e.id}>
-                <td className="px-3 py-2 text-xs text-muted-foreground">{fmt(e.at)}</td>
-                <td className="px-3 py-2 text-xs font-mono">{e.action}</td>
-                <td className="px-3 py-2 text-xs">{e.actor}</td>
-                <td className="px-3 py-2 text-xs">{e.note ?? (e.fromStatus && e.toStatus ? `${e.fromStatus} → ${e.toStatus}` : "")}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </CardContent>
-    </Card>
-  );
-}
-
-function HistoryTab({ workflow }: { workflow: any }) {
-  return <TimelineTab workflow={workflow} />;
 }
 
 function Row({ label, value }: { label: string; value: React.ReactNode }) {
@@ -551,4 +449,3 @@ function NotesTab({ d }: { d: Delivery }) {
     </Card>
   );
 }
-
