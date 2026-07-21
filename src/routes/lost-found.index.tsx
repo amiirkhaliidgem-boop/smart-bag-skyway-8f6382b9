@@ -117,7 +117,7 @@ function LostFoundPage() {
   const [openNew, setOpenNew] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [assignOfficerOpen, setAssignOfficerOpen] = useState(false);
-  const [priorityDialogOpen, setPriorityDialogOpen] = useState(false);
+  const [statusDialogOpen, setStatusDialogOpen] = useState(false);
   const [sortKey, setSortKey] = useState<ColKey>("created");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [visible, setVisible] = useState<Record<ColKey, boolean>>(
@@ -240,10 +240,25 @@ function LostFoundPage() {
     clearSelection();
   }
 
-  function runPriority(p: Priority) {
-    bulkUpdateCases(selectedIds, { priority: p });
-    toast.success(`Priority set to ${p} for ${selectedIds.length} case(s)`);
-    setPriorityDialogOpen(false);
+  function runChangeStatus(next: LFStatus) {
+    let applied = 0;
+    let skipped = 0;
+    for (const id of selectedIds) {
+      const c = cases.find((x) => x.bagId === id);
+      if (!c) { skipped++; continue; }
+      const current = c.lfStatus ?? deriveLfFromCase(c);
+      if (current === next || !canTransitionLf(current, next)) {
+        skipped++;
+        continue;
+      }
+      updateLfStatus(id, next, { actor: "L&F Officer" });
+      applied++;
+    }
+    const parts: string[] = [];
+    if (applied) parts.push(`${applied} updated`);
+    if (skipped) parts.push(`${skipped} skipped`);
+    toast.success(parts.join(" · ") || "No cases updated");
+    setStatusDialogOpen(false);
     clearSelection();
   }
 
@@ -321,11 +336,11 @@ function LostFoundPage() {
               onClick: () => setAssignOfficerOpen(true),
             },
             {
-              key: "priority",
-              label: "Change Priority",
-              icon: Flag,
+              key: "status",
+              label: "Change Status",
+              icon: ListChecks,
               variant: "outline",
-              onClick: () => setPriorityDialogOpen(true),
+              onClick: () => setStatusDialogOpen(true),
             },
             {
               key: "export",
