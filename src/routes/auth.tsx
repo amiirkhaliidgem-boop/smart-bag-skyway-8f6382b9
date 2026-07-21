@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { ShieldCheck } from "lucide-react";
+import iabLogo from "@/assets/iab-logo.jpeg.asset.json";
 import { defaultPathForRole, type AppRole } from "@/lib/rbac";
 
 function getAuthErrorMessage(error: unknown): string {
