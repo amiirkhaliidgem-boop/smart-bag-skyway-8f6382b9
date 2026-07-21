@@ -46,7 +46,7 @@ export type DeliveryStatus =
 
 export type OtpStatus = "Pending" | "Sent" | "Verified" | "Failed";
 
-export type Priority = "Low" | "Normal" | "High" | "VIP";
+export type Priority = "Normal" | "VIP";
 
 export type DeliveryMethod = "Home Delivery" | "Airport Pickup";
 
@@ -475,7 +475,7 @@ const seedDeliveries: Delivery[] = [
     address: "27 El-Nasr St, Nasr City, Cairo",
     mobile: "+20 122 884 7710",
     pirNumber: "CAITK13902",
-    priority: "High",
+    priority: "Normal",
     status: "Assigned",
     driver: "Karim El-Sayed",
     eta: "2026-06-23T21:00:00Z",

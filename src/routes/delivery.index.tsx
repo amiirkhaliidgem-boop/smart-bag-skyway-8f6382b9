@@ -68,7 +68,7 @@ export const Route = createFileRoute("/delivery/")({
   component: DispatchCenter,
 });
 
-const PRIORITIES: Priority[] = ["Low", "Normal", "High", "VIP"];
+const PRIORITIES: Priority[] = ["Normal", "VIP"];
 
 function DispatchCenter() {
   const deliveries = useStore((s) => s.deliveries);
