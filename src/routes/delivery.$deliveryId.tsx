@@ -41,6 +41,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { PodPrintHost, podPrintBus } from "@/components/delivery/pod-print-host";
 
 export const Route = createFileRoute("/delivery/$deliveryId")({
   head: ({ params }) => ({
@@ -174,7 +175,7 @@ function DeliveryDetails() {
               >
                 <Navigation className="h-3.5 w-3.5" /> Open Navigation
               </a>
-              <Button size="sm" variant="outline" className="gap-1.5" onClick={() => window.print()}>
+              <Button size="sm" variant="outline" className="gap-1.5" onClick={() => podPrintBus.print([deliveryId])}>
                 <Printer className="h-3.5 w-3.5" /> Print
               </Button>
             </div>
