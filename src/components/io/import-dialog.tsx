@@ -26,6 +26,7 @@ import { toast } from "sonner";
 import { buildValidationReport, commitImport } from "@/lib/io/import-service";
 import { downloadTemplate } from "@/lib/io/template";
 import { logIoAudit } from "@/lib/store";
+import { download, toCSV } from "@/lib/io/csv";
 import type { DatasetSchema, ParsedRow, ValidationReport } from "@/lib/io/types";
 
 type Phase = "idle" | "reading" | "preview" | "importing" | "done";
@@ -182,21 +183,46 @@ export function ImportDialog({ schema, open, onOpenChange, actor = "Operator", o
           {phase === "preview" && report && (
             <>
               <Button variant="outline" onClick={reset}>Choose another file</Button>
+              {report.rejectedRows > 0 && (
+                <Button variant="outline" className="gap-2" onClick={() => downloadErrorReport(report)}>
+                  <Download className="h-4 w-4" /> Error Report
+                </Button>
+              )}
               <Button
                 onClick={runImport}
                 disabled={report.missingColumns.length > 0 || report.acceptedRows === 0}
               >
-                Import {report.acceptedRows} accepted row(s)
+                Import {report.acceptedRows} Case(s)
               </Button>
             </>
           )}
           {phase === "done" && (
-            <Button onClick={() => close(false)}>Close</Button>
+            <>
+              {report && report.rejectedRows > 0 && (
+                <Button variant="outline" className="gap-2" onClick={() => downloadErrorReport(report)}>
+                  <Download className="h-4 w-4" /> Error Report
+                </Button>
+              )}
+              <Button onClick={() => close(false)}>Close</Button>
+            </>
           )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
+}
+
+function downloadErrorReport(report: ValidationReport) {
+  const failed = report.rows.filter((r) => r.rejected);
+  const headers = ["Row", "Issues", ...Object.keys(failed[0]?.raw ?? {})];
+  const rows = failed.map((r) => ({
+    Row: r.row,
+    Issues: r.issues.map((i) => `[${i.level}] ${i.message}`).join(" | "),
+    ...r.raw,
+  }));
+  const csv = toCSV(headers, rows);
+  const base = report.fileName.replace(/\.[^.]+$/, "");
+  download(`${base}-errors.csv`, "text/csv", csv);
 }
 
 function DropZone({ onPick, onDrop, onTemplate }: { onPick: () => void; onDrop: (e: React.DragEvent) => void; onTemplate: () => void }) {
