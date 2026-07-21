@@ -2,6 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   useStore,
+  driverAccept,
+  driverCollect,
   driverStartTrip,
   driverMarkDelivered,
   driverPool,
@@ -37,6 +39,7 @@ import {
   Package,
   Crosshair,
   Route as RouteIcon,
+  UserCheck,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -423,6 +426,30 @@ function DeliveryCard({
           </a>
         )}
         {stage === "Assigned" && (
+          <Button
+            size="sm"
+            onClick={() => {
+              driverAccept(d.deliveryId, { actor: d.driver, role: "Driver" });
+              toast.success(`${d.deliveryId} — Accepted`);
+            }}
+            className="gap-1.5"
+          >
+            <UserCheck className="h-4 w-4" /> Accept
+          </Button>
+        )}
+        {stage === "Driver Accepted" && (
+          <Button
+            size="sm"
+            onClick={() => {
+              driverCollect(d.deliveryId, { actor: d.driver, role: "Driver" });
+              toast.success(`${d.deliveryId} — Bag Collected`);
+            }}
+            className="gap-1.5"
+          >
+            <Package className="h-4 w-4" /> Collect Bag
+          </Button>
+        )}
+        {stage === "Collected Bag" && (
           <Button
             size="sm"
             onClick={() => {
