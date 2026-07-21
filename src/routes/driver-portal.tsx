@@ -2,6 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   useStore,
+  driverAccept,
+  driverCollect,
   driverStartTrip,
   driverMarkDelivered,
   driverPool,
@@ -37,6 +39,7 @@ import {
   Package,
   Crosshair,
   Route as RouteIcon,
+  UserCheck,
 } from "lucide-react";
 import { toast } from "sonner";
 
