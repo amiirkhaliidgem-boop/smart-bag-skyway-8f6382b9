@@ -429,6 +429,30 @@ function DeliveryCard({
           <Button
             size="sm"
             onClick={() => {
+              driverAccept(d.deliveryId, { actor: d.driver, role: "Driver" });
+              toast.success(`${d.deliveryId} — Accepted`);
+            }}
+            className="gap-1.5"
+          >
+            <UserCheck className="h-4 w-4" /> Accept
+          </Button>
+        )}
+        {stage === "Driver Accepted" && (
+          <Button
+            size="sm"
+            onClick={() => {
+              driverCollect(d.deliveryId, { actor: d.driver, role: "Driver" });
+              toast.success(`${d.deliveryId} — Bag Collected`);
+            }}
+            className="gap-1.5"
+          >
+            <Package className="h-4 w-4" /> Collect Bag
+          </Button>
+        )}
+        {stage === "Collected Bag" && (
+          <Button
+            size="sm"
+            onClick={() => {
               driverStartTrip(d.deliveryId, { actor: d.driver, role: "Driver" });
               toast.success(`${d.deliveryId} — Out for Delivery`);
             }}
