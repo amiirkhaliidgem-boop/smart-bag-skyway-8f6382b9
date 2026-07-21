@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef } from "react";
 import { useStore } from "@/lib/store";
 import { PirReport } from "@/components/lost-found/pir-report";
+import type { BaggageCase } from "@/lib/store";
 
 export const Route = createFileRoute("/print/pir")({
   validateSearch: (search: Record<string, unknown>): { ids: string } => ({
@@ -25,7 +26,7 @@ function PrintPirPage() {
     () =>
       ids
         .split(",")
-        .map((s) => s.trim())
+        .map((s: string) => s.trim())
         .filter(Boolean),
     [ids],
   );
@@ -33,8 +34,8 @@ function PrintPirPage() {
   const matched = useMemo(
     () =>
       requestedIds
-        .map((id) => cases.find((c) => c.bagId === id || c.pirNumber === id))
-        .filter((c): c is NonNullable<typeof c> => !!c),
+        .map((id: string) => cases.find((c: BaggageCase) => c.bagId === id || c.pirNumber === id))
+        .filter((c: BaggageCase | undefined): c is BaggageCase => !!c),
     [requestedIds, cases],
   );
 
@@ -67,7 +68,7 @@ function PrintPirPage() {
   return (
     <div className="pir-shell">
       {matched.map((c, i) => (
-        <div key={c.bagId} className={i < matched.length - 1 ? "pir-page-break" : ""}>
+        <div key={c.bagId as string} className={i < matched.length - 1 ? "pir-page-break" : ""}>
           <PirReport caseRecord={c} />
         </div>
       ))}
