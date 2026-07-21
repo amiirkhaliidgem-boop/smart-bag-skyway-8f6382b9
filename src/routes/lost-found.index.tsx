@@ -6,8 +6,6 @@ import {
   bulkAssignDelivery,
   updateLfStatus,
   type BaggageCase,
-  type Priority,
-  type DeliveryMethod,
 } from "@/lib/store";
 import {
   LF_STATUSES,
@@ -45,11 +43,6 @@ import {
   DropdownMenuTrigger,
   DropdownMenuCheckboxItem,
 } from "@/components/ui/dropdown-menu";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import { LfStatusBadge } from "@/components/lf-status-badge";
 import { PirWizard } from "@/components/lost-found/pir-wizard";
 import { BulkToolbar } from "@/components/bulk/bulk-toolbar";
@@ -58,10 +51,8 @@ import {
   Search,
   Plus,
   Columns3,
-  Star as StarIcon,
   ChevronDown,
   X,
-  SlidersHorizontal,
   UserCheck,
   Truck,
   ListChecks,
