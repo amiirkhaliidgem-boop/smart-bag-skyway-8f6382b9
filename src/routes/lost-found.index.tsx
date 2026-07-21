@@ -100,12 +100,6 @@ function LostFoundPage() {
   const cases = useStore((s) => s.cases);
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<LFStatus | "all">("all");
-  const [priority, setPriority] = useState<Priority | "all">("all");
-  const [method, setMethod] = useState<DeliveryMethod | "all">("all");
-  const [officer, setOfficer] = useState<string>("all");
-  const [station, setStation] = useState<string>("all");
-  const [createdBy, setCreatedBy] = useState<string>("all");
-  const [vipOnly, setVipOnly] = useState(false);
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [openNew, setOpenNew] = useState(false);
