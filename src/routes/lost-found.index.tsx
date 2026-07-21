@@ -169,9 +169,7 @@ function LostFoundPage() {
     else { setSortKey(key); setSortDir("asc"); }
   }
   function resetFilters() {
-    setQuery(""); setStatus("all"); setPriority("all"); setMethod("all");
-    setOfficer("all"); setStation("all"); setCreatedBy("all");
-    setVipOnly(false); setFrom(""); setTo("");
+    setQuery(""); setStatus("all"); setFrom(""); setTo("");
   }
 
   const kpis = useMemo(() => {
