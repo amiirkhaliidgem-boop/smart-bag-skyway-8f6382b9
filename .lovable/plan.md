@@ -1,25 +1,33 @@
 ## Scope
-Fix Edit PIR only. Do NOT touch workflow, timeline, notifications, audit, or any status logic. Single file: `src/components/lost-found/pir-wizard.tsx`.
+Simplify the Lost & Found data model. Wizard (Register + Edit PIR) + Case Details view only. No workflow, notifications, timeline, audit, or delivery changes.
 
-## Root cause
-`PirWizard` treats every step as locked until the previous one passes `validateStep()`. This sequential gate was designed for Create (fresh intake), but it is reused as-is for Edit. Result: opening Edit PIR on any existing case surfaces "Complete the previous steps first" whenever a legacy/optional field is missing, even though Edit PIR is not a workflow transition.
+## Changes
 
-## Change (edit mode only — create flow untouched)
+### 1. `src/components/lost-found/pir-wizard.tsx` (Passenger + Baggage + Review + Edit)
+- **PassengerForm type**: drop `middleName`, `nationality`, `passportNumber`, `ticketNumber`. Keep `firstName`, `lastName`, `pnr`, `mobile`, `mobile2`, `email`.
+- Remove the corresponding fields from step 1 UI. Layout: First Name / Last Name / PNR on row 1; Mobile 1 / Mobile 2 / Email on row 2.
+- `buildFullName()` reduces to `firstName + lastName`. `splitName()` prefill drops middle-name reconstruction.
+- **Baggage step**:
+  - Priority Select: replace `["Low","Normal","High","VIP"]` with `["Normal","VIP"]`. Default remains `Normal`. Any legacy `Low`/`High` value coming in from `editCase` is coerced to `Normal` on load.
+  - Remove the three toggles (`VIP Passenger`, `Rush Delivery`, `Fragile`) and their state keys (`vipPassenger`, `rushDelivery`, `fragile`).
+  - Type input: remove the `Hardshell / Softshell` placeholder, leave placeholder empty.
+- **Review step**: remove `Nationality`, `Passport`, the ticket half of `PNR / Ticket` (relabel row to `PNR`), `VIP Passenger`, `Rush Delivery`, `Fragile` rows. Everything else unchanged.
+- **submit()**: stop writing the removed passenger keys (`middleName`, `nationality`, `passportNumber`, `ticketNumber`) and removed baggage flags (`vipPassenger`, `rushDelivery`, `fragile`) into `passenger` / `baggage`.
 
-In `src/components/lost-found/pir-wizard.tsx`:
+### 2. `src/routes/lost-found.$bagId.tsx` (Case Details)
+- Passenger card: remove the `Nationality`, `Passport`, `Ticket` KV rows (~l. 692–695). Keep First/Last/PNR/Email/Mobile.
+- Baggage card: remove `Rush` and `Fragile` KV rows (~l. 725–726).
+- Header VIP badge: derive `vip` purely from `priority === "VIP"` (drop `c.baggage?.vipPassenger`).
+- No other detail-card changes.
 
-1. Make step locking conditional on mode. In the stepper (l. 350–385), compute `locked = mode === "create" && i > step`. In `create` mode nothing changes; in `edit` mode every step is freely reachable (no lock icon, no disabled button, no "Complete the previous steps first" tooltip).
-
-2. In `goToStep` (l. 223–238), when `mode === "edit"` jump directly to the target step without running `validateStep` on the intermediate steps. Create mode keeps its current sequential gate.
-
-3. Leave `next()` / `validateStep()` untouched — the Next button in edit mode still nudges the user through missing required fields, but it is no longer the only way to move.
-
-4. Leave `submit()` and `canSubmit` untouched. Saving still requires the same core required fields (names, PIR, mobile, airline, flight, bag tags, address). `editCase` already preserves workflow status (see `l. 344` header copy), so no store change is needed.
+### 3. Data model (`src/lib/store.ts`) — non-breaking cleanup
+- Narrow `Priority` type to `"Normal" | "VIP"`. Update the seed cases currently using `"High"` / other values → `"Normal"` (and `"VIP"` stays).
+- Leave the optional passenger fields (`middleName`, `nationality`, `passportNumber`, `ticketNumber`) and baggage flags (`vipPassenger`, `rushDelivery`, `fragile`) in the interfaces as optional so old persisted records keep loading, but the UI no longer reads or writes them. This avoids a schema migration while enforcing "one form, one model" at every write site.
 
 ## Explicitly NOT changing
-- `src/lib/store.ts`, workflow engine, `editCase`, LF status handlers.
-- Create flow (new PIR intake keeps sequential gate).
-- Any other route, notification, timeline, or audit code path.
+- CSV importer (`src/lib/io/registry.ts`): keeps its historical field surface so external imports don't break silently. (Say the word if you want it trimmed too.)
+- Workflow engine, delivery, notifications, timeline, audit, passenger portal, RLS/RPCs.
+- Any UI styling beyond removing the fields listed above.
 
 ## Result
-Edit PIR opens on any case at any lifecycle stage (Open → Closed), all 5 steps immediately clickable, no "Complete the previous steps first" message. Saving still validates required fields and preserves the current workflow stage.
+Passenger step shows 6 fields (no middle name / nationality / passport / ticket). Baggage step has Priority = Normal|VIP only, no VIP/Rush/Fragile toggles, empty Type placeholder. Review + Case Details reflect the same reduced model. Edit PIR uses the identical form, so every write path shares one data shape.

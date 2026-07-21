@@ -16,7 +16,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -42,12 +41,8 @@ export type PirWizardMode = "create" | "edit";
 
 type F = {
   firstName: string;
-  middleName: string;
   lastName: string;
-  nationality: string;
-  passportNumber: string;
   pnr: string;
-  ticketNumber: string;
   mobile: string;
   mobile2: string;
   email: string;
@@ -64,9 +59,6 @@ type F = {
   type: string;
   distinctiveMarks: string;
   priority: Priority;
-  vipPassenger: boolean;
-  rushDelivery: boolean;
-  fragile: boolean;
   method: DeliveryMethod;
   fullAddress: string;
   station: string;
@@ -78,15 +70,14 @@ type F = {
 
 function empty(): F {
   return {
-    firstName: "", middleName: "", lastName: "", nationality: "",
-    passportNumber: "", pnr: "", ticketNumber: "", mobile: "", mobile2: "",
+    firstName: "", lastName: "", pnr: "", mobile: "", mobile2: "",
     email: "",
     airline: "", flightNumber: "",
     flightDate: new Date().toISOString().slice(0, 10),
     originAirport: "", destinationAirport: "CAI",
     pirNumber: "", numberOfBags: "1", bagTags: [""], weightKg: "",
     color: "", type: "", distinctiveMarks: "",
-    priority: "Normal", vipPassenger: false, rushDelivery: false, fragile: false,
+    priority: "Normal",
     method: "Home Delivery",
     fullAddress: "",
     station: "CAI - Cairo International Airport",
@@ -104,12 +95,10 @@ function fromCase(c: BaggageCase): F {
   // Best-effort split of legacy passengerName when no structured names exist.
   let firstName = p.firstName ?? "";
   let lastName = p.lastName ?? "";
-  let middleName = p.middleName ?? "";
   if (!firstName && !lastName && c.passengerName) {
     const parts = c.passengerName.trim().split(/\s+/);
     firstName = parts[0] ?? "";
     lastName = parts.length > 1 ? parts[parts.length - 1] : "";
-    middleName = parts.slice(1, -1).join(" ");
   }
   const legacyAddress = [
     d.building, d.street, d.district, d.city, d.governorate, d.country,
@@ -119,12 +108,13 @@ function fromCase(c: BaggageCase): F {
     ? b.bagTags
     : (c.bagTagNumber ? [c.bagTagNumber] : [""]);
   const bagTags = Array.from({ length: nBags }, (_, idx) => existingTags[idx] ?? "");
+  const rawPriority = c.priority ?? "Normal";
+  const priority: Priority = rawPriority === "VIP" ? "VIP" : "Normal";
+  const rawCasePriority = i.casePriority ?? c.priority ?? "Normal";
+  const casePriority: Priority = rawCasePriority === "VIP" ? "VIP" : "Normal";
   return {
-    firstName, middleName, lastName,
-    nationality: p.nationality ?? "",
-    passportNumber: p.passportNumber ?? "",
+    firstName, lastName,
     pnr: p.pnr ?? "",
-    ticketNumber: p.ticketNumber ?? "",
     mobile: c.contact ?? "",
     mobile2: p.mobile2 ?? "",
     email: c.email ?? "",
@@ -140,16 +130,13 @@ function fromCase(c: BaggageCase): F {
     color: b.color ?? "",
     type: b.type ?? "",
     distinctiveMarks: b.distinctiveMarks ?? "",
-    priority: c.priority ?? "Normal",
-    vipPassenger: !!b.vipPassenger,
-    rushDelivery: !!b.rushDelivery,
-    fragile: !!b.fragile,
+    priority,
     method: d.method ?? "Home Delivery",
     fullAddress: d.fullAddress ?? legacyAddress,
     station: i.station ?? "CAI - Cairo International Airport",
     department: i.department ?? "Lost & Found",
     internalNotes: i.internalNotes ?? "",
-    casePriority: i.casePriority ?? c.priority ?? "Normal",
+    casePriority,
     createdBy: i.createdBy ?? "Ops Console",
   };
 }
@@ -248,7 +235,7 @@ export function PirWizard({
   function prev() { setStep((s) => Math.max(0, s - 1)); }
 
   function passengerName(): string {
-    return [form.firstName, form.middleName, form.lastName]
+    return [form.firstName, form.lastName]
       .map((s) => s.trim()).filter(Boolean).join(" ");
   }
   function description(): string {
@@ -289,9 +276,8 @@ export function PirWizard({
       description: description(),
       priority: form.priority,
       passenger: {
-        firstName: form.firstName, middleName: form.middleName, lastName: form.lastName,
-        nationality: form.nationality, passportNumber: form.passportNumber,
-        pnr: form.pnr, ticketNumber: form.ticketNumber, mobile2: form.mobile2,
+        firstName: form.firstName, lastName: form.lastName,
+        pnr: form.pnr, mobile2: form.mobile2,
       },
       flight: {
         airline: form.airline,
@@ -303,7 +289,6 @@ export function PirWizard({
         color: form.color, type: form.type,
         bagTags: cleanTags,
         distinctiveMarks: form.distinctiveMarks,
-        vipPassenger: form.vipPassenger, rushDelivery: form.rushDelivery, fragile: form.fragile,
       },
       delivery: {
         method: form.method,
@@ -389,12 +374,8 @@ export function PirWizard({
         {step === 0 && (
           <Grid>
             <Fld label="First Name" required><Input value={form.firstName} onChange={(e) => set("firstName", e.target.value)} /></Fld>
-            <Fld label="Middle Name"><Input value={form.middleName} onChange={(e) => set("middleName", e.target.value)} /></Fld>
             <Fld label="Last Name" required><Input value={form.lastName} onChange={(e) => set("lastName", e.target.value)} /></Fld>
-            <Fld label="Nationality"><Input value={form.nationality} onChange={(e) => set("nationality", e.target.value)} /></Fld>
-            <Fld label="Passport Number"><Input value={form.passportNumber} onChange={(e) => set("passportNumber", e.target.value)} /></Fld>
             <Fld label="PNR"><Input value={form.pnr} onChange={(e) => set("pnr", e.target.value)} /></Fld>
-            <Fld label="Ticket Number"><Input value={form.ticketNumber} onChange={(e) => set("ticketNumber", e.target.value)} /></Fld>
             <Fld label="Mobile Number 1" required><Input value={form.mobile} onChange={(e) => set("mobile", e.target.value)} /></Fld>
             <Fld label="Mobile Number 2"><Input value={form.mobile2} onChange={(e) => set("mobile2", e.target.value)} /></Fld>
             <Fld label="Email"><Input type="email" value={form.email} onChange={(e) => set("email", e.target.value)} /></Fld>
@@ -428,14 +409,14 @@ export function PirWizard({
               <Select value={form.priority} onValueChange={(v) => set("priority", v as Priority)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {(["Low", "Normal", "High", "VIP"] as Priority[]).map((p) => (
+                  {(["Normal", "VIP"] as Priority[]).map((p) => (
                     <SelectItem key={p} value={p}>{p}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </Fld>
             <Fld label="Color"><Input value={form.color} onChange={(e) => set("color", e.target.value)} /></Fld>
-            <Fld label="Type"><Input value={form.type} onChange={(e) => set("type", e.target.value)} placeholder="Hardshell / Softshell" /></Fld>
+            <Fld label="Type"><Input value={form.type} onChange={(e) => set("type", e.target.value)} /></Fld>
             <Fld label="Distinctive Marks" wide><Textarea rows={2} value={form.distinctiveMarks} onChange={(e) => set("distinctiveMarks", e.target.value)} /></Fld>
             <div className="sm:col-span-3 space-y-2 pt-1">
               <Label className="font-semibold">
@@ -458,11 +439,6 @@ export function PirWizard({
                   </div>
                 ))}
               </div>
-            </div>
-            <div className="sm:col-span-3 flex flex-wrap gap-4 pt-1">
-              <Toggle label="VIP Passenger" checked={form.vipPassenger} onChange={(v) => set("vipPassenger", v)} />
-              <Toggle label="Rush Delivery" checked={form.rushDelivery} onChange={(v) => set("rushDelivery", v)} />
-              <Toggle label="Fragile" checked={form.fragile} onChange={(v) => set("fragile", v)} />
             </div>
             <Fld label="Internal Notes" wide><Textarea rows={2} value={form.internalNotes} onChange={(e) => set("internalNotes", e.target.value)} /></Fld>
           </Grid>
@@ -504,9 +480,7 @@ export function PirWizard({
           <div className="space-y-4 text-sm">
             <ReviewGroup title="Passenger" onEdit={() => setStep(0)}>
               <ReviewKV k="Full Name" v={passengerName()} />
-              <ReviewKV k="Nationality" v={form.nationality} />
-              <ReviewKV k="Passport" v={form.passportNumber} />
-              <ReviewKV k="PNR / Ticket" v={[form.pnr, form.ticketNumber].filter(Boolean).join(" · ")} />
+              <ReviewKV k="PNR" v={form.pnr} />
               <ReviewKV k="Mobile" v={form.mobile} />
               <ReviewKV k="Email" v={form.email} />
             </ReviewGroup>
@@ -571,17 +545,6 @@ function Fld({
       </Label>
       {children}
     </div>
-  );
-}
-
-function Toggle({
-  label, checked, onChange,
-}: { label: string; checked: boolean; onChange: (v: boolean) => void }) {
-  return (
-    <label className="inline-flex items-center gap-2 text-sm">
-      <Checkbox checked={checked} onCheckedChange={(v) => onChange(Boolean(v))} />
-      {label}
-    </label>
   );
 }
 
