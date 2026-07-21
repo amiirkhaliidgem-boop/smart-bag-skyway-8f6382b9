@@ -14,9 +14,12 @@ export const podPrintBus = {
   },
 };
 
-function firstTimeAt(wf: WorkflowRecord | undefined, needle: string): string | undefined {
+function firstTimeAt(
+  wf: WorkflowRecord | undefined,
+  needle: WorkflowRecord["status"],
+): string | undefined {
   if (!wf) return undefined;
-  const hit = wf.history.find((h) => h.status === (needle as WorkflowRecord["status"]));
+  const hit = wf.history.find((h) => h.status === needle);
   return hit?.at;
 }
 
@@ -88,8 +91,8 @@ export function PodPrintHost() {
               <PodReport
                 delivery={d}
                 caseRecord={findCase(d.bagId)}
-                assignedAt={firstTimeAt(wf, "Driver Assigned")}
-                outForDeliveryAt={firstTimeAt(wf, "Out For Delivery")}
+                assignedAt={firstTimeAt(wf, "DRIVER_ASSIGNED")}
+                outForDeliveryAt={firstTimeAt(wf, "OUT_FOR_DELIVERY")}
               />
             </div>
           );
