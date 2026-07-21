@@ -102,8 +102,8 @@ async function resolveDefaultPath(userId: string | null): Promise<string> {
     <div className="min-h-screen grid place-items-center bg-background p-6">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-2 text-center">
-          <div className="mx-auto h-12 w-12 rounded-xl bg-primary/10 text-primary grid place-items-center">
-            <ShieldCheck className="h-6 w-6" />
+          <div className="mx-auto h-12 w-12 rounded-xl bg-white ring-1 ring-border grid place-items-center overflow-hidden">
+            <img src={iabLogo.url} alt="IAB" className="h-9 w-9 object-contain" />
           </div>
           <CardTitle>Smart Baggage Ecosystem</CardTitle>
           <p className="text-sm text-muted-foreground">
