@@ -222,7 +222,7 @@ export function PirWizard({
   // between — matches the enterprise PIR intake flow.
   function goToStep(target: number) {
     if (target === step) return;
-    if (target < step) {
+    if (target < step || mode === "edit") {
       setStep(target);
       return;
     }
@@ -352,7 +352,7 @@ export function PirWizard({
           const Icon = s.icon;
           const done = i < step;
           const active = i === step;
-          const locked = i > step;
+          const locked = mode === "create" && i > step;
           return (
             <button
               key={s.key}
