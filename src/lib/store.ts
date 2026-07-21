@@ -286,6 +286,8 @@ interface State {
   audit: AuditEntry[];
   ioAudit: ImportAuditEntry[];
   station: Station;
+  driverPositions: Record<string, DriverPosition>;
+  driverRoutes: Record<string, DriverRoute>;
 }
 
 // Station (airport) configuration — origin for route optimization and the
@@ -304,6 +306,25 @@ export const DEFAULT_STATION: Station = {
   lat: 30.1219,
   lng: 31.4056,
 };
+
+// Live driver position reported by the Driver Portal. The Workflow
+// Engine reads this when it recomputes a driver's optimized route.
+export interface DriverPosition {
+  lat: number;
+  lng: number;
+  accuracy?: number;
+  at: string;
+}
+
+// Route optimized by the Workflow Engine for a specific driver.
+// The Driver Portal is a pure consumer — it never runs optimization
+// itself, it only renders `stops` in this order.
+export interface DriverRoute {
+  driver: string;
+  origin: { lat: number; lng: number; source: "gps" | "lastStop" | "station" };
+  stops: string[]; // deliveryId in visit order
+  computedAt: string;
+}
 
 const driverPool = [
   "Ahmed Mostafa",
