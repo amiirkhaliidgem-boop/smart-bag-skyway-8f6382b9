@@ -260,7 +260,7 @@ function AuthGate() {
 
   return (
     <RoleContext.Provider value={{ role: effectiveRole, loading: roleLoading }}>
-      <AppShell />
+      {pathname.startsWith("/print/") ? <Outlet /> : <AppShell />}
     </RoleContext.Provider>
   );
 }
