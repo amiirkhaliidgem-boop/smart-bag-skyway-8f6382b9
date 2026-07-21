@@ -1,5 +1,4 @@
 import type { Delivery, BaggageCase } from "@/lib/store";
-import { STAGE_LABELS } from "@/lib/delivery/stages";
 import iabLogo from "@/assets/iab-logo.jpeg.asset.json";
 
 // Proof of Delivery (POD) — standalone printable template.
@@ -46,9 +45,13 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 export function PodReport({
   delivery,
   caseRecord,
+  assignedAt,
+  outForDeliveryAt,
 }: {
   delivery: Delivery;
   caseRecord?: BaggageCase;
+  assignedAt?: string;
+  outForDeliveryAt?: string;
 }) {
   const d = delivery;
   const c = caseRecord;
@@ -122,10 +125,10 @@ export function PodReport({
       </Section>
 
       <Section title="Delivery Timeline">
-        <Row k="Assigned At" v={fmtDate(d.assignedAt)} />
+        <Row k="Assigned At" v={fmtDate(assignedAt)} />
         <Row k="Accepted At" v={fmtDate(d.acceptedAt)} />
         <Row k="Collected At" v={fmtDate(d.collectedAt)} />
-        <Row k="Out For Delivery" v={fmtDate(d.outForDeliveryAt)} />
+        <Row k="Out For Delivery" v={fmtDate(outForDeliveryAt)} />
         <Row k="Delivered At" v={fmtDate(d.deliveredAt)} />
       </Section>
 
