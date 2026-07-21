@@ -214,6 +214,7 @@ function DeliveryDetails() {
       {tab === "notifications" && <NotificationsTab notifications={notifications} />}
 
       <AssignDialog open={assignOpen} onOpenChange={setAssignOpen} delivery={delivery} />
+      <PodPrintHost />
     </div>
   );
 }
