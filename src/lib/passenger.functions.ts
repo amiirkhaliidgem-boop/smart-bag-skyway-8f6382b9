@@ -21,6 +21,7 @@ export interface PassengerView {
   flightNo: string | null;
   flightDate: string | null;
   otpCode: string | null;
+  pirNumber: string | null;
 }
 
 function serverPublicClient() {
@@ -52,6 +53,7 @@ const EMPTY_VIEW: PassengerView = {
   flightNo: null,
   flightDate: null,
   otpCode: null,
+  pirNumber: null,
 };
 
 export const getPassengerViewByToken = createServerFn({ method: "GET" })
@@ -75,6 +77,7 @@ export const getPassengerViewByToken = createServerFn({ method: "GET" })
       flight_no: string | null;
       flight_date: string | null;
       otp_code: string | null;
+      pir_number: string | null;
     };
     return {
       found: true,
@@ -86,6 +89,7 @@ export const getPassengerViewByToken = createServerFn({ method: "GET" })
       flightNo: row.flight_no,
       flightDate: row.flight_date,
       otpCode: row.otp_code,
+      pirNumber: row.pir_number,
     };
   });
 

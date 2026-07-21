@@ -48,6 +48,7 @@ export type Database = {
           flight_no: string | null
           otp_code: string | null
           passenger_name: string | null
+          pir_number: string | null
           stage: string | null
           status: string | null
           updated_at: string
@@ -61,6 +62,7 @@ export type Database = {
           flight_no?: string | null
           otp_code?: string | null
           passenger_name?: string | null
+          pir_number?: string | null
           stage?: string | null
           status?: string | null
           updated_at?: string
@@ -74,6 +76,7 @@ export type Database = {
           flight_no?: string | null
           otp_code?: string | null
           passenger_name?: string | null
+          pir_number?: string | null
           stage?: string | null
           status?: string | null
           updated_at?: string
