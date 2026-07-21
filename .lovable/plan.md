@@ -1,49 +1,28 @@
-## Lost & Found Status Terminology — Airport-Neutral Update
+## L&F Bulk Actions — Replace "Change Priority" with "Change Status"
 
-Scope: Lost & Found module only. No changes to Workflow Engine, Delivery, Notifications, or Database schema.
+Scope: Lost & Found bulk toolbar only. No changes to Workflow Engine, Notifications, Timeline, Audit, Delivery, or Passenger Portal.
 
-### Status changes
+### Change
 
-- **Remove:** `In Transit to Cairo`
-- **Rename:** `Arrived at Cairo` → `Arrived at Airport`
+In `src/routes/lost-found.index.tsx`:
 
-Canonical L&F status list becomes:
-`Open`, `Tracing`, `Located`, `Arrived at Airport`, `Waiting Customs Clearance`, `Ready for Delivery`, `Assigned Driver`, `Out for Delivery`, `Delivered`, `Closed`.
+1. **Remove the `"priority"` bulk action** (Flag icon, "Change Priority") from the `BulkToolbar` actions array.
+2. **Add a `"status"` bulk action** ("Change Status") in the same slot with the existing outline styling. Reuse an appropriate lucide icon already used elsewhere in L&F for status (e.g. `CheckSquare` or the existing status affordance) — no new design.
+3. **Replace `ChangePriorityDialog`** with `ChangeStatusDialog`:
+   - Options come from the canonical `LF_OWNED_STATUSES` imported from `@/lib/lost-found/statuses` — the exact same source used by the Open Case → Change Status dialog, the filter dropdown, and status badges. No local copy of the list.
+   - On submit, iterate `selectedIds` and call `updateLfStatus(bagId, target, { actor: "L&F Officer" })` from `@/lib/store` — the same Workflow-Engine entry point used by the single-case Change Status dialog and by `bulkAssignDelivery`. No direct `bulkUpdateCases({ lfStatus })` or other local mutation.
+   - Aggregate results: count `applied`, `skipped` (cases where the transition is invalid, e.g. already past target or handed over to Delivery), and surface a single toast summary (`X updated · Y skipped`).
+4. **Cleanup**: remove the now-unused `priorityDialogOpen` state, `runPriority`, `Priority` import if no longer referenced, and the `Flag` lucide import if no other usage.
 
-L&F-owned (user-selectable) subset:
-`Open`, `Tracing`, `Located`, `Arrived at Airport`, `Waiting Customs Clearance`, `Ready for Delivery`.
+### Non-goals
 
-### Files to update
-
-1. **`src/lib/lost-found/statuses.ts`** — single source of truth
-   - Remove `"In Transit to Cairo"` from `LF_STATUSES` and `LF_OWNED_STATUSES`.
-   - Rename `"Arrived at Cairo"` → `"Arrived at Airport"` in `LF_STATUSES`, `LF_OWNED_STATUSES`, `LF_STATUS_COLOR`, and `LF_TO_WORKFLOW` (both map to existing workflow states — `Arrived at Airport` → `DELIVERY_APPROVED`, matching prior `Arrived at Cairo`).
-   - `LF_STATUS_ORDER` regenerates automatically from `LF_STATUSES`.
-
-2. **Migration of any persisted values** (in-memory only, no DB migration)
-   - Add a one-time normalizer in the L&F store hydration path so any existing case with `lfStatus === "In Transit to Cairo"` or `"Arrived at Cairo"` is coerced to `"Arrived at Airport"` on load. Keeps historical data valid without a SQL migration.
-
-3. **Consumers** — no code changes expected because they read from `LF_STATUSES` / `LF_OWNED_STATUSES` / `LF_STATUS_COLOR`:
-   - `src/components/lost-found/status-stepper.tsx`
-   - `src/components/lf-status-badge.tsx`
-   - `src/routes/lost-found.index.tsx` (filters, table, Change Status dropdown)
-   - `src/routes/lost-found.$bagId.tsx` (Change Status dialog)
-   - Bulk toolbar Change Status action
-
-   Grep will confirm no hardcoded `"In Transit to Cairo"` or `"Arrived at Cairo"` strings remain; any found will be updated or removed.
+- No changes to `updateLfStatus`, workflow mapping, notification triggers, or audit code.
+- No changes to the toolbar's visual design — only the single menu item is swapped.
+- No change to the per-row Change Status dialog or filters.
 
 ### Verification
 
-- Grep the repo for `"In Transit to Cairo"` and `"Arrived at Cairo"` — must return zero matches after the change.
-- Open L&F case → Change Status: dropdown shows the new 6-item owned list.
-- Bulk selection → Change Status: same 6-item list.
-- Filter dropdown on L&F index: same list.
-- Status badges render `Arrived at Airport` with existing blue styling.
-- Existing cases previously in `In Transit to Cairo` or `Arrived at Cairo` render as `Arrived at Airport`.
-
-### Deliverable summary (post-implementation)
-
-- Removed: `In Transit to Cairo`
-- Renamed: `Arrived at Cairo` → `Arrived at Airport`
-- Files touched: `src/lib/lost-found/statuses.ts` (+ store hydration normalizer if the store references legacy values directly)
-- Confirmation: single canonical list drives every L&F dropdown, filter, badge, and bulk action.
+- Bulk toolbar shows: Assign Delivery, Assign Officer, **Change Status**, Export Selected, Print. "Change Priority" is gone.
+- The Change Status dropdown lists exactly the same items as the single-case Change Status dialog (`LF_OWNED_STATUSES`).
+- Applying a bulk status change updates cases through `updateLfStatus`, so Timeline / Audit / Notifications / Delivery hand-off fire exactly as they do for single-case changes.
+- Cases where the transition is invalid are skipped and reported in the summary toast, not silently mutated.
