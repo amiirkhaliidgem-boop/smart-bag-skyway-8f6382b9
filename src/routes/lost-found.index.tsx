@@ -114,6 +114,12 @@ function LostFoundPage() {
     Object.fromEntries(ALL_COLUMNS.map((c) => [c.key, c.default])) as Record<ColKey, boolean>,
   );
 
+  const officers = useMemo(() => {
+    const s = new Set<string>();
+    for (const c of cases) if (c.internal?.assignedOfficer) s.add(c.internal.assignedOfficer);
+    return Array.from(s).sort();
+  }, [cases]);
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return cases.filter((c) => {
