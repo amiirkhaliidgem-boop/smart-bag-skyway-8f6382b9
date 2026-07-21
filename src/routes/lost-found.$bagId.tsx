@@ -137,7 +137,9 @@ function CaseDetailsPage() {
   }
 
   // ---- Quick Actions ----
-  function printPir() { window.print(); }
+  function printPir() {
+    window.open(`/print/pir?ids=${encodeURIComponent(c!.bagId)}`, "_blank");
+  }
   function exportCase() {
     const payload = JSON.stringify(c, null, 2);
     const blob = new Blob([payload], { type: "application/json" });
