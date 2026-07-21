@@ -242,14 +242,49 @@ function Kpi({
   );
 }
 
-function RouteSection({ route }: { route: Delivery[] }) {
+function RouteSection({
+  route,
+  origin,
+  originSource,
+  gpsStatus,
+}: {
+  route: Delivery[];
+  origin: LatLng | null;
+  originSource: "gps" | "lastStop" | "station" | null;
+  gpsStatus: "idle" | "requesting" | "on" | "denied" | "unsupported" | "error";
+}) {
+  const fullRouteHref = origin ? routeNavigationHref(origin, route) : null;
+  const originLabel =
+    originSource === "gps"
+      ? "Live GPS"
+      : originSource === "lastStop"
+        ? "Last completed stop"
+        : originSource === "station"
+          ? "Station (no GPS yet)"
+          : "—";
+  const gpsBadge =
+    gpsStatus === "on"
+      ? { text: "GPS on", tone: "bg-emerald-100 text-emerald-700" }
+      : gpsStatus === "requesting"
+        ? { text: "Locating…", tone: "bg-amber-100 text-amber-700" }
+        : gpsStatus === "denied"
+          ? { text: "Location off", tone: "bg-slate-100 text-slate-600" }
+          : gpsStatus === "unsupported"
+            ? { text: "GPS unsupported", tone: "bg-slate-100 text-slate-600" }
+            : gpsStatus === "error"
+              ? { text: "GPS error", tone: "bg-rose-100 text-rose-700" }
+              : { text: "GPS idle", tone: "bg-slate-100 text-slate-600" };
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base flex items-center gap-2">
+        <CardTitle className="text-base flex flex-wrap items-center gap-2">
           <Navigation className="h-4 w-4" /> Today's Route
+          <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${gpsBadge.tone}`}>
+            <Crosshair className="inline h-3 w-3 mr-1" />
+            {gpsBadge.text}
+          </span>
           <span className="ml-auto text-xs font-normal text-muted-foreground">
-            {route.length} {route.length === 1 ? "stop" : "stops"} · optimized from airport
+            {route.length} {route.length === 1 ? "stop" : "stops"} · from {originLabel}
           </span>
         </CardTitle>
       </CardHeader>
@@ -259,12 +294,29 @@ function RouteSection({ route }: { route: Delivery[] }) {
             No stops assigned. New deliveries will appear here automatically.
           </p>
         )}
+        {route.length > 0 && fullRouteHref && (
+          <a
+            href={fullRouteHref}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1.5 h-9 px-3 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90"
+          >
+            <RouteIcon className="h-4 w-4" /> Navigate Full Route
+          </a>
+        )}
         {route.map((d, i) => (
           <DeliveryCard
             key={d.deliveryId}
             d={d}
             stopNumber={i + 1}
             isCurrent={i === 0}
+            legOrigin={
+              i === 0
+                ? origin
+                : route[i - 1].destination
+                  ? { lat: route[i - 1].destination!.lat, lng: route[i - 1].destination!.lng }
+                  : origin
+            }
           />
         ))}
       </CardContent>
@@ -300,10 +352,12 @@ function DeliveryCard({
   d,
   stopNumber,
   isCurrent,
+  legOrigin,
 }: {
   d: Delivery;
   stopNumber?: number;
   isCurrent?: boolean;
+  legOrigin?: LatLng | null;
 }) {
   const [otpOpen, setOtpOpen] = useState(false);
   const stage = getDeliveryStage(d);
@@ -358,14 +412,16 @@ function DeliveryCard({
         <p className="flex items-center gap-2"><Phone className="h-4 w-4 text-muted-foreground" />{d.mobile}</p>
       </div>
       <div className="flex flex-wrap gap-2 mt-3">
-        <a
-          href={navigationHref(d)}
-          target="_blank"
-          rel="noreferrer"
-          className="inline-flex items-center gap-1.5 h-9 px-3 rounded-md border border-input bg-background text-sm font-medium hover:bg-muted"
-        >
-          <Navigation className="h-4 w-4" /> Open Navigation
-        </a>
+        {legOrigin && (
+          <a
+            href={stopNavigationHref(legOrigin, d)}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1.5 h-9 px-3 rounded-md border border-input bg-background text-sm font-medium hover:bg-muted"
+          >
+            <Navigation className="h-4 w-4" /> Navigate to Stop
+          </a>
+        )}
         {stage === "Assigned" && (
           <Button
             size="sm"
