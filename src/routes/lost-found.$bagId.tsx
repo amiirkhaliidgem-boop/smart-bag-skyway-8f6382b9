@@ -18,6 +18,7 @@ import {
 import { LfStatusBadge } from "@/components/lf-status-badge";
 import { LfStatusStepper } from "@/components/lost-found/status-stepper";
 import { PirWizard } from "@/components/lost-found/pir-wizard";
+import { PirPrintHost, pirPrintBus } from "@/components/lost-found/pir-print-host";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -138,7 +139,7 @@ function CaseDetailsPage() {
 
   // ---- Quick Actions ----
   function printPir() {
-    window.open(`/print/pir?ids=${encodeURIComponent(c!.bagId)}`, "_blank");
+    pirPrintBus.print([c!.bagId]);
   }
   function exportCase() {
     const payload = JSON.stringify(c, null, 2);
@@ -153,6 +154,7 @@ function CaseDetailsPage() {
   }
   return (
     <div className="space-y-5">
+      <PirPrintHost />
       {/* Breadcrumbs */}
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
         <Link to="/lost-found" className="hover:text-foreground inline-flex items-center gap-1">

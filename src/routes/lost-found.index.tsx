@@ -53,6 +53,7 @@ import {
 import { LfStatusBadge } from "@/components/lf-status-badge";
 import { PirWizard } from "@/components/lost-found/pir-wizard";
 import { BulkToolbar } from "@/components/bulk/bulk-toolbar";
+import { PirPrintHost, pirPrintBus } from "@/components/lost-found/pir-print-host";
 import {
   Search,
   Plus,
@@ -276,12 +277,12 @@ function LostFoundPage() {
   }
   function runPrint() {
     if (selectedIds.length === 0) return;
-    const ids = selectedIds.map(encodeURIComponent).join(",");
-    window.open(`/print/pir?ids=${ids}`, "_blank");
+    pirPrintBus.print(selectedIds);
   }
 
   return (
     <div className="space-y-6">
+      <PirPrintHost />
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
