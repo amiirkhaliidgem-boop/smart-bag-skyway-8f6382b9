@@ -148,8 +148,7 @@ function RootComponent() {
 function isPublicPath(pathname: string): boolean {
   return (
     pathname === "/auth" ||
-    pathname.startsWith("/passenger/") || // token portal only; /passenger alone is staff
-    pathname.startsWith("/print/") // internal utility route (PIR print, etc.)
+    pathname.startsWith("/passenger/") // token portal only; /passenger alone is staff
   );
 }
 
@@ -261,7 +260,7 @@ function AuthGate() {
 
   return (
     <RoleContext.Provider value={{ role: effectiveRole, loading: roleLoading }}>
-      {pathname.startsWith("/print/") ? <Outlet /> : <AppShell />}
+      <AppShell />
     </RoleContext.Provider>
   );
 }
