@@ -10,8 +10,7 @@ export const LF_STATUSES = [
   "Open",
   "Tracing",
   "Located",
-  "In Transit to Cairo",
-  "Arrived at Cairo",
+  "Arrived at Airport",
   "Waiting Customs Clearance",
   "Ready for Delivery",
   "Assigned Driver",
@@ -32,8 +31,7 @@ export const LF_OWNED_STATUSES = [
   "Open",
   "Tracing",
   "Located",
-  "In Transit to Cairo",
-  "Arrived at Cairo",
+  "Arrived at Airport",
   "Waiting Customs Clearance",
   "Ready for Delivery",
 ] as const satisfies ReadonlyArray<LFStatus>;
@@ -47,8 +45,7 @@ export const LF_STATUS_COLOR: Record<LFStatus, string> = {
   Open: "bg-rose-100 text-rose-700 border-rose-200",
   Tracing: "bg-amber-100 text-amber-700 border-amber-200",
   Located: "bg-yellow-100 text-yellow-800 border-yellow-200",
-  "In Transit to Cairo": "bg-sky-100 text-sky-700 border-sky-200",
-  "Arrived at Cairo": "bg-blue-100 text-blue-700 border-blue-200",
+  "Arrived at Airport": "bg-blue-100 text-blue-700 border-blue-200",
   "Waiting Customs Clearance": "bg-indigo-100 text-indigo-700 border-indigo-200",
   "Ready for Delivery": "bg-violet-100 text-violet-700 border-violet-200",
   "Assigned Driver": "bg-purple-100 text-purple-700 border-purple-200",
@@ -64,8 +61,7 @@ export const LF_TO_WORKFLOW: Record<LFStatus, WorkflowStatus> = {
   Open: "PIR_CREATED",
   Tracing: "PIR_CREATED",
   Located: "HOME_DELIVERY_REQUESTED",
-  "In Transit to Cairo": "HOME_DELIVERY_REQUESTED",
-  "Arrived at Cairo": "DELIVERY_APPROVED",
+  "Arrived at Airport": "DELIVERY_APPROVED",
   "Waiting Customs Clearance": "DELIVERY_APPROVED",
   "Ready for Delivery": "READY_FOR_COLLECTION",
   "Assigned Driver": "DRIVER_ASSIGNED",
@@ -87,11 +83,26 @@ export function canTransitionLf(from: LFStatus, to: LFStatus): boolean {
 // Legacy CaseStatus → LFStatus mapping used to promote pre-existing cases
 // (that pre-date the enterprise lifecycle) to the new canonical status.
 import type { CaseStatus } from "../store";
+
+// Normalize legacy Cairo-specific values persisted before the airport-neutral
+// rename. Callers passing an unknown/legacy string get the closest current
+// equivalent so historical cases keep rendering.
+export function normalizeLfStatus(value: unknown): LFStatus | undefined {
+  if (typeof value !== "string") return undefined;
+  if (value === "In Transit to Cairo" || value === "Arrived at Cairo") {
+    return "Arrived at Airport";
+  }
+  return (LF_STATUS_ORDER as Record<string, number>)[value] !== undefined
+    ? (value as LFStatus)
+    : undefined;
+}
+
 export function deriveLfFromCase(c: {
   lfStatus?: LFStatus;
   status: CaseStatus;
 }): LFStatus {
-  if (c.lfStatus) return c.lfStatus;
+  const normalized = normalizeLfStatus(c.lfStatus);
+  if (normalized) return normalized;
   switch (c.status) {
     case "Missing":
       return "Open";
