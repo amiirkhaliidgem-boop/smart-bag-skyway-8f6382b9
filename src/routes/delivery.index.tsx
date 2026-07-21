@@ -7,7 +7,6 @@ import {
   bulkAssignDriver,
   getDeliveryStage,
   type Delivery,
-  type Priority,
 } from "@/lib/store";
 import {
   closeDelivery,
@@ -28,10 +27,17 @@ import {
   type DeliveryQueueId,
   type DeliveryStage,
 } from "@/lib/delivery/stages";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select as UISelect,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -43,13 +49,11 @@ import {
 import {
   Truck,
   UserCheck,
-  CheckCircle2,
   XCircle,
-  Package,
-  Clock,
   Search,
   Bell,
   Repeat,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -68,29 +72,15 @@ export const Route = createFileRoute("/delivery/")({
   component: DispatchCenter,
 });
 
-const PRIORITIES: Priority[] = ["Normal", "VIP"];
-
 function DispatchCenter() {
   const deliveries = useStore((s) => s.deliveries);
 
   // ---- Filters (URL-independent; local UI state for this operational view)
   const [q, setQ] = useState("");
-  const [driverF, setDriverF] = useState("all");
   const [stageF, setStageF] = useState<DeliveryStage | "all">("all");
-  const [priorityF, setPriorityF] = useState<Priority | "all">("all");
-  const [stationF, setStationF] = useState("all");
-  const [typeF, setTypeF] = useState("all");
-  const [vipOnly, setVipOnly] = useState(false);
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
   const [queue, setQueue] = useState<DeliveryQueueId>("all");
-  const [showAdvanced, setShowAdvanced] = useState(false);
-
-  const stations = useMemo(
-    () =>
-      Array.from(
-        new Set(deliveries.map((d) => d.station).filter((s): s is string => !!s)),
-      ),
-    [deliveries],
-  );
 
   const filtered = useMemo(() => {
     const activeQueue = DELIVERY_QUEUES.find((qq) => qq.id === queue) ?? DELIVERY_QUEUES[0];
@@ -100,16 +90,13 @@ function DispatchCenter() {
       if (queue !== "all" && !queueStages.has(stage)) return false;
       const hay = `${d.deliveryId} ${d.pirNumber} ${d.passengerName} ${d.mobile} ${d.address} ${d.driver}`.toLowerCase();
       if (q && !hay.includes(q.toLowerCase())) return false;
-      if (driverF !== "all" && d.driver !== driverF) return false;
       if (stageF !== "all" && stage !== stageF) return false;
-      if (priorityF !== "all" && d.priority !== priorityF) return false;
-      if (stationF !== "all" && d.station !== stationF) return false;
-      if (typeF !== "all" && (d.deliveryType ?? "Home Delivery") !== typeF)
-        return false;
-      if (vipOnly && d.priority !== "VIP") return false;
+      const day = (d.createdAt ?? "").slice(0, 10);
+      if (from && day < from) return false;
+      if (to && day > to) return false;
       return true;
     });
-  }, [deliveries, queue, q, driverF, stageF, priorityF, stationF, typeF, vipOnly]);
+  }, [deliveries, queue, q, stageF, from, to]);
 
   const queueCounts = useMemo(() => {
     const m: Record<string, number> = {};
@@ -175,40 +162,69 @@ function DispatchCenter() {
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
             Delivery Dispatch Center
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Operational back office for home baggage delivery. Cases enter this
-            module when Lost &amp; Found marks them Ready for Delivery.
-          </p>
         </div>
         <div />
       </div>
 
       {selected.size > 0 && (
-        <DeliveryBulkToolbar
-          deliveries={deliveries.filter((d) => selected.has(d.deliveryId))}
-          onAssign={() => setBulkAssignOpen(true)}
-          onNotify={() => setBulkNotifyOpen(true)}
+        <SharedBulkToolbar
+          count={selected.size}
+          noun="Delivery"
+          pluralNoun="Deliveries"
           onCancel={() => setSelected(new Set())}
+          actions={[
+            {
+              key: "assign",
+              label: (() => {
+                const sel = deliveries.filter((d) => selected.has(d.deliveryId));
+                const all = sel.length > 0 && sel.every((d) => d.driver && d.driver !== "—");
+                return all ? "Reassign Driver" : "Assign Driver";
+              })(),
+              icon: UserCheck,
+              onClick: () => setBulkAssignOpen(true),
+            },
+            {
+              key: "resend-otp",
+              label: "Resend OTP",
+              icon: Repeat,
+              variant: "outline",
+              onClick: () => {
+                let sent = 0;
+                for (const id of selected) {
+                  const d = deliveries.find((x) => x.deliveryId === id);
+                  if (!d) continue;
+                  if (d.driver && d.driver !== "—") {
+                    resendOtp(id, { actor: "Delivery Coordinator" });
+                    sent++;
+                  }
+                }
+                toast.success(`OTP resent for ${sent} delivery${sent === 1 ? "" : "s"}`);
+              },
+            },
+            {
+              key: "notify",
+              label: "Notify Passenger",
+              icon: Bell,
+              variant: "outline",
+              onClick: () => setBulkNotifyOpen(true),
+            },
+          ]}
         />
       )}
 
-      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
-        <Kpi label="Ready for Delivery" value={stageCounts["Ready for Delivery"]} icon={<Package className="h-5 w-5" />} tone="slate" />
-        <Kpi label="Assigned" value={stageCounts["Assigned"] + stageCounts["Driver Accepted"]} icon={<UserCheck className="h-5 w-5" />} tone="indigo" />
-        <Kpi label="Out for Delivery" value={stageCounts["Out for Delivery"]} icon={<Truck className="h-5 w-5" />} tone="cyan" />
-        <Kpi label="Delivered Today" value={deliveredToday} icon={<CheckCircle2 className="h-5 w-5" />} tone="emerald" />
-        <Kpi label="Active" value={active} icon={<Truck className="h-5 w-5" />} tone="primary" />
-        <Kpi
-          label="Avg Delivery Time"
-          value={avgHrs != null ? `${avgHrs.toFixed(1)}h` : "—"}
-          icon={<Clock className="h-5 w-5" />}
-          tone="amber"
-        />
+      {/* KPI strip — matches Lost & Found */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <Kpi label="Ready for Delivery" value={stageCounts["Ready for Delivery"]} tone="slate" />
+        <Kpi label="Assigned" value={stageCounts["Assigned"] + stageCounts["Driver Accepted"]} tone="indigo" />
+        <Kpi label="Out for Delivery" value={stageCounts["Out for Delivery"]} tone="amber" />
+        <Kpi label="Delivered" value={stageCounts["Delivered"]} tone="emerald" />
+        <Kpi label="Active" value={active} tone="violet" />
       </div>
 
+      {/* Queue tabs + simplified filter bar — matches Lost & Found */}
       <Card>
-        <CardContent className="p-4 space-y-3">
-          <div className="flex flex-wrap items-center gap-1 border-b border-border pb-3">
+        <CardHeader className="pb-3 space-y-3">
+          <div className="flex flex-wrap items-center gap-1">
             {DELIVERY_QUEUES.map((qq) => (
               <button
                 key={qq.id}
@@ -230,86 +246,55 @@ function DispatchCenter() {
               </button>
             ))}
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-8 gap-2">
-            <div className="lg:col-span-2 relative">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative w-full sm:w-auto sm:flex-1 sm:max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
-                placeholder="Search ID, PIR, passenger, phone…"
-                className="pl-8 h-9"
+                placeholder="Search"
+                className="pl-9"
               />
             </div>
-            <Select value={stageF} onChange={(v) => setStageF(v as never)} label="Status">
-              <option value="all">All stages</option>
-              {DELIVERY_STAGES.map((s) => (
-                <option key={s} value={s}>{STAGE_LABELS[s]}</option>
-              ))}
-            </Select>
-            <Select value={driverF} onChange={setDriverF} label="Driver">
-              <option value="all">All drivers</option>
-              {driverPool.map((d) => (
-                <option key={d} value={d}>{d}</option>
-              ))}
-              <option value="—">Unassigned</option>
-            </Select>
-            <div className="flex items-end">
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-9 w-full"
-                onClick={() => setShowAdvanced((v) => !v)}
-              >
-                {showAdvanced ? "Hide" : "More"} filters
-              </Button>
+            <UISelect value={stageF} onValueChange={(v) => setStageF(v as DeliveryStage | "all")}>
+              <SelectTrigger className="w-[200px] h-9">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All stages</SelectItem>
+                {DELIVERY_STAGES.map((s) => (
+                  <SelectItem key={s} value={s}>{STAGE_LABELS[s]}</SelectItem>
+                ))}
+              </SelectContent>
+            </UISelect>
+            <div className="flex items-center gap-1.5">
+              <Label className="text-xs text-muted-foreground">From</Label>
+              <Input
+                type="date"
+                value={from}
+                onChange={(e) => setFrom(e.target.value)}
+                className={`h-9 w-[145px] ${!from ? "[&::-webkit-datetime-edit]:text-transparent" : ""}`}
+              />
+              <Label className="text-xs text-muted-foreground">To</Label>
+              <Input
+                type="date"
+                value={to}
+                onChange={(e) => setTo(e.target.value)}
+                className={`h-9 w-[145px] ${!to ? "[&::-webkit-datetime-edit]:text-transparent" : ""}`}
+              />
             </div>
-          </div>
-          {showAdvanced && (
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-              <Select value={priorityF} onChange={(v) => setPriorityF(v as never)} label="Priority">
-                <option value="all">All priorities</option>
-                {PRIORITIES.map((p) => <option key={p} value={p}>{p}</option>)}
-              </Select>
-              <Select value={stationF} onChange={setStationF} label="Station">
-                <option value="all">All stations</option>
-                {stations.map((s) => <option key={s} value={s}>{s}</option>)}
-                {stations.length === 0 && <option value="none" disabled>—</option>}
-              </Select>
-              <Select value={typeF} onChange={setTypeF} label="Type">
-                <option value="all">All types</option>
-                <option value="Home Delivery">Home Delivery</option>
-                <option value="Airport Pickup">Airport Pickup</option>
-              </Select>
-              <label className="inline-flex items-end gap-2 text-xs pb-2">
-                <input
-                  type="checkbox"
-                  checked={vipOnly}
-                  onChange={(e) => setVipOnly(e.target.checked)}
-                />
-                VIP only
-              </label>
-            </div>
-          )}
-          <div className="flex items-center gap-4 text-xs">
-            <span className="text-muted-foreground">
-              Showing {filtered.length} of {deliveries.length} deliveries · {active} active
-            </span>
-            {(q || driverF !== "all" || stageF !== "all" || priorityF !== "all" || stationF !== "all" || typeF !== "all" || vipOnly) && (
+            <div className="ml-auto">
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-7"
-                onClick={() => {
-                  setQ(""); setDriverF("all"); setStageF("all");
-                  setPriorityF("all"); setStationF("all"); setTypeF("all");
-                  setVipOnly(false);
-                }}
+                className="h-9 gap-1.5"
+                onClick={() => { setQ(""); setStageF("all"); setFrom(""); setTo(""); }}
               >
-                Clear filters
+                <X className="h-3.5 w-3.5" /> Reset
               </Button>
-            )}
+            </div>
           </div>
-        </CardContent>
+        </CardHeader>
       </Card>
 
       <Card>
@@ -526,59 +511,27 @@ function fmt(iso: string) {
 function Kpi({
   label,
   value,
-  icon,
   tone,
 }: {
   label: string;
   value: number | string;
-  icon: React.ReactNode;
-  tone: "primary" | "emerald" | "indigo" | "amber" | "rose" | "cyan" | "blue" | "slate";
+  tone?: "slate" | "rose" | "amber" | "violet" | "emerald" | "indigo";
 }) {
-  const tones: Record<string, string> = {
-    primary: "bg-primary/10 text-primary",
-    emerald: "bg-emerald-100 text-emerald-700",
-    indigo: "bg-indigo-100 text-indigo-700",
-    amber: "bg-amber-100 text-amber-700",
-    rose: "bg-rose-100 text-rose-700",
-    cyan: "bg-cyan-100 text-cyan-700",
-    blue: "bg-blue-100 text-blue-700",
-    slate: "bg-slate-100 text-slate-700",
+  const map: Record<string, string> = {
+    slate: "text-slate-700",
+    rose: "text-rose-600",
+    amber: "text-amber-600",
+    violet: "text-violet-600",
+    emerald: "text-emerald-600",
+    indigo: "text-indigo-600",
   };
   return (
     <Card>
-      <CardContent className="p-3 flex items-center gap-3">
-        <div className={cn("h-9 w-9 rounded-lg grid place-items-center", tones[tone])}>{icon}</div>
-        <div className="min-w-0">
-          <p className="text-[11px] text-muted-foreground truncate">{label}</p>
-          <p className="text-xl font-bold tabular-nums">{value}</p>
-        </div>
+      <CardContent className="p-4">
+        <p className="text-xs text-muted-foreground">{label}</p>
+        <p className={cn("text-2xl font-bold tabular-nums mt-1", map[tone ?? "slate"])}>{value}</p>
       </CardContent>
     </Card>
-  );
-}
-
-function Select({
-  value,
-  onChange,
-  label,
-  children,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="space-y-1">
-      <Label className="text-[11px] text-muted-foreground">{label}</Label>
-      <select
-        className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-      >
-        {children}
-      </select>
-    </div>
   );
 }
 
@@ -656,46 +609,6 @@ function BulkAssignDialog({
         </form>
       </DialogContent>
     </Dialog>
-  );
-}
-
-function DeliveryBulkToolbar({
-  deliveries,
-  onAssign,
-  onNotify,
-  onCancel,
-}: {
-  deliveries: Delivery[];
-  onAssign: () => void;
-  onNotify: () => void;
-  onCancel: () => void;
-}) {
-  const allAssigned =
-    deliveries.length > 0 &&
-    deliveries.every((d) => d.driver && d.driver !== "—");
-  const mode: "assign" | "reassign" = allAssigned ? "reassign" : "assign";
-  return (
-    <SharedBulkToolbar
-      count={deliveries.length}
-      noun="Delivery"
-      pluralNoun="Deliveries"
-      onCancel={onCancel}
-      actions={[
-        {
-          key: "assign",
-          label: mode === "reassign" ? "Bulk Reassign" : "Bulk Assign",
-          icon: UserCheck,
-          onClick: onAssign,
-        },
-        {
-          key: "notify",
-          label: "Bulk Notify Passenger",
-          icon: Bell,
-          variant: "outline",
-          onClick: onNotify,
-        },
-      ]}
-    />
   );
 }
 
