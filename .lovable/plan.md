@@ -1,24 +1,31 @@
-Update only the PIR Report Template layout to meet the following requirements:
+# Fix `/print/*` redirect
 
-1. Logo Position
-   - Add the existing IAB logo (`/src/assets/iab-logo.jpeg`) to the top-left corner of the report header.
-   - Reorder the header so the logo sits on the left, the title/subtitle sits in the center/remaining space, and the case meta stays on the right.
-   - Keep the logo small and aligned with the report title (max height ~28–32 px).
+Treat `/print/*` the same way as `/passenger/:token` — a bare, internal utility route that bypasses the staff auth gate and RBAC matrix. The route is only ever opened from an already-authenticated staff session via the Print PIR action, so no additional gating is needed.
 
-2. Remove Case Lifecycle
-   - Delete the entire "Case Lifecycle" section from `src/components/lost-found/pir-report.tsx`.
-   - Remove the related `LF_STATUS_ORDER` import and lifecycle styling in `src/styles.css`.
+## Change
 
-3. Remove Description / Notes
-   - Delete the conditional "Description / Notes" section from the report.
-   - Remove the associated `.pir-description` CSS rules.
+**File:** `src/routes/__root.tsx` (only)
 
-4. Remove Time Values
-   - Change the `fmtDate` helper to output `dd/MM/yyyy` only (no hour/minute).
-   - Apply consistently across the report: Created, Last Updated, Generated, and any other date fields.
+In `isPublicPath(pathname)` add `/print/` to the whitelist:
 
-Files to edit:
-- `src/components/lost-found/pir-report.tsx`
-- `src/styles.css`
+```ts
+function isPublicPath(pathname: string): boolean {
+  return (
+    pathname === "/auth" ||
+    pathname.startsWith("/passenger/") ||
+    pathname.startsWith("/print/") // internal utility route (PIR print, etc.)
+  );
+}
+```
 
-No database changes, no new routes, no business-logic changes.
+## Resulting behavior
+
+- `AuthGate` sees `/print/pir` as public → skips the session redirect (line 194) and the RBAC redirect (line 209).
+- Line 223 (`if (isPublicPath(pathname)) return <Outlet />`) renders the print route bare, without the AppShell — matching how the Passenger Portal renders.
+- `PrintPirPage` mounts, resolves the case, and its existing `useEffect` calls `window.print()` after paint.
+- No changes to Workflow Engine, Lost & Found logic, RBAC rules, or the PIR report template.
+
+## Notes
+
+- The existing branch at line 263 (`pathname.startsWith("/print/") ? <Outlet /> : <AppShell />`) becomes dead code for `/print/*` because the public-path branch returns earlier — safe to leave as-is to avoid touching unrelated logic.
+- Because `/print/*` is now public, the URL is technically reachable without a session. That mirrors the accepted posture for `/passenger/:token`; the print route reads only client-side store data, so an unauthenticated visitor sees an empty "Loading PIR report…" state and nothing sensitive is exposed.
