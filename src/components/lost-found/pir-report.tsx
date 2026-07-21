@@ -142,22 +142,6 @@ export function PirReport({ caseRecord }: { caseRecord: BaggageCase }) {
         <Row k="Storage Location" v={c.storage ? `Zone ${c.storage.zone} · Shelf ${c.storage.shelf} · Pos ${c.storage.position}` : "—"} />
       </Section>
 
-      <Section title="Case Lifecycle">
-        <div className="pir-lifecycle">
-          {lifecycle.map((s, i) => (
-            <span key={s} className={`pir-stage ${i <= currentIdx ? "reached" : ""}`}>
-              {i + 1}. {s}
-            </span>
-          ))}
-        </div>
-      </Section>
-
-      {c.description && (
-        <Section title="Description / Notes">
-          <div className="pir-description">{c.description}</div>
-        </Section>
-      )}
-
       <section className="pir-signatures">
         <div>
           <div className="pir-sig-line" />
