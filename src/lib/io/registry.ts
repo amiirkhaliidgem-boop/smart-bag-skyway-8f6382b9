@@ -3,7 +3,7 @@ import type { DatasetSchema, FieldDef } from "./types";
 
 // Priority mirrors delivery Priority type but decoupled here to keep the
 // framework independent of consumer types.
-const PRIORITY_VALUES = ["Low", "Normal", "High", "VIP"] as const;
+const PRIORITY_VALUES = ["Normal", "VIP"] as const;
 const DELIVERY_METHOD_VALUES = ["Home Delivery", "Airport Pickup"] as const;
 const CASE_STATUS_VALUES: CaseStatus[] = [
   "Missing",
@@ -80,7 +80,8 @@ export const lostFoundSchema: DatasetSchema = {
 
       const bagTag = String(raw.bagTag ?? "").trim();
       const numBags = Number(raw.numberOfBags) > 0 ? Number(raw.numberOfBags) : 1;
-      const priority = (raw.priority as "Low" | "Normal" | "High" | "VIP" | undefined) ?? "Normal";
+      const rawPriority = raw.priority ? String(raw.priority) : "Normal";
+      const priority: "Normal" | "VIP" = rawPriority === "VIP" ? "VIP" : "Normal";
       const method = raw.deliveryMethod as "Home Delivery" | "Airport Pickup" | undefined;
       const description = [raw.bagColor, raw.bagType, raw.notes]
         .filter((v) => v !== undefined && v !== null && String(v).trim() !== "")
@@ -99,7 +100,6 @@ export const lostFoundSchema: DatasetSchema = {
         passenger: {
           firstName: String(raw.passengerName ?? "").trim().split(/\s+/)[0] ?? "",
           lastName: String(raw.passengerName ?? "").trim().split(/\s+/).slice(1).join(" "),
-          mobile1: String(raw.mobile1 ?? ""),
           mobile2: raw.mobile2 ? String(raw.mobile2) : undefined,
           email: raw.email ? String(raw.email) : undefined,
           pnr: raw.pnr ? String(raw.pnr) : undefined,
