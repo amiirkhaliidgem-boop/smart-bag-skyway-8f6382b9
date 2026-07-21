@@ -359,88 +359,23 @@ function LostFoundPage() {
             </Select>
             <div className="flex items-center gap-1.5">
               <Label className="text-xs text-muted-foreground">From</Label>
-              <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="h-9 w-[145px]" />
+              <Input
+                type="date"
+                value={from}
+                onChange={(e) => setFrom(e.target.value)}
+                className={`h-9 w-[145px] ${!from ? "[&::-webkit-datetime-edit]:text-transparent" : ""}`}
+              />
               <Label className="text-xs text-muted-foreground">To</Label>
-              <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="h-9 w-[145px]" />
+              <Input
+                type="date"
+                value={to}
+                onChange={(e) => setTo(e.target.value)}
+                className={`h-9 w-[145px] ${!to ? "[&::-webkit-datetime-edit]:text-transparent" : ""}`}
+              />
+              <Button variant="ghost" size="sm" onClick={resetFilters} className="h-9 gap-1.5">
+                <X className="h-3.5 w-3.5" /> Reset
+              </Button>
             </div>
-
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant={activeAdvanced ? "default" : "outline"} size="sm" className="h-9 gap-1.5">
-                  <SlidersHorizontal className="h-3.5 w-3.5" />
-                  Advanced Filters
-                  {activeAdvanced && (
-                    <span className="ml-1 rounded-full bg-primary-foreground/20 px-1.5 py-0.5 text-[10px]">
-                      ON
-                    </span>
-                  )}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent align="end" className="w-[320px] space-y-3">
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Officer</Label>
-                  <Select value={officer} onValueChange={setOfficer}>
-                    <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Officers</SelectItem>
-                      {officers.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Station</Label>
-                  <Select value={station} onValueChange={setStation}>
-                    <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Stations</SelectItem>
-                      {stations.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Priority</Label>
-                  <Select value={priority} onValueChange={(v) => setPriority(v as Priority | "all")}>
-                    <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Priorities</SelectItem>
-                      {(["Low", "Normal", "High", "VIP"] as Priority[]).map((p) => (
-                        <SelectItem key={p} value={p}>{p}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Delivery Method</Label>
-                  <Select value={method} onValueChange={(v) => setMethod(v as DeliveryMethod | "all")}>
-                    <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Methods</SelectItem>
-                      <SelectItem value="Home Delivery">Home Delivery</SelectItem>
-                      <SelectItem value="Airport Pickup">Airport Pickup</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Created By</Label>
-                  <Select value={createdBy} onValueChange={setCreatedBy}>
-                    <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Anyone</SelectItem>
-                      {creators.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <label className="inline-flex items-center gap-2 text-sm pt-1">
-                  <Checkbox checked={vipOnly} onCheckedChange={(v) => setVipOnly(Boolean(v))} />
-                  <StarIcon className="h-3.5 w-3.5 text-amber-500" />
-                  VIP passengers only
-                </label>
-              </PopoverContent>
-            </Popover>
-
-            <Button variant="ghost" size="sm" onClick={resetFilters} className="h-9 gap-1.5">
-              <X className="h-3.5 w-3.5" /> Reset
-            </Button>
             <div className="ml-auto flex items-center gap-2">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
