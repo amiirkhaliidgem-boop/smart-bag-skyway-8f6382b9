@@ -1,14 +1,19 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   useStore,
   driverStartTrip,
   driverMarkDelivered,
   driverPool,
+  reportDriverPosition,
   type Delivery,
 } from "@/lib/store";
 import { getDeliveryStage } from "@/lib/store";
-import { optimizeRoute, navigationHref } from "@/lib/routing/optimize";
+import {
+  stopNavigationHref,
+  routeNavigationHref,
+  type LatLng,
+} from "@/lib/routing/optimize";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,6 +35,8 @@ import {
   LogOut,
   Navigation,
   Package,
+  Crosshair,
+  Route as RouteIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -108,25 +115,65 @@ function DriverLogin({
 }
 
 function DriverDashboard({ driver, onSignOut }: { driver: string; onSignOut: () => void }) {
+  // Route optimization is owned by the Workflow Engine (see
+  // `computeDriverRoute` in src/lib/store.ts). The Driver Portal only
+  // reads `driverRoutes[driver]` and reports live GPS back to the engine.
   const mine = useStore((s) => s.deliveries.filter((d) => d.driver === driver));
-  const station = useStore((s) => s.station);
-
-  // Today's Route — every stop assigned to this driver that has not been
-  // delivered yet, optimized nearest-neighbor. Once the trip is under way
-  // we re-anchor from the last completed stop's coordinates so the visit
-  // order stays stable as the driver progresses; before any completion we
-  // anchor from the airport.
+  const engineRoute = useStore((s) => s.driverRoutes[driver]);
   const completed = mine.filter((d) => getDeliveryStage(d) === "Delivered");
-  const route = useMemo(() => {
-    const open = mine.filter((d) => getDeliveryStage(d) !== "Delivered");
-    const anchor = [...completed]
-      .reverse()
-      .find((d) => d.destination)?.destination;
-    // Trip in progress → re-optimize from the driver's last completed
-    // stop (a proxy for current position); otherwise anchor at the
-    // configured station.
-    return optimizeRoute(open, anchor ?? { lat: station.lat, lng: station.lng });
-  }, [mine, completed, station.lat, station.lng]);
+  const route: Delivery[] = useMemo(() => {
+    if (!engineRoute) return [];
+    const byId = new Map(mine.map((d) => [d.deliveryId, d]));
+    return engineRoute.stops
+      .map((id) => byId.get(id))
+      .filter((d): d is Delivery => !!d);
+  }, [engineRoute, mine]);
+  const origin: LatLng | null = engineRoute
+    ? { lat: engineRoute.origin.lat, lng: engineRoute.origin.lng }
+    : null;
+  const originSource = engineRoute?.origin.source ?? null;
+
+  // GPS reporter — pushes throttled position fixes to the Workflow Engine.
+  const [gpsStatus, setGpsStatus] = useState<
+    "idle" | "requesting" | "on" | "denied" | "unsupported" | "error"
+  >("idle");
+  const lastFixRef = useRef<{ lat: number; lng: number; at: number } | null>(null);
+  useEffect(() => {
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      setGpsStatus("unsupported");
+      return;
+    }
+    setGpsStatus("requesting");
+    const push = (p: GeolocationPosition) => {
+      const { latitude, longitude, accuracy } = p.coords;
+      const now = Date.now();
+      const last = lastFixRef.current;
+      // Throttle: only report if moved >75m or 30s elapsed.
+      if (last) {
+        const dt = now - last.at;
+        const dLat = (latitude - last.lat) * 111_320;
+        const dLng = (longitude - last.lng) * 111_320 * Math.cos((latitude * Math.PI) / 180);
+        const distM = Math.sqrt(dLat * dLat + dLng * dLng);
+        if (dt < 30_000 && distM < 75) return;
+      }
+      lastFixRef.current = { lat: latitude, lng: longitude, at: now };
+      setGpsStatus("on");
+      reportDriverPosition(driver, { lat: latitude, lng: longitude, accuracy });
+    };
+    const onError = (e: GeolocationPositionError) => {
+      setGpsStatus(e.code === e.PERMISSION_DENIED ? "denied" : "error");
+    };
+    navigator.geolocation.getCurrentPosition(push, onError, {
+      enableHighAccuracy: true,
+      timeout: 10_000,
+      maximumAge: 15_000,
+    });
+    const watchId = navigator.geolocation.watchPosition(push, onError, {
+      enableHighAccuracy: true,
+      maximumAge: 10_000,
+    });
+    return () => navigator.geolocation.clearWatch(watchId);
+  }, [driver]);
 
   return (
     <div className="space-y-6">
@@ -153,7 +200,12 @@ function DriverDashboard({ driver, onSignOut }: { driver: string; onSignOut: () 
         <Kpi label="Completed" value={completed.length} icon={<CheckCircle2 />} tone="emerald" />
       </div>
 
-      <RouteSection route={route} />
+      <RouteSection
+        route={route}
+        origin={origin}
+        originSource={originSource}
+        gpsStatus={gpsStatus}
+      />
       <Section title="Completed" items={completed} empty="No deliveries completed yet." />
     </div>
   );
