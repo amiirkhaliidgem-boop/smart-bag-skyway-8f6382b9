@@ -90,7 +90,7 @@ function CaseDetailsPage() {
 
   const lfs = deriveLfFromCase(c);
   const priority = c.priority ?? c.internal?.casePriority ?? "Normal";
-  const vip = c.baggage?.vipPassenger || priority === "VIP";
+  const vip = priority === "VIP";
   const linkedDelivery = deliveries.find((d) => d.bagId === c.bagId);
   const wf = linkedDelivery
     ? workflow.find((w) => w.deliveryId === linkedDelivery.deliveryId)
@@ -689,10 +689,7 @@ function OverviewPassenger({ c, full }: { c: BaggageCase; full?: boolean }) {
   return (
     <InfoCard title="Passenger" className={full ? "" : ""}>
       <KV k="Full Name" v={c.passengerName} />
-      <KV k="Nationality" v={c.passenger?.nationality} />
-      <KV k="Passport" v={c.passenger?.passportNumber} mono />
       <KV k="PNR" v={c.passenger?.pnr} mono />
-      <KV k="Ticket" v={c.passenger?.ticketNumber} mono />
       <KV k="Mobile 1" v={c.contact} />
       <KV k="Mobile 2" v={c.passenger?.mobile2} />
       <KV k="Email" v={c.email} />
@@ -721,9 +718,6 @@ function OverviewBaggage({ c }: { c: BaggageCase; full?: boolean }) {
       <KV k="Color" v={c.baggage?.color} />
       <KV k="Type" v={c.baggage?.type} />
       <KV k="Distinctive Marks" v={c.baggage?.distinctiveMarks} />
-      <KV k="VIP" v={c.baggage?.vipPassenger ? "Yes" : undefined} />
-      <KV k="Rush" v={c.baggage?.rushDelivery ? "Yes" : undefined} />
-      <KV k="Fragile" v={c.baggage?.fragile ? "Yes" : undefined} />
       <div className="col-span-full pt-2 border-t mt-1">
         <p className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1">
           Bag Tags ({tags.length})
