@@ -34,6 +34,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as PassengerIndexRouteImport } from './routes/passenger.index'
 import { Route as LostFoundIndexRouteImport } from './routes/lost-found.index'
 import { Route as DeliveryIndexRouteImport } from './routes/delivery.index'
+import { Route as PrintPirRouteImport } from './routes/print.pir'
 import { Route as PassengerTokenRouteImport } from './routes/passenger.$token'
 import { Route as LostFoundBagIdRouteImport } from './routes/lost-found.$bagId'
 import { Route as DeliveryDeliveryIdRouteImport } from './routes/delivery.$deliveryId'
@@ -163,6 +164,11 @@ const DeliveryIndexRoute = DeliveryIndexRouteImport.update({
   path: '/',
   getParentRoute: () => DeliveryRoute,
 } as any)
+const PrintPirRoute = PrintPirRouteImport.update({
+  id: '/print/pir',
+  path: '/print/pir',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PassengerTokenRoute = PassengerTokenRouteImport.update({
   id: '/$token',
   path: '/$token',
@@ -205,6 +211,7 @@ export interface FileRoutesByFullPath {
   '/delivery/$deliveryId': typeof DeliveryDeliveryIdRoute
   '/lost-found/$bagId': typeof LostFoundBagIdRoute
   '/passenger/$token': typeof PassengerTokenRoute
+  '/print/pir': typeof PrintPirRoute
   '/delivery/': typeof DeliveryIndexRoute
   '/lost-found/': typeof LostFoundIndexRoute
   '/passenger/': typeof PassengerIndexRoute
@@ -232,6 +239,7 @@ export interface FileRoutesByTo {
   '/delivery/$deliveryId': typeof DeliveryDeliveryIdRoute
   '/lost-found/$bagId': typeof LostFoundBagIdRoute
   '/passenger/$token': typeof PassengerTokenRoute
+  '/print/pir': typeof PrintPirRoute
   '/delivery': typeof DeliveryIndexRoute
   '/lost-found': typeof LostFoundIndexRoute
   '/passenger': typeof PassengerIndexRoute
@@ -263,6 +271,7 @@ export interface FileRoutesById {
   '/delivery/$deliveryId': typeof DeliveryDeliveryIdRoute
   '/lost-found/$bagId': typeof LostFoundBagIdRoute
   '/passenger/$token': typeof PassengerTokenRoute
+  '/print/pir': typeof PrintPirRoute
   '/delivery/': typeof DeliveryIndexRoute
   '/lost-found/': typeof LostFoundIndexRoute
   '/passenger/': typeof PassengerIndexRoute
@@ -295,6 +304,7 @@ export interface FileRouteTypes {
     | '/delivery/$deliveryId'
     | '/lost-found/$bagId'
     | '/passenger/$token'
+    | '/print/pir'
     | '/delivery/'
     | '/lost-found/'
     | '/passenger/'
@@ -322,6 +332,7 @@ export interface FileRouteTypes {
     | '/delivery/$deliveryId'
     | '/lost-found/$bagId'
     | '/passenger/$token'
+    | '/print/pir'
     | '/delivery'
     | '/lost-found'
     | '/passenger'
@@ -352,6 +363,7 @@ export interface FileRouteTypes {
     | '/delivery/$deliveryId'
     | '/lost-found/$bagId'
     | '/passenger/$token'
+    | '/print/pir'
     | '/delivery/'
     | '/lost-found/'
     | '/passenger/'
@@ -380,6 +392,7 @@ export interface RootRouteChildren {
   TimelineRoute: typeof TimelineRoute
   TrackingRoute: typeof TrackingRoute
   WorkflowMonitorRoute: typeof WorkflowMonitorRoute
+  PrintPirRoute: typeof PrintPirRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -559,6 +572,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DeliveryIndexRouteImport
       parentRoute: typeof DeliveryRoute
     }
+    '/print/pir': {
+      id: '/print/pir'
+      path: '/print/pir'
+      fullPath: '/print/pir'
+      preLoaderRoute: typeof PrintPirRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/passenger/$token': {
       id: '/passenger/$token'
       path: '/$token'
@@ -648,6 +668,7 @@ const rootRouteChildren: RootRouteChildren = {
   TimelineRoute: TimelineRoute,
   TrackingRoute: TrackingRoute,
   WorkflowMonitorRoute: WorkflowMonitorRoute,
+  PrintPirRoute: PrintPirRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
