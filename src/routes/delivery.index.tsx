@@ -79,22 +79,10 @@ function DispatchCenter() {
 
   // ---- Filters (URL-independent; local UI state for this operational view)
   const [q, setQ] = useState("");
-  const [driverF, setDriverF] = useState("all");
   const [stageF, setStageF] = useState<DeliveryStage | "all">("all");
-  const [priorityF, setPriorityF] = useState<Priority | "all">("all");
-  const [stationF, setStationF] = useState("all");
-  const [typeF, setTypeF] = useState("all");
-  const [vipOnly, setVipOnly] = useState(false);
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
   const [queue, setQueue] = useState<DeliveryQueueId>("all");
-  const [showAdvanced, setShowAdvanced] = useState(false);
-
-  const stations = useMemo(
-    () =>
-      Array.from(
-        new Set(deliveries.map((d) => d.station).filter((s): s is string => !!s)),
-      ),
-    [deliveries],
-  );
 
   const filtered = useMemo(() => {
     const activeQueue = DELIVERY_QUEUES.find((qq) => qq.id === queue) ?? DELIVERY_QUEUES[0];
@@ -104,16 +92,13 @@ function DispatchCenter() {
       if (queue !== "all" && !queueStages.has(stage)) return false;
       const hay = `${d.deliveryId} ${d.pirNumber} ${d.passengerName} ${d.mobile} ${d.address} ${d.driver}`.toLowerCase();
       if (q && !hay.includes(q.toLowerCase())) return false;
-      if (driverF !== "all" && d.driver !== driverF) return false;
       if (stageF !== "all" && stage !== stageF) return false;
-      if (priorityF !== "all" && d.priority !== priorityF) return false;
-      if (stationF !== "all" && d.station !== stationF) return false;
-      if (typeF !== "all" && (d.deliveryType ?? "Home Delivery") !== typeF)
-        return false;
-      if (vipOnly && d.priority !== "VIP") return false;
+      const day = (d.createdAt ?? "").slice(0, 10);
+      if (from && day < from) return false;
+      if (to && day > to) return false;
       return true;
     });
-  }, [deliveries, queue, q, driverF, stageF, priorityF, stationF, typeF, vipOnly]);
+  }, [deliveries, queue, q, stageF, from, to]);
 
   const queueCounts = useMemo(() => {
     const m: Record<string, number> = {};
