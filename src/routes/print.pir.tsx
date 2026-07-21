@@ -1,16 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { zodValidator, fallback } from "@tanstack/zod-adapter";
-import { z } from "zod";
 import { useEffect, useMemo, useRef } from "react";
 import { useStore } from "@/lib/store";
 import { PirReport } from "@/components/lost-found/pir-report";
 
-const searchSchema = z.object({
-  ids: fallback(z.string(), "").default(""),
-});
-
 export const Route = createFileRoute("/print/pir")({
-  validateSearch: zodValidator(searchSchema),
+  validateSearch: (search: Record<string, unknown>): { ids: string } => ({
+    ids: typeof search.ids === "string" ? search.ids : "",
+  }),
   head: () => ({
     meta: [
       { title: "PIR Report — IAB" },
