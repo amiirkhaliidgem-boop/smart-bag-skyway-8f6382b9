@@ -61,7 +61,6 @@ function CaseDetailsPage() {
   const notifications = useStore((s) => s.notifications);
   const callLogs = useStore((s) => s.callLogs);
   const whatsapp = useStore((s) => s.whatsapp);
-  const audit = useStore((s) => s.audit);
   const workflow = useStore((s) => s.workflow);
 
   const [editOpen, setEditOpen] = useState(false);
@@ -103,13 +102,6 @@ function CaseDetailsPage() {
   );
   const relatedWhatsapp = whatsapp.filter(
     (w) => w.pirNumber === c.pirNumber || w.phone === c.contact,
-  );
-  const relatedAudit = audit.filter(
-    (a) =>
-      (a.entityType === "case" && a.entityId === c.bagId) ||
-      (a.entityType === "delivery" && a.entityId === linkedDelivery?.deliveryId) ||
-      (a.entityType === "notification" &&
-        relatedNotifications.some((n) => n.id === a.entityId)),
   );
 
   function advance() {
