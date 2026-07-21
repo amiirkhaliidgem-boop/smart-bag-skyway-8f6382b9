@@ -113,38 +113,11 @@ function LostFoundPage() {
     Object.fromEntries(ALL_COLUMNS.map((c) => [c.key, c.default])) as Record<ColKey, boolean>,
   );
 
-  const officers = useMemo(() => {
-    const s = new Set<string>();
-    for (const c of cases) if (c.internal?.assignedOfficer) s.add(c.internal.assignedOfficer);
-    return Array.from(s).sort();
-  }, [cases]);
-  const stations = useMemo(() => {
-    const s = new Set<string>();
-    for (const c of cases) if (c.internal?.station) s.add(c.internal.station);
-    return Array.from(s).sort();
-  }, [cases]);
-  const creators = useMemo(() => {
-    const s = new Set<string>();
-    for (const c of cases) if (c.internal?.createdBy) s.add(c.internal.createdBy);
-    return Array.from(s).sort();
-  }, [cases]);
-
-  const activeAdvanced =
-    priority !== "all" || method !== "all" || officer !== "all" ||
-    station !== "all" || createdBy !== "all" || vipOnly;
-
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return cases.filter((c) => {
       const lfs = deriveLfFromCase(c);
       if (status !== "all" && lfs !== status) return false;
-      const p = c.priority ?? c.internal?.casePriority ?? "Normal";
-      if (priority !== "all" && p !== priority) return false;
-      if (method !== "all" && c.delivery?.method !== method) return false;
-      if (officer !== "all" && (c.internal?.assignedOfficer ?? "") !== officer) return false;
-      if (station !== "all" && (c.internal?.station ?? "") !== station) return false;
-      if (createdBy !== "all" && (c.internal?.createdBy ?? "") !== createdBy) return false;
-      if (vipOnly && !(c.baggage?.vipPassenger || p === "VIP")) return false;
       if (from && c.createdAt.slice(0, 10) < from) return false;
       if (to && c.createdAt.slice(0, 10) > to) return false;
       if (!q) return true;
@@ -155,7 +128,7 @@ function LostFoundPage() {
       ].filter(Boolean).join(" ").toLowerCase();
       return hay.includes(q);
     });
-  }, [cases, query, status, priority, method, officer, station, createdBy, vipOnly, from, to]);
+  }, [cases, query, status, from, to]);
 
   const sorted = useMemo(() => {
     const arr = [...filtered];
