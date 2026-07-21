@@ -101,7 +101,6 @@ export const lostFoundSchema: DatasetSchema = {
           firstName: String(raw.passengerName ?? "").trim().split(/\s+/)[0] ?? "",
           lastName: String(raw.passengerName ?? "").trim().split(/\s+/).slice(1).join(" "),
           mobile2: raw.mobile2 ? String(raw.mobile2) : undefined,
-          email: raw.email ? String(raw.email) : undefined,
           pnr: raw.pnr ? String(raw.pnr) : undefined,
         },
         flight: {
