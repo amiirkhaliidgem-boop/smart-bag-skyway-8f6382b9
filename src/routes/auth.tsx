@@ -28,7 +28,7 @@ function getAuthErrorMessage(error: unknown): string {
 export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
-      { title: "Sign in — Smart Baggage Ecosystem" },
+      { title: "Sign in — IAB Smart Baggage Ecosystem" },
       { name: "robots", content: "noindex" },
     ],
   }),
@@ -105,7 +105,7 @@ async function resolveDefaultPath(userId: string | null): Promise<string> {
           <div className="mx-auto h-12 w-12 rounded-xl bg-white ring-1 ring-border grid place-items-center overflow-hidden">
             <img src={iabLogo.url} alt="IAB" className="h-9 w-9 object-contain" />
           </div>
-          <CardTitle>Smart Baggage Ecosystem</CardTitle>
+          <CardTitle>IAB Smart Baggage Ecosystem</CardTitle>
           <p className="text-sm text-muted-foreground">
             {mode === "signin" ? "Sign in to continue" : "Create a staff account"}
           </p>
