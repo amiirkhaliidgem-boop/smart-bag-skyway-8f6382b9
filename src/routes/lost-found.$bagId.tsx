@@ -5,12 +5,8 @@ import {
   updateCase,
   editCase,
   updateLfStatus,
-  addCaseDocument,
-  removeCaseDocument,
   type BaggageCase,
-  type CaseDocument,
   type NotificationEvent,
-  type WorkflowRecord,
 } from "@/lib/store";
 import {
   LF_OWNED_STATUSES,
@@ -42,12 +38,10 @@ import {
 import { toast } from "sonner";
 import {
   ArrowLeft, ChevronRight, Truck, MessageSquare, Phone, Mail,
-  FileText, Upload, Trash2, MapPin, Radar, History as HistoryIcon,
-  ShieldAlert, Star as StarIcon, ExternalLink, Pencil, MoreHorizontal,
+  MapPin, Star as StarIcon, ExternalLink, Pencil, MoreHorizontal,
   UserCog, Printer, Download,
   AlertTriangle,
 } from "lucide-react";
-import { WORKFLOW_LABELS } from "@/lib/workflow/statuses";
 
 export const Route = createFileRoute("/lost-found/$bagId")({
   head: ({ params }) => ({
