@@ -261,10 +261,6 @@ function LostFoundPage() {
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
             Lost &amp; Found Management
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            AHL / PIR registry — tracing, customs clearance, and delivery
-            assignment across the IAB ground handling network.
-          </p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" className="gap-2" onClick={() => setImportOpen(true)}>
@@ -349,7 +345,7 @@ function LostFoundPage() {
               <Input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search PIR, passenger, tag, PNR, phone…"
+                placeholder="Search"
                 className="pl-9"
               />
             </div>
@@ -379,9 +375,6 @@ function LostFoundPage() {
                 onChange={(e) => setTo(e.target.value)}
                 className={`h-9 w-[145px] ${!to ? "[&::-webkit-datetime-edit]:text-transparent" : ""}`}
               />
-              <Button variant="ghost" size="sm" onClick={resetFilters} className="h-9 gap-1.5">
-                <X className="h-3.5 w-3.5" /> Reset
-              </Button>
             </div>
             <div className="ml-auto flex items-center gap-2">
               <DropdownMenu>

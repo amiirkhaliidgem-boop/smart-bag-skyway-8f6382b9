@@ -1,25 +1,26 @@
-## Plan: Simplify Lost & Found Filters Bar
+## Lost & Found – UI Cleanup
 
-Scope: UI-only cleanup in `src/routes/lost-found.index.tsx`. No backend, store, workflow, or API changes.
+Scope: UI-only tweaks in `src/routes/lost-found.index.tsx`. No backend, store, workflow, or filter logic changes.
 
-### 1. Remove Advanced Filters
-- Delete the entire Advanced Filters `Popover` block (button + popover content with Officer, Station, Priority, Delivery Method, Created By, VIP Only).
-- Remove now-unused imports: `Popover`, `PopoverTrigger`, `PopoverContent`, `SlidersHorizontal`.
-- Remove the `activeAdvanced` helper and the advanced-filter state variables (`priority`, `method`, `officer`, `station`, `createdBy`, `vipOnly`) plus their `useMemo` option lists, since the UI to set them will be gone.
-- Remove the advanced-filter branches from the `filtered` `useMemo` and from `resetFilters`.
+### 1. Reorder Filter Bar Controls
+Current order: Search → Status → From → To → Reset → Columns  
+Target order: Search → Status → From → To → Columns → Reset
 
-### 2. Move Reset
-- Keep the Reset button and its `resetFilters` handler.
-- Move it so it sits immediately after the From/To date inputs, as the last control on the left side of the filter row.
-- Keep the right-side Columns dropdown in its current position.
+- Move the Reset button out of the date-input group and place it immediately after the Columns dropdown.
+- Keep the Reset button's existing `variant="ghost"` style and `resetFilters` handler.
+- Preserve the `ml-auto` spacer so the Columns + Reset group stays right-aligned while the earlier controls stay left-aligned.
 
-### 3. Simplify Date Filter Placeholders
-- Keep the From/To `Input type="date"` fields and their `onChange` handlers.
-- Make the inputs visually empty when no date is selected by suppressing the browser’s default `dd/mm/yyyy` placeholder text (conditional transparent text utility while empty).
-- Calendar picker behavior remains unchanged.
+### 2. Simplify Search Placeholder
+- Change the search `Input` placeholder from `"Search PIR, passenger, tag, PNR, phone…"` to `"Search"`.
+- No other search behavior changes.
+
+### 3. Remove Page Subtitle
+- Delete the descriptive `<p>` element under the `Lost & Found Management` heading:
+  > "AHL / PIR registry — tracing, customs clearance, and delivery assignment across the IAB ground handling network."
+- Keep the `<h1>` and the Import / New PIR Case buttons exactly as they are.
 
 ### 4. Verify
-- Build/typecheck the project.
-- Confirm in the preview that the filter row shows: Search → Status → From → To → Reset, then Columns on the right, with no Advanced Filters button and empty date inputs until a date is picked.
+- Run the project build/typecheck.
+- Confirm in the preview that the filter bar reads: Search → Status → From → To → Columns → Reset, the search placeholder is "Search", and the subtitle is gone.
 
 No other files will be modified.
