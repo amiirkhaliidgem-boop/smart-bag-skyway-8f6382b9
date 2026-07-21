@@ -72,7 +72,7 @@ const navSections: {
     ],
   },
   {
-    label: "Passenger Experience",
+    label: "CONTACT CENTER OPERATIONS",
     items: [
       { to: "/tracking", label: "Passenger Tracking", icon: Search },
       { to: "/contact-center", label: "Contact Center", icon: Headphones },
