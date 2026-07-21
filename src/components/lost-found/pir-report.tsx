@@ -79,7 +79,7 @@ export function PirReport({ caseRecord }: { caseRecord: BaggageCase }) {
           <div className="pir-brand">IAB · Smart Baggage Ecosystem</div>
           <h1 className="pir-title">Property Irregularity Report</h1>
           <div className="pir-sub">
-            Cairo International Airport — Ground Handling
+            Smart Baggage Ecosystem — Ground Handling
           </div>
         </div>
         <div className="pir-header-meta">
