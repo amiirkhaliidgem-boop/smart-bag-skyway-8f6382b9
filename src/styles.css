@@ -393,3 +393,25 @@
   .pir-shell { background: #fff; padding: 0; min-height: 0; }
   .pir-print { box-shadow: none; margin: 0 auto; }
 }
+
+/* Off-screen container that hosts the PIR report during in-page printing. */
+.pir-print-portal {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+  z-index: -1;
+  background: #fff;
+}
+
+@media print {
+  body > *:not(.pir-print-portal) { display: none !important; }
+  .pir-print-portal {
+    position: static;
+    opacity: 1;
+    pointer-events: auto;
+    z-index: auto;
+    overflow: visible;
+  }
+}
