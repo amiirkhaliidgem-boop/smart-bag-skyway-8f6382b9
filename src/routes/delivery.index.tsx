@@ -72,8 +72,6 @@ export const Route = createFileRoute("/delivery/")({
   component: DispatchCenter,
 });
 
-const PRIORITIES: Priority[] = ["Normal", "VIP"];
-
 function DispatchCenter() {
   const deliveries = useStore((s) => s.deliveries);
 
@@ -164,40 +162,69 @@ function DispatchCenter() {
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
             Delivery Dispatch Center
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Operational back office for home baggage delivery. Cases enter this
-            module when Lost &amp; Found marks them Ready for Delivery.
-          </p>
         </div>
         <div />
       </div>
 
       {selected.size > 0 && (
-        <DeliveryBulkToolbar
-          deliveries={deliveries.filter((d) => selected.has(d.deliveryId))}
-          onAssign={() => setBulkAssignOpen(true)}
-          onNotify={() => setBulkNotifyOpen(true)}
+        <SharedBulkToolbar
+          count={selected.size}
+          noun="Delivery"
+          pluralNoun="Deliveries"
           onCancel={() => setSelected(new Set())}
+          actions={[
+            {
+              key: "assign",
+              label: (() => {
+                const sel = deliveries.filter((d) => selected.has(d.deliveryId));
+                const all = sel.length > 0 && sel.every((d) => d.driver && d.driver !== "—");
+                return all ? "Reassign Driver" : "Assign Driver";
+              })(),
+              icon: UserCheck,
+              onClick: () => setBulkAssignOpen(true),
+            },
+            {
+              key: "resend-otp",
+              label: "Resend OTP",
+              icon: Repeat,
+              variant: "outline",
+              onClick: () => {
+                let sent = 0;
+                for (const id of selected) {
+                  const d = deliveries.find((x) => x.deliveryId === id);
+                  if (!d) continue;
+                  if (d.driver && d.driver !== "—") {
+                    resendOtp(id, { actor: "Delivery Coordinator" });
+                    sent++;
+                  }
+                }
+                toast.success(`OTP resent for ${sent} delivery${sent === 1 ? "" : "s"}`);
+              },
+            },
+            {
+              key: "notify",
+              label: "Notify Passenger",
+              icon: Bell,
+              variant: "outline",
+              onClick: () => setBulkNotifyOpen(true),
+            },
+          ]}
         />
       )}
 
-      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
-        <Kpi label="Ready for Delivery" value={stageCounts["Ready for Delivery"]} icon={<Package className="h-5 w-5" />} tone="slate" />
-        <Kpi label="Assigned" value={stageCounts["Assigned"] + stageCounts["Driver Accepted"]} icon={<UserCheck className="h-5 w-5" />} tone="indigo" />
-        <Kpi label="Out for Delivery" value={stageCounts["Out for Delivery"]} icon={<Truck className="h-5 w-5" />} tone="cyan" />
-        <Kpi label="Delivered Today" value={deliveredToday} icon={<CheckCircle2 className="h-5 w-5" />} tone="emerald" />
-        <Kpi label="Active" value={active} icon={<Truck className="h-5 w-5" />} tone="primary" />
-        <Kpi
-          label="Avg Delivery Time"
-          value={avgHrs != null ? `${avgHrs.toFixed(1)}h` : "—"}
-          icon={<Clock className="h-5 w-5" />}
-          tone="amber"
-        />
+      {/* KPI strip — matches Lost & Found */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <Kpi label="Ready for Delivery" value={stageCounts["Ready for Delivery"]} tone="slate" />
+        <Kpi label="Assigned" value={stageCounts["Assigned"] + stageCounts["Driver Accepted"]} tone="indigo" />
+        <Kpi label="Out for Delivery" value={stageCounts["Out for Delivery"]} tone="amber" />
+        <Kpi label="Delivered" value={stageCounts["Delivered"]} tone="emerald" />
+        <Kpi label="Active" value={active} tone="violet" />
       </div>
 
+      {/* Queue tabs + simplified filter bar — matches Lost & Found */}
       <Card>
-        <CardContent className="p-4 space-y-3">
-          <div className="flex flex-wrap items-center gap-1 border-b border-border pb-3">
+        <CardHeader className="pb-3 space-y-3">
+          <div className="flex flex-wrap items-center gap-1">
             {DELIVERY_QUEUES.map((qq) => (
               <button
                 key={qq.id}
@@ -219,86 +246,55 @@ function DispatchCenter() {
               </button>
             ))}
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-8 gap-2">
-            <div className="lg:col-span-2 relative">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative w-full sm:w-auto sm:flex-1 sm:max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
-                placeholder="Search ID, PIR, passenger, phone…"
-                className="pl-8 h-9"
+                placeholder="Search"
+                className="pl-9"
               />
             </div>
-            <Select value={stageF} onChange={(v) => setStageF(v as never)} label="Status">
-              <option value="all">All stages</option>
-              {DELIVERY_STAGES.map((s) => (
-                <option key={s} value={s}>{STAGE_LABELS[s]}</option>
-              ))}
-            </Select>
-            <Select value={driverF} onChange={setDriverF} label="Driver">
-              <option value="all">All drivers</option>
-              {driverPool.map((d) => (
-                <option key={d} value={d}>{d}</option>
-              ))}
-              <option value="—">Unassigned</option>
-            </Select>
-            <div className="flex items-end">
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-9 w-full"
-                onClick={() => setShowAdvanced((v) => !v)}
-              >
-                {showAdvanced ? "Hide" : "More"} filters
-              </Button>
+            <UISelect value={stageF} onValueChange={(v) => setStageF(v as DeliveryStage | "all")}>
+              <SelectTrigger className="w-[200px] h-9">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All stages</SelectItem>
+                {DELIVERY_STAGES.map((s) => (
+                  <SelectItem key={s} value={s}>{STAGE_LABELS[s]}</SelectItem>
+                ))}
+              </SelectContent>
+            </UISelect>
+            <div className="flex items-center gap-1.5">
+              <Label className="text-xs text-muted-foreground">From</Label>
+              <Input
+                type="date"
+                value={from}
+                onChange={(e) => setFrom(e.target.value)}
+                className={`h-9 w-[145px] ${!from ? "[&::-webkit-datetime-edit]:text-transparent" : ""}`}
+              />
+              <Label className="text-xs text-muted-foreground">To</Label>
+              <Input
+                type="date"
+                value={to}
+                onChange={(e) => setTo(e.target.value)}
+                className={`h-9 w-[145px] ${!to ? "[&::-webkit-datetime-edit]:text-transparent" : ""}`}
+              />
             </div>
-          </div>
-          {showAdvanced && (
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-              <Select value={priorityF} onChange={(v) => setPriorityF(v as never)} label="Priority">
-                <option value="all">All priorities</option>
-                {PRIORITIES.map((p) => <option key={p} value={p}>{p}</option>)}
-              </Select>
-              <Select value={stationF} onChange={setStationF} label="Station">
-                <option value="all">All stations</option>
-                {stations.map((s) => <option key={s} value={s}>{s}</option>)}
-                {stations.length === 0 && <option value="none" disabled>—</option>}
-              </Select>
-              <Select value={typeF} onChange={setTypeF} label="Type">
-                <option value="all">All types</option>
-                <option value="Home Delivery">Home Delivery</option>
-                <option value="Airport Pickup">Airport Pickup</option>
-              </Select>
-              <label className="inline-flex items-end gap-2 text-xs pb-2">
-                <input
-                  type="checkbox"
-                  checked={vipOnly}
-                  onChange={(e) => setVipOnly(e.target.checked)}
-                />
-                VIP only
-              </label>
-            </div>
-          )}
-          <div className="flex items-center gap-4 text-xs">
-            <span className="text-muted-foreground">
-              Showing {filtered.length} of {deliveries.length} deliveries · {active} active
-            </span>
-            {(q || driverF !== "all" || stageF !== "all" || priorityF !== "all" || stationF !== "all" || typeF !== "all" || vipOnly) && (
+            <div className="ml-auto">
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-7"
-                onClick={() => {
-                  setQ(""); setDriverF("all"); setStageF("all");
-                  setPriorityF("all"); setStationF("all"); setTypeF("all");
-                  setVipOnly(false);
-                }}
+                className="h-9 gap-1.5"
+                onClick={() => { setQ(""); setStageF("all"); setFrom(""); setTo(""); }}
               >
-                Clear filters
+                <X className="h-3.5 w-3.5" /> Reset
               </Button>
-            )}
+            </div>
           </div>
-        </CardContent>
+        </CardHeader>
       </Card>
 
       <Card>
