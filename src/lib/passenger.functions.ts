@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { queryOptions } from "@tanstack/react-query";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -86,6 +87,24 @@ export const getPassengerViewByToken = createServerFn({ method: "GET" })
       flightDate: row.flight_date,
       otpCode: row.otp_code,
     };
+  });
+
+const TERMINAL_STAGES = new Set([
+  "Delivered",
+  "Failed",
+  "Returned to Airport",
+]);
+
+export function isTerminalPassengerStage(stage: string | undefined | null): boolean {
+  return !!stage && TERMINAL_STAGES.has(stage);
+}
+
+export const passengerViewQuery = (token: string) =>
+  queryOptions({
+    queryKey: ["passenger-view", token],
+    queryFn: () => getPassengerViewByToken({ data: { token } }),
+    staleTime: 0,
+    gcTime: 60_000,
   });
 
 const passengerActionSchema = z.discriminatedUnion("action", [
