@@ -67,7 +67,7 @@ function PrintPirPage() {
 
   return (
     <div className="pir-shell">
-      {matched.map((c, i) => (
+      {matched.map((c: BaggageCase, i: number) => (
         <div key={c.bagId as string} className={i < matched.length - 1 ? "pir-page-break" : ""}>
           <PirReport caseRecord={c} />
         </div>
