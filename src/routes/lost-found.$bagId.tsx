@@ -39,7 +39,7 @@ import { toast } from "sonner";
 import {
   ArrowLeft, ChevronRight, Truck, MessageSquare, Phone, Mail,
   MapPin, Star as StarIcon, ExternalLink, Pencil, MoreHorizontal,
-  UserCog, Printer, Download,
+  UserCog, Printer,
   AlertTriangle,
 } from "lucide-react";
 
@@ -140,17 +140,6 @@ function CaseDetailsPage() {
   // ---- Quick Actions ----
   function printPir() {
     pirPrintBus.print([c!.bagId]);
-  }
-  function exportCase() {
-    const payload = JSON.stringify(c, null, 2);
-    const blob = new Blob([payload], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${c!.pirNumber}-${c!.bagId}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    toast.success(`Exported ${c!.pirNumber}`);
   }
   return (
     <div className="space-y-5">
@@ -261,9 +250,6 @@ function CaseDetailsPage() {
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={printPir}>
                     <Printer className="h-4 w-4 mr-2" /> Print PIR
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={exportCase}>
-                    <Download className="h-4 w-4 mr-2" /> Export Case
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
