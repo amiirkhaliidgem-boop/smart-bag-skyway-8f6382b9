@@ -1,35 +1,30 @@
-# Delivery POD Print — Plan
+## Goal
+Make the PIR number visible in the Passenger Portal Welcome Card, matching the existing Flight and Bag Tag fields, by threading `pir_number` through the entire public/anon data path.
 
-Reuse the existing PIR print architecture (dedicated template + hidden print host + in-page `window.print()`) for Delivery Management. No engine, DB, or business-logic changes.
+## Changes
 
-## New files
+### 1. Database migration
+- `ALTER TABLE public.delivery_public_view ADD COLUMN pir_number text`.
+- Update `public.sync_passenger_public_from_app_state()` trigger fn to also write `pir_number`, sourced from `delivery.pirNumber` with fallback to `case.pirNumber`.
+- Update `public.get_passenger_view(p_token)` to include `pir_number` in the returned JSON.
+- One-shot backfill: for every existing row in `delivery_public_view`, populate `pir_number` from the current `app_state.payload`.
 
-1. **`src/components/delivery/pod-report.tsx`** — pure presentational A4 POD template (mirrors `pir-report.tsx`).
-   Props: `{ delivery: Delivery; caseRecord?: BaggageCase }` (case looked up by `bagId` for baggage/flight/passenger enrichment).
-   Sections:
-   - Header: IAB logo, "Smart Baggage Ecosystem", title "Proof of Delivery (POD)", meta (Delivery Number, PIR, Bag ID, Generated Date).
-   - Passenger: Full Name, Mobile, Email, PNR.
-   - Flight: Airline, Flight No., Flight Date, Origin, Destination.
-   - Baggage: Bag Tag(s), Number of Bags, Color, Type, Weight, Description.
-   - Delivery: Method, Driver, Delivery Address, Priority.
-   - Timeline (dates only): Assigned At, Accepted At, Collected At, Out For Delivery, Delivered At.
-   - OTP: OTP Status, Verification Status (derived: "Verified" if `deliveredAt` and `otpStatus==='verified'`, else pending/not-verified).
-   - Signatures block (Driver + Passenger).
-   Reuses existing `.pir-*` print CSS classes from `src/styles.css` so no new print styles are needed. Wrapper class `pir-print` keeps identical page layout.
+No RLS/grant changes — the column inherits existing table policies.
 
-2. **`src/components/delivery/pod-print-host.tsx`** — clone of `pir-print-host.tsx`:
-   - Exposes `podPrintBus.print(deliveryIds: string[])`.
-   - Subscribes to store, resolves `Delivery` records (+ their `BaggageCase` by `bagId`), portals into `.pir-print-portal` container, triggers `window.print()`, cleans up on `afterprint`.
+### 2. Server function — `src/lib/passenger.functions.ts`
+- Add `pirNumber: string | null` to `PassengerView` interface.
+- Add `pir_number: string | null` to the RPC `row` type.
+- Map `pirNumber: row.pir_number` in the returned view. Default to `null` in `EMPTY_VIEW`.
 
-## Wiring
+### 3. Route — `src/routes/passenger.$token.tsx`
+- In `synthesizeFromView()`, replace the two hard-coded `pirNumber: ""` assignments with `view.pirNumber ?? ""` on both the synthesized `Delivery` and `BaggageCase`.
+- Remove the stale "PIR ... intentionally left empty" comment.
 
-3. **`src/routes/__root.tsx`** (or wherever `<PirPrintHost />` is mounted) — mount `<PodPrintHost />` alongside it.
+## Out of scope
+- No UI changes to `passenger.index.tsx` — the Welcome Card already reads `delivery.pirNumber` correctly.
+- No changes to staff-facing pages, workflow engine, or notification templates.
 
-4. **`src/routes/delivery.$deliveryId.tsx`** — replace the `Print` button's `onClick={() => window.print()}` with `podPrintBus.print([deliveryId])`.
-
-5. **`src/routes/delivery.index.tsx`** — add a `Print` action to the `SharedBulkToolbar` that calls `podPrintBus.print(selectedDeliveryIds)`.
-
-## Non-goals
-
-- No changes to Workflow / Delivery / Notification / Timeline / Audit engines, store mutations, DB, or Supabase.
-- No new print CSS; reuse existing `@media print` rules that target `.pir-print-portal`.
+## Verification
+- Open a passenger portal link from a case with a PIR → Welcome Card shows PIR alongside Flight and Bag Tag.
+- Existing cases (via backfill) show PIR immediately without needing to re-save.
+- New/updated cases keep PIR in sync via the trigger fn.
