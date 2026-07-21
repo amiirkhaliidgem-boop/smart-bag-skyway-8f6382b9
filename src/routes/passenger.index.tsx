@@ -748,7 +748,7 @@ function passengerSteps(delivery: Delivery, kase: BaggageCase) {
   ];
   // Determine the highest reached index.
   let reached = 0;
-  const locatedish = ["Located", "In Transit to Cairo", "Arrived at Cairo"];
+  const locatedish = ["Located", "Arrived at Airport"];
   const customs = ["Waiting Customs Clearance"];
   const assignedish: Array<typeof stage> = [
     "Ready for Delivery",
