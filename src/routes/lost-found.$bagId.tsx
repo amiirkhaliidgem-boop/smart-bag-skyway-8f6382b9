@@ -7,8 +7,6 @@ import {
   updateLfStatus,
   addCaseDocument,
   removeCaseDocument,
-  createTestNotification,
-  ensurePassengerToken,
   type BaggageCase,
   type CaseDocument,
   type NotificationEvent,
@@ -46,7 +44,7 @@ import {
   ArrowLeft, ChevronRight, Truck, MessageSquare, Phone, Mail,
   FileText, Upload, Trash2, MapPin, Radar, History as HistoryIcon,
   ShieldAlert, Star as StarIcon, ExternalLink, Pencil, MoreHorizontal,
-  UserCog, Bell, Link as LinkIcon, Copy, Printer, Download,
+  UserCog, Printer, Download,
   AlertTriangle,
 } from "lucide-react";
 import { WORKFLOW_LABELS } from "@/lib/workflow/statuses";
@@ -154,37 +152,6 @@ function CaseDetailsPage() {
   }
 
   // ---- Quick Actions ----
-  const token = linkedDelivery ? ensurePassengerToken(linkedDelivery.deliveryId) : wf?.token;
-  const trackingUrl = token ? `${window.location.origin}/passenger/${token}` : null;
-
-  function copyTrackingLink() {
-    if (!trackingUrl) {
-      toast.error("No tracking link — link a delivery first.");
-      return;
-    }
-    navigator.clipboard?.writeText(trackingUrl);
-    toast.success("Tracking link copied");
-  }
-  function generateTrackingLink() {
-    if (!trackingUrl) {
-      toast.info("Tracking link is generated when a delivery record is linked. Open Delivery Management to create one.");
-      return;
-    }
-    copyTrackingLink();
-  }
-  function notifyPassenger() {
-    if (!linkedDelivery) {
-      toast.info("Notifications require a linked delivery — open Delivery Management to create one.");
-      return;
-    }
-    const events = createTestNotification({
-      deliveryId: linkedDelivery.deliveryId,
-      channel: "sms",
-      operator: "Ops Console",
-    });
-    if (events.length) toast.success(`Notification queued (${events.length} messages)`);
-    else toast.error("No template available for current workflow status.");
-  }
   function printPir() { window.print(); }
   function exportCase() {
     const payload = JSON.stringify(c, null, 2);
@@ -301,15 +268,6 @@ function CaseDetailsPage() {
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setAssignOfficerOpen(true)}>
                     <UserCog className="h-4 w-4 mr-2" /> Assign Officer
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={notifyPassenger}>
-                    <Bell className="h-4 w-4 mr-2" /> Notify Passenger
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={generateTrackingLink}>
-                    <LinkIcon className="h-4 w-4 mr-2" /> Generate Tracking Link
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={copyTrackingLink}>
-                    <Copy className="h-4 w-4 mr-2" /> Copy Tracking Link
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={printPir}>
