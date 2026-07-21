@@ -148,7 +148,8 @@ function RootComponent() {
 function isPublicPath(pathname: string): boolean {
   return (
     pathname === "/auth" ||
-    pathname.startsWith("/passenger/") // token portal only; /passenger alone is staff
+    pathname.startsWith("/passenger/") || // token portal only; /passenger alone is staff
+    pathname.startsWith("/print/") // internal utility route (PIR print, etc.)
   );
 }
 
