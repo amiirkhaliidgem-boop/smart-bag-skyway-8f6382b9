@@ -1,30 +1,8 @@
-## Goal
-Make the PIR number visible in the Passenger Portal Welcome Card, matching the existing Flight and Bag Tag fields, by threading `pir_number` through the entire public/anon data path.
+## Replace shield icon with IAB logo on Sign-in page
 
-## Changes
+Update `src/routes/auth.tsx` to swap the `ShieldCheck` lucide icon in the card header for the existing IAB logo asset (`src/assets/iab-logo.jpeg.asset.json`), matching the treatment already used in the sidebar/header.
 
-### 1. Database migration
-- `ALTER TABLE public.delivery_public_view ADD COLUMN pir_number text`.
-- Update `public.sync_passenger_public_from_app_state()` trigger fn to also write `pir_number`, sourced from `delivery.pirNumber` with fallback to `case.pirNumber`.
-- Update `public.get_passenger_view(p_token)` to include `pir_number` in the returned JSON.
-- One-shot backfill: for every existing row in `delivery_public_view`, populate `pir_number` from the current `app_state.payload`.
-
-No RLS/grant changes — the column inherits existing table policies.
-
-### 2. Server function — `src/lib/passenger.functions.ts`
-- Add `pirNumber: string | null` to `PassengerView` interface.
-- Add `pir_number: string | null` to the RPC `row` type.
-- Map `pirNumber: row.pir_number` in the returned view. Default to `null` in `EMPTY_VIEW`.
-
-### 3. Route — `src/routes/passenger.$token.tsx`
-- In `synthesizeFromView()`, replace the two hard-coded `pirNumber: ""` assignments with `view.pirNumber ?? ""` on both the synthesized `Delivery` and `BaggageCase`.
-- Remove the stale "PIR ... intentionally left empty" comment.
-
-## Out of scope
-- No UI changes to `passenger.index.tsx` — the Welcome Card already reads `delivery.pirNumber` correctly.
-- No changes to staff-facing pages, workflow engine, or notification templates.
-
-## Verification
-- Open a passenger portal link from a case with a PIR → Welcome Card shows PIR alongside Flight and Bag Tag.
-- Existing cases (via backfill) show PIR immediately without needing to re-save.
-- New/updated cases keep PIR in sync via the trigger fn.
+### Changes
+- Remove `ShieldCheck` import; import `iabLogo from "@/assets/iab-logo.jpeg.asset.json"`.
+- Replace the tinted `bg-primary/10` icon tile with a white rounded tile containing `<img src={iabLogo.url} alt="IAB" className="h-9 w-9 object-contain" />`, sized ~h-12 w-12 with a subtle ring/border to sit cleanly on the light background.
+- No other content, layout, or auth logic changes.
