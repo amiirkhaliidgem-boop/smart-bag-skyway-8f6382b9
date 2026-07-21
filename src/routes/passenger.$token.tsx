@@ -59,7 +59,7 @@ function TokenPortal() {
 // Reshape the minimum passenger-facing fields returned by the RPC into the
 // Delivery / BaggageCase shapes that PassengerPortal was originally written
 // against. Fields that are not exposed publicly (deliveryId, mobile, driver,
-// PIR, bagId) are intentionally left empty — the portal degrades gracefully.
+// bagId) are intentionally left empty — the portal degrades gracefully.
 function synthesizeFromView(view: PassengerView): {
   delivery: Delivery;
   kase: BaggageCase;
@@ -68,7 +68,7 @@ function synthesizeFromView(view: PassengerView): {
   const delivery: Delivery = {
     deliveryId: "",
     bagId: "",
-    pirNumber: "",
+    pirNumber: view.pirNumber ?? "",
     passengerName: view.passengerName,
     mobile: "",
     address: "",
@@ -81,7 +81,7 @@ function synthesizeFromView(view: PassengerView): {
   } as unknown as Delivery;
   const kase: BaggageCase = {
     bagId: "",
-    pirNumber: "",
+    pirNumber: view.pirNumber ?? "",
     passengerName: view.passengerName,
     email: "",
     contact: "",
