@@ -274,7 +274,11 @@ function LostFoundPage() {
   function runExportSelected() {
     toast.info("Use the Export menu — bulk export is scoped to the selected rows.");
   }
-  function runPrint() { window.print(); }
+  function runPrint() {
+    if (selectedIds.length === 0) return;
+    const ids = selectedIds.map(encodeURIComponent).join(",");
+    window.open(`/print/pir?ids=${ids}`, "_blank");
+  }
 
   return (
     <div className="space-y-6">

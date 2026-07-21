@@ -257,3 +257,150 @@
 @media (prefers-reduced-motion: reduce) {
   .iab-shimmer, .iab-float, .iab-pulse-ring, .iab-rise, .iab-aurora { animation: none !important; }
 }
+
+/* ==========================================================================
+   PIR Report — standalone printable template
+   Used by /print/pir. Independent from app UI; safe for browser print,
+   Save-as-PDF, and future server-side PDF rendering.
+   ========================================================================== */
+
+.pir-shell {
+  background: #f4f5f7;
+  min-height: 100vh;
+  padding: 24px 12px;
+  color: #0f172a;
+}
+.pir-empty {
+  max-width: 640px;
+  margin: 40px auto;
+  padding: 24px;
+  background: #fff;
+  border-radius: 8px;
+  text-align: center;
+  color: #475569;
+  font: 14px/1.5 -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+.pir-print {
+  width: 210mm;
+  min-height: 297mm;
+  margin: 0 auto 16px;
+  padding: 16mm 14mm;
+  background: #ffffff;
+  color: #0f172a;
+  font: 12px/1.5 -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 8px 24px rgba(15,23,42,0.06);
+  box-sizing: border-box;
+}
+.pir-page-break { page-break-after: always; break-after: page; }
+
+.pir-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 24px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #0b2559;
+  margin-bottom: 18px;
+}
+.pir-brand {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #0b2559;
+}
+.pir-title {
+  font-size: 20px;
+  font-weight: 700;
+  margin: 4px 0 2px;
+  color: #0b2559;
+}
+.pir-sub { font-size: 11px; color: #475569; }
+.pir-header-meta {
+  text-align: right;
+  font-size: 11px;
+  line-height: 1.55;
+  min-width: 190px;
+}
+.pir-header-meta div { display: flex; justify-content: space-between; gap: 12px; }
+.pir-header-meta span {
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 9.5px;
+}
+.pir-header-meta b { font-weight: 600; color: #0f172a; font-family: ui-monospace, "SFMono-Regular", Menlo, monospace; }
+
+.pir-section { margin-top: 14px; break-inside: avoid; page-break-inside: avoid; }
+.pir-h2 {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #0b2559;
+  margin: 0 0 8px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #e2e8f0;
+}
+.pir-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px 24px;
+}
+.pir-row { display: grid; grid-template-columns: 130px 1fr; gap: 8px; padding: 2px 0; }
+.pir-k { color: #64748b; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; }
+.pir-v { color: #0f172a; font-size: 12px; word-break: break-word; }
+.pir-mono { font-family: ui-monospace, "SFMono-Regular", Menlo, monospace; }
+
+.pir-lifecycle { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; }
+.pir-stage {
+  font-size: 10.5px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid #cbd5e1;
+  color: #64748b;
+  background: #f8fafc;
+}
+.pir-stage.reached {
+  background: #0b2559;
+  border-color: #0b2559;
+  color: #fff;
+}
+.pir-description {
+  grid-column: 1 / -1;
+  white-space: pre-wrap;
+  font-size: 12px;
+  line-height: 1.55;
+  color: #0f172a;
+}
+
+.pir-signatures {
+  margin-top: 36px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 48px;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+.pir-sig-line { border-bottom: 1px solid #0f172a; height: 40px; }
+.pir-sig-label { margin-top: 6px; font-size: 11px; font-weight: 600; color: #0f172a; }
+.pir-sig-date { margin-top: 2px; font-size: 10.5px; color: #64748b; }
+
+.pir-footer {
+  margin-top: 24px;
+  padding-top: 8px;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: #64748b;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+
+@media print {
+  @page { size: A4; margin: 0; }
+  html, body { background: #fff !important; }
+  .pir-shell { background: #fff; padding: 0; min-height: 0; }
+  .pir-print { box-shadow: none; margin: 0 auto; }
+}
