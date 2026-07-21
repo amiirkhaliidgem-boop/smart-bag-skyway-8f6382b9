@@ -1,6 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useSuspenseQuery } from "@tanstack/react-query";
 import {
-  getPassengerViewByToken,
+  passengerViewQuery,
+  isTerminalPassengerStage,
   type PassengerView,
 } from "@/lib/passenger.functions";
 import type {
@@ -22,14 +24,25 @@ export const Route = createFileRoute("/passenger/$token")({
       { name: "robots", content: "noindex" },
     ],
   }),
-  loader: ({ params }) => getPassengerViewByToken({ data: { token: params.token } }),
+  loader: ({ params, context }) =>
+    context.queryClient.ensureQueryData(passengerViewQuery(params.token)),
   component: TokenPortal,
   notFoundComponent: TokenNotFound,
 });
 
 function TokenPortal() {
   const { token } = Route.useParams();
-  const view = Route.useLoaderData();
+  const { data: view } = useSuspenseQuery({
+    ...passengerViewQuery(token),
+    refetchInterval: (q) => {
+      const v = q.state.data as PassengerView | undefined;
+      if (!v || !v.found) return false;
+      if (isTerminalPassengerStage(v.stage)) return false;
+      return 5000;
+    },
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
+  });
 
   if (!view.found) return <TokenNotFound />;
 
