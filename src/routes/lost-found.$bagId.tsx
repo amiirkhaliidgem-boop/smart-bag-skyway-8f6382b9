@@ -2,15 +2,10 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import {
   useStore,
-  updateCase,
   editCase,
   updateLfStatus,
-  addCaseDocument,
-  removeCaseDocument,
   type BaggageCase,
-  type CaseDocument,
   type NotificationEvent,
-  type WorkflowRecord,
 } from "@/lib/store";
 import {
   LF_OWNED_STATUSES,
@@ -42,12 +37,10 @@ import {
 import { toast } from "sonner";
 import {
   ArrowLeft, ChevronRight, Truck, MessageSquare, Phone, Mail,
-  FileText, Upload, Trash2, MapPin, Radar, History as HistoryIcon,
-  ShieldAlert, Star as StarIcon, ExternalLink, Pencil, MoreHorizontal,
+  MapPin, Star as StarIcon, ExternalLink, Pencil, MoreHorizontal,
   UserCog, Printer, Download,
   AlertTriangle,
 } from "lucide-react";
-import { WORKFLOW_LABELS } from "@/lib/workflow/statuses";
 
 export const Route = createFileRoute("/lost-found/$bagId")({
   head: ({ params }) => ({
@@ -67,7 +60,6 @@ function CaseDetailsPage() {
   const notifications = useStore((s) => s.notifications);
   const callLogs = useStore((s) => s.callLogs);
   const whatsapp = useStore((s) => s.whatsapp);
-  const audit = useStore((s) => s.audit);
   const workflow = useStore((s) => s.workflow);
 
   const [editOpen, setEditOpen] = useState(false);
@@ -109,13 +101,6 @@ function CaseDetailsPage() {
   );
   const relatedWhatsapp = whatsapp.filter(
     (w) => w.pirNumber === c.pirNumber || w.phone === c.contact,
-  );
-  const relatedAudit = audit.filter(
-    (a) =>
-      (a.entityType === "case" && a.entityId === c.bagId) ||
-      (a.entityType === "delivery" && a.entityId === linkedDelivery?.deliveryId) ||
-      (a.entityType === "notification" &&
-        relatedNotifications.some((n) => n.id === a.entityId)),
   );
 
   function advance() {
@@ -317,11 +302,6 @@ function CaseDetailsPage() {
           <TabsTrigger value="baggage">Baggage</TabsTrigger>
           <TabsTrigger value="delivery">Delivery</TabsTrigger>
           <TabsTrigger value="communication">Communication</TabsTrigger>
-          <TabsTrigger value="documents">
-            Documents {c.documents?.length ? `(${c.documents.length})` : ""}
-          </TabsTrigger>
-          <TabsTrigger value="timeline">Timeline</TabsTrigger>
-          <TabsTrigger value="audit">Audit</TabsTrigger>
         </TabsList>
 
         {/* OVERVIEW */}
@@ -454,113 +434,6 @@ function CaseDetailsPage() {
           </Card>
         </TabsContent>
 
-        {/* DOCUMENTS */}
-        <TabsContent value="documents" className="pt-4">
-          <DocumentsPanel bagId={c.bagId} docs={c.documents ?? []} />
-        </TabsContent>
-
-        {/* TIMELINE */}
-        <TabsContent value="timeline" className="pt-4 space-y-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base">Activity Timeline</CardTitle>
-              <p className="text-xs text-muted-foreground">
-                Filtered by this case — reads from the central Activity Timeline engine.
-              </p>
-            </CardHeader>
-            <CardContent>
-              <TimelineList
-                items={buildTimeline(c, relatedAudit, relatedNotifications, wf)}
-              />
-              <div className="mt-3">
-                <Button asChild variant="outline" size="sm" className="h-8 gap-1.5">
-                  <Link to="/timeline">
-                    Open full timeline <ExternalLink className="h-3.5 w-3.5" />
-                  </Link>
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-          <TracingPanel c={c} />
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base flex items-center gap-2">
-                <HistoryIcon className="h-4 w-4" /> Status History
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {c.lfHistory && c.lfHistory.length > 0 ? (
-                <ul className="space-y-2">
-                  {[...c.lfHistory].reverse().map((h, i) => (
-                    <li key={i} className="text-sm border-l-2 border-primary/40 pl-3 py-1">
-                      <div className="flex justify-between">
-                        <span className="font-medium">{h.status}</span>
-                        <span className="text-xs text-muted-foreground">
-                          {new Date(h.at).toLocaleString("en-GB")}
-                        </span>
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        by {h.actor}{h.note ? ` · ${h.note}` : ""}
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <Empty text="No status transitions yet." />
-              )}
-              {wf && (
-                <div className="mt-4 pt-3 border-t">
-                  <p className="text-[11px] uppercase tracking-wider text-muted-foreground mb-2">
-                    Workflow Engine
-                  </p>
-                  <ul className="space-y-1">
-                    {wf.history.map((h, i) => (
-                      <li key={i} className="text-xs text-muted-foreground">
-                        <span className="text-foreground font-medium">
-                          {WORKFLOW_LABELS[h.status].en}
-                        </span>{" "}
-                        · {new Date(h.at).toLocaleString("en-GB")} · {h.actor}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* AUDIT */}
-        <TabsContent value="audit" className="pt-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base flex items-center gap-2">
-                <ShieldAlert className="h-4 w-4" /> Audit Trail
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {relatedAudit.length ? (
-                <ul className="divide-y">
-                  {relatedAudit.map((a) => (
-                    <li key={a.id} className="py-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="font-medium">{a.action}</span>
-                        <span className="text-xs text-muted-foreground">
-                          {new Date(a.at).toLocaleString("en-GB")}
-                        </span>
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {a.entityType}/{a.entityId} · {a.actor}
-                        {a.note ? ` · ${a.note}` : ""}
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <Empty text="No audit entries for this case yet." />
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
       </Tabs>
 
       {/* Edit wizard */}
@@ -871,262 +744,3 @@ function Empty({ text }: { text: string }) {
   return <p className="text-xs text-muted-foreground italic py-3 text-center">{text}</p>;
 }
 
-// ---------- Documents panel ----------
-function DocumentsPanel({ bagId, docs }: { bagId: string; docs: CaseDocument[] }) {
-  const [type, setType] = useState<CaseDocument["type"]>("Passport Copy");
-  const [name, setName] = useState("");
-  function upload() {
-    if (!name.trim()) {
-      toast.error("Provide a file name or reference.");
-      return;
-    }
-    addCaseDocument(bagId, { type, name, uploadedBy: "Ops Console" });
-    setName("");
-    toast.success(`${type} attached`);
-  }
-  return (
-    <div className="space-y-4">
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Upload className="h-4 w-4" /> Upload Document
-          </CardTitle>
-          <p className="text-xs text-muted-foreground">
-            Drag &amp; drop / cloud storage integration is future-ready.
-            For now attach a file name or URL reference.
-          </p>
-        </CardHeader>
-        <CardContent className="flex flex-wrap gap-2 items-end">
-          <div className="flex-1 min-w-[160px]">
-            <Label className="text-xs">Type</Label>
-            <Select value={type} onValueChange={(v) => setType(v as CaseDocument["type"])}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Passport Copy">Passport Copy</SelectItem>
-                <SelectItem value="Arrival Stamp">Arrival Stamp</SelectItem>
-                <SelectItem value="Authorization Letter">Authorization Letter</SelectItem>
-                <SelectItem value="Other">Other</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex-[2] min-w-[240px]">
-            <Label className="text-xs">File name / URL</Label>
-            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="passport_ahmed.pdf" />
-          </div>
-          <Button onClick={upload} className="gap-1.5">
-            <Upload className="h-4 w-4" /> Attach
-          </Button>
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base flex items-center gap-2">
-            <FileText className="h-4 w-4" /> Attached Documents ({docs.length})
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {docs.length ? (
-            <ul className="divide-y">
-              {docs.map((d) => (
-                <li key={d.id} className="py-2 flex items-center gap-3">
-                  <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
-                  <div className="min-w-0 flex-1">
-                    <div className="text-sm font-medium truncate">{d.name}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {d.type} · {new Date(d.uploadedAt).toLocaleString("en-GB")}
-                      {d.uploadedBy ? ` · ${d.uploadedBy}` : ""}
-                    </div>
-                  </div>
-                  <Button
-                    variant="ghost" size="sm" className="h-8"
-                    onClick={() => {
-                      removeCaseDocument(bagId, d.id);
-                      toast.success("Document removed");
-                    }}
-                  >
-                    <Trash2 className="h-4 w-4 text-rose-500" />
-                  </Button>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <Empty text="No documents attached yet." />
-          )}
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
-
-// ---------- Tracing panel ----------
-function TracingPanel({ c }: { c: BaggageCase }) {
-  const [notes, setNotes] = useState("");
-  const lfs = deriveLfFromCase(c);
-  const last = c.lfHistory?.[c.lfHistory.length - 1];
-  const next = nextLfStatus(lfs);
-
-  function addTracingNote() {
-    if (!notes.trim()) return;
-    updateCase(c.bagId, {
-      internal: {
-        ...(c.internal ?? {}),
-        internalNotes:
-          `[Tracing ${new Date().toLocaleString("en-GB")}] ${notes}\n` +
-          (c.internal?.internalNotes ?? ""),
-      },
-    });
-    setNotes("");
-    toast.success("Tracing note added");
-  }
-
-  return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Radar className="h-4 w-4" /> Tracing
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="grid grid-cols-2 gap-3 text-sm">
-          <KV k="Current Status" v={lfs} />
-          <KV k="Current Station" v={c.internal?.station} />
-          <KV k="Last Update" v={last ? new Date(last.at).toLocaleString("en-GB") : undefined} />
-          <KV k="Expected Arrival" v={c.flight?.arrivalTime ? `${c.arrivalDate} ${c.flight.arrivalTime}` : c.arrivalDate} />
-          <KV k="Origin Station" v={c.flight?.originAirport} mono />
-          <KV k="Destination Station" v={c.flight?.destinationAirport ?? "CAI"} mono />
-          <div className="col-span-full pt-2 border-t mt-1">
-            <p className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1">
-              Next Recommended Action
-            </p>
-            <p className="text-sm">
-              {next ? (
-                <>Advance to <span className="font-semibold">{next}</span></>
-              ) : (
-                "Case is complete."
-              )}
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base">Tracing Notes</CardTitle>
-          <p className="text-xs text-muted-foreground">
-            Notes are appended to internal notes and are visible to Baggage Ops &amp; Quality.
-          </p>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          <Textarea
-            rows={4}
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="e.g. Contacted origin station — bag located on flight MS986, ETA 22:00."
-          />
-          <Button onClick={addTracingNote}>Add Tracing Note</Button>
-          {c.internal?.internalNotes && (
-            <div className="pt-3 border-t">
-              <p className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1">
-                History
-              </p>
-              <pre className="text-xs whitespace-pre-wrap font-sans">
-                {c.internal.internalNotes}
-              </pre>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
-
-// ---------- Timeline builder ----------
-type TimelineItem = {
-  id: string;
-  at: string;
-  title: string;
-  subtitle?: string;
-  tag: string;
-};
-
-function buildTimeline(
-  c: BaggageCase,
-  audit: import("@/lib/audit/log").AuditEntry[],
-  notifs: NotificationEvent[],
-  wf?: WorkflowRecord,
-): TimelineItem[] {
-  const items: TimelineItem[] = [];
-  items.push({
-    id: `create-${c.bagId}`,
-    at: c.createdAt,
-    title: `Case created · ${c.pirNumber}`,
-    subtitle: `${c.passengerName} · ${c.flightNumber}`,
-    tag: "Case",
-  });
-  for (const h of c.lfHistory ?? []) {
-    items.push({
-      id: `lfh-${c.bagId}-${h.at}`,
-      at: h.at,
-      title: `Status → ${h.status}`,
-      subtitle: `${h.actor}${h.note ? ` · ${h.note}` : ""}`,
-      tag: "Workflow",
-    });
-  }
-  for (const h of wf?.history ?? []) {
-    items.push({
-      id: `wfh-${wf!.deliveryId}-${h.at}`,
-      at: h.at,
-      title: `Workflow → ${WORKFLOW_LABELS[h.status].en}`,
-      subtitle: `${h.actor}`,
-      tag: "Workflow",
-    });
-  }
-  for (const n of notifs) {
-    items.push({
-      id: `ntf-${n.id}`,
-      at: n.createdAt,
-      title: `${n.channel.toUpperCase()} · ${n.status_}`,
-      subtitle: n.message.body,
-      tag: "Notification",
-    });
-  }
-  for (const a of audit) {
-    items.push({
-      id: `aud-${a.id}`,
-      at: a.at,
-      title: a.action,
-      subtitle: `${a.entityType}/${a.entityId} · ${a.actor}${a.note ? ` · ${a.note}` : ""}`,
-      tag: "Audit",
-    });
-  }
-  items.sort((a, b) => (a.at < b.at ? 1 : -1));
-  return items;
-}
-
-function TimelineList({ items }: { items: TimelineItem[] }) {
-  if (!items.length) return <Empty text="No activity yet." />;
-  return (
-    <ul className="space-y-3">
-      {items.map((it) => (
-        <li key={it.id} className="flex gap-3">
-          <div className="w-2 h-2 mt-1.5 rounded-full bg-primary shrink-0" />
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="font-medium text-sm">{it.title}</span>
-              <span className="text-[10px] uppercase tracking-wider bg-muted rounded px-1.5 py-0.5 text-muted-foreground">
-                {it.tag}
-              </span>
-              <span className="text-xs text-muted-foreground ml-auto">
-                {new Date(it.at).toLocaleString("en-GB")}
-              </span>
-            </div>
-            {it.subtitle && (
-              <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                {it.subtitle}
-              </p>
-            )}
-          </div>
-        </li>
-      ))}
-    </ul>
-  );
-}
