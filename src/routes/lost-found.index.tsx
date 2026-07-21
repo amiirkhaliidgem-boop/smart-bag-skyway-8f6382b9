@@ -69,8 +69,10 @@ import {
   Printer,
 } from "lucide-react";
 import { toast } from "sonner";
-import { ImportExportButtons } from "@/components/io/import-export-buttons";
+import { ImportDialog } from "@/components/io/import-dialog";
 import { lostFoundSchema } from "@/lib/io/registry";
+import { exportCasesToXlsx } from "@/lib/lost-found/export-xlsx";
+import { Upload } from "lucide-react";
 
 export const Route = createFileRoute("/lost-found/")({
   head: () => ({
@@ -116,6 +118,7 @@ function LostFoundPage() {
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [openNew, setOpenNew] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [assignOfficerOpen, setAssignOfficerOpen] = useState(false);
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
@@ -273,7 +276,14 @@ function LostFoundPage() {
   }
 
   function runExportSelected() {
-    toast.info("Use the Export menu — bulk export is scoped to the selected rows.");
+    if (selectedIds.length === 0) return;
+    const rows = cases.filter((c) => selected.has(c.bagId));
+    try {
+      exportCasesToXlsx(rows);
+      toast.success(`${rows.length} case(s) exported to Excel`);
+    } catch (e) {
+      toast.error(`Export failed: ${(e as Error).message}`);
+    }
   }
   function runPrint() {
     if (selectedIds.length === 0) return;
@@ -294,11 +304,13 @@ function LostFoundPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <ImportExportButtons
+          <Button variant="outline" className="gap-2" onClick={() => setImportOpen(true)}>
+            <Upload className="h-4 w-4" /> Import
+          </Button>
+          <ImportDialog
             schema={lostFoundSchema}
-            rows={sorted as unknown as Record<string, unknown>[]}
-            scope={query || status !== "all" ? "filtered" : "all"}
-            size="default"
+            open={importOpen}
+            onOpenChange={setImportOpen}
           />
           <Dialog open={openNew} onOpenChange={setOpenNew}>
             <DialogTrigger asChild>
