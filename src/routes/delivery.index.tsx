@@ -535,31 +535,6 @@ function Kpi({
   );
 }
 
-function Select({
-  value,
-  onChange,
-  label,
-  children,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="space-y-1">
-      <Label className="text-[11px] text-muted-foreground">{label}</Label>
-      <select
-        className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-      >
-        {children}
-      </select>
-    </div>
-  );
-}
-
 function BulkAssignDialog({
   open,
   onOpenChange,
