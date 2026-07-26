@@ -79,8 +79,17 @@ interface TimelineEvent {
   raw: unknown;
 }
 
+// Display-only module labels. Stored module keys are unchanged.
+const MODULE_LABELS: Partial<Record<ModuleSource, string>> = {
+  Driver: "Delivery Agent",
+  LostFound: "Lost & Found",
+};
+
+function moduleLabel(m: ModuleSource): string {
+  return MODULE_LABELS[m] ?? m;
+}
+
 const MODULE_STYLES: Record<ModuleSource, { badge: string; ring: string; dot: string }> = {
-*** PLACEHOLDER ***
   Workflow: {
     badge: "bg-primary/10 text-primary border-primary/20",
     ring: "ring-primary/30",
