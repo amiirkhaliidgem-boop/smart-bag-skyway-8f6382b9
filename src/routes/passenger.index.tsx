@@ -203,7 +203,12 @@ function TrackScreen({
 
   const allChecked = tags && sealed && otpAfter && noBribe;
   const stage = getDeliveryStage(delivery);
-  void stage;
+  // OTP card stays hidden until the workflow reaches Out for Delivery, then
+  // remains visible through completion.
+  const showOtpCard =
+    stage === "Out for Delivery" ||
+    stage === "Delivered" ||
+    stage === "Delivery Failed";
 
   async function handleNoBribeChange(next: boolean) {
     setNoBribe(next);
@@ -272,22 +277,24 @@ function TrackScreen({
       <MotionSection>
         <SimpleTimeline delivery={delivery} kase={kase} />
       </MotionSection>
-      <MotionSection>
-        <OtpHeroCard
-        code={delivery.otpCode}
-        tags={tags}
-        sealed={sealed}
-        otpAfter={otpAfter}
-        noBribe={noBribe}
-        onTags={setTags}
-        onSealed={setSealed}
-        onOtpAfter={setOtpAfter}
-        onNoBribe={handleNoBribeChange}
-        reported={reported}
-        allChecked={allChecked}
-        onConfirm={confirm}
-        />
-      </MotionSection>
+      {showOtpCard && (
+        <MotionSection>
+          <OtpHeroCard
+          code={delivery.otpCode}
+          tags={tags}
+          sealed={sealed}
+          otpAfter={otpAfter}
+          noBribe={noBribe}
+          onTags={setTags}
+          onSealed={setSealed}
+          onOtpAfter={setOtpAfter}
+          onNoBribe={handleNoBribeChange}
+          reported={reported}
+          allChecked={allChecked}
+          onConfirm={confirm}
+          />
+        </MotionSection>
+      )}
       <MotionSection>
         <ContactCard delivery={delivery} />
       </MotionSection>
