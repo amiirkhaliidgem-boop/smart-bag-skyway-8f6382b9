@@ -592,7 +592,7 @@ function BulkAssignDialog({
               : `Assign ${deliveryIds.length} selected deliveries to a driver.`}
           </p>
           <div className="space-y-1.5">
-            <Label>Driver</Label>
+            <Label>Delivery Agent</Label>
             <select
               className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
               value={driver}
@@ -772,7 +772,7 @@ function SingleAssignDialog({
             </p>
           )}
           <div className="space-y-1.5">
-            <Label>Driver</Label>
+            <Label>Delivery Agent</Label>
             <select
               className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
               value={driver}
