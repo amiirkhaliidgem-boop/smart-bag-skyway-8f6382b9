@@ -257,7 +257,7 @@ export const contactSchema = readOnly(
 
 export const driverSchema = readOnly(
   "driver-portal",
-  "Driver Portal",
+  "Delivery Agent Portal",
   "Deliveries currently assigned to drivers.",
   deliverySchema.fields,
   () =>

@@ -40,7 +40,7 @@ export const TEMPLATES: Partial<Record<WorkflowStatus, Bundle>> = {
         body: `Hello ${c.passengerName}, your home delivery request (PIR ${c.pirNumber}) has been approved. We will contact you with the driver details shortly.`,
       }),
       ar: (c) => ({
-        body: `مرحباً ${c.passengerName}، تم اعتماد طلب توصيل حقيبتك (${c.pirNumber}). سنوافيك ببيانات السائق قريباً.`,
+        body: `مرحباً ${c.passengerName}، تم اعتماد طلب توصيل حقيبتك (${c.pirNumber}). سنوافيك ببيانات مندوب التسليم قريباً.`,
       }),
     },
   },
@@ -83,18 +83,18 @@ export const TEMPLATES: Partial<Record<WorkflowStatus, Bundle>> = {
   DRIVER_ARRIVED: {
     sms: {
       en: (c) => ({
-        body: `${brand}: Driver has arrived. Your delivery OTP is ${c.otp}. Share it only after receiving your baggage.`,
+        body: `${brand}: Delivery agent has arrived. Your delivery OTP is ${c.otp}. Share it only after receiving your baggage.`,
       }),
       ar: (c) => ({
-        body: `${brand}: وصل السائق. رمز التحقق ${c.otp}. لا تشاركه إلا بعد استلام حقيبتك.`,
+        body: `${brand}: وصل مندوب التسليم. رمز التحقق ${c.otp}. لا تشاركه إلا بعد استلام حقيبتك.`,
       }),
     },
     whatsapp: {
       en: (c) => ({
-        body: `Driver ${c.driverName} has arrived. OTP: ${c.otp}. Share only after receiving your baggage in good condition.`,
+        body: `Delivery agent ${c.driverName} has arrived. OTP: ${c.otp}. Share only after receiving your baggage in good condition.`,
       }),
       ar: (c) => ({
-        body: `وصل السائق ${c.driverName}. رمز التحقق: ${c.otp}. شاركه فقط بعد استلام حقيبتك بحالة سليمة.`,
+        body: `وصل مندوب التسليم ${c.driverName}. رمز التحقق: ${c.otp}. شاركه فقط بعد استلام حقيبتك بحالة سليمة.`,
       }),
     },
   },

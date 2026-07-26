@@ -182,7 +182,7 @@ function DeliveryDetails() {
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
-            <Field label="Driver" value={delivery.driver && delivery.driver !== "—" ? delivery.driver : "Unassigned"} />
+            <Field label="Delivery Agent" value={delivery.driver && delivery.driver !== "—" ? delivery.driver : "Unassigned"} />
             <Field label="Priority" value={delivery.priority} />
             <Field label="Last Updated" value={fmt(delivery.lastUpdatedAt ?? "")} />
             <Field label="OTP Status" value={delivery.otpStatus} />
@@ -271,7 +271,7 @@ function OverviewTab({ d, kase }: { d: Delivery; kase?: BaggageCase }) {
           <Row label="Passenger" value={d.passengerName} />
           <Row label="Address" value={<span className="text-xs">{d.address}</span>} />
           <Row label="Priority" value={d.priority} />
-          <Row label="Driver" value={d.driver && d.driver !== "—" ? d.driver : "Unassigned"} />
+          <Row label="Delivery Agent" value={d.driver && d.driver !== "—" ? d.driver : "Unassigned"} />
         </CardContent>
       </Card>
     </div>
@@ -374,7 +374,7 @@ function AssignDialog({
       <DialogContent className="max-w-sm">
         <DialogHeader>
           <DialogTitle>
-            {delivery.driver && delivery.driver !== "—" ? "Reassign Driver" : "Assign Driver"}
+            {delivery.driver && delivery.driver !== "—" ? "Reassign Delivery Agent" : "Assign Delivery Agent"}
           </DialogTitle>
         </DialogHeader>
         <form onSubmit={submit} className="space-y-4">
