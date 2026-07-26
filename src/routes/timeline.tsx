@@ -82,7 +82,6 @@ interface TimelineEvent {
 // Display-only module labels. Stored module keys are unchanged.
 const MODULE_LABELS: Partial<Record<ModuleSource, string>> = {
   Driver: "Delivery Agent",
-  LostFound: "Lost & Found",
 };
 
 function moduleLabel(m: ModuleSource): string {
@@ -938,7 +937,7 @@ function DetailPanel({
 
         <div className="grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
           <Field label="User" value={event.user} />
-          <Field label="Role" value={event.role} />
+          <Field label="Role" value={event.role === "Driver" ? "Delivery Agent" : event.role} />
           {event.workflowStatus && (
             <Field label="Workflow" value={WORKFLOW_LABELS[event.workflowStatus].en} mono />
           )}
