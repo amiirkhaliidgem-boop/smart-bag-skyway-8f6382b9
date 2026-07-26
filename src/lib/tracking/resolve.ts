@@ -57,11 +57,7 @@ export function resolveTracking(
   if (byDelivery) return finish("Delivery ID", undefined, byDelivery);
 
   // 2. PIR Number
-  const byPir =
-    data.cases.find((c) => norm(c.pirNumber) === q) ??
-    (data.deliveries.find((d) => norm(d.pirNumber) === q)
-      ? undefined
-      : undefined);
+  const byPir = data.cases.find((c) => norm(c.pirNumber) === q);
   if (byPir) return finish("PIR Number", byPir);
   const delByPir = data.deliveries.find((d) => norm(d.pirNumber) === q);
   if (delByPir) return finish("PIR Number", undefined, delByPir);
