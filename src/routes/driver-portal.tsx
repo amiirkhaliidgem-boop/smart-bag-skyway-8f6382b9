@@ -281,45 +281,46 @@ function RouteSection({
   originSource: "gps" | "lastStop" | "station" | null;
   gpsStatus: "idle" | "requesting" | "on" | "denied" | "unsupported" | "error";
 }) {
+  const { t } = useDriverLang();
   const fullRouteHref = origin ? routeNavigationHref(origin, route) : null;
   const originLabel =
     originSource === "gps"
-      ? "Live GPS"
+      ? t.originGps
       : originSource === "lastStop"
-        ? "Last completed stop"
+        ? t.originLastStop
         : originSource === "station"
-          ? "Station (no GPS yet)"
-          : "—";
+          ? t.originStation
+          : t.originUnknown;
   const gpsBadge =
     gpsStatus === "on"
-      ? { text: "GPS on", tone: "bg-emerald-100 text-emerald-700" }
+      ? { text: t.gpsOn, tone: "bg-emerald-100 text-emerald-700" }
       : gpsStatus === "requesting"
-        ? { text: "Locating…", tone: "bg-amber-100 text-amber-700" }
+        ? { text: t.gpsLocating, tone: "bg-amber-100 text-amber-700" }
         : gpsStatus === "denied"
-          ? { text: "Location off", tone: "bg-slate-100 text-slate-600" }
+          ? { text: t.gpsDenied, tone: "bg-slate-100 text-slate-600" }
           : gpsStatus === "unsupported"
-            ? { text: "GPS unsupported", tone: "bg-slate-100 text-slate-600" }
+            ? { text: t.gpsUnsupported, tone: "bg-slate-100 text-slate-600" }
             : gpsStatus === "error"
-              ? { text: "GPS error", tone: "bg-rose-100 text-rose-700" }
-              : { text: "GPS idle", tone: "bg-slate-100 text-slate-600" };
+              ? { text: t.gpsError, tone: "bg-rose-100 text-rose-700" }
+              : { text: t.gpsIdle, tone: "bg-slate-100 text-slate-600" };
   return (
     <Card>
       <CardHeader>
         <CardTitle className="text-base flex flex-wrap items-center gap-2">
-          <Navigation className="h-4 w-4" /> Today's Route
+          <Navigation className="h-4 w-4" /> {t.todaysRoute}
           <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${gpsBadge.tone}`}>
-            <Crosshair className="inline h-3 w-3 mr-1" />
+            <Crosshair className="inline h-3 w-3 me-1" />
             {gpsBadge.text}
           </span>
-          <span className="ml-auto text-xs font-normal text-muted-foreground">
-            {route.length} {route.length === 1 ? "stop" : "stops"} · from {originLabel}
+          <span className="ms-auto text-xs font-normal text-muted-foreground">
+            {t.stopsCount(route.length)} · {t.fromOrigin(originLabel)}
           </span>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         {route.length === 0 && (
           <p className="text-sm text-muted-foreground text-center py-6">
-            No stops assigned. New deliveries will appear here automatically.
+            {t.noStops}
           </p>
         )}
         {route.length > 0 && fullRouteHref && (
@@ -329,7 +330,7 @@ function RouteSection({
             rel="noreferrer"
             className="inline-flex items-center gap-1.5 h-9 px-3 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90"
           >
-            <RouteIcon className="h-4 w-4" /> Navigate Full Route
+            <RouteIcon className="h-4 w-4" /> {t.navigateFullRoute}
           </a>
         )}
         {route.map((d, i) => (
