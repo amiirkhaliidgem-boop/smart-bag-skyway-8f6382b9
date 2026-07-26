@@ -139,6 +139,7 @@ function DriverLogin({
 }
 
 function DriverDashboard({ driver, onSignOut }: { driver: string; onSignOut: () => void }) {
+  const { t } = useDriverLang();
   // Route optimization is owned by the Workflow Engine (see
   // `computeDriverRoute` in src/lib/store.ts). The Driver Portal only
   // reads `driverRoutes[driver]` and reports live GPS back to the engine.
@@ -203,25 +204,28 @@ function DriverDashboard({ driver, onSignOut }: { driver: string; onSignOut: () 
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Driver Portal</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{t.portalTitle}</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Signed in as <span className="font-medium text-foreground">{driver}</span>
+            {t.signedInAs} <span className="font-medium text-foreground">{driver}</span>
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={onSignOut} className="gap-2">
-          <LogOut className="h-4 w-4" /> Sign Out
-        </Button>
+        <div className="flex items-center gap-2">
+          <LanguageToggle />
+          <Button variant="outline" size="sm" onClick={onSignOut} className="gap-2">
+            <LogOut className="h-4 w-4" /> {t.signOut}
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-3 gap-4">
-        <Kpi label="Stops Today" value={route.length} icon={<Package />} tone="indigo" />
+        <Kpi label={t.stopsToday} value={route.length} icon={<Package />} tone="indigo" />
         <Kpi
-          label="Out for Delivery"
+          label={t.outForDelivery}
           value={route.filter((d) => getDeliveryStage(d) === "Out for Delivery").length}
           icon={<Truck />}
           tone="primary"
         />
-        <Kpi label="Completed" value={completed.length} icon={<CheckCircle2 />} tone="emerald" />
+        <Kpi label={t.completed} value={completed.length} icon={<CheckCircle2 />} tone="emerald" />
       </div>
 
       <RouteSection
@@ -230,7 +234,7 @@ function DriverDashboard({ driver, onSignOut }: { driver: string; onSignOut: () 
         originSource={originSource}
         gpsStatus={gpsStatus}
       />
-      <Section title="Completed" items={completed} empty="No deliveries completed yet." />
+      <Section title={t.completed} items={completed} empty={t.noCompleted} />
     </div>
   );
 }
