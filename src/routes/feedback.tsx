@@ -163,7 +163,6 @@ function FeedbackPage() {
   const today = filtered.filter(
     (f) => new Date(f.at).toDateString() === new Date().toDateString(),
   ).length;
-  const detractors = filtered.filter((f) => f.rating <= 2).length;
 
   const allSelected = filtered.length > 0 && selected.length === filtered.length;
 
