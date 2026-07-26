@@ -16,7 +16,7 @@ const MODULES = [
   "Lost & Found",
   "Storage Control",
   "Delivery Management",
-  "Driver Portal",
+  "Delivery Agent Portal",
   "Passenger Tracking",
   "Contact Center",
   "Feedback",

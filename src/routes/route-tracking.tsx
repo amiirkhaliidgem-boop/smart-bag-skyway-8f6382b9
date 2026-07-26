@@ -79,7 +79,7 @@ function RouteTrackingPage() {
                     }}
                   />
                   {selected.driverLocation && (
-                    <Pin top="38%" left="28%" tone="amber" label="Driver" />
+                    <Pin top="38%" left="28%" tone="amber" label="Delivery Agent" />
                   )}
                   {selected.destination && (
                     <Pin top="62%" left="72%" tone="emerald" label="Destination" />
@@ -93,7 +93,7 @@ function RouteTrackingPage() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <Info icon={<Truck />} label="Driver Location" value={selected.driverLocation?.label ?? "Awaiting pickup"} />
+                  <Info icon={<Truck />} label="Delivery Agent Location" value={selected.driverLocation?.label ?? "Awaiting pickup"} />
                   <Info icon={<MapPin />} label="Destination" value={selected.destination?.label ?? selected.address} />
                   <Info icon={<Clock />} label="ETA" value={new Date(selected.eta).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })} />
                 </div>
@@ -103,7 +103,7 @@ function RouteTrackingPage() {
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
                     <Stat label="Passenger" value={selected.passengerName} />
                     <Stat label="Bag" value={selected.bagId} mono />
-                    <Stat label="Driver" value={selected.driver} />
+                    <Stat label="Delivery Agent" value={selected.driver} />
                     <Stat label="Priority" value={selected.priority} />
                   </div>
                 </div>

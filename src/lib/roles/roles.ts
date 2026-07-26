@@ -23,7 +23,7 @@ export const ROLE_LABELS: Record<Role, string> = {
   BaggageSupervisor: "Baggage Supervisor",
   LostAndFoundAgent: "Lost & Found Agent",
   DeliveryCoordinator: "Delivery Coordinator",
-  Driver: "Driver",
+  Driver: "Delivery Agent",
   QualityTeam: "Quality Team",
   Passenger: "Passenger",
 };

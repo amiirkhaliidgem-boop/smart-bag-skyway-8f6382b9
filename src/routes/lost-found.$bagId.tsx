@@ -328,8 +328,8 @@ function CaseDetailsPage() {
               </CardHeader>
               <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2 text-sm">
                 <KV k="Status" v={linkedDelivery.status} />
-                <KV k="Assigned Driver" v={linkedDelivery.driver} />
-                <KV k="Driver Phone" v={linkedDelivery.mobile} />
+                <KV k="Assigned Delivery Agent" v={linkedDelivery.driver} />
+                <KV k="Delivery Agent Phone" v={linkedDelivery.mobile} />
                 <KV k="ETA" v={new Date(linkedDelivery.eta).toLocaleString("en-GB")} />
                 <KV k="OTP" v={`${linkedDelivery.otpCode} (${linkedDelivery.otpStatus})`} mono />
                 <KV k="Destination" v={linkedDelivery.destination?.label} />

@@ -7,7 +7,7 @@ export const ROLE_LABELS: Record<AppRole, string> = {
   admin: "Airport Administrator",
   agent: "Lost & Found Officer",
   coordinator: "Delivery Coordinator",
-  driver: "Driver",
+  driver: "Delivery Agent",
 };
 
 // Route → roles allowed (admin is ALWAYS allowed and is added implicitly).

@@ -566,7 +566,7 @@ export const ROLE_DESCRIPTIONS: Record<Role, string> = {
   BaggageSupervisor: "Supervises daily baggage handling shifts and coordinates field teams.",
   LostAndFoundAgent: "Creates PIRs, updates cases, and manages passenger touchpoints on the floor.",
   DeliveryCoordinator: "Assigns drivers, schedules deliveries, and drives passenger notifications.",
-  Driver: "Executes home deliveries via the Driver Portal. Reports incidents from the field.",
+  Driver: "Executes home deliveries via the Delivery Agent Portal. Reports incidents from the field.",
   QualityTeam: "Investigates quality incidents, monitors feedback, and audits operational logs.",
   Passenger: "Reference role for passenger-facing tokenized portal. Not assignable to employees.",
 };
