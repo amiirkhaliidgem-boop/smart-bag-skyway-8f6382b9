@@ -25,8 +25,8 @@ export type DeliveryStage = (typeof DELIVERY_STAGES)[number];
 export const STAGE_LABELS: Record<DeliveryStage, string> = {
   "Ready for Delivery": "Ready for Delivery",
   Scheduled: "Scheduled",
-  Assigned: "Assigned Driver",
-  "Driver Accepted": "Driver Accepted",
+  Assigned: "Assigned Delivery Agent",
+  "Driver Accepted": "Delivery Agent Accepted",
   "Collected Bag": "Collected Bag",
   "Out for Delivery": "Out for Delivery",
   Delivered: "Delivered",
@@ -145,7 +145,7 @@ export const FAILURE_REASONS = [
   "Phone Not Reachable",
   "Passenger Refused",
   "Security Issue",
-  "Driver Issue",
+  "Delivery Agent Issue",
   "Weather",
   "Other",
 ] as const;
