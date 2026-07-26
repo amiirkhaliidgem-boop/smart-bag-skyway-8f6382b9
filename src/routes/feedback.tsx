@@ -192,8 +192,7 @@ function FeedbackPage() {
       <div>
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Customer Feedback</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Read-only dashboard. Feedback is collected exclusively from the Passenger Portal after
-          delivery completion.
+          &nbsp;
         </p>
       </div>
 
