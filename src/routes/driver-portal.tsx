@@ -42,6 +42,11 @@ import {
   UserCheck,
 } from "lucide-react";
 import { toast } from "sonner";
+import {
+  DriverLanguageProvider,
+  LanguageToggle,
+  useDriverLang,
+} from "@/lib/i18n/driver-language";
 
 export const Route = createFileRoute("/driver-portal")({
   head: () => ({ meta: [{ title: "Driver Portal — Smart Baggage Ecosystem" }] }),
@@ -49,12 +54,26 @@ export const Route = createFileRoute("/driver-portal")({
 });
 
 function DriverPortalPage() {
+  return (
+    <DriverLanguageProvider>
+      <DriverPortalBody />
+    </DriverLanguageProvider>
+  );
+}
+
+function DriverPortalBody() {
   const [signedIn, setSignedIn] = useState(false);
   const [driver, setDriver] = useState(driverPool[0]);
-  if (!signedIn) {
-    return <DriverLogin driver={driver} setDriver={setDriver} onSignIn={() => setSignedIn(true)} />;
-  }
-  return <DriverDashboard driver={driver} onSignOut={() => setSignedIn(false)} />;
+  const { dir, lang } = useDriverLang();
+  return (
+    <div dir={dir} lang={lang}>
+      {!signedIn ? (
+        <DriverLogin driver={driver} setDriver={setDriver} onSignIn={() => setSignedIn(true)} />
+      ) : (
+        <DriverDashboard driver={driver} onSignOut={() => setSignedIn(false)} />
+      )}
+    </div>
+  );
 }
 
 function DriverLogin({
@@ -67,17 +86,19 @@ function DriverLogin({
   onSignIn: () => void;
 }) {
   const [pin, setPin] = useState("");
+  const { t } = useDriverLang();
   return (
     <div className="max-w-md mx-auto pt-8">
       <Card>
         <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <Truck className="h-4 w-4" /> Driver Sign In
+          <CardTitle className="text-base flex flex-wrap items-center gap-2">
+            <Truck className="h-4 w-4" /> {t.signInTitle}
+            <LanguageToggle className="ms-auto" />
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-1.5">
-            <Label>Driver</Label>
+            <Label>{t.driverLabel}</Label>
             <select
               className="h-10 w-full rounded-md border border-input bg-background px-2 text-sm"
               value={driver}
@@ -89,12 +110,12 @@ function DriverLogin({
             </select>
           </div>
           <div className="space-y-1.5">
-            <Label>PIN</Label>
+            <Label>{t.pinLabel}</Label>
             <Input
               type="password"
               value={pin}
               onChange={(e) => setPin(e.target.value)}
-              placeholder="Demo PIN: 1234"
+              placeholder={t.pinPlaceholder}
               maxLength={4}
             />
           </div>
@@ -102,14 +123,14 @@ function DriverLogin({
             className="w-full"
             onClick={() => {
               if (pin !== "1234") {
-                toast.error("Invalid PIN — demo uses 1234");
+                toast.error(t.invalidPin);
                 return;
               }
               onSignIn();
-              toast.success(`Welcome, ${driver}`);
+              toast.success(t.welcome(driver));
             }}
           >
-            Sign In
+            {t.signInAction}
           </Button>
         </CardContent>
       </Card>
