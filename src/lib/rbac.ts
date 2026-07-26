@@ -21,8 +21,9 @@ const RULES: { prefix: string; exact?: boolean; roles: AppRole[] }[] = [
   { prefix: "/data-io", roles: ["admin", "agent"] },
   { prefix: "/delivery", roles: ["admin", "coordinator"] },
   { prefix: "/driver-portal", roles: ["admin", "driver"] },
+  // Shared operational surface: opened from Baggage Operations and Contact Center.
+  { prefix: "/tracking", roles: ["admin", "agent", "coordinator"] },
   // Admin-only surfaces.
-  { prefix: "/tracking", roles: ["admin"] },
   { prefix: "/contact-center", roles: ["admin"] },
   { prefix: "/feedback", roles: ["admin"] },
   { prefix: "/workflow-monitor", roles: ["admin"] },

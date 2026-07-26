@@ -1,17 +1,26 @@
-## Root cause (verified)
+## Current state (verified)
 
-In `src/routes/tracking.tsx` (lines 151-160) the result header renders two badges:
+- `src/routes/tracking.tsx` holds the whole Track Baggage screen: the `TrackingPage` search shell plus `TrackingResultPanel`, `Section`, `InfoTile`, `formatAt`, the `PROGRESS_STAGES` / `OTP_VISIBLE_STAGES` constants — all inline in the route file.
+- Resolution logic is already shared and read-only in `src/lib/tracking/resolve.ts` (Delivery ID → PIR → Bag ID → Bag Tag → PNR against live store data).
+- The sidebar in `src/components/app-shell.tsx` lists "Baggage Tracking" only under the `CONTACT CENTER OPERATIONS` section (line 77); `Baggage Operations` has just Lost & Found.
+- `src/lib/rbac.ts` currently restricts `/tracking` to `admin` only (line 25), while `/lost-found` is `admin` + `agent`.
 
-1. `<StatusBadge status={kase.status} />` — the Lost & Found **case status** (`src/components/status-badge.tsx` prints the raw value, e.g. `Delivered`).
-2. A pill using `STAGE_LABELS[stage]` — the Delivery Management **stage** (`src/lib/delivery/stages.ts`, where `Delivered: "Delivered"`).
+## Refactor
 
-Two different models rendered side by side, which operationally represent the same business state — hence "Delivered Delivered".
+**1. Extract the shared component — `src/components/tracking/track-baggage.tsx`**
+Move `TrackingPage`'s body, `TrackingResultPanel`, `Section`, `InfoTile`, `formatAt`, `PROGRESS_STAGES`, `OTP_VISIBLE_STAGES` out of the route file verbatim. Export a single `<TrackBaggage />` component with optional presentation props only:
+- `showHeading?: boolean` (default `true`) — so an embedding surface can hide the duplicate `<h1>`.
+It keeps its own `useStore` reads and `resolveTracking` call, so both consumers get identical live data and identical UI with zero prop plumbing.
 
-## Fix (UI only, `src/routes/tracking.tsx`)
+**2. Route becomes a thin wrapper — `src/routes/tracking.tsx`**
+Keeps only `createFileRoute("/tracking")`, its `head()` metadata, and `component: () => <TrackBaggage />`. No behavioural change for Contact Center users; same URL, same page.
 
-- Render exactly **one** operational status badge in the result header.
-- The **Delivery Stage** is the primary status: whenever a delivery stage is resolved, show only the stage pill (`STAGE_LABELS[stage]` with `STAGE_STYLES[stage]`) and do not render the case-status badge at all.
-- Only when there is no delivery/stage yet (case not handed over) fall back to the L&F case badge, so the header is never empty.
-- Everything else stays: the "Latest Workflow Status" tile, the delivery progress stepper, OTP card and timeline are untouched.
+**3. Baggage Operations entry point**
+Add a "Baggage Tracking" item to the `Baggage Operations` sidebar section pointing at the same `/tracking` route (single implementation, single URL — no second page, no duplicated route). It renders active for either sidebar entry since both link to the same path.
 
-No changes to the Workflow Engine, Delivery Engine, Timeline, Notifications, Audit, database, or `src/lib/tracking/resolve.ts`.
+**4. Access**
+Widen the `/tracking` RBAC rule from `["admin"]` to `["admin", "agent", "coordinator"]` so Lost & Found officers can actually open it from their section; admin behaviour is unchanged.
+
+## Not touched
+
+Workflow Engine, Delivery Engine, Notification Engine, Timeline, Audit, database, `src/lib/tracking/resolve.ts`, and all business logic. This is component extraction, navigation, and one access-rule line only.
