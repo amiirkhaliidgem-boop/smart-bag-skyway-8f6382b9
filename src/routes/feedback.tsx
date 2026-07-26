@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { BulkToolbar } from "@/components/bulk/bulk-toolbar";
+import { DateRangeFilter } from "@/components/filters/date-range-filter";
 import {
   exportFeedbackToXlsx,
   fmtDateTime,
@@ -212,16 +213,7 @@ function FeedbackPage() {
             className="pl-8 h-9"
           />
         </div>
-        <DateFilterInput
-          value={from}
-          onChange={setFrom}
-          label="From date"
-        />
-        <DateFilterInput
-          value={to}
-          onChange={setTo}
-          label="To date"
-        />
+        <DateRangeFilter from={from} to={to} onFromChange={setFrom} onToChange={setTo} />
         <select
           className="h-9 rounded-md border border-input bg-background px-2 text-sm"
           value={airline}
@@ -362,32 +354,6 @@ function Stars({ value }: { value: number }) {
         />
       ))}
     </span>
-  );
-}
-
-function DateFilterInput({
-  value,
-  onChange,
-  label,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  label: string;
-}) {
-  const [type, setType] = useState<"text" | "date">("text");
-  const empty = !value;
-
-  return (
-    <Input
-      type={type}
-      value={value}
-      placeholder={empty ? "__/__/____" : ""}
-      onChange={(e) => onChange(e.target.value)}
-      onFocus={() => setType("date")}
-      onBlur={() => setType(value ? "date" : "text")}
-      className="h-9 w-[150px]"
-      aria-label={label}
-    />
   );
 }
 
