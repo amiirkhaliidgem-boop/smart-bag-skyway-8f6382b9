@@ -49,7 +49,7 @@ import {
 } from "@/lib/i18n/driver-language";
 
 export const Route = createFileRoute("/driver-portal")({
-  head: () => ({ meta: [{ title: "Driver Portal — Smart Baggage Ecosystem" }] }),
+  head: () => ({ meta: [{ title: "Delivery Agent Portal — Smart Baggage Ecosystem" }] }),
   component: DriverPortalPage,
 });
 
