@@ -149,13 +149,14 @@ function TrackingResultPanel({ result }: { result: TrackingResult }) {
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              {kase && <StatusBadge status={kase.status} />}
-              {stage && (
+              {stage ? (
                 <span
                   className={`rounded-full border px-2.5 py-1 text-xs font-medium ${STAGE_STYLES[stage]}`}
                 >
                   {STAGE_LABELS[stage]}
                 </span>
+              ) : (
+                kase && <StatusBadge status={kase.status} />
               )}
             </div>
           </div>

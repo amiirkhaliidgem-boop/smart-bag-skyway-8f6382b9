@@ -1,57 +1,17 @@
-## Goal
+## Root cause (verified)
 
-Turn `/tracking` from a demo PIR lookup into the system-wide tracking gateway: one search box that auto-detects any operational reference and renders a single unified, read-only view built from live ecosystem data.
+In `src/routes/tracking.tsx` (lines 151-160) the result header renders two badges:
 
-## 1. Remove demo content
+1. `<StatusBadge status={kase.status} />` — the Lost & Found **case status** (`src/components/status-badge.tsx` prints the raw value, e.g. `Delivered`).
+2. A pill using `STAGE_LABELS[stage]` — the Delivery Management **stage** (`src/lib/delivery/stages.ts`, where `Delivered: "Delivered"`).
 
-In `src/routes/tracking.tsx`, delete the "Demo PIRs: CAIMS12045 …" helper line and any demo wording. Placeholder becomes:
-`Search by PIR, PNR, Bag Tag, Bag ID or Delivery ID`.
+Two different models rendered side by side, which operationally represent the same business state — hence "Delivered Delivered".
 
-## 2. Universal resolver (new, read-only)
+## Fix (UI only, `src/routes/tracking.tsx`)
 
-Add a small resolver helper (e.g. `src/lib/tracking/resolve.ts`) that takes one raw query string and returns `{ case, delivery, workflow }` from the existing store — no new state, no writes.
+- Render exactly **one** operational status badge in the result header.
+- The **Delivery Stage** is the primary status: whenever a delivery stage is resolved, show only the stage pill (`STAGE_LABELS[stage]` with `STAGE_STYLES[stage]`) and do not render the case-status badge at all.
+- Only when there is no delivery/stage yet (case not handed over) fall back to the L&F case badge, so the header is never empty.
+- Everything else stays: the "Latest Workflow Status" tile, the delivery progress stepper, OTP card and timeline are untouched.
 
-Lookup order, stopping at the first match:
-1. Delivery ID — `deliveries.deliveryId` (`DEL-50032`)
-2. PIR Number — `cases.pirNumber`
-3. Bag ID — `cases.bagId` (`BAG-100253`)
-4. Bag Tag — `cases.bagTagNumber` and any entry in `cases.baggage.bagTags`
-5. PNR — `cases.pnr`
-
-Matching is case-insensitive and trims whitespace. No type selector in the UI; detection is implicit through the ordered lookup. Whichever key matched, the resolver normalises to the same triple, so the rendered result is identical.
-
-## 3. Unified result panel
-
-One result component rendered on `/tracking` for every match, reading live from the store (`cases`, `deliveries`, `workflow`, timeline/audit entries) so it always reflects current state:
-
-- **Current Status** — latest Workflow Engine status + delivery stage badge
-- **Passenger Information** — name, contact, PIR/PNR
-- **Flight Information** — airline, flight number, arrival date
-- **Baggage Information** — Bag ID, bag tag(s), description, storage location
-- **Delivery Information** — Delivery ID, method, address, priority, stage
-- **Delivery Agent Information** — shown only when assigned
-- **Delivery Progress** — stage stepper driven by the canonical stage list
-- **Live Timeline** — existing workflow history entries, newest first
-- **OTP Verification** — code shown only when eligible (Out for Delivery onward), otherwise the OTP status only
-
-Cases still owned by Lost & Found (no delivery record yet) render the same panel with delivery/agent/OTP sections omitted or marked "Not yet scheduled".
-
-## 4. Link to the passenger journey
-
-When the matched delivery has a tracking token, the panel shows a **View Passenger Portal** button opening `/passenger/{token}` — the existing passenger experience, unchanged.
-
-## 5. Not found
-
-If nothing matches, show a neutral production-style empty state (no demo hints) asking the user to check the reference.
-
-## Technical notes
-
-- Purely a presentation + lookup layer. No changes to the Workflow, Delivery, Notification, Timeline, Audit or OTP engines, and no database or schema changes.
-- No new tracking storage: all reads come from the existing Zustand store hydrated from `public.app_state`.
-- Tracking page keeps its existing route and head metadata; only the body and placeholder change.
-
-## Verification
-
-- Search each of the five identifier types for the same case and confirm the identical panel renders.
-- Confirm the OTP code only appears from Out for Delivery onward.
-- Confirm the passenger portal link opens the correct token.
+No changes to the Workflow Engine, Delivery Engine, Timeline, Notifications, Audit, database, or `src/lib/tracking/resolve.ts`.
