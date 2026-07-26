@@ -50,7 +50,7 @@ function TrackingPage() {
   return (
     <div className="space-y-6 max-w-3xl mx-auto">
       <div className="text-center space-y-2">
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Track Your Baggage</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Track Baggage</h1>
         <p className="text-sm text-muted-foreground">
           Enter the PIR number from your baggage irregularity report.
         </p>
