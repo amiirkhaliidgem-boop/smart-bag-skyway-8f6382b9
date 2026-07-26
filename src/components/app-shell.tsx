@@ -56,6 +56,7 @@ const navSections: {
     items: [
       { to: "/lost-found", label: "Lost & Found", icon: PackageSearch },
       { to: "/tracking", label: "Baggage Tracking", icon: Search },
+      { to: "/feedback", label: "Customer Feedback", icon: Star },
     ],
   },
   {
