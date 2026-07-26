@@ -65,14 +65,14 @@ export interface DriverStrings {
 }
 
 const en: DriverStrings = {
-  signInTitle: "Driver Sign In",
-  driverLabel: "Driver",
+  signInTitle: "Delivery Agent Sign In",
+  driverLabel: "Delivery Agent",
   pinLabel: "PIN",
   pinPlaceholder: "Demo PIN: 1234",
   signInAction: "Sign In",
   invalidPin: "Invalid PIN — demo uses 1234",
   welcome: (name) => `Welcome, ${name}`,
-  portalTitle: "Driver Portal",
+  portalTitle: "Delivery Agent Portal",
   signedInAs: "Signed in as",
   signOut: "Sign Out",
   language: "Language",
@@ -123,14 +123,14 @@ const AR_PRIORITY: Record<string, string> = {
 };
 
 const ar: DriverStrings = {
-  signInTitle: "تسجيل دخول السائق",
-  driverLabel: "السائق",
+  signInTitle: "تسجيل دخول مندوب التسليم",
+  driverLabel: "مندوب التسليم",
   pinLabel: "الرمز السري",
   pinPlaceholder: "الرمز التجريبي: 1234",
   signInAction: "تسجيل الدخول",
   invalidPin: "رمز غير صحيح — الرمز التجريبي 1234",
   welcome: (name) => `أهلاً بك، ${name}`,
-  portalTitle: "بوابة السائق",
+  portalTitle: "بوابة مندوب التسليم",
   signedInAs: "تم تسجيل الدخول باسم",
   signOut: "تسجيل الخروج",
   language: "اللغة",

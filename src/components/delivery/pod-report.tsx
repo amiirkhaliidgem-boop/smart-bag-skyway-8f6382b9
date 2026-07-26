@@ -119,7 +119,7 @@ export function PodReport({
 
       <Section title="Delivery Information">
         <Row k="Method" v={c?.delivery?.method ?? "Home Delivery"} />
-        <Row k="Driver" v={d.driver && d.driver !== "—" ? d.driver : "Unassigned"} />
+        <Row k="Delivery Agent" v={d.driver && d.driver !== "—" ? d.driver : "Unassigned"} />
         <Row k="Delivery Address" v={d.address} />
         <Row k="Priority" v={d.priority} />
       </Section>
@@ -145,7 +145,7 @@ export function PodReport({
         </div>
         <div>
           <div className="pir-sig-line" />
-          <div className="pir-sig-label">Driver Signature</div>
+          <div className="pir-sig-label">Delivery Agent Signature</div>
           <div className="pir-sig-date">Date: __ / __ / ____</div>
         </div>
       </section>

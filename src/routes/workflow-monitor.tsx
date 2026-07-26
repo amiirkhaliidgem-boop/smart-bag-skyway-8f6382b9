@@ -129,9 +129,9 @@ function WorkflowMonitorPage() {
               </SelectContent>
             </Select>
             <Select value={driver} onValueChange={setDriver}>
-              <SelectTrigger><SelectValue placeholder="Driver" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder="Delivery Agent" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Drivers</SelectItem>
+                <SelectItem value="all">All Delivery Agents</SelectItem>
                 {drivers.map((d) => <SelectItem key={d} value={d}>{d}</SelectItem>)}
               </SelectContent>
             </Select>
@@ -151,7 +151,7 @@ function WorkflowMonitorPage() {
                   <th className="text-left px-4 py-3 font-medium">Delivery</th>
                   <th className="text-left px-4 py-3 font-medium">Passenger / PIR</th>
                   <th className="text-left px-4 py-3 font-medium">Status</th>
-                  <th className="text-left px-4 py-3 font-medium">Driver</th>
+                  <th className="text-left px-4 py-3 font-medium">Delivery Agent</th>
                   <th className="text-left px-4 py-3 font-medium">Elapsed</th>
                   <th className="text-left px-4 py-3 font-medium">SLA</th>
                   <th className="text-left px-4 py-3 font-medium">Next Step</th>

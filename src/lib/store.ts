@@ -570,13 +570,13 @@ const seedWhatsapp: WhatsAppMessage[] = [
     passengerName: "Hassan El-Shenawy",
     phone: "+20 100 998 2210",
     pirNumber: "CAILH40118",
-    lastMessage: "Driver is 10 min away. Please share OTP at handover.",
+    lastMessage: "Delivery agent is 10 min away. Please share OTP at handover.",
     unread: 0,
     at: "2026-06-23T18:40:00Z",
     thread: [
       { from: "Passenger", text: "Hi, any update on my bag?", at: "2026-06-23T14:00:00Z" },
       { from: "Agent", text: "Hello Mr. Hassan, your bag is out for delivery now.", at: "2026-06-23T14:05:00Z" },
-      { from: "Agent", text: "Driver is 10 min away. Please share OTP at handover.", at: "2026-06-23T18:40:00Z" },
+      { from: "Agent", text: "Delivery agent is 10 min away. Please share OTP at handover.", at: "2026-06-23T18:40:00Z" },
     ],
   },
   {
@@ -614,7 +614,7 @@ const seedFeedback: Feedback[] = [
     passengerName: "Mariam Hossam",
     resolved: true,
     rating: 5,
-    comments: "Excellent service. Driver was punctual and very polite.",
+    comments: "Excellent service. Delivery agent was punctual and very polite.",
     at: "2026-06-19T17:10:00Z",
   },
   {
@@ -1356,7 +1356,7 @@ export function assignDriver(
     entityType: "delivery",
     entityId: deliveryId,
     note: wasAssigned
-      ? `Driver reassigned — changed from ${prev} to ${driver}`
+      ? `Delivery agent reassigned — changed from ${prev} to ${driver}`
       : `Assigned to ${driver}`,
   });
   pushAudit({
@@ -1373,8 +1373,8 @@ export function assignDriver(
     actor: opts.actor,
     role: opts.role,
     note: wasAssigned
-      ? `Driver changed from ${prev} to ${driver}`
-      : `Driver: ${driver}`,
+      ? `Delivery agent changed from ${prev} to ${driver}`
+      : `Delivery Agent: ${driver}`,
   });
   if (opts.note && opts.note.trim()) {
     addDeliveryNote(deliveryId, opts.note, { actor: opts.actor, role: opts.role });
@@ -1399,7 +1399,7 @@ export function driverAccept(
 ) {
   setDeliveryStage(deliveryId, "Driver Accepted", {
     ...opts,
-    note: "Driver accepted",
+    note: "Delivery agent accepted",
   });
 }
 
@@ -1418,7 +1418,7 @@ export function driverReject(
     role: opts.role,
     entityType: "delivery",
     entityId: deliveryId,
-    note: `Driver rejected — ${previous ?? "n/a"}${opts.note ? ` · ${opts.note}` : ""}`,
+    note: `Delivery agent rejected — ${previous ?? "n/a"}${opts.note ? ` · ${opts.note}` : ""}`,
   });
   setDeliveryStage(deliveryId, "Scheduled", {
     actor: opts.actor,

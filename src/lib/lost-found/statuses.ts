@@ -54,6 +54,25 @@ export const LF_STATUS_COLOR: Record<LFStatus, string> = {
   Closed: "bg-slate-200 text-slate-700 border-slate-300",
 };
 
+// User-facing labels. Stored values stay unchanged (e.g. "Assigned Driver");
+// only the rendered text uses the "Delivery Agent" terminology.
+export const LF_STATUS_LABEL: Record<LFStatus, string> = {
+  Open: "Open",
+  Tracing: "Tracing",
+  Located: "Located",
+  "Arrived at Airport": "Arrived at Airport",
+  "Waiting Customs Clearance": "Waiting Customs Clearance",
+  "Ready for Delivery": "Ready for Delivery",
+  "Assigned Driver": "Assigned Delivery Agent",
+  "Out for Delivery": "Out for Delivery",
+  Delivered: "Delivered",
+  Closed: "Closed",
+};
+
+export function lfStatusLabel(status: string): string {
+  return (LF_STATUS_LABEL as Record<string, string>)[status] ?? status;
+}
+
 // Map an L&F case status to the canonical Workflow Engine status so the
 // same transition can be mirrored into the workflow / audit / notification
 // pipeline when a delivery record exists for the case.

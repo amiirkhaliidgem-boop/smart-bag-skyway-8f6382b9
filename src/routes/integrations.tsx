@@ -24,7 +24,7 @@ const INTEGRATIONS: {
   { key: "otp", name: "OTP Provider", desc: "One-time password service for handover verification.", Icon: KeyRound, status: "Pending" },
   { key: "email", name: "Email Provider", desc: "Transactional email for tracking links and receipts.", Icon: Mail, status: "Pending" },
   { key: "db", name: "Cloud Database", desc: "Managed Postgres for enterprise data persistence.", Icon: Database, status: "Pending" },
-  { key: "driver-app", name: "Driver Mobile App", desc: "Native iOS/Android companion for field operations.", Icon: Smartphone, status: "Pending" },
+  { key: "driver-app", name: "Delivery Agent Mobile App", desc: "Native iOS/Android companion for field operations.", Icon: Smartphone, status: "Pending" },
 ];
 
 function IntegrationsPage() {

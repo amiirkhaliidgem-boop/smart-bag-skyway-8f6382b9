@@ -254,7 +254,7 @@ function ContactCenterPage() {
                         <th className="text-left px-4 py-3 font-medium">Category</th>
                         <th className="text-left px-4 py-3 font-medium">Severity</th>
                         <th className="text-left px-4 py-3 font-medium">Passenger</th>
-                        <th className="text-left px-4 py-3 font-medium">Driver</th>
+                        <th className="text-left px-4 py-3 font-medium">Delivery Agent</th>
                         <th className="text-left px-4 py-3 font-medium">Bag</th>
                         <th className="text-left px-4 py-3 font-medium">Reported</th>
                         <th className="text-left px-4 py-3 font-medium">Status</th>
@@ -562,7 +562,7 @@ function ConversationsView(p: ConversationsProps) {
               <ProfileField k="Email" v={active.c.email} />
               <ProfileField k="Workflow" v={active.wf ? WORKFLOW_LABELS[active.wf.status].en : "—"} />
               <ProfileField k="Delivery Status" v={active.del?.status ?? "—"} />
-              <ProfileField k="Driver" v={active.del?.driver ?? "—"} />
+              <ProfileField k="Delivery Agent" v={active.del?.driver ?? "—"} />
               <ProfileField k="OTP" v={active.del?.otpStatus ?? "—"} />
             </div>
 

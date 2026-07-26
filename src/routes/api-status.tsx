@@ -13,7 +13,7 @@ const APIS: { name: string; version: string; health: Health; lastSync: string }[
   { name: "Workflow API", version: "v2.6.0", health: "Operational", lastSync: "just now" },
   { name: "Notification API", version: "v1.4.2", health: "Operational", lastSync: "1 min ago" },
   { name: "Passenger API", version: "v1.2.0", health: "Operational", lastSync: "just now" },
-  { name: "Driver API", version: "v1.1.5", health: "Operational", lastSync: "3 min ago" },
+  { name: "Delivery Agent API", version: "v1.1.5", health: "Operational", lastSync: "3 min ago" },
   { name: "Odoo API", version: "—", health: "Pending", lastSync: "not connected" },
   { name: "Maps API", version: "—", health: "Pending", lastSync: "not connected" },
   { name: "OTP API", version: "v1.0.0", health: "Operational", lastSync: "5 min ago" },

@@ -79,6 +79,15 @@ interface TimelineEvent {
   raw: unknown;
 }
 
+// Display-only module labels. Stored module keys are unchanged.
+const MODULE_LABELS: Partial<Record<ModuleSource, string>> = {
+  Driver: "Delivery Agent",
+};
+
+function moduleLabel(m: ModuleSource): string {
+  return MODULE_LABELS[m] ?? m;
+}
+
 const MODULE_STYLES: Record<ModuleSource, { badge: string; ring: string; dot: string }> = {
   Workflow: {
     badge: "bg-primary/10 text-primary border-primary/20",
@@ -155,34 +164,34 @@ const STATUS_META: Record<
     description: "Home delivery request approved by baggage coordinator.",
   },
   DRIVER_ASSIGNED: {
-    title: "Driver Assigned",
+    title: "Delivery Agent Assigned",
     icon: UserCheck,
     module: "Delivery",
-    description: "Delivery assigned to a driver for dispatch.",
+    description: "Delivery assigned to a delivery agent for dispatch.",
   },
   READY_FOR_COLLECTION: {
     title: "Ready for Collection",
     icon: Package,
     module: "Storage",
-    description: "Baggage staged and ready for driver pickup at storage.",
+    description: "Baggage staged and ready for delivery agent pickup at storage.",
   },
   CLAIMED_ON_HAND: {
     title: "Baggage Claimed On Hand",
     icon: Package,
     module: "Driver",
-    description: "Driver collected the baggage from storage.",
+    description: "Delivery agent collected the baggage from storage.",
   },
   OUT_FOR_DELIVERY: {
     title: "Out For Delivery",
     icon: Truck,
     module: "Driver",
-    description: "Driver en route to the passenger address.",
+    description: "Delivery agent en route to the passenger address.",
   },
   DRIVER_ARRIVED: {
-    title: "Driver Arrived",
+    title: "Delivery Agent Arrived",
     icon: MapPin,
     module: "Driver",
-    description: "Driver arrived at the passenger delivery location.",
+    description: "Delivery agent arrived at the passenger delivery location.",
   },
   OTP_VERIFIED: {
     title: "OTP Verified",
@@ -426,7 +435,7 @@ function buildEvents(
         id: `EV-QRSCAN-${d.deliveryId}`,
         at: anchor.at,
         title: "QR Code Scanned",
-        description: `Driver scanned ${d.bagId} at collection — chain of custody handoff.`,
+        description: `Delivery agent scanned ${d.bagId} at collection — chain of custody handoff.`,
         user: d.driver,
         role: "Driver",
         module: "Driver",
@@ -657,11 +666,11 @@ function TimelinePage() {
             ]}
           />
           <FieldSelect
-            label="Driver"
+            label="Delivery Agent"
             value={fDriver}
             onChange={setFDriver}
             options={[
-              { v: "all", l: "All drivers" },
+              { v: "all", l: "All delivery agents" },
               ...drivers.map((d) => ({ v: d, l: d })),
             ]}
           />
@@ -723,7 +732,7 @@ function TimelinePage() {
                               styles.badge,
                             )}
                           >
-                            {e.module}
+                            {moduleLabel(e.module)}
                           </span>
                           {e.workflowStatus && (
                             <span className="inline-flex items-center px-2 py-0.5 rounded-full border border-border bg-background text-[10px] font-medium text-muted-foreground">
@@ -907,7 +916,7 @@ function DetailPanel({
                 styles.badge,
               )}
             >
-              {event.module}
+              {moduleLabel(event.module)}
             </span>
             <CardTitle className="text-base mt-2">{event.title}</CardTitle>
             <p className="text-[11px] font-mono text-muted-foreground mt-0.5">
@@ -928,14 +937,14 @@ function DetailPanel({
 
         <div className="grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
           <Field label="User" value={event.user} />
-          <Field label="Role" value={event.role} />
+          <Field label="Role" value={event.role === "Driver" ? "Delivery Agent" : event.role} />
           {event.workflowStatus && (
             <Field label="Workflow" value={WORKFLOW_LABELS[event.workflowStatus].en} mono />
           )}
           {event.deliveryId && <Field label="Delivery ID" value={event.deliveryId} mono />}
           {event.pirNumber && <Field label="PIR Number" value={event.pirNumber} mono />}
           {event.bagId && <Field label="Bag ID" value={event.bagId} mono />}
-          {event.driver && <Field label="Driver" value={event.driver} />}
+          {event.driver && <Field label="Delivery Agent" value={event.driver} />}
           {event.passengerName && <Field label="Passenger" value={event.passengerName} />}
         </div>
 

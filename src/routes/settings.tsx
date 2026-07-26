@@ -77,7 +77,7 @@ function SettingsPage() {
         <TabsContent value="whatsapp" className="mt-4">
           <Card><CardHeader><CardTitle className="text-base">WhatsApp Templates</CardTitle></CardHeader>
             <CardContent className="space-y-4">
-              <TemplateField label="Driver Assigned (EN)" defaultValue="Hello {{PassengerName}}, driver {{DriverName}} has been assigned to your delivery. ETA: {{ETA}}." />
+              <TemplateField label="Delivery Agent Assigned (EN)" defaultValue="Hello {{PassengerName}}, delivery agent {{DriverName}} has been assigned to your delivery." />
               <TemplateField label="OTP Requested (EN)" defaultValue="Your delivery verification code is {{OTP}}. Do not share this code." />
             </CardContent>
           </Card>
@@ -89,7 +89,7 @@ function SettingsPage() {
               <ToggleRow label="Auto-send SMS on 'Delivery Approved'" defaultChecked />
               <ToggleRow label="Auto-send WhatsApp on 'Out for Delivery'" defaultChecked />
               <ToggleRow label="Email tracking link when case opened" defaultChecked />
-              <ToggleRow label="Push notification via Driver App" />
+              <ToggleRow label="Push notification via Delivery Agent App" />
             </CardContent>
           </Card>
         </TabsContent>

@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { LF_STATUS_COLOR, type LFStatus } from "@/lib/lost-found/statuses";
+import { LF_STATUS_COLOR, lfStatusLabel, type LFStatus } from "@/lib/lost-found/statuses";
 
 export function LfStatusBadge({
   status,
@@ -17,7 +17,7 @@ export function LfStatusBadge({
       )}
     >
       <span className="h-1.5 w-1.5 rounded-full bg-current mr-1.5 opacity-70" />
-      {status}
+      {lfStatusLabel(status)}
     </span>
   );
 }

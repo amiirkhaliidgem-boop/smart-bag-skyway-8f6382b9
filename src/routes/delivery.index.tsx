@@ -180,7 +180,7 @@ function DispatchCenter() {
               label: (() => {
                 const sel = deliveries.filter((d) => selected.has(d.deliveryId));
                 const all = sel.length > 0 && sel.every((d) => d.driver && d.driver !== "—");
-                return all ? "Reassign Driver" : "Assign Driver";
+                return all ? "Reassign Delivery Agent" : "Assign Delivery Agent";
               })(),
               icon: UserCheck,
               onClick: () => setBulkAssignOpen(true),
@@ -324,7 +324,7 @@ function DispatchCenter() {
                   <th className="text-left px-3 py-3 font-medium">Passenger</th>
                   <th className="text-left px-3 py-3 font-medium">Mobile</th>
                   <th className="text-left px-3 py-3 font-medium">Address</th>
-                  <th className="text-left px-3 py-3 font-medium">Driver</th>
+                  <th className="text-left px-3 py-3 font-medium">Delivery Agent</th>
                   <th className="text-left px-3 py-3 font-medium">Status</th>
                   <th className="text-left px-3 py-3 font-medium">Priority</th>
                   <th className="text-left px-3 py-3 font-medium">Created</th>
@@ -582,7 +582,7 @@ function BulkAssignDialog({
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>
-            {mode === "reassign" ? "Bulk Reassign Driver" : "Bulk Assign Driver"}
+            {mode === "reassign" ? "Bulk Reassign Delivery Agent" : "Bulk Assign Delivery Agent"}
           </DialogTitle>
         </DialogHeader>
         <form onSubmit={submit} className="space-y-4">
@@ -592,7 +592,7 @@ function BulkAssignDialog({
               : `Assign ${deliveryIds.length} selected deliveries to a driver.`}
           </p>
           <div className="space-y-1.5">
-            <Label>Driver</Label>
+            <Label>Delivery Agent</Label>
             <select
               className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
               value={driver}
@@ -624,9 +624,9 @@ function BulkAssignDialog({
 
 const NOTIFY_TEMPLATES: { status: WorkflowStatus; label: string }[] = [
   { status: "DELIVERY_APPROVED", label: "Delivery Approved" },
-  { status: "DRIVER_ASSIGNED", label: "Driver Assigned (Portal + OTP)" },
+  { status: "DRIVER_ASSIGNED", label: "Delivery Agent Assigned (Portal + OTP)" },
   { status: "OUT_FOR_DELIVERY", label: "Out for Delivery" },
-  { status: "DRIVER_ARRIVED", label: "Driver Arrived" },
+  { status: "DRIVER_ARRIVED", label: "Delivery Agent Arrived" },
   { status: "DELIVERED", label: "Delivered" },
 ];
 
@@ -763,7 +763,7 @@ function SingleAssignDialog({
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
-          <DialogTitle>{wasAssigned ? "Reassign Driver" : "Assign Driver"}</DialogTitle>
+          <DialogTitle>{wasAssigned ? "Reassign Delivery Agent" : "Assign Delivery Agent"}</DialogTitle>
         </DialogHeader>
         <form onSubmit={submit} className="space-y-4">
           {d && (
@@ -772,7 +772,7 @@ function SingleAssignDialog({
             </p>
           )}
           <div className="space-y-1.5">
-            <Label>Driver</Label>
+            <Label>Delivery Agent</Label>
             <select
               className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
               value={driver}
