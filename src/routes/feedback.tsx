@@ -195,12 +195,11 @@ function FeedbackPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Kpi label="Avg Rating" value={`${avg.toFixed(1)}/5`} tone="text-amber-600" />
         <Kpi label="Total Responses" value={total} tone="text-primary" />
         <Kpi label="Issue Resolved" value={`${resolvedPct}%`} tone="text-emerald-600" />
         <Kpi label="Today" value={today} tone="text-primary" />
-        <Kpi label="Detractors (≤2★)" value={detractors} tone="text-rose-600" />
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
