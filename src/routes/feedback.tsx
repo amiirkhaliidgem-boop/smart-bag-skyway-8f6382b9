@@ -212,19 +212,15 @@ function FeedbackPage() {
             className="pl-8 h-9"
           />
         </div>
-        <Input
-          type="date"
+        <DateFilterInput
           value={from}
-          onChange={(e) => setFrom(e.target.value)}
-          className="h-9 w-[150px]"
-          aria-label="From date"
+          onChange={setFrom}
+          label="From date"
         />
-        <Input
-          type="date"
+        <DateFilterInput
           value={to}
-          onChange={(e) => setTo(e.target.value)}
-          className="h-9 w-[150px]"
-          aria-label="To date"
+          onChange={setTo}
+          label="To date"
         />
         <select
           className="h-9 rounded-md border border-input bg-background px-2 text-sm"
