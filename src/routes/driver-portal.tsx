@@ -421,7 +421,7 @@ function DeliveryCard({
           )}
           <div className="min-w-0">
             <p className="font-semibold">{d.passengerName}</p>
-          <p className="text-xs font-mono text-muted-foreground">
+          <p className="text-xs font-mono text-muted-foreground" dir="ltr">
               {d.deliveryId} · PIR {d.pirNumber} · Tag {bagTag}
           </p>
           </div>
@@ -439,7 +439,7 @@ function DeliveryCard({
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3 text-sm">
         <p className="flex items-start gap-2"><MapPin className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />{d.address}</p>
-        <p className="flex items-center gap-2"><Phone className="h-4 w-4 text-muted-foreground" />{d.mobile}</p>
+        <p className="flex items-center gap-2"><Phone className="h-4 w-4 text-muted-foreground" /><span dir="ltr">{d.mobile}</span></p>
       </div>
       <div className="flex flex-wrap gap-2 mt-3">
         {legOrigin && (
