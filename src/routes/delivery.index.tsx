@@ -59,6 +59,7 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { PodPrintHost, podPrintBus } from "@/components/delivery/pod-print-host";
+import { DateRangeFilter } from "@/components/filters/date-range-filter";
 
 export const Route = createFileRoute("/delivery/")({
   head: () => ({
@@ -276,22 +277,7 @@ function DispatchCenter() {
                 ))}
               </SelectContent>
             </UISelect>
-            <div className="flex items-center gap-1.5">
-              <Label className="text-xs text-muted-foreground">From</Label>
-              <Input
-                type="date"
-                value={from}
-                onChange={(e) => setFrom(e.target.value)}
-                className={`h-9 w-[145px] ${!from ? "[&::-webkit-datetime-edit]:text-transparent" : ""}`}
-              />
-              <Label className="text-xs text-muted-foreground">To</Label>
-              <Input
-                type="date"
-                value={to}
-                onChange={(e) => setTo(e.target.value)}
-                className={`h-9 w-[145px] ${!to ? "[&::-webkit-datetime-edit]:text-transparent" : ""}`}
-              />
-            </div>
+            <DateRangeFilter from={from} to={to} onFromChange={setFrom} onToChange={setTo} />
             <div className="ml-auto">
               <Button
                 variant="ghost"

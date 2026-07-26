@@ -1,25 +1,19 @@
-## Goal
-Apply two small UI refinements to `src/routes/feedback.tsx`. No workflow, database, engine, reporting, or business logic changes.
+## Current state (verified)
+
+There is no shared date-filter component today. Lost & Found (`src/routes/lost-found.index.tsx:362-377`) and Delivery Management (`src/routes/delivery.index.tsx:280-292`) each render the same inline markup: a `From` / `To` label pair with `<Input type="date" className="h-9 w-[145px]">`, plus a `[&::-webkit-datetime-edit]:text-transparent` class that hides `dd/mm/yyyy` until a date is picked. Feedback (`src/routes/feedback.tsx`) uses a different local `DateFilterInput` that swaps input type on focus and shows a `__/__/____` placeholder.
 
 ## Changes
 
-### 1. Remove the “Detractors” KPI Card
-- Delete the fifth KPI card (`Detractors (≤2★)`) from the KPI grid.
-- Adjust the grid layout from 5 columns to 4 columns (`grid-cols-2 md:grid-cols-4`).
-- Remove any now-unused `detractors` calculation if it is no longer referenced elsewhere on the page.
+### 1. Extract the existing pattern into one shared component
+- Add `src/components/filters/date-range-filter.tsx` exporting `DateRangeFilter` with props `from`, `to`, `onFromChange`, `onToChange`.
+- Its markup is copied verbatim from the current Lost & Found implementation, so the rendered result is pixel-identical to today's L&F / Delivery filters.
 
-### 2. Simplify the Date Filters
-- Replace the browser-default `dd/mm/yyyy` placeholder on the From/To date inputs with a visually empty state.
-- Implement by wrapping each `<input type="date">` in a relative container and overlaying `__/__/____` text that is hidden once a value is selected or the input is focused.
-- Keep the native date picker opening on click exactly as today.
-- Do not change the filtering logic, state variables, or event handlers.
+### 2. Use it in all three modules
+- Feedback: delete the local `DateFilterInput` and render `<DateRangeFilter>` in its place, wired to the existing `from`/`to` state.
+- Lost & Found and Delivery: replace their inline blocks with the same component (no visual change) so there is exactly one implementation.
 
-## Files Modified
-- `src/routes/feedback.tsx`
-
-## Not Touched
-- Workflow Engine, Notification Engine, Delivery Engine, Timeline Engine, Audit Engine
-- Database schema or queries
-- Reporting/export logic
-- Other KPI calculations (Avg Rating, Total Responses, Issue Resolved, Today)
-- Filter behavior or state management
+## Not touched
+- Filtering logic, state variables, handlers
+- KPIs, reporting, export
+- Workflow / Notification / Delivery / Timeline / Audit engines
+- Database

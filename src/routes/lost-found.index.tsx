@@ -46,6 +46,7 @@ import {
 import { LfStatusBadge } from "@/components/lf-status-badge";
 import { PirWizard } from "@/components/lost-found/pir-wizard";
 import { BulkToolbar } from "@/components/bulk/bulk-toolbar";
+import { DateRangeFilter } from "@/components/filters/date-range-filter";
 import { PirPrintHost, pirPrintBus } from "@/components/lost-found/pir-print-host";
 import {
   Search,
@@ -359,22 +360,7 @@ function LostFoundPage() {
                 ))}
               </SelectContent>
             </Select>
-            <div className="flex items-center gap-1.5">
-              <Label className="text-xs text-muted-foreground">From</Label>
-              <Input
-                type="date"
-                value={from}
-                onChange={(e) => setFrom(e.target.value)}
-                className={`h-9 w-[145px] ${!from ? "[&::-webkit-datetime-edit]:text-transparent" : ""}`}
-              />
-              <Label className="text-xs text-muted-foreground">To</Label>
-              <Input
-                type="date"
-                value={to}
-                onChange={(e) => setTo(e.target.value)}
-                className={`h-9 w-[145px] ${!to ? "[&::-webkit-datetime-edit]:text-transparent" : ""}`}
-              />
-            </div>
+            <DateRangeFilter from={from} to={to} onFromChange={setFrom} onToChange={setTo} />
             <div className="ml-auto flex items-center gap-2">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
