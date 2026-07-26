@@ -64,6 +64,7 @@ type ModuleSource =
 interface TimelineEvent {
   id: string;
   at: string;
+  at: string;
   title: string;
   description: string;
   user: string;
