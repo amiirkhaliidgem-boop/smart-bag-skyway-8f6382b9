@@ -921,8 +921,8 @@ function OtpHeroCard({
 
         <div className="mt-5 text-center">
           <Bi
-            en="Show this code to the driver only after you receive your baggage."
-            ar="أظهر هذا الرمز للسائق فقط بعد استلام أمتعتك."
+            en="Show this code to the delivery agent only after you receive your baggage."
+            ar="أظهر هذا الرمز لمندوب التسليم فقط بعد استلام أمتعتك."
             size="sm"
             className="text-white/85"
           />
@@ -1130,7 +1130,7 @@ function ContactCard({ delivery }: { delivery: Delivery }) {
         ))}
       </div>
       <p className="text-[11px] text-[color:var(--iab-navy)]/55 text-center pt-1">
-        For your safety, IAB does not enable direct driver communication.
+        For your safety, IAB does not enable direct delivery agent communication.
       </p>
     </motion.div>
   );

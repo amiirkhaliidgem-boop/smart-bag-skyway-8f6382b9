@@ -37,7 +37,7 @@ export const TEMPLATES: Partial<Record<WorkflowStatus, Bundle>> = {
     },
     whatsapp: {
       en: (c) => ({
-        body: `Hello ${c.passengerName}, your home delivery request (PIR ${c.pirNumber}) has been approved. We will contact you with the driver details shortly.`,
+        body: `Hello ${c.passengerName}, your home delivery request (PIR ${c.pirNumber}) has been approved. We will contact you with the delivery agent details shortly.`,
       }),
       ar: (c) => ({
         body: `مرحباً ${c.passengerName}، تم اعتماد طلب توصيل حقيبتك (${c.pirNumber}). سنوافيك ببيانات مندوب التسليم قريباً.`,
@@ -47,7 +47,7 @@ export const TEMPLATES: Partial<Record<WorkflowStatus, Bundle>> = {
   DRIVER_ASSIGNED: {
     sms: {
       en: (c) => ({
-        body: `${brand}: A driver has been assigned to your delivery (PIR ${c.pirNumber}). Track & view your OTP: ${c.trackingUrl ?? ""}`,
+        body: `${brand}: A delivery agent has been assigned to your delivery (PIR ${c.pirNumber}). Track & view your OTP: ${c.trackingUrl ?? ""}`,
       }),
       ar: (c) => ({
         body: `${brand}: تم تعيين سائق لتوصيل حقيبتك (${c.pirNumber}). تابع واستعرض رمز التحقق: ${c.trackingUrl ?? ""}`,
@@ -55,7 +55,7 @@ export const TEMPLATES: Partial<Record<WorkflowStatus, Bundle>> = {
     },
     whatsapp: {
       en: (c) => ({
-        body: `Hello ${c.passengerName}, a driver has been assigned to your baggage delivery. Open your secure Passenger Portal to view your OTP and track the delivery: ${c.trackingUrl ?? ""}`,
+        body: `Hello ${c.passengerName}, a delivery agent has been assigned to your baggage delivery. Open your secure Passenger Portal to view your OTP and track the delivery: ${c.trackingUrl ?? ""}`,
       }),
       ar: (c) => ({
         body: `مرحباً ${c.passengerName}، تم تعيين سائق لتوصيل حقيبتك. افتح بوابة الراكب الآمنة لعرض رمز التحقق ومتابعة التوصيل: ${c.trackingUrl ?? ""}`,
