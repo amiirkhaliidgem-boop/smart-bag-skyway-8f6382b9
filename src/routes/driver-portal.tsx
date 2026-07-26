@@ -389,6 +389,7 @@ function DeliveryCard({
   legOrigin?: LatLng | null;
 }) {
   const [otpOpen, setOtpOpen] = useState(false);
+  const { t } = useDriverLang();
   const stage = getDeliveryStage(d);
   const cases = useStore((s) => s.cases);
   const kase = cases.find((c) => c.bagId === d.bagId);
@@ -428,11 +429,11 @@ function DeliveryCard({
         <div className="flex items-center gap-2">
           {isCurrent && (
             <span className="text-[11px] px-2 py-0.5 rounded-full font-semibold bg-primary text-primary-foreground">
-              Current stop
+              {t.currentStop}
             </span>
           )}
           <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${priorityTone[d.priority]}`}>
-            {d.priority}
+            {t.priority(d.priority)}
           </span>
         </div>
       </div>
@@ -448,7 +449,7 @@ function DeliveryCard({
             rel="noreferrer"
             className="inline-flex items-center gap-1.5 h-9 px-3 rounded-md border border-input bg-background text-sm font-medium hover:bg-muted"
           >
-            <Navigation className="h-4 w-4" /> Navigate to Stop
+            <Navigation className="h-4 w-4" /> {t.navigateToStop}
           </a>
         )}
         {stage === "Assigned" && (
@@ -456,11 +457,11 @@ function DeliveryCard({
             size="sm"
             onClick={() => {
               driverAccept(d.deliveryId, { actor: d.driver, role: "Driver" });
-              toast.success(`${d.deliveryId} — Accepted`);
+              toast.success(t.acceptedToast(d.deliveryId));
             }}
             className="gap-1.5"
           >
-            <UserCheck className="h-4 w-4" /> Accept
+            <UserCheck className="h-4 w-4" /> {t.accept}
           </Button>
         )}
         {stage === "Driver Accepted" && (
@@ -468,11 +469,11 @@ function DeliveryCard({
             size="sm"
             onClick={() => {
               driverCollect(d.deliveryId, { actor: d.driver, role: "Driver" });
-              toast.success(`${d.deliveryId} — Bag Collected`);
+              toast.success(t.collectedToast(d.deliveryId));
             }}
             className="gap-1.5"
           >
-            <Package className="h-4 w-4" /> Collect Bag
+            <Package className="h-4 w-4" /> {t.collectBag}
           </Button>
         )}
         {stage === "Collected Bag" && (
@@ -480,18 +481,18 @@ function DeliveryCard({
             size="sm"
             onClick={() => {
               driverStartTrip(d.deliveryId, { actor: d.driver, role: "Driver" });
-              toast.success(`${d.deliveryId} — Out for Delivery`);
+              toast.success(t.outForDeliveryToast(d.deliveryId));
             }}
             className="gap-1.5"
           >
-            <Truck className="h-4 w-4" /> Start Delivery
+            <Truck className="h-4 w-4" /> {t.startDelivery}
           </Button>
         )}
         {stage === "Out for Delivery" && (
           <Dialog open={otpOpen} onOpenChange={setOtpOpen}>
             <DialogTrigger asChild>
               <Button size="sm" variant="default" className="gap-1.5">
-                <PackageCheck className="h-4 w-4" /> Complete with OTP
+                <PackageCheck className="h-4 w-4" /> {t.completeWithOtp}
               </Button>
             </DialogTrigger>
             <OtpDialog d={d} onClose={() => setOtpOpen(false)} />
@@ -499,7 +500,7 @@ function DeliveryCard({
         )}
         {stage === "Delivered" && (
           <span className="inline-flex items-center gap-1.5 text-xs text-emerald-700 font-medium">
-            <CheckCircle2 className="h-4 w-4" /> Delivered
+            <CheckCircle2 className="h-4 w-4" /> {t.deliveredBadge}
           </span>
         )}
       </div>
@@ -509,37 +510,40 @@ function DeliveryCard({
 
 function OtpDialog({ d, onClose }: { d: Delivery; onClose: () => void }) {
   const [code, setCode] = useState("");
+  const { t, dir, lang } = useDriverLang();
   return (
-    <DialogContent className="max-w-sm">
+    <DialogContent className="max-w-sm" dir={dir} lang={lang}>
       <DialogHeader>
-        <DialogTitle>Verify OTP</DialogTitle>
+        <DialogTitle>{t.verifyOtp}</DialogTitle>
       </DialogHeader>
       <form
         onSubmit={(e) => {
           e.preventDefault();
           if (code.trim() === d.otpCode) {
             driverMarkDelivered(d.deliveryId, { actor: d.driver, role: "Driver" });
-            toast.success(`Delivered · OTP verified`);
+            toast.success(t.deliveredToast);
             onClose();
           } else {
-            toast.error("Invalid OTP");
+            toast.error(t.invalidOtp);
           }
         }}
         className="space-y-3"
       >
         <p className="text-sm text-muted-foreground">
-          Ask the passenger for the OTP shown in their Passenger Portal.
+          {t.otpHint}
         </p>
         <Input
           value={code}
           onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
           maxLength={4}
           inputMode="numeric"
-          placeholder="4-digit code"
+          placeholder={t.otpPlaceholder}
+          dir="ltr"
+          className="text-center tabular-nums"
         />
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-          <Button type="submit">Confirm</Button>
+          <Button type="button" variant="outline" onClick={onClose}>{t.cancel}</Button>
+          <Button type="submit">{t.confirm}</Button>
         </DialogFooter>
       </form>
     </DialogContent>
