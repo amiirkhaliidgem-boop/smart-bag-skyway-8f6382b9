@@ -42,6 +42,11 @@ import {
   UserCheck,
 } from "lucide-react";
 import { toast } from "sonner";
+import {
+  DriverLanguageProvider,
+  LanguageToggle,
+  useDriverLang,
+} from "@/lib/i18n/driver-language";
 
 export const Route = createFileRoute("/driver-portal")({
   head: () => ({ meta: [{ title: "Driver Portal — Smart Baggage Ecosystem" }] }),
@@ -49,12 +54,26 @@ export const Route = createFileRoute("/driver-portal")({
 });
 
 function DriverPortalPage() {
+  return (
+    <DriverLanguageProvider>
+      <DriverPortalBody />
+    </DriverLanguageProvider>
+  );
+}
+
+function DriverPortalBody() {
   const [signedIn, setSignedIn] = useState(false);
   const [driver, setDriver] = useState(driverPool[0]);
-  if (!signedIn) {
-    return <DriverLogin driver={driver} setDriver={setDriver} onSignIn={() => setSignedIn(true)} />;
-  }
-  return <DriverDashboard driver={driver} onSignOut={() => setSignedIn(false)} />;
+  const { dir, lang } = useDriverLang();
+  return (
+    <div dir={dir} lang={lang}>
+      {!signedIn ? (
+        <DriverLogin driver={driver} setDriver={setDriver} onSignIn={() => setSignedIn(true)} />
+      ) : (
+        <DriverDashboard driver={driver} onSignOut={() => setSignedIn(false)} />
+      )}
+    </div>
+  );
 }
 
 function DriverLogin({
@@ -67,17 +86,19 @@ function DriverLogin({
   onSignIn: () => void;
 }) {
   const [pin, setPin] = useState("");
+  const { t } = useDriverLang();
   return (
     <div className="max-w-md mx-auto pt-8">
       <Card>
         <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <Truck className="h-4 w-4" /> Driver Sign In
+          <CardTitle className="text-base flex flex-wrap items-center gap-2">
+            <Truck className="h-4 w-4" /> {t.signInTitle}
+            <LanguageToggle className="ms-auto" />
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-1.5">
-            <Label>Driver</Label>
+            <Label>{t.driverLabel}</Label>
             <select
               className="h-10 w-full rounded-md border border-input bg-background px-2 text-sm"
               value={driver}
@@ -89,12 +110,12 @@ function DriverLogin({
             </select>
           </div>
           <div className="space-y-1.5">
-            <Label>PIN</Label>
+            <Label>{t.pinLabel}</Label>
             <Input
               type="password"
               value={pin}
               onChange={(e) => setPin(e.target.value)}
-              placeholder="Demo PIN: 1234"
+              placeholder={t.pinPlaceholder}
               maxLength={4}
             />
           </div>
@@ -102,14 +123,14 @@ function DriverLogin({
             className="w-full"
             onClick={() => {
               if (pin !== "1234") {
-                toast.error("Invalid PIN — demo uses 1234");
+                toast.error(t.invalidPin);
                 return;
               }
               onSignIn();
-              toast.success(`Welcome, ${driver}`);
+              toast.success(t.welcome(driver));
             }}
           >
-            Sign In
+            {t.signInAction}
           </Button>
         </CardContent>
       </Card>
@@ -118,6 +139,7 @@ function DriverLogin({
 }
 
 function DriverDashboard({ driver, onSignOut }: { driver: string; onSignOut: () => void }) {
+  const { t } = useDriverLang();
   // Route optimization is owned by the Workflow Engine (see
   // `computeDriverRoute` in src/lib/store.ts). The Driver Portal only
   // reads `driverRoutes[driver]` and reports live GPS back to the engine.
@@ -182,25 +204,28 @@ function DriverDashboard({ driver, onSignOut }: { driver: string; onSignOut: () 
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Driver Portal</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{t.portalTitle}</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Signed in as <span className="font-medium text-foreground">{driver}</span>
+            {t.signedInAs} <span className="font-medium text-foreground">{driver}</span>
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={onSignOut} className="gap-2">
-          <LogOut className="h-4 w-4" /> Sign Out
-        </Button>
+        <div className="flex items-center gap-2">
+          <LanguageToggle />
+          <Button variant="outline" size="sm" onClick={onSignOut} className="gap-2">
+            <LogOut className="h-4 w-4" /> {t.signOut}
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-3 gap-4">
-        <Kpi label="Stops Today" value={route.length} icon={<Package />} tone="indigo" />
+        <Kpi label={t.stopsToday} value={route.length} icon={<Package />} tone="indigo" />
         <Kpi
-          label="Out for Delivery"
+          label={t.outForDelivery}
           value={route.filter((d) => getDeliveryStage(d) === "Out for Delivery").length}
           icon={<Truck />}
           tone="primary"
         />
-        <Kpi label="Completed" value={completed.length} icon={<CheckCircle2 />} tone="emerald" />
+        <Kpi label={t.completed} value={completed.length} icon={<CheckCircle2 />} tone="emerald" />
       </div>
 
       <RouteSection
@@ -209,7 +234,7 @@ function DriverDashboard({ driver, onSignOut }: { driver: string; onSignOut: () 
         originSource={originSource}
         gpsStatus={gpsStatus}
       />
-      <Section title="Completed" items={completed} empty="No deliveries completed yet." />
+      <Section title={t.completed} items={completed} empty={t.noCompleted} />
     </div>
   );
 }
@@ -256,45 +281,46 @@ function RouteSection({
   originSource: "gps" | "lastStop" | "station" | null;
   gpsStatus: "idle" | "requesting" | "on" | "denied" | "unsupported" | "error";
 }) {
+  const { t } = useDriverLang();
   const fullRouteHref = origin ? routeNavigationHref(origin, route) : null;
   const originLabel =
     originSource === "gps"
-      ? "Live GPS"
+      ? t.originGps
       : originSource === "lastStop"
-        ? "Last completed stop"
+        ? t.originLastStop
         : originSource === "station"
-          ? "Station (no GPS yet)"
-          : "—";
+          ? t.originStation
+          : t.originUnknown;
   const gpsBadge =
     gpsStatus === "on"
-      ? { text: "GPS on", tone: "bg-emerald-100 text-emerald-700" }
+      ? { text: t.gpsOn, tone: "bg-emerald-100 text-emerald-700" }
       : gpsStatus === "requesting"
-        ? { text: "Locating…", tone: "bg-amber-100 text-amber-700" }
+        ? { text: t.gpsLocating, tone: "bg-amber-100 text-amber-700" }
         : gpsStatus === "denied"
-          ? { text: "Location off", tone: "bg-slate-100 text-slate-600" }
+          ? { text: t.gpsDenied, tone: "bg-slate-100 text-slate-600" }
           : gpsStatus === "unsupported"
-            ? { text: "GPS unsupported", tone: "bg-slate-100 text-slate-600" }
+            ? { text: t.gpsUnsupported, tone: "bg-slate-100 text-slate-600" }
             : gpsStatus === "error"
-              ? { text: "GPS error", tone: "bg-rose-100 text-rose-700" }
-              : { text: "GPS idle", tone: "bg-slate-100 text-slate-600" };
+              ? { text: t.gpsError, tone: "bg-rose-100 text-rose-700" }
+              : { text: t.gpsIdle, tone: "bg-slate-100 text-slate-600" };
   return (
     <Card>
       <CardHeader>
         <CardTitle className="text-base flex flex-wrap items-center gap-2">
-          <Navigation className="h-4 w-4" /> Today's Route
+          <Navigation className="h-4 w-4" /> {t.todaysRoute}
           <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${gpsBadge.tone}`}>
-            <Crosshair className="inline h-3 w-3 mr-1" />
+            <Crosshair className="inline h-3 w-3 me-1" />
             {gpsBadge.text}
           </span>
-          <span className="ml-auto text-xs font-normal text-muted-foreground">
-            {route.length} {route.length === 1 ? "stop" : "stops"} · from {originLabel}
+          <span className="ms-auto text-xs font-normal text-muted-foreground">
+            {t.stopsCount(route.length)} · {t.fromOrigin(originLabel)}
           </span>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         {route.length === 0 && (
           <p className="text-sm text-muted-foreground text-center py-6">
-            No stops assigned. New deliveries will appear here automatically.
+            {t.noStops}
           </p>
         )}
         {route.length > 0 && fullRouteHref && (
@@ -304,7 +330,7 @@ function RouteSection({
             rel="noreferrer"
             className="inline-flex items-center gap-1.5 h-9 px-3 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90"
           >
-            <RouteIcon className="h-4 w-4" /> Navigate Full Route
+            <RouteIcon className="h-4 w-4" /> {t.navigateFullRoute}
           </a>
         )}
         {route.map((d, i) => (
@@ -363,6 +389,7 @@ function DeliveryCard({
   legOrigin?: LatLng | null;
 }) {
   const [otpOpen, setOtpOpen] = useState(false);
+  const { t } = useDriverLang();
   const stage = getDeliveryStage(d);
   const cases = useStore((s) => s.cases);
   const kase = cases.find((c) => c.bagId === d.bagId);
@@ -394,7 +421,7 @@ function DeliveryCard({
           )}
           <div className="min-w-0">
             <p className="font-semibold">{d.passengerName}</p>
-          <p className="text-xs font-mono text-muted-foreground">
+          <p className="text-xs font-mono text-muted-foreground" dir="ltr">
               {d.deliveryId} · PIR {d.pirNumber} · Tag {bagTag}
           </p>
           </div>
@@ -402,17 +429,17 @@ function DeliveryCard({
         <div className="flex items-center gap-2">
           {isCurrent && (
             <span className="text-[11px] px-2 py-0.5 rounded-full font-semibold bg-primary text-primary-foreground">
-              Current stop
+              {t.currentStop}
             </span>
           )}
           <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${priorityTone[d.priority]}`}>
-            {d.priority}
+            {t.priority(d.priority)}
           </span>
         </div>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3 text-sm">
         <p className="flex items-start gap-2"><MapPin className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />{d.address}</p>
-        <p className="flex items-center gap-2"><Phone className="h-4 w-4 text-muted-foreground" />{d.mobile}</p>
+        <p className="flex items-center gap-2"><Phone className="h-4 w-4 text-muted-foreground" /><span dir="ltr">{d.mobile}</span></p>
       </div>
       <div className="flex flex-wrap gap-2 mt-3">
         {legOrigin && (
@@ -422,7 +449,7 @@ function DeliveryCard({
             rel="noreferrer"
             className="inline-flex items-center gap-1.5 h-9 px-3 rounded-md border border-input bg-background text-sm font-medium hover:bg-muted"
           >
-            <Navigation className="h-4 w-4" /> Navigate to Stop
+            <Navigation className="h-4 w-4" /> {t.navigateToStop}
           </a>
         )}
         {stage === "Assigned" && (
@@ -430,11 +457,11 @@ function DeliveryCard({
             size="sm"
             onClick={() => {
               driverAccept(d.deliveryId, { actor: d.driver, role: "Driver" });
-              toast.success(`${d.deliveryId} — Accepted`);
+              toast.success(t.acceptedToast(d.deliveryId));
             }}
             className="gap-1.5"
           >
-            <UserCheck className="h-4 w-4" /> Accept
+            <UserCheck className="h-4 w-4" /> {t.accept}
           </Button>
         )}
         {stage === "Driver Accepted" && (
@@ -442,11 +469,11 @@ function DeliveryCard({
             size="sm"
             onClick={() => {
               driverCollect(d.deliveryId, { actor: d.driver, role: "Driver" });
-              toast.success(`${d.deliveryId} — Bag Collected`);
+              toast.success(t.collectedToast(d.deliveryId));
             }}
             className="gap-1.5"
           >
-            <Package className="h-4 w-4" /> Collect Bag
+            <Package className="h-4 w-4" /> {t.collectBag}
           </Button>
         )}
         {stage === "Collected Bag" && (
@@ -454,18 +481,18 @@ function DeliveryCard({
             size="sm"
             onClick={() => {
               driverStartTrip(d.deliveryId, { actor: d.driver, role: "Driver" });
-              toast.success(`${d.deliveryId} — Out for Delivery`);
+              toast.success(t.outForDeliveryToast(d.deliveryId));
             }}
             className="gap-1.5"
           >
-            <Truck className="h-4 w-4" /> Start Delivery
+            <Truck className="h-4 w-4" /> {t.startDelivery}
           </Button>
         )}
         {stage === "Out for Delivery" && (
           <Dialog open={otpOpen} onOpenChange={setOtpOpen}>
             <DialogTrigger asChild>
               <Button size="sm" variant="default" className="gap-1.5">
-                <PackageCheck className="h-4 w-4" /> Complete with OTP
+                <PackageCheck className="h-4 w-4" /> {t.completeWithOtp}
               </Button>
             </DialogTrigger>
             <OtpDialog d={d} onClose={() => setOtpOpen(false)} />
@@ -473,7 +500,7 @@ function DeliveryCard({
         )}
         {stage === "Delivered" && (
           <span className="inline-flex items-center gap-1.5 text-xs text-emerald-700 font-medium">
-            <CheckCircle2 className="h-4 w-4" /> Delivered
+            <CheckCircle2 className="h-4 w-4" /> {t.deliveredBadge}
           </span>
         )}
       </div>
@@ -483,37 +510,40 @@ function DeliveryCard({
 
 function OtpDialog({ d, onClose }: { d: Delivery; onClose: () => void }) {
   const [code, setCode] = useState("");
+  const { t, dir, lang } = useDriverLang();
   return (
-    <DialogContent className="max-w-sm">
+    <DialogContent className="max-w-sm" dir={dir} lang={lang}>
       <DialogHeader>
-        <DialogTitle>Verify OTP</DialogTitle>
+        <DialogTitle>{t.verifyOtp}</DialogTitle>
       </DialogHeader>
       <form
         onSubmit={(e) => {
           e.preventDefault();
           if (code.trim() === d.otpCode) {
             driverMarkDelivered(d.deliveryId, { actor: d.driver, role: "Driver" });
-            toast.success(`Delivered · OTP verified`);
+            toast.success(t.deliveredToast);
             onClose();
           } else {
-            toast.error("Invalid OTP");
+            toast.error(t.invalidOtp);
           }
         }}
         className="space-y-3"
       >
         <p className="text-sm text-muted-foreground">
-          Ask the passenger for the OTP shown in their Passenger Portal.
+          {t.otpHint}
         </p>
         <Input
           value={code}
           onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
           maxLength={4}
           inputMode="numeric"
-          placeholder="4-digit code"
+          placeholder={t.otpPlaceholder}
+          dir="ltr"
+          className="text-center tabular-nums"
         />
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-          <Button type="submit">Confirm</Button>
+          <Button type="button" variant="outline" onClick={onClose}>{t.cancel}</Button>
+          <Button type="submit">{t.confirm}</Button>
         </DialogFooter>
       </form>
     </DialogContent>
