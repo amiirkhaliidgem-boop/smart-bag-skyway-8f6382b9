@@ -163,7 +163,6 @@ function FeedbackPage() {
   const today = filtered.filter(
     (f) => new Date(f.at).toDateString() === new Date().toDateString(),
   ).length;
-  const detractors = filtered.filter((f) => f.rating <= 2).length;
 
   const allSelected = filtered.length > 0 && selected.length === filtered.length;
 
@@ -196,12 +195,11 @@ function FeedbackPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Kpi label="Avg Rating" value={`${avg.toFixed(1)}/5`} tone="text-amber-600" />
         <Kpi label="Total Responses" value={total} tone="text-primary" />
         <Kpi label="Issue Resolved" value={`${resolvedPct}%`} tone="text-emerald-600" />
         <Kpi label="Today" value={today} tone="text-primary" />
-        <Kpi label="Detractors (≤2★)" value={detractors} tone="text-rose-600" />
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
@@ -214,19 +212,15 @@ function FeedbackPage() {
             className="pl-8 h-9"
           />
         </div>
-        <Input
-          type="date"
+        <DateFilterInput
           value={from}
-          onChange={(e) => setFrom(e.target.value)}
-          className="h-9 w-[150px]"
-          aria-label="From date"
+          onChange={setFrom}
+          label="From date"
         />
-        <Input
-          type="date"
+        <DateFilterInput
           value={to}
-          onChange={(e) => setTo(e.target.value)}
-          className="h-9 w-[150px]"
-          aria-label="To date"
+          onChange={setTo}
+          label="To date"
         />
         <select
           className="h-9 rounded-md border border-input bg-background px-2 text-sm"
@@ -368,6 +362,32 @@ function Stars({ value }: { value: number }) {
         />
       ))}
     </span>
+  );
+}
+
+function DateFilterInput({
+  value,
+  onChange,
+  label,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  label: string;
+}) {
+  const [type, setType] = useState<"text" | "date">("text");
+  const empty = !value;
+
+  return (
+    <Input
+      type={type}
+      value={value}
+      placeholder={empty ? "__/__/____" : ""}
+      onChange={(e) => onChange(e.target.value)}
+      onFocus={() => setType("date")}
+      onBlur={() => setType(value ? "date" : "text")}
+      className="h-9 w-[150px]"
+      aria-label={label}
+    />
   );
 }
 
