@@ -1,19 +1,24 @@
 ## Current state (verified)
 
-There is no shared date-filter component today. Lost & Found (`src/routes/lost-found.index.tsx:362-377`) and Delivery Management (`src/routes/delivery.index.tsx:280-292`) each render the same inline markup: a `From` / `To` label pair with `<Input type="date" className="h-9 w-[145px]">`, plus a `[&::-webkit-datetime-edit]:text-transparent` class that hides `dd/mm/yyyy` until a date is picked. Feedback (`src/routes/feedback.tsx`) uses a different local `DateFilterInput` that swaps input type on focus and shows a `__/__/____` placeholder.
+- `src/routes/feedback.tsx` holds the whole dashboard inline (`FeedbackPage`, `Stars`, `Kpi`) at route `/feedback`.
+- The sidebar (`src/components/app-shell.tsx`) lists "Customer Feedback" only under **CONTACT CENTER OPERATIONS**.
+- `src/lib/rbac.ts` restricts `/feedback` to `admin` only, while `/tracking` (the shared-module precedent) allows `admin`, `agent`, `coordinator`.
+- Baggage Tracking's pattern: logic lives in `src/components/tracking/track-baggage.tsx`, and `src/routes/tracking.tsx` is a thin route wrapper listed in two sidebar sections.
 
 ## Changes
 
-### 1. Extract the existing pattern into one shared component
-- Add `src/components/filters/date-range-filter.tsx` exporting `DateRangeFilter` with props `from`, `to`, `onFromChange`, `onToChange`.
-- Its markup is copied verbatim from the current Lost & Found implementation, so the rendered result is pixel-identical to today's L&F / Delivery filters.
+### 1. Mirror the Baggage Tracking structure
+- Move the dashboard body into `src/components/feedback/feedback-dashboard.tsx`, exporting `FeedbackDashboard` (includes the `Stars` and `Kpi` helpers).
+- `src/routes/feedback.tsx` keeps its route definition and `head()` metadata and simply renders `<FeedbackDashboard />`.
+- No second route, no duplicated UI.
 
-### 2. Use it in all three modules
-- Feedback: delete the local `DateFilterInput` and render `<DateRangeFilter>` in its place, wired to the existing `from`/`to` state.
-- Lost & Found and Delivery: replace their inline blocks with the same component (no visual change) so there is exactly one implementation.
+### 2. Add the Lost & Found access point
+- In `src/components/app-shell.tsx`, add a "Customer Feedback" item pointing to `/feedback` in the **Baggage Operations** section, alongside the existing Contact Center entry. Both link to the same route.
+
+### 3. Widen access
+- In `src/lib/rbac.ts`, change the `/feedback` rule to allow `admin` and `agent` (Lost & Found officers), matching how `/tracking` was widened.
 
 ## Not touched
-- Filtering logic, state variables, handlers
-- KPIs, reporting, export
-- Workflow / Notification / Delivery / Timeline / Audit engines
-- Database
+- Workflow / Delivery / Notification / Timeline / Audit engines
+- Database schema and the Passenger Portal feedback collection flow
+- Feedback filters, KPIs, table, or export behaviour

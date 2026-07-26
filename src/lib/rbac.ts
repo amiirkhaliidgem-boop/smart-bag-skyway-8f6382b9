@@ -25,7 +25,8 @@ const RULES: { prefix: string; exact?: boolean; roles: AppRole[] }[] = [
   { prefix: "/tracking", roles: ["admin", "agent", "coordinator"] },
   // Admin-only surfaces.
   { prefix: "/contact-center", roles: ["admin"] },
-  { prefix: "/feedback", roles: ["admin"] },
+  // Shared operational surface: opened from Lost & Found and Contact Center.
+  { prefix: "/feedback", roles: ["admin", "agent"] },
   { prefix: "/workflow-monitor", roles: ["admin"] },
   { prefix: "/notifications", roles: ["admin"] },
   { prefix: "/timeline", roles: ["admin"] },
