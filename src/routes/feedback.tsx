@@ -365,6 +365,32 @@ function Stars({ value }: { value: number }) {
   );
 }
 
+function DateFilterInput({
+  value,
+  onChange,
+  label,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  label: string;
+}) {
+  const [type, setType] = useState<"text" | "date">("text");
+  const empty = !value;
+
+  return (
+    <Input
+      type={type}
+      value={value}
+      placeholder={empty ? "__/__/____" : ""}
+      onChange={(e) => onChange(e.target.value)}
+      onFocus={() => setType("date")}
+      onBlur={() => setType(value ? "date" : "text")}
+      className="h-9 w-[150px]"
+      aria-label={label}
+    />
+  );
+}
+
 function Kpi({ label, value, tone }: { label: string; value: string | number; tone: string }) {
   return (
     <Card>
