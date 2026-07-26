@@ -80,7 +80,7 @@ interface TimelineEvent {
 }
 
 const MODULE_STYLES: Record<ModuleSource, { badge: string; ring: string; dot: string }> = {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+*** PLACEHOLDER ***
   Workflow: {
     badge: "bg-primary/10 text-primary border-primary/20",
     ring: "ring-primary/30",
