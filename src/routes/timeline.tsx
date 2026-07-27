@@ -294,8 +294,7 @@ function buildEvents(
         at: h.at,
         title: `Lost & Found · ${lfStatusLabel(h.status)}`,
         description:
-          h.note?.trim() ||
-          `Case ${c.bagId} moved to ${lfStatusLabel(h.status)} in Lost & Found.`,
+          h.note?.trim() || `Case ${c.bagId} moved to ${lfStatusLabel(h.status)} in Lost & Found.`,
         user: h.actor || "Lost & Found Desk",
         role: "Lost & Found Agent",
         module: "LostFound",
@@ -582,27 +581,14 @@ function TimelinePage() {
         callLogs,
         ioAudit,
       ),
-    [
-      cases,
-      deliveries,
-      workflow,
-      notifications,
-      feedback,
-      incidents,
-      audit,
-      callLogs,
-      ioAudit,
-    ],
+    [cases, deliveries, workflow, notifications, feedback, incidents, audit, callLogs, ioAudit],
   );
 
   const drivers = useMemo(
     () => Array.from(new Set(deliveries.map((d) => d.driver).filter((x) => x && x !== "—"))),
     [deliveries],
   );
-  const employees = useMemo(
-    () => Array.from(new Set(events.map((e) => e.user))).sort(),
-    [events],
-  );
+  const employees = useMemo(() => Array.from(new Set(events.map((e) => e.user))).sort(), [events]);
 
   // Universal reference index — lets the global Search box resolve an event
   // by any operational reference (bag tag, PNR, tracking token, …).
@@ -611,13 +597,7 @@ function TimelinePage() {
     for (const c of cases) {
       caseRefs.set(
         c.bagId,
-        [
-          c.bagTagNumber,
-          ...(c.baggage?.bagTags ?? []),
-          c.passenger?.pnr,
-          c.flightNumber,
-          c.contact,
-        ]
+        [c.bagTagNumber, ...(c.baggage?.bagTags ?? []), c.passenger?.pnr, c.flightNumber, c.contact]
           .filter(Boolean)
           .join(" ")
           .toLowerCase(),
@@ -712,10 +692,30 @@ function TimelinePage() {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <KpiCard icon={Activity} label="Events (filtered)" value={kpis.total} tone="text-primary bg-primary/10" />
-        <KpiCard icon={Truck} label="Workflow Transitions" value={kpis.workflow} tone="text-cyan-700 bg-cyan-100" />
-        <KpiCard icon={Bell} label="Notifications" value={kpis.notifications} tone="text-sky-700 bg-sky-100" />
-        <KpiCard icon={AlertTriangle} label="Quality Incidents" value={kpis.quality} tone="text-rose-700 bg-rose-100" />
+        <KpiCard
+          icon={Activity}
+          label="Events (filtered)"
+          value={kpis.total}
+          tone="text-primary bg-primary/10"
+        />
+        <KpiCard
+          icon={Truck}
+          label="Workflow Transitions"
+          value={kpis.workflow}
+          tone="text-cyan-700 bg-cyan-100"
+        />
+        <KpiCard
+          icon={Bell}
+          label="Notifications"
+          value={kpis.notifications}
+          tone="text-sky-700 bg-sky-100"
+        />
+        <KpiCard
+          icon={AlertTriangle}
+          label="Quality Incidents"
+          value={kpis.quality}
+          tone="text-rose-700 bg-rose-100"
+        />
       </div>
 
       <Card>
@@ -773,10 +773,7 @@ function TimelinePage() {
             label="Employee"
             value={fEmployee}
             onChange={setFEmployee}
-            options={[
-              { v: "all", l: "All employees" },
-              ...employees.map((e) => ({ v: e, l: e })),
-            ]}
+            options={[{ v: "all", l: "All employees" }, ...employees.map((e) => ({ v: e, l: e }))]}
           />
           <FieldSelect
             label="Delivery Agent"
@@ -824,9 +821,7 @@ function TimelinePage() {
                         onClick={() => setSelected(e)}
                         className={cn(
                           "w-full text-left rounded-lg border p-3 transition-colors bg-card hover:bg-muted/40",
-                          isSel
-                            ? "border-primary/50 ring-2 " + styles.ring
-                            : "border-border",
+                          isSel ? "border-primary/50 ring-2 " + styles.ring : "border-border",
                         )}
                       >
                         <div className="flex flex-wrap items-center gap-2 mb-1">
@@ -983,9 +978,7 @@ function DetailPanel({
       (event.bagId && q.bagId === event.bagId) ||
       (event.deliveryId && q.deliveryId === event.deliveryId),
   );
-  const relAudit = audit.filter(
-    (a) => event.deliveryId && a.entityId === event.deliveryId,
-  );
+  const relAudit = audit.filter((a) => event.deliveryId && a.entityId === event.deliveryId);
 
   return (
     <Card className="h-fit sticky top-20">
