@@ -151,7 +151,9 @@ export function ContactCenterFull() {
                   <tbody className="divide-y divide-border">
                     {calls.map((c) => (
                       <tr key={c.id} className="hover:bg-muted/40">
-                        <td className="px-4 py-3"><DirectionBadge dir={c.direction} /></td>
+                        <td className="px-4 py-3">
+                          <DirectionBadge dir={c.direction} />
+                        </td>
                         <td className="px-4 py-3">{c.passengerName}</td>
                         <td className="px-4 py-3 font-mono text-xs">{c.phone}</td>
                         <td className="px-4 py-3 font-mono text-xs">{c.pirNumber ?? "—"}</td>
@@ -161,7 +163,9 @@ export function ContactCenterFull() {
                             ? `${Math.floor(c.durationSec / 60)}:${String(c.durationSec % 60).padStart(2, "0")}`
                             : "—"}
                         </td>
-                        <td className="px-4 py-3 text-xs text-muted-foreground max-w-md">{c.notes}</td>
+                        <td className="px-4 py-3 text-xs text-muted-foreground max-w-md">
+                          {c.notes}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -236,8 +240,8 @@ export function ContactCenterFull() {
             <CardContent className="p-0">
               {incidents.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-10">
-                  No quality incidents reported. Passenger-flagged issues from the
-                  Passenger Portal will appear here.
+                  No quality incidents reported. Passenger-flagged issues from the Passenger Portal
+                  will appear here.
                 </p>
               ) : (
                 <div className="overflow-x-auto">
@@ -300,22 +304,24 @@ export function ContactCenterFull() {
             </CardHeader>
             <CardContent>
               <ol className="relative border-l-2 border-border pl-5 space-y-5">
-                {[...calls.map((c) => ({
-                  at: c.at,
-                  kind: "call" as const,
-                  title: `${c.direction} call · ${c.passengerName}`,
-                  detail: c.notes,
-                  agent: c.agent,
-                })),
-                ...whatsapp.flatMap((w) =>
-                  w.thread.map((t) => ({
-                    at: t.at,
-                    kind: "wa" as const,
-                    title: `WhatsApp · ${w.passengerName} (${t.from})`,
-                    detail: t.text,
-                    agent: t.from === "Agent" ? "Agent" : "—",
+                {[
+                  ...calls.map((c) => ({
+                    at: c.at,
+                    kind: "call" as const,
+                    title: `${c.direction} call · ${c.passengerName}`,
+                    detail: c.notes,
+                    agent: c.agent,
                   })),
-                )]
+                  ...whatsapp.flatMap((w) =>
+                    w.thread.map((t) => ({
+                      at: t.at,
+                      kind: "wa" as const,
+                      title: `WhatsApp · ${w.passengerName} (${t.from})`,
+                      detail: t.text,
+                      agent: t.from === "Agent" ? "Agent" : "—",
+                    })),
+                  ),
+                ]
                   .sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime())
                   .map((e, i) => (
                     <li key={i} className="relative">
@@ -349,7 +355,9 @@ function DirectionBadge({ dir }: { dir: string }) {
   };
   const { c, Icon } = map[dir] ?? map.Inbound;
   return (
-    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium ${c}`}>
+    <span
+      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium ${c}`}
+    >
       <Icon className="h-3 w-3" /> {dir}
     </span>
   );
@@ -415,7 +423,10 @@ function WhatsAppView({ conversations }: { conversations: WhatsAppMessage[] }) {
                           t.from === "Agent" ? "text-white/70" : "text-muted-foreground"
                         }`}
                       >
-                        {new Date(t.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                        {new Date(t.at).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
                       </p>
                     </div>
                   ))}
@@ -460,7 +471,8 @@ function ConversationsView(p: ConversationsProps) {
         if (statusFilter === "closed" && x.c.status !== "Delivered") return false;
         if (q) {
           const s = q.toLowerCase();
-          const hay = `${x.c.passengerName} ${x.c.pirNumber} ${x.c.bagId} ${x.del?.deliveryId ?? ""} ${x.c.contact}`.toLowerCase();
+          const hay =
+            `${x.c.passengerName} ${x.c.pirNumber} ${x.c.bagId} ${x.del?.deliveryId ?? ""} ${x.c.contact}`.toLowerCase();
           if (!hay.includes(s)) return false;
         }
         return true;
@@ -473,7 +485,9 @@ function ConversationsView(p: ConversationsProps) {
   const relatedNotifications = active
     ? p.notifications.filter((n) => active.del && n.deliveryId === active.del.deliveryId)
     : [];
-  const relatedCalls = active ? p.calls.filter((c) => c.bagId === active.c.bagId || c.pirNumber === active.c.pirNumber) : [];
+  const relatedCalls = active
+    ? p.calls.filter((c) => c.bagId === active.c.bagId || c.pirNumber === active.c.pirNumber)
+    : [];
   const relatedWa = active ? p.whatsapp.filter((w) => w.pirNumber === active.c.pirNumber) : [];
   const relatedFeedback = active ? p.feedback.filter((f) => f.bagId === active.c.bagId) : [];
   const relatedIncidents = active ? p.incidents.filter((i) => i.bagId === active.c.bagId) : [];
@@ -481,7 +495,9 @@ function ConversationsView(p: ConversationsProps) {
     ? p.audit.filter((a) => a.entityId === active.del?.deliveryId || a.entityId === active.c.bagId)
     : [];
 
-  const trackingUrl = active?.wf ? `${typeof window !== "undefined" ? window.location.origin : ""}/passenger/${active.wf.token}` : "";
+  const trackingUrl = active?.wf
+    ? `${typeof window !== "undefined" ? window.location.origin : ""}/passenger/${active.wf.token}`
+    : "";
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -491,7 +507,12 @@ function ConversationsView(p: ConversationsProps) {
           <div className="flex items-center gap-2 mt-2">
             <div className="relative flex-1">
               <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-              <Input className="pl-7 h-8" placeholder="Search passenger, PIR, delivery…" value={q} onChange={(e) => setQ(e.target.value)} />
+              <Input
+                className="pl-7 h-8"
+                placeholder="Search passenger, PIR, delivery…"
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+              />
             </div>
           </div>
           <div className="flex gap-1 mt-2">
@@ -507,7 +528,9 @@ function ConversationsView(p: ConversationsProps) {
           </div>
         </CardHeader>
         <CardContent className="p-0 max-h-[560px] overflow-y-auto">
-          {items.length === 0 && <p className="text-sm text-muted-foreground p-6 text-center">No matching cases.</p>}
+          {items.length === 0 && (
+            <p className="text-sm text-muted-foreground p-6 text-center">No matching cases.</p>
+          )}
           {items.map(({ c, del, wf }) => (
             <button
               key={c.bagId}
@@ -516,10 +539,18 @@ function ConversationsView(p: ConversationsProps) {
             >
               <div className="flex items-center justify-between gap-2">
                 <p className="font-medium text-sm truncate">{c.passengerName}</p>
-                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${c.status === "Delivered" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>{c.status}</span>
+                <span
+                  className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${c.status === "Delivered" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}
+                >
+                  {c.status}
+                </span>
               </div>
-              <p className="text-[11px] text-muted-foreground font-mono">PIR {c.pirNumber} · {del?.deliveryId ?? c.bagId}</p>
-              <p className="text-[11px] text-muted-foreground mt-0.5">{wf ? WORKFLOW_LABELS[wf.status].en : c.status}</p>
+              <p className="text-[11px] text-muted-foreground font-mono">
+                PIR {c.pirNumber} · {del?.deliveryId ?? c.bagId}
+              </p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                {wf ? WORKFLOW_LABELS[wf.status].en : c.status}
+              </p>
             </button>
           ))}
         </CardContent>
@@ -527,25 +558,136 @@ function ConversationsView(p: ConversationsProps) {
 
       <Card className="lg:col-span-2">
         {!active ? (
-          <CardContent className="p-10 text-center text-sm text-muted-foreground">Select a conversation.</CardContent>
+          <CardContent className="p-10 text-center text-sm text-muted-foreground">
+            Select a conversation.
+          </CardContent>
         ) : (
           <CardContent className="p-5 space-y-5">
             {/* Passenger profile */}
             <div className="flex flex-wrap items-start gap-4 justify-between">
               <div>
                 <p className="text-lg font-semibold">{active.c.passengerName}</p>
-                <p className="text-xs text-muted-foreground">Flight {active.c.flightNumber} · Arrived {active.c.arrivalDate}</p>
+                <p className="text-xs text-muted-foreground">
+                  Flight {active.c.flightNumber} · Arrived {active.c.arrivalDate}
+                </p>
               </div>
               <div className="flex flex-wrap gap-2">
-                <Button size="sm" variant="secondary" onClick={() => { addCallLog({ passengerName: active.c.passengerName, phone: active.c.contact, agent: "Contact Center", direction: "Outbound", durationSec: 0, notes: "Manual call initiated", pirNumber: active.c.pirNumber, bagId: active.c.bagId }); toast.success("Call logged"); }}><PhoneCall className="h-3.5 w-3.5 mr-1" />Call</Button>
-                <Button size="sm" variant="secondary" onClick={() => { if (active.del) { createTestNotification({ deliveryId: active.del.deliveryId, channel: "sms", operator: "Contact Center" }); toast.success("SMS queued"); } }}><Send className="h-3.5 w-3.5 mr-1" />SMS</Button>
-                <Button size="sm" variant="secondary" onClick={() => { if (active.del) { createTestNotification({ deliveryId: active.del.deliveryId, channel: "whatsapp", operator: "Contact Center" }); toast.success("WhatsApp queued"); } }}><MessageCircle className="h-3.5 w-3.5 mr-1" />WhatsApp</Button>
-                <Button size="sm" variant="secondary" onClick={() => { if (active.del) { createTestNotification({ deliveryId: active.del.deliveryId, channel: "email", operator: "Contact Center" }); toast.success("Email queued"); } }}><Mail className="h-3.5 w-3.5 mr-1" />Email</Button>
-                {trackingUrl && <Button size="sm" variant="secondary" onClick={() => { navigator.clipboard?.writeText(trackingUrl); toast.success("Tracking link copied"); }}><Copy className="h-3.5 w-3.5 mr-1" />Copy Link</Button>}
-                <Button size="sm" variant="secondary" onClick={() => toast.success("New tracking link generated")}><RefreshCw className="h-3.5 w-3.5 mr-1" />New Link</Button>
-                <Button size="sm" variant="secondary" onClick={() => toast.success("OTP resent to passenger")}><ShieldCheck className="h-3.5 w-3.5 mr-1" />Resend OTP</Button>
-                <Button size="sm" variant="secondary" onClick={() => toast.info("Escalated to supervisor")}><ArrowUpRight className="h-3.5 w-3.5 mr-1" />Escalate</Button>
-                <Button size="sm" variant="secondary" onClick={() => toast.success("Employee assigned")}><UserPlus className="h-3.5 w-3.5 mr-1" />Assign</Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => {
+                    addCallLog({
+                      passengerName: active.c.passengerName,
+                      phone: active.c.contact,
+                      agent: "Contact Center",
+                      direction: "Outbound",
+                      durationSec: 0,
+                      notes: "Manual call initiated",
+                      pirNumber: active.c.pirNumber,
+                      bagId: active.c.bagId,
+                    });
+                    toast.success("Call logged");
+                  }}
+                >
+                  <PhoneCall className="h-3.5 w-3.5 mr-1" />
+                  Call
+                </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => {
+                    if (active.del) {
+                      createTestNotification({
+                        deliveryId: active.del.deliveryId,
+                        channel: "sms",
+                        operator: "Contact Center",
+                      });
+                      toast.success("SMS queued");
+                    }
+                  }}
+                >
+                  <Send className="h-3.5 w-3.5 mr-1" />
+                  SMS
+                </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => {
+                    if (active.del) {
+                      createTestNotification({
+                        deliveryId: active.del.deliveryId,
+                        channel: "whatsapp",
+                        operator: "Contact Center",
+                      });
+                      toast.success("WhatsApp queued");
+                    }
+                  }}
+                >
+                  <MessageCircle className="h-3.5 w-3.5 mr-1" />
+                  WhatsApp
+                </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => {
+                    if (active.del) {
+                      createTestNotification({
+                        deliveryId: active.del.deliveryId,
+                        channel: "email",
+                        operator: "Contact Center",
+                      });
+                      toast.success("Email queued");
+                    }
+                  }}
+                >
+                  <Mail className="h-3.5 w-3.5 mr-1" />
+                  Email
+                </Button>
+                {trackingUrl && (
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => {
+                      navigator.clipboard?.writeText(trackingUrl);
+                      toast.success("Tracking link copied");
+                    }}
+                  >
+                    <Copy className="h-3.5 w-3.5 mr-1" />
+                    Copy Link
+                  </Button>
+                )}
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => toast.success("New tracking link generated")}
+                >
+                  <RefreshCw className="h-3.5 w-3.5 mr-1" />
+                  New Link
+                </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => toast.success("OTP resent to passenger")}
+                >
+                  <ShieldCheck className="h-3.5 w-3.5 mr-1" />
+                  Resend OTP
+                </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => toast.info("Escalated to supervisor")}
+                >
+                  <ArrowUpRight className="h-3.5 w-3.5 mr-1" />
+                  Escalate
+                </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => toast.success("Employee assigned")}
+                >
+                  <UserPlus className="h-3.5 w-3.5 mr-1" />
+                  Assign
+                </Button>
               </div>
             </div>
 
@@ -554,7 +696,10 @@ function ConversationsView(p: ConversationsProps) {
               <ProfileField k="Delivery ID" v={active.del?.deliveryId ?? "—"} mono />
               <ProfileField k="Phone" v={active.c.contact} mono />
               <ProfileField k="Email" v={active.c.email} />
-              <ProfileField k="Workflow" v={active.wf ? WORKFLOW_LABELS[active.wf.status].en : "—"} />
+              <ProfileField
+                k="Workflow"
+                v={active.wf ? WORKFLOW_LABELS[active.wf.status].en : "—"}
+              />
               <ProfileField k="Delivery Status" v={active.del?.status ?? "—"} />
               <ProfileField k="Delivery Agent" v={active.del?.driver ?? "—"} />
               <ProfileField k="OTP" v={active.del?.otpStatus ?? "—"} />
@@ -562,40 +707,97 @@ function ConversationsView(p: ConversationsProps) {
 
             {/* Communication history */}
             <div>
-              <p className="text-xs font-semibold uppercase text-muted-foreground mb-2">Communication History</p>
+              <p className="text-xs font-semibold uppercase text-muted-foreground mb-2">
+                Communication History
+              </p>
               <div className="border border-border rounded-md divide-y divide-border max-h-72 overflow-y-auto">
                 {[
-                  ...relatedNotifications.map((n) => ({ at: n.createdAt, kind: `${n.channel.toUpperCase()} · ${n.status_}`, text: n.message.body })),
-                  ...relatedCalls.map((c) => ({ at: c.at, kind: `Call · ${c.direction}`, text: c.notes })),
-                  ...relatedWa.flatMap((w) => w.thread.map((t) => ({ at: t.at, kind: `WhatsApp · ${t.from}`, text: t.text }))),
-                ].sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime()).map((e, i) => (
-                  <div key={i} className="p-3 text-sm">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-[11px] uppercase font-medium text-primary">{e.kind}</span>
-                      <span className="text-[10px] text-muted-foreground">{new Date(e.at).toLocaleString()}</span>
+                  ...relatedNotifications.map((n) => ({
+                    at: n.createdAt,
+                    kind: `${n.channel.toUpperCase()} · ${n.status_}`,
+                    text: n.message.body,
+                  })),
+                  ...relatedCalls.map((c) => ({
+                    at: c.at,
+                    kind: `Call · ${c.direction}`,
+                    text: c.notes,
+                  })),
+                  ...relatedWa.flatMap((w) =>
+                    w.thread.map((t) => ({ at: t.at, kind: `WhatsApp · ${t.from}`, text: t.text })),
+                  ),
+                ]
+                  .sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime())
+                  .map((e, i) => (
+                    <div key={i} className="p-3 text-sm">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[11px] uppercase font-medium text-primary">
+                          {e.kind}
+                        </span>
+                        <span className="text-[10px] text-muted-foreground">
+                          {new Date(e.at).toLocaleString()}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-sm">{e.text}</p>
                     </div>
-                    <p className="mt-1 text-sm">{e.text}</p>
-                  </div>
-                ))}
+                  ))}
                 {relatedNotifications.length + relatedCalls.length + relatedWa.length === 0 && (
-                  <p className="text-xs text-muted-foreground p-4 text-center">No communication yet for this case.</p>
+                  <p className="text-xs text-muted-foreground p-4 text-center">
+                    No communication yet for this case.
+                  </p>
                 )}
               </div>
             </div>
 
             {/* Feedback + Incidents + Audit */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <MiniList title="Feedback" empty="No feedback" rows={relatedFeedback.map((f) => `${f.rating}★ — ${f.comments}`)} />
-              <MiniList title="Quality Incidents" empty="No incidents" rows={relatedIncidents.map((i) => `${i.severity} · ${i.category}`)} />
-              <MiniList title="Audit Log" empty="No audit entries" rows={relatedAudit.slice(0, 10).map((a) => `${a.action} · ${a.actor}`)} />
+              <MiniList
+                title="Feedback"
+                empty="No feedback"
+                rows={relatedFeedback.map((f) => `${f.rating}★ — ${f.comments}`)}
+              />
+              <MiniList
+                title="Quality Incidents"
+                empty="No incidents"
+                rows={relatedIncidents.map((i) => `${i.severity} · ${i.category}`)}
+              />
+              <MiniList
+                title="Audit Log"
+                empty="No audit entries"
+                rows={relatedAudit.slice(0, 10).map((a) => `${a.action} · ${a.actor}`)}
+              />
             </div>
 
             {/* Internal notes */}
             <div>
-              <p className="text-xs font-semibold uppercase text-muted-foreground mb-2">Internal Notes</p>
+              <p className="text-xs font-semibold uppercase text-muted-foreground mb-2">
+                Internal Notes
+              </p>
               <div className="flex gap-2">
-                <Input placeholder="Add an internal note (visible to Contact Center only)" value={notes[active.c.bagId] ?? ""} onChange={(e) => setNotes({ ...notes, [active.c.bagId]: e.target.value })} />
-                <Button onClick={() => { const t = notes[active.c.bagId]?.trim(); if (!t) return; addCallLog({ passengerName: active.c.passengerName, phone: active.c.contact, agent: "Contact Center", direction: "Callback Required", durationSec: 0, notes: `Note: ${t}`, pirNumber: active.c.pirNumber, bagId: active.c.bagId }); setNotes({ ...notes, [active.c.bagId]: "" }); toast.success("Note saved"); }}>Save</Button>
+                <Input
+                  placeholder="Add an internal note (visible to Contact Center only)"
+                  value={notes[active.c.bagId] ?? ""}
+                  onChange={(e) => setNotes({ ...notes, [active.c.bagId]: e.target.value })}
+                />
+                <Button
+                  onClick={() => {
+                    const t = notes[active.c.bagId]?.trim();
+                    if (!t) return;
+                    addCallLog({
+                      passengerName: active.c.passengerName,
+                      phone: active.c.contact,
+                      agent: "Contact Center",
+                      direction: "Callback Required",
+                      durationSec: 0,
+                      notes: `Note: ${t}`,
+                      pirNumber: active.c.pirNumber,
+                      bagId: active.c.bagId,
+                    });
+                    setNotes({ ...notes, [active.c.bagId]: "" });
+                    toast.success("Note saved");
+                  }}
+                >
+                  Save
+                </Button>
               </div>
             </div>
           </CardContent>
@@ -622,7 +824,11 @@ function MiniList({ title, rows, empty }: { title: string; rows: string[]; empty
         <p className="text-xs text-muted-foreground">{empty}</p>
       ) : (
         <ul className="text-xs space-y-1">
-          {rows.map((r, i) => <li key={i} className="truncate">{r}</li>)}
+          {rows.map((r, i) => (
+            <li key={i} className="truncate">
+              {r}
+            </li>
+          ))}
         </ul>
       )}
     </div>

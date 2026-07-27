@@ -7,14 +7,12 @@ export const Route = createFileRoute("/contact-center")({
       { title: "Contact Center — Smart Baggage Ecosystem" },
       {
         name: "description",
-        content:
-          "Contact Center module — coming in a future release.",
+        content: "Contact Center module — coming in a future release.",
       },
       { property: "og:title", content: "Contact Center — Smart Baggage Ecosystem" },
       {
         property: "og:description",
-        content:
-          "Contact Center module — coming in a future release.",
+        content: "Contact Center module — coming in a future release.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
