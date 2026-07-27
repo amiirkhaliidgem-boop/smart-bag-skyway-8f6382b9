@@ -903,7 +903,7 @@ function dispatchQueued(events: NotificationEvent[]) {
 export function transitionWorkflow(
   deliveryId: string,
   next: WorkflowStatus,
-  opts: { actor?: string; role?: Role; force?: boolean } = {},
+  opts: { actor?: string; role?: Role; force?: boolean; silent?: boolean } = {},
 ) {
   ensureWorkflow(deliveryId);
   const current = state.workflow.find((w) => w.deliveryId === deliveryId)!;
@@ -962,7 +962,9 @@ export function transitionWorkflow(
     fromStatus: from,
     toStatus: next,
   });
-  enqueueNotifications(deliveryId, next);
+  // `silent` is used for corrective / backward transitions whose passenger
+  // message is emitted by the caller under a more accurate trigger.
+  if (!opts.silent) enqueueNotifications(deliveryId, next);
   emit();
   return updated;
 }
