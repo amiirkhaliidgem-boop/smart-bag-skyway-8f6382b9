@@ -1,14 +1,53 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
-import { useStore } from "@/lib/store";
-import { WORKFLOW_LABELS, WORKFLOW_STATUSES, type WorkflowStatus } from "@/lib/workflow/statuses";
+import { useEffect, useMemo, useState } from "react";
+import { getDeliveryStage, useStore, type BaggageCase, type Delivery, type WorkflowRecord } from "@/lib/store";
+import {
+  DELIVERY_STAGES,
+  STAGE_LABELS,
+  STAGE_ORDER,
+  stageToWorkflow,
+  type DeliveryStage,
+} from "@/lib/delivery/stages";
+import {
+  LF_OWNED_STATUSES,
+  LF_STATUS_COLOR,
+  LF_STATUS_LABEL,
+  LF_TO_WORKFLOW,
+  type LFStatus,
+} from "@/lib/lost-found/statuses";
+import type { WorkflowStatus } from "@/lib/workflow/statuses";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { GitBranch, Clock, AlertTriangle, PackageCheck, Truck, Warehouse, RotateCcw, ShieldAlert } from "lucide-react";
+import {
+  GitBranch,
+  Clock,
+  AlertTriangle,
+  PackageCheck,
+  Truck,
+  Warehouse,
+  RotateCcw,
+  ShieldAlert,
+} from "lucide-react";
 
 export const Route = createFileRoute("/workflow-monitor")({
-  head: () => ({ meta: [{ title: "Workflow Monitor — IAB Smart Baggage Ecosystem" }] }),
+  head: () => ({
+    meta: [
+      { title: "Workflow Monitor — IAB Smart Baggage Ecosystem" },
+      {
+        name: "description",
+        content:
+          "Live operational board across the full baggage lifecycle — Lost & Found, Delivery, Delivery Agent and Passenger journey.",
+      },
+      { property: "og:title", content: "Workflow Monitor — IAB Smart Baggage Ecosystem" },
+      {
+        property: "og:description",
+        content: "Real-time monitoring of every baggage case across the Smart Baggage Ecosystem.",
+      },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
   component: WorkflowMonitorPage,
 });
 
@@ -27,54 +66,184 @@ const SLA_MINUTES: Record<WorkflowStatus, number> = {
   CLOSED: 0,
 };
 
+const LF_STATUS_KEY = (s: LFStatus) => `lf:${s}`;
+const STAGE_KEY = (s: DeliveryStage) => `stage:${s}`;
+
+interface MonitorRow {
+  key: string;
+  bagId: string;
+  pirNumber: string;
+  passengerName: string;
+  phase: "Lost & Found" | "Delivery";
+  deliveryId?: string;
+  statusKey: string;
+  statusLabel: string;
+  statusColor: string;
+  agent: string;
+  workflowStatus: WorkflowStatus;
+  lastAt?: string;
+  elapsedMin: number;
+  sla: number;
+  breached: boolean;
+  nextStep: string;
+  feedbackSubmitted: boolean;
+  inStorage: boolean;
+}
+
+function lastTimestamp(kase?: BaggageCase, del?: Delivery, wf?: WorkflowRecord): string | undefined {
+  const candidates = [
+    wf?.history?.[wf.history.length - 1]?.at,
+    del?.lastUpdatedAt,
+    del?.createdAt,
+    kase?.updatedAt,
+    kase?.createdAt,
+  ].filter(Boolean) as string[];
+  if (!candidates.length) return undefined;
+  return candidates.reduce((a, b) => (new Date(a).getTime() >= new Date(b).getTime() ? a : b));
+}
+
 function WorkflowMonitorPage() {
-  const workflow = useStore((s) => s.workflow);
+  const cases = useStore((s) => s.cases);
   const deliveries = useStore((s) => s.deliveries);
+  const workflow = useStore((s) => s.workflow);
+  const feedback = useStore((s) => s.feedback);
   const incidents = useStore((s) => s.qualityIncidents);
 
-  const [station, setStation] = useState<string>("all");
   const [driver, setDriver] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [q, setQ] = useState("");
 
+  // Keep Elapsed / SLA badges accurate without a manual refresh. Live data
+  // itself arrives through the store's Supabase realtime subscription.
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setTick((t) => t + 1), 30_000);
+    return () => clearInterval(id);
+  }, []);
+
+  const allRows = useMemo<MonitorRow[]>(() => {
+    void tick;
+    const now = Date.now();
+    const delByBag = new Map(deliveries.map((d) => [d.bagId, d]));
+    const wfByDelivery = new Map(workflow.map((w) => [w.deliveryId, w]));
+    const feedbackBags = new Set(feedback.map((f) => f.bagId));
+    const seenDeliveries = new Set<string>();
+
+    const build = (kase: BaggageCase | undefined, del: Delivery | undefined): MonitorRow => {
+      const wf = del ? wfByDelivery.get(del.deliveryId) : undefined;
+      const lfStatus = (kase?.lfStatus ?? "Open") as LFStatus;
+      const stage = del ? getDeliveryStage(del) : undefined;
+
+      const statusKey = stage ? STAGE_KEY(stage) : LF_STATUS_KEY(lfStatus);
+      const statusLabel = stage ? STAGE_LABELS[stage] : (LF_STATUS_LABEL[lfStatus] ?? lfStatus);
+      const statusColor = stage
+        ? "bg-primary/10 text-primary border-primary/20"
+        : (LF_STATUS_COLOR[lfStatus] ?? "bg-muted text-muted-foreground border-border");
+
+      const workflowStatus: WorkflowStatus =
+        wf?.status ?? (stage ? stageToWorkflow(stage) : (LF_TO_WORKFLOW[lfStatus] ?? "PIR_CREATED"));
+
+      const lastAt = lastTimestamp(kase, del, wf);
+      const elapsedMin = lastAt ? Math.max(0, Math.floor((now - new Date(lastAt).getTime()) / 60000)) : 0;
+      const sla = SLA_MINUTES[workflowStatus] ?? 0;
+
+      let nextStep = "—";
+      if (stage) {
+        const idx = STAGE_ORDER[stage];
+        const terminal = stage === "Delivered" || stage === "Returned to Airport";
+        nextStep = terminal ? "—" : (STAGE_LABELS[DELIVERY_STAGES[idx + 1]] ?? "—");
+      } else {
+        const idx = LF_OWNED_STATUSES.indexOf(lfStatus as (typeof LF_OWNED_STATUSES)[number]);
+        const next = idx >= 0 ? LF_OWNED_STATUSES[idx + 1] : undefined;
+        nextStep = next ? (LF_STATUS_LABEL[next] ?? next) : "Hand over to Delivery";
+      }
+
+      const bagId = kase?.bagId ?? del?.bagId ?? "—";
+
+      return {
+        key: del?.deliveryId ?? bagId,
+        bagId,
+        pirNumber: kase?.pirNumber ?? del?.pirNumber ?? "—",
+        passengerName: kase?.passengerName ?? del?.passengerName ?? "—",
+        phase: del ? "Delivery" : "Lost & Found",
+        deliveryId: del?.deliveryId,
+        statusKey,
+        statusLabel,
+        statusColor,
+        agent: del?.driver && del.driver !== "—" ? del.driver : "—",
+        workflowStatus,
+        lastAt,
+        elapsedMin,
+        sla,
+        breached: sla > 0 && elapsedMin > sla,
+        nextStep,
+        feedbackSubmitted: feedbackBags.has(bagId) || workflowStatus === "FEEDBACK_SUBMITTED",
+        inStorage: Boolean(kase?.storage) && !del,
+      };
+    };
+
+    const rows = cases.map((kase) => {
+      const del = delByBag.get(kase.bagId);
+      if (del) seenDeliveries.add(del.deliveryId);
+      return build(kase, del);
+    });
+
+    // Deliveries whose L&F case is not present locally still belong on the board.
+    for (const del of deliveries) {
+      if (seenDeliveries.has(del.deliveryId)) continue;
+      rows.push(build(undefined, del));
+    }
+
+    return rows.sort((a, b) => new Date(b.lastAt ?? 0).getTime() - new Date(a.lastAt ?? 0).getTime());
+  }, [cases, deliveries, workflow, feedback, tick]);
+
   const rows = useMemo(() => {
-    return workflow
-      .map((w) => {
-        const del = deliveries.find((d) => d.deliveryId === w.deliveryId);
-        const last = w.history[w.history.length - 1];
-        const elapsedMin = last ? Math.floor((Date.now() - new Date(last.at).getTime()) / 60000) : 0;
-        const sla = SLA_MINUTES[w.status] || 0;
-        const nextIdx = WORKFLOW_STATUSES.indexOf(w.status) + 1;
-        const nextStep = nextIdx < WORKFLOW_STATUSES.length ? WORKFLOW_STATUSES[nextIdx] : null;
-        return { w, del, last, elapsedMin, sla, breached: sla > 0 && elapsedMin > sla, nextStep };
-      })
-      .filter((r) => {
-        if (station !== "all" && r.del && !r.del.address.includes(station)) return false;
-        if (driver !== "all" && r.del?.driver !== driver) return false;
-        if (statusFilter !== "all" && r.w.status !== statusFilter) return false;
-        if (q) {
-          const s = q.toLowerCase();
-          const bag = r.del ? `${r.del.deliveryId} ${r.del.pirNumber} ${r.del.passengerName}`.toLowerCase() : r.w.deliveryId.toLowerCase();
-          if (!bag.includes(s)) return false;
-        }
-        return true;
-      });
-  }, [workflow, deliveries, station, driver, statusFilter, q]);
+    return allRows.filter((r) => {
+      if (driver !== "all" && r.agent !== driver) return false;
+      if (statusFilter !== "all" && r.statusKey !== statusFilter) return false;
+      if (q) {
+        const s = q.toLowerCase();
+        const hay = `${r.bagId} ${r.pirNumber} ${r.passengerName} ${r.deliveryId ?? ""}`.toLowerCase();
+        if (!hay.includes(s)) return false;
+      }
+      return true;
+    });
+  }, [allRows, driver, statusFilter, q]);
 
   const kpis = useMemo(() => {
-    const bySt = (s: WorkflowStatus) => workflow.filter((w) => w.status === s).length;
-    const delayed = rows.filter((r) => r.breached).length;
+    const stageCount = (...stages: DeliveryStage[]) =>
+      allRows.filter((r) => stages.some((s) => r.statusKey === STAGE_KEY(s))).length;
     return [
-      { label: "Cases Waiting", value: bySt("PIR_CREATED") + bySt("HOME_DELIVERY_REQUESTED"), icon: Clock, tone: "amber" },
-      { label: "In Storage", value: deliveries.filter((d) => d.status === "Pending" || d.status === "Assigned").length, icon: Warehouse, tone: "indigo" },
-      { label: "Ready for Delivery", value: bySt("READY_FOR_COLLECTION") + bySt("CLAIMED_ON_HAND"), icon: PackageCheck, tone: "primary" },
-      { label: "Out for Delivery", value: bySt("OUT_FOR_DELIVERY") + bySt("DRIVER_ARRIVED"), icon: Truck, tone: "primary" },
-      { label: "Delivered", value: bySt("DELIVERED") + bySt("CLOSED") + bySt("FEEDBACK_SUBMITTED"), icon: PackageCheck, tone: "emerald" },
-      { label: "Delayed", value: delayed, icon: AlertTriangle, tone: "rose" },
-      { label: "Quality Alerts", value: incidents.filter((i) => i.status !== "Resolved").length, icon: ShieldAlert, tone: "rose" },
-      { label: "Returned", value: 0, icon: RotateCcw, tone: "amber" },
+      {
+        label: "Cases Waiting",
+        value: allRows.filter((r) => r.phase === "Lost & Found").length,
+        icon: Clock,
+        tone: "amber",
+      },
+      { label: "In Storage", value: allRows.filter((r) => r.inStorage).length, icon: Warehouse, tone: "indigo" },
+      {
+        label: "Ready for Delivery",
+        value: stageCount("Ready for Delivery", "Scheduled"),
+        icon: PackageCheck,
+        tone: "primary",
+      },
+      {
+        label: "Out for Delivery",
+        value: stageCount("Assigned", "Driver Accepted", "Collected Bag", "Out for Delivery"),
+        icon: Truck,
+        tone: "primary",
+      },
+      { label: "Delivered", value: stageCount("Delivered"), icon: PackageCheck, tone: "emerald" },
+      { label: "Delayed", value: allRows.filter((r) => r.breached).length, icon: AlertTriangle, tone: "rose" },
+      {
+        label: "Quality Alerts",
+        value: incidents.filter((i) => i.status !== "Resolved").length,
+        icon: ShieldAlert,
+        tone: "rose",
+      },
+      { label: "Returned", value: stageCount("Returned to Airport"), icon: RotateCcw, tone: "amber" },
     ];
-  }, [workflow, deliveries, rows, incidents]);
+  }, [allRows, incidents]);
 
   const tones: Record<string, string> = {
     primary: "bg-primary/10 text-primary",
@@ -84,7 +253,7 @@ function WorkflowMonitorPage() {
     rose: "bg-rose-100 text-rose-700",
   };
 
-  const drivers = Array.from(new Set(deliveries.map((d) => d.driver))).filter(Boolean);
+  const agents = Array.from(new Set(allRows.map((r) => r.agent))).filter((d) => d && d !== "—");
 
   return (
     <div className="space-y-6">
@@ -94,7 +263,9 @@ function WorkflowMonitorPage() {
         </div>
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Workflow Monitor</h1>
-          <p className="text-sm text-muted-foreground">Real-time operational board across the full delivery lifecycle.</p>
+          <p className="text-sm text-muted-foreground">
+            Real-time operational board across the full delivery lifecycle.
+          </p>
         </div>
       </div>
 
@@ -117,29 +288,41 @@ function WorkflowMonitorPage() {
           <CardTitle className="text-base">Live Workflow Board</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-            <Input placeholder="Search PIR, delivery ID or passenger…" value={q} onChange={(e) => setQ(e.target.value)} />
-            <Select value={station} onValueChange={setStation}>
-              <SelectTrigger><SelectValue placeholder="Station" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Stations</SelectItem>
-                <SelectItem value="Cairo">Cairo (CAI)</SelectItem>
-                <SelectItem value="Giza">Giza</SelectItem>
-                <SelectItem value="Alexandria">Alexandria</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <Input
+              placeholder="Search PIR, case, delivery ID or passenger…"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+            />
             <Select value={driver} onValueChange={setDriver}>
-              <SelectTrigger><SelectValue placeholder="Delivery Agent" /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue placeholder="Delivery Agent" />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Delivery Agents</SelectItem>
-                {drivers.map((d) => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                {agents.map((d) => (
+                  <SelectItem key={d} value={d}>
+                    {d}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Statuses</SelectItem>
-                {WORKFLOW_STATUSES.map((s) => <SelectItem key={s} value={s}>{WORKFLOW_LABELS[s].en}</SelectItem>)}
+                {LF_OWNED_STATUSES.map((s) => (
+                  <SelectItem key={LF_STATUS_KEY(s)} value={LF_STATUS_KEY(s)}>
+                    Lost &amp; Found · {LF_STATUS_LABEL[s]}
+                  </SelectItem>
+                ))}
+                {DELIVERY_STAGES.map((s) => (
+                  <SelectItem key={STAGE_KEY(s)} value={STAGE_KEY(s)}>
+                    Delivery · {STAGE_LABELS[s]}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -148,41 +331,64 @@ function WorkflowMonitorPage() {
             <table className="w-full text-sm">
               <thead className="bg-muted/60 text-xs uppercase tracking-wider text-muted-foreground">
                 <tr>
-                  <th className="text-left px-4 py-3 font-medium">Delivery</th>
+                  <th className="text-left px-4 py-3 font-medium">Case / Delivery</th>
                   <th className="text-left px-4 py-3 font-medium">Passenger / PIR</th>
                   <th className="text-left px-4 py-3 font-medium">Status</th>
                   <th className="text-left px-4 py-3 font-medium">Delivery Agent</th>
                   <th className="text-left px-4 py-3 font-medium">Elapsed</th>
                   <th className="text-left px-4 py-3 font-medium">SLA</th>
                   <th className="text-left px-4 py-3 font-medium">Next Step</th>
+                  <th className="text-left px-4 py-3 font-medium">Feedback</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {rows.length === 0 && (
-                  <tr><td colSpan={7} className="text-center text-muted-foreground py-10 text-sm">No workflow records match the current filters.</td></tr>
+                  <tr>
+                    <td colSpan={8} className="text-center text-muted-foreground py-10 text-sm">
+                      No live cases match the current filters.
+                    </td>
+                  </tr>
                 )}
-                {rows.map(({ w, del, elapsedMin, sla, breached, nextStep }) => (
-                  <tr key={w.deliveryId} className="hover:bg-muted/40">
-                    <td className="px-4 py-3 font-mono text-xs">{w.deliveryId}</td>
+                {rows.map((r) => (
+                  <tr key={r.key} className="hover:bg-muted/40">
                     <td className="px-4 py-3">
-                      <div className="font-medium">{del?.passengerName ?? "—"}</div>
-                      <div className="text-xs text-muted-foreground font-mono">{del?.pirNumber ?? "—"}</div>
+                      <div className="font-mono text-xs">{r.deliveryId ?? r.bagId}</div>
+                      <div className="text-[11px] text-muted-foreground">{r.phase}</div>
                     </td>
                     <td className="px-4 py-3">
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-primary/10 text-primary">
-                        {WORKFLOW_LABELS[w.status].en}
+                      <div className="font-medium">{r.passengerName}</div>
+                      <div className="text-xs text-muted-foreground font-mono">{r.pirNumber}</div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium border ${r.statusColor}`}
+                      >
+                        {r.statusLabel}
                       </span>
                     </td>
-                    <td className="px-4 py-3">{del?.driver ?? "—"}</td>
-                    <td className="px-4 py-3 tabular-nums text-xs">{elapsedMin}m</td>
+                    <td className="px-4 py-3">{r.agent}</td>
+                    <td className="px-4 py-3 tabular-nums text-xs">{r.elapsedMin}m</td>
                     <td className="px-4 py-3 text-xs">
-                      {sla ? (
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full font-medium ${breached ? "bg-rose-100 text-rose-700" : "bg-emerald-100 text-emerald-700"}`}>
-                          {breached ? "Breached" : "On Track"} · {sla}m
+                      {r.sla ? (
+                        <span
+                          className={`inline-flex items-center px-2 py-0.5 rounded-full font-medium ${r.breached ? "bg-rose-100 text-rose-700" : "bg-emerald-100 text-emerald-700"}`}
+                        >
+                          {r.breached ? "Breached" : "On Track"} · {r.sla}m
                         </span>
-                      ) : <span className="text-muted-foreground">—</span>}
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
                     </td>
-                    <td className="px-4 py-3 text-xs">{nextStep ? WORKFLOW_LABELS[nextStep].en : "—"}</td>
+                    <td className="px-4 py-3 text-xs">{r.nextStep}</td>
+                    <td className="px-4 py-3 text-xs">
+                      {r.feedbackSubmitted ? (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full font-medium bg-emerald-100 text-emerald-700">
+                          Submitted
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
