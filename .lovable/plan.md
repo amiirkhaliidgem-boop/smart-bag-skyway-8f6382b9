@@ -1,49 +1,76 @@
-## Goal
+# Notification Architecture — Go Live Readiness (Simulated Providers)
 
-Enforce the system philosophy: **only the Workflow Engine creates notifications**. The Notification Center becomes a pure monitoring dashboard. Providers stay simulated — no real SMS/WhatsApp wiring in this phase.
+Goal: the Notification Center and Workflow Engine behave exactly as they will in production. Swapping in real SMS/WhatsApp/Email providers later must mean writing one adapter file and registering it — nothing else changes.
 
-## 1. Remove every manual send path
+## Current state (verified)
 
-Delete `createTestNotification()` from `src/lib/store.ts` and all six call sites:
+- `src/lib/store.ts` is the only producer of notification events (`enqueueNotifications`), triggered by the Workflow Engine. Correct already.
+- `dispatchQueued` calls `defaultAdapters[channel]` from `src/lib/notifications/channels.ts` — but the adapter map is imported directly by the engine, so there is no swap point, no configuration, and no provider selection.
+- Adapters are `async send() { return { ok: true } }` — no latency, never fail, never return a provider ID.
+- Events carry no delivery metadata: no `providerId`, no `attempts`, no `error`, no `provider`.
+- No retry/backoff. A failed event stays failed forever with no reason recorded.
+- IDs are generated as `NTF-${notifications.length + n}`, which can collide after deletions or concurrent tabs.
+- Recipients are always `delivery.mobile`, so an Email or Push adapter would have nowhere to send. Email/Push also have no templates.
+- `dispatchQueued` uses `setTimeout` in the active tab only. Events queued when no tab is open stay `queued` forever — a real provider worker would pick them up.
 
-- `src/routes/notifications.tsx` — remove the entire "Send Test Notification" card, its form state, and the per-row **Resend** button.
-- `src/routes/delivery.index.tsx` — remove the row-level **Notify** button and the bulk "Notify passengers" dialog.
-- `src/routes/delivery.$deliveryId.tsx` — remove the **Notify Passenger** action button.
-- `src/components/contact-center/contact-center-full.tsx` — remove the three manual send actions (file is currently unrendered behind the Coming Soon page, but is cleaned up so it can't reintroduce the pattern).
-- Drop the now-unused `notify` flag from the stage-action helper in `src/lib/delivery/stages.ts`.
+## What gets built
 
-After this, the only writers to `state.notifications` are `enqueueNotifications()` and the send-lifecycle updater.
+### 1. Provider registry — the single swap point
 
-## 2. Move the send lifecycle into the engine
+New `src/lib/notifications/registry.ts`:
 
-Today `queued → sending → sent` is faked with `setTimeout` inside the Notification Center component, so the log only advances while that page is open. Move it into `src/lib/store.ts`, immediately after `enqueueNotifications()` creates events, so status advances regardless of which page the operator is on. The simulated adapter path routes through `src/lib/notifications/channels.ts` (still no-op) so swapping in a real provider later is a one-file change.
+- `ProviderConfig` per channel: `{ channel, adapter, enabled, simulate }`.
+- `registerProvider(channel, adapter)` and `getProvider(channel)`.
+- Boots with the simulated adapters. Going live = one `registerProvider("sms", twilioSmsAdapter)` call in the registry bootstrap file. No engine edits.
 
-`setNotificationStatus` stays exported but becomes engine/adapter-internal — no UI calls it.
+### 2. Harden the adapter contract
 
-## 3. Notification Center becomes read-only
+Extend `NotificationChannelAdapter` in `src/lib/notifications/channels.ts` so a real provider can implement it without a shape change:
 
-Keep: KPI cards, filters, event table, bilingual message preview. Remove: send form, resend, any action column. Add a short header note stating notifications are generated automatically by the Workflow Engine and cannot be sent manually.
+- `send(event)` returns `{ ok, providerId?, error?, retryable? }`.
+- Add `name` (e.g. `"simulated-sms"`, later `"twilio"`) so the UI and audit can show which provider handled an event.
+- Add optional `validateRecipient(to)` so a bad address fails fast with a real reason.
 
-The **Failed** KPI stays (it will be reachable once real providers land) but no failure-triggered action button.
+### 3. Realistic simulated adapters
 
-## 4. Close the trigger-coverage gap
+New `src/lib/notifications/adapters/simulated.ts`, one per channel:
 
-Templates exist for only 5 of the workflow statuses; every other transition silently produces nothing. Add EN/AR SMS + WhatsApp templates for the remaining passenger-relevant transitions so the log reflects the real lifecycle:
+- Emulates network latency (300–1200 ms), returns a synthetic `providerId` (`sim_sms_<uuid>`), and fails a configurable small percentage of sends with a retryable error so the retry path is genuinely exercised.
+- Failure rate lives in one constant, defaulted to 0 for demos and flippable for testing.
 
-- `SCHEDULED` — delivery scheduled
-- `COLLECTED` — bag collected from the airport
-- `DELIVERY_FAILED` — attempt failed, contact centre will follow up
-- `RETURNED_TO_AIRPORT` — bag returned to airport storage
+### 4. Dispatch pipeline with retry and drain
 
-Internal-only statuses (driver accept/reject, dispatch bookkeeping) intentionally get **no** passenger template.
+Inside `src/lib/store.ts`, keeping the engine as the only producer:
 
-## Technical notes
+- `dispatchQueued` moves to a `dispatch` module that reads the registry instead of importing adapters directly.
+- Attempts recorded on the event: `attempts`, `lastAttemptAt`, `providerId`, `provider`, `failureReason`.
+- Retry with exponential backoff (3 attempts) for retryable failures; permanent failures stop immediately with a reason.
+- A drain pass on app boot picks up any event left in `queued`/`sending` from an earlier session, so the queue is never orphaned — the same behaviour a real provider worker gives.
+- Event IDs move to `NTF-<uuid>` to remove the collision risk.
 
-- Email and Push remain contract-only (no templates); they stay in the channel union for the future provider phase.
-- `operator` on every event will now always be `"Workflow Engine"`, making the ledger unambiguous for audit. Existing historical rows tagged with an operator name are left untouched.
-- Every generated event continues to write a `notification.dispatch` audit entry.
-- No schema or Supabase changes; notifications persist through the existing shared-state sync.
+### 5. Recipient resolution
 
-## Out of scope (next phase)
+New helper resolving a channel to an address: SMS/WhatsApp → mobile, Email → passenger email, Push → device token. Today Email/Push resolve to nothing, so they are skipped exactly as now — but the moment templates and addresses exist, no engine change is needed.
 
-Real Twilio/Meta/SES credentials, delivery receipts, retry/backoff, per-passenger channel preference and opt-out.
+### 6. Notification Center — same read-only monitor, richer truth
+
+`src/routes/notifications.tsx` stays strictly read-only. It gains, in the existing detail panel only:
+
+- Provider name and provider message ID
+- Attempt count and last failure reason for failed events
+
+No new controls, no manual send.
+
+## Explicitly unchanged
+
+- Workflow Engine trigger logic and template registry
+- Delivery / Lost & Found / Passenger Portal business logic
+- All UI layouts and design; only the detail panel adds read-only fields
+
+## Going live later
+
+1. Write `src/lib/notifications/adapters/twilio.ts` implementing `NotificationChannelAdapter`.
+2. Register it in the registry bootstrap.
+3. Add the provider credentials as secrets.
+
+Nothing in the engine, the store, the Notification Center, or the templates is touched.
