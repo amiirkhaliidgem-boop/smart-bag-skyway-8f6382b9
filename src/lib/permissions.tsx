@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { moduleForPath, type RbacAction, type RbacModule } from "@/lib/admin/modules";
+import { moduleForPath, ROUTE_MODULES, type RbacAction, type RbacModule } from "@/lib/admin/modules";
 
 export interface PermissionState {
   /** "Module|Action" pairs granted to the signed-in user. */
@@ -35,6 +35,7 @@ export function usePermissions() {
 }
 
 export function useLivePermissions(userId: string | null | undefined): PermissionState {
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   const [granted, setGranted] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [unmanaged, setUnmanaged] = useState(true);
@@ -66,4 +67,10 @@ export function useLivePermissions(userId: string | null | undefined): Permissio
   }, [userId]);
 
   return { granted, loading, unmanaged };
+}
+
+/** First landing route the user is allowed to see. */
+export function firstAllowedPath(granted: Set<string>): string {
+  const rule = ROUTE_MODULES.find((r) => granted.has(`${r.module}|View`));
+  return rule?.prefix ?? "/auth";
 }
