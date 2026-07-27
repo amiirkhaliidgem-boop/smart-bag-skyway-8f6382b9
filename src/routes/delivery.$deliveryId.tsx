@@ -5,7 +5,6 @@ import {
   driverPool,
   assignDriver,
   resendOtp,
-  createTestNotification,
   ensurePassengerToken,
   getDeliveryStage,
   addDeliveryNote,
@@ -132,24 +131,6 @@ function DeliveryDetails() {
                   }}
                 >
                   <Repeat className="h-3.5 w-3.5" /> Resend OTP
-                </Button>
-              )}
-              {acts.notify && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="gap-1.5"
-                  onClick={() => {
-                    ensurePassengerToken(deliveryId);
-                    const events = createTestNotification({
-                      deliveryId,
-                      channel: "sms",
-                      operator: "Delivery Coordinator",
-                    });
-                    toast.success(events.length ? "Passenger notified" : "No template available");
-                  }}
-                >
-                  <Bell className="h-3.5 w-3.5" /> Notify Passenger
                 </Button>
               )}
               <Button
