@@ -7,6 +7,20 @@ import type { WorkflowStatus } from "../workflow/statuses";
 
 export type NotificationChannel = "sms" | "whatsapp" | "email" | "push";
 
+// Some passenger-facing operational events do not have a distinct canonical
+// WorkflowStatus (the Workflow Engine intentionally keeps its status list
+// small). Those are expressed as extra notification triggers here, and each
+// one maps back to the WorkflowStatus it belongs to for Timeline / Reports.
+export const EXTRA_TRIGGERS = [
+  "STAGE_SCHEDULED",
+  "STAGE_COLLECTED",
+  "STAGE_DELIVERY_FAILED",
+  "STAGE_RETURNED_TO_AIRPORT",
+] as const;
+
+export type ExtraTrigger = (typeof EXTRA_TRIGGERS)[number];
+export type NotificationTrigger = WorkflowStatus | ExtraTrigger;
+
 export interface TemplateContext {
   passengerName: string;
   pirNumber: string;
@@ -25,7 +39,7 @@ type Bundle = Partial<Record<NotificationChannel, { en: Renderer; ar: Renderer }
 
 const brand = "IAB Smart Baggage";
 
-export const TEMPLATES: Partial<Record<WorkflowStatus, Bundle>> = {
+export const TEMPLATES: Partial<Record<NotificationTrigger, Bundle>> = {
   DELIVERY_APPROVED: {
     sms: {
       en: (c) => ({
