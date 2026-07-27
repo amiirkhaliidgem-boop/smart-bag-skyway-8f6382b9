@@ -350,7 +350,7 @@ function buildEvents(
       user: n.operator ?? "Notification Engine",
       role: "Delivery Coordinator",
       module: "Notifications",
-      workflowStatus: n.status,
+      workflowStatus: triggerWorkflowStatus(n.status),
       deliveryId: n.deliveryId,
       pirNumber: n.pirNumber,
       passengerName: n.passengerName,
