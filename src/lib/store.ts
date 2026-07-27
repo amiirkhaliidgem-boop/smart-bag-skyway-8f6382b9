@@ -841,6 +841,30 @@ function pushAudit(entry: Omit<AuditEntry, "id" | "at">) {
   state = { ...state, audit: [full, ...state.audit] };
 }
 
+function notificationId() {
+  const rand =
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+  return `NTF-${rand}`;
+}
+
+// Resolves the address a given channel should deliver to. Email / Push have
+// no source of truth on the delivery record yet, so they resolve to undefined
+// and the event is simply not produced — no engine change is needed once
+// those addresses (and templates) exist.
+function resolveRecipient(d: Delivery, channel: NotificationChannel): string | undefined {
+  switch (channel) {
+    case "sms":
+    case "whatsapp":
+      return d.mobile || undefined;
+    case "email":
+      return undefined;
+    case "push":
+      return undefined;
+  }
+}
+
 // The Workflow Engine is the ONLY producer of passenger notifications.
 // Nothing outside this module may create a NotificationEvent.
 function enqueueNotifications(deliveryId: string, trigger: NotificationTrigger) {
@@ -854,22 +878,28 @@ function enqueueNotifications(deliveryId: string, trigger: NotificationTrigger) 
     otp: d.otpCode,
     trackingUrl: rec ? `/passenger/${rec.token}` : undefined,
   };
-  const channels: NotificationChannel[] = ["sms", "whatsapp"];
+  // Channels come from the provider registry, so enabling a newly procured
+  // provider automatically starts producing events for that channel.
+  const channels: NotificationChannel[] = enabledChannels();
   const events: NotificationEvent[] = [];
   for (const channel of channels) {
+    const to = resolveRecipient(d, channel);
+    if (!to) continue;
     for (const locale of ["en", "ar"] as const) {
       const msg = renderTemplate(trigger, channel, locale, ctx);
       if (!msg) continue;
       events.push({
-        id: `NTF-${state.notifications.length + events.length + 1}`,
+        id: notificationId(),
         deliveryId,
         status: trigger,
         channel,
         locale,
-        to: d.mobile,
+        to,
         message: msg,
         createdAt: new Date().toISOString(),
         status_: "queued",
+        attempts: 0,
+        provider: getProvider(channel).adapter.name,
         passengerName: d.passengerName,
         pirNumber: d.pirNumber,
         operator: "Workflow Engine",
@@ -893,19 +923,52 @@ function enqueueNotifications(deliveryId: string, trigger: NotificationTrigger) 
   }
 }
 
-// Hands each queued event to its channel adapter. Adapters in
-// `notifications/channels.ts` are still no-ops (simulated transport); the
-// real provider swap happens there without touching this engine.
+// Hands each queued event to the dispatch pipeline, which resolves the
+// transport through the provider registry. The engine never touches an
+// adapter directly, so procuring a real provider changes nothing here.
 function dispatchQueued(events: NotificationEvent[]) {
-  events.forEach((e, i) => {
-    setTimeout(() => {
-      setNotificationStatus(e.id, "sending");
-      void defaultAdapters[e.channel]
-        .send({ channel: e.channel, to: e.to, message: e.message, locale: e.locale })
-        .then((res) => setNotificationStatus(e.id, res.ok ? "sent" : "failed"))
-        .catch(() => setNotificationStatus(e.id, "failed"));
-    }, 400 + i * 120);
-  });
+  if (typeof window === "undefined") return;
+  dispatchEvents(events, applyDispatchPatch);
+}
+
+function applyDispatchPatch(id: string, patch: DispatchPatch) {
+  state = {
+    ...state,
+    notifications: state.notifications.map((n) =>
+      n.id === id
+        ? {
+            ...n,
+            ...patch,
+            failureReason:
+              patch.status_ === "sent" ? undefined : (patch.failureReason ?? n.failureReason),
+            sentAt: patch.status_ === "sent" ? new Date().toISOString() : n.sentAt,
+          }
+        : n,
+    ),
+  };
+  emit();
+}
+
+// Any event left mid-flight by a previous session (tab closed while queued or
+// sending) is picked back up on boot — the queue is never orphaned, exactly
+// as a server-side provider worker would behave.
+export function drainPendingNotifications() {
+  if (typeof window === "undefined") return;
+  const pending = state.notifications.filter(
+    (n) => n.status_ === "queued" || n.status_ === "sending",
+  );
+  if (!pending.length) return;
+  dispatchEvents(
+    pending.map((n) => ({
+      id: n.id,
+      channel: n.channel,
+      to: n.to,
+      locale: n.locale,
+      message: n.message,
+      attempts: 0,
+    })),
+    applyDispatchPatch,
+  );
 }
 
 export function transitionWorkflow(
