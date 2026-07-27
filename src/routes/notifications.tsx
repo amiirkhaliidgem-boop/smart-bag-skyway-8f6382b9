@@ -286,6 +286,12 @@ function NotificationCenter() {
                     k="Time"
                     v={new Date(selected.sentAt ?? selected.createdAt).toLocaleString("en-GB")}
                   />
+                  <Row k="Provider" v={selected.provider ?? "—"} />
+                  <Row k="Provider Message ID" v={selected.providerId ?? "—"} mono />
+                  <Row k="Attempts" v={String(selected.attempts ?? 0)} />
+                  {selected.failureReason && (
+                    <Row k="Last Failure" v={selected.failureReason} />
+                  )}
                 </div>
 
                 <div className="space-y-2">
