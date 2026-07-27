@@ -29,7 +29,6 @@ import { Route as DataIoRouteImport } from './routes/data-io'
 import { Route as ContactCenterRouteImport } from './routes/contact-center'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ApiStatusRouteImport } from './routes/api-status'
-import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PassengerIndexRouteImport } from './routes/passenger.index'
 import { Route as LostFoundIndexRouteImport } from './routes/lost-found.index'
@@ -138,11 +137,6 @@ const ApiStatusRoute = ApiStatusRouteImport.update({
   path: '/api-status',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdminRoute = AdminRouteImport.update({
-  id: '/admin',
-  path: '/admin',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -181,7 +175,6 @@ const DeliveryDeliveryIdRoute = DeliveryDeliveryIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
   '/api-status': typeof ApiStatusRoute
   '/auth': typeof AuthRoute
   '/contact-center': typeof ContactCenterRoute
@@ -211,7 +204,6 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
   '/api-status': typeof ApiStatusRoute
   '/auth': typeof AuthRoute
   '/contact-center': typeof ContactCenterRoute
@@ -239,7 +231,6 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
   '/api-status': typeof ApiStatusRoute
   '/auth': typeof AuthRoute
   '/contact-center': typeof ContactCenterRoute
@@ -271,7 +262,6 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/admin'
     | '/api-status'
     | '/auth'
     | '/contact-center'
@@ -301,7 +291,6 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/admin'
     | '/api-status'
     | '/auth'
     | '/contact-center'
@@ -328,7 +317,6 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
-    | '/admin'
     | '/api-status'
     | '/auth'
     | '/contact-center'
@@ -359,7 +347,6 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AdminRoute: typeof AdminRoute
   ApiStatusRoute: typeof ApiStatusRoute
   AuthRoute: typeof AuthRoute
   ContactCenterRoute: typeof ContactCenterRoute
@@ -524,13 +511,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiStatusRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin': {
-      id: '/admin'
-      path: '/admin'
-      fullPath: '/admin'
-      preLoaderRoute: typeof AdminRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/': {
       id: '/'
       path: '/'
@@ -627,7 +607,6 @@ const PassengerRouteWithChildren = PassengerRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AdminRoute: AdminRoute,
   ApiStatusRoute: ApiStatusRoute,
   AuthRoute: AuthRoute,
   ContactCenterRoute: ContactCenterRoute,
