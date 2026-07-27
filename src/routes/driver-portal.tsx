@@ -9,9 +9,9 @@ import {
   reportDriverPosition,
   type Delivery,
 } from "@/lib/store";
-import { useServerFn } from "@tanstack/react-start";
-import { driverPinLogin } from "@/lib/admin.functions";
 import { getDeliveryStage } from "@/lib/store";
+import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "@tanstack/react-router";
 import {
   stopNavigationHref,
   routeNavigationHref,
@@ -63,84 +63,55 @@ function DriverPortalPage() {
 }
 
 function DriverPortalBody() {
-  const [signedIn, setSignedIn] = useState(false);
-  const [driver, setDriver] = useState("");
   const { dir, lang } = useDriverLang();
+  const navigate = useNavigate();
+  const [driver, setDriver] = useState<string | null>(null);
+  const [resolving, setResolving] = useState(true);
+
+  // The signed-in account IS the agent — there is no second login here.
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const { data: auth } = await supabase.auth.getUser();
+      const uid = auth.user?.id;
+      if (!uid) {
+        if (!cancelled) setResolving(false);
+        return;
+      }
+      const { data } = await supabase
+        .from("app_users")
+        .select("full_name")
+        .eq("user_id", uid)
+        .maybeSingle();
+      if (cancelled) return;
+      setDriver(
+        data?.full_name ??
+          (auth.user?.user_metadata?.full_name as string | undefined) ??
+          null,
+      );
+      setResolving(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  async function signOut() {
+    await supabase.auth.signOut();
+    navigate({ to: "/auth", replace: true });
+  }
+
   return (
     <div dir={dir} lang={lang}>
-      {!signedIn ? (
-        <DriverLogin
-          onSignIn={(name) => {
-            setDriver(name);
-            setSignedIn(true);
-          }}
-        />
+      {resolving ? (
+        <div className="py-16 text-center text-sm text-muted-foreground">Loading…</div>
+      ) : !driver ? (
+        <div className="py-16 text-center text-sm text-muted-foreground">
+          This account is not linked to a Delivery Agent record.
+        </div>
       ) : (
-        <DriverDashboard driver={driver} onSignOut={() => setSignedIn(false)} />
+        <DriverDashboard driver={driver} onSignOut={() => void signOut()} />
       )}
-    </div>
-  );
-}
-
-function DriverLogin({ onSignIn }: { onSignIn: (name: string) => void }) {
-  const [pin, setPin] = useState("");
-  const [identifier, setIdentifier] = useState("");
-  const [busy, setBusy] = useState(false);
-  const login = useServerFn(driverPinLogin);
-  const { t } = useDriverLang();
-  return (
-    <div className="max-w-md mx-auto pt-8">
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex flex-wrap items-center gap-2">
-            <Truck className="h-4 w-4" /> {t.signInTitle}
-            <LanguageToggle className="ms-auto" />
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-1.5">
-            <Label>{t.driverLabel}</Label>
-            <Input
-              value={identifier}
-              onChange={(e) => setIdentifier(e.target.value)}
-              placeholder="Username or Employee ID"
-              autoComplete="username"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label>{t.pinLabel}</Label>
-            <Input
-              type="password"
-              value={pin}
-              onChange={(e) => setPin(e.target.value)}
-              placeholder={t.pinPlaceholder}
-              maxLength={8}
-            />
-          </div>
-          <Button
-            className="w-full"
-            disabled={busy || !identifier || pin.length < 4}
-            onClick={async () => {
-              setBusy(true);
-              try {
-                const res = await login({ data: { identifier, pin } });
-                if (!res.ok) {
-                  toast.error(res.error ?? t.invalidPin);
-                  return;
-                }
-                onSignIn(res.agent.name);
-                toast.success(t.welcome(res.agent.name));
-              } catch {
-                toast.error(t.invalidPin);
-              } finally {
-                setBusy(false);
-              }
-            }}
-          >
-            {t.signInAction}
-          </Button>
-        </CardContent>
-      </Card>
     </div>
   );
 }

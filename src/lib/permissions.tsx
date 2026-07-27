@@ -69,7 +69,9 @@ export function useLivePermissions(userId: string | null | undefined): Permissio
 }
 
 /** First landing route the user is allowed to see. */
-export function firstAllowedPath(granted: Set<string>): string {
+export function firstAllowedPath(granted: Set<string>, role?: string | null): string {
+  // Delivery Agents always land in (and stay in) their own portal.
+  if (role === "driver") return "/driver-portal";
   const rule = ROUTE_MODULES.find((r) => granted.has(`${r.module}|View`));
   return rule?.prefix ?? "/auth";
 }

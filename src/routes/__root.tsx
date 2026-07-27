@@ -182,12 +182,21 @@ function AuthGate() {
 
   // Live RBAC is authoritative. Accounts without an Administration record
   // fall back to the legacy role matrix so nobody is locked out.
-  const allowPath = (pathname: string) =>
-    perms.unmanaged
+  const allowPath = (pathname: string) => {
+    // Delivery Agents are confined to their portal, whatever else is granted.
+    if (effectiveRole === "driver") {
+      return pathname === "/driver-portal" || pathname.startsWith("/driver-portal/");
+    }
+    return perms.unmanaged
       ? canAccessPath(pathname, effectiveRole)
       : perms.granted.has(`${moduleForPath(pathname)}|View`);
+  };
   const landingPath = () =>
-    perms.unmanaged ? defaultPathForRole(effectiveRole) : firstAllowedPath(perms.granted);
+    effectiveRole === "driver"
+      ? "/driver-portal"
+      : perms.unmanaged
+        ? defaultPathForRole(effectiveRole)
+        : firstAllowedPath(perms.granted, effectiveRole);
 
   useEffect(() => {
     let mounted = true;
@@ -278,7 +287,7 @@ function AuthGate() {
   return (
     <RoleContext.Provider value={{ role: effectiveRole, loading: roleLoading }}>
       <PermissionContext.Provider value={perms}>
-        <AppShell />
+        {effectiveRole === "driver" ? <Outlet /> : <AppShell />}
       </PermissionContext.Provider>
     </RoleContext.Provider>
   );
