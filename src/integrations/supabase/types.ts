@@ -398,6 +398,10 @@ export type Database = {
           station: string
         }[]
       }
+      login_identity_for_username: {
+        Args: { _username: string }
+        Returns: string
+      }
       passenger_confirm_delivery: {
         Args: { p_token: string }
         Returns: boolean
