@@ -62,7 +62,11 @@ const userInput = z.object({
   userType: z.enum(["staff", "driver"]).default("staff"),
   roleId: z.string().uuid(),
   password: z.string().min(6).max(72).optional().or(z.literal("")),
-  pin: z.string().regex(/^\d{4,8}$/).optional().or(z.literal("")),
+  pin: z
+    .string()
+    .regex(/^\d{6,8}$/, "PIN must be 6 to 8 digits.")
+    .optional()
+    .or(z.literal("")),
 });
 
 export const saveAppUser = createServerFn({ method: "POST" })
@@ -96,6 +100,25 @@ export const saveAppUser = createServerFn({ method: "POST" })
     if (appUserId) {
       const { error } = await supabaseAdmin.from("app_users").update(row as never).eq("id", appUserId);
       if (error) throw new Error(friendlyUserError(error.message));
+      // A Delivery Agent's PIN is also their sign-in password on the single
+      // login page, so keep the auth identity in step with it.
+      if (data.userType === "driver" && data.pin) {
+        const { ensureAuthIdentity } = await import("@/lib/admin/identity.server");
+        const { data: existing } = await supabaseAdmin
+          .from("app_users")
+          .select("user_id")
+          .eq("id", appUserId)
+          .maybeSingle();
+        await ensureAuthIdentity({
+          appUserId,
+          username: data.username,
+          email: data.email,
+          fullName: data.fullName,
+          userType: "driver",
+          password: data.pin,
+          existingUserId: existing?.user_id ?? null,
+        });
+      }
       await logAdminAction(actor, "User Updated", data.fullName, `Employee ${data.employeeId}`);
     } else {
       if (data.userType === "staff") {
@@ -105,10 +128,26 @@ export const saveAppUser = createServerFn({ method: "POST" })
         // Supabase Auth requires an email identity. When the operator does not
         // supply one, derive an internal identity from the username so staff can
         // sign in with Username + Password.
-        const identity = data.email || `${data.username.trim().toLowerCase()}@staff.local`;
+        const { internalIdentity } = await import("@/lib/admin/identity.server");
+        const identity = data.email || internalIdentity(data.username, "staff");
         const created = await supabaseAdmin.auth.admin.createUser({
           email: identity,
           password: data.password,
+          email_confirm: true,
+          user_metadata: { full_name: data.fullName },
+        });
+        if (created.error) throw new Error(created.error.message);
+        row.user_id = created.data.user?.id ?? null;
+      } else {
+        // Delivery Agents sign in on the same login page with Username /
+        // Employee ID + PIN, so they need a real account too.
+        if (!data.pin) {
+          throw new Error("Delivery Agent accounts require a 6–8 digit PIN.");
+        }
+        const { internalIdentity } = await import("@/lib/admin/identity.server");
+        const created = await supabaseAdmin.auth.admin.createUser({
+          email: data.email || internalIdentity(data.username, "driver"),
+          password: data.pin,
           email_confirm: true,
           user_metadata: { full_name: data.fullName },
         });
