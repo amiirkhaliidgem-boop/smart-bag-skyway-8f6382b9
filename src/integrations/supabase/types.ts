@@ -389,6 +389,15 @@ export type Database = {
         }
         Returns: boolean
       }
+      list_delivery_agents: {
+        Args: never
+        Returns: {
+          employee_id: string
+          full_name: string
+          id: string
+          station: string
+        }[]
+      }
       passenger_confirm_delivery: {
         Args: { p_token: string }
         Returns: boolean
