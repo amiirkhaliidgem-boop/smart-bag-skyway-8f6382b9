@@ -14,7 +14,9 @@ import {
   type NotificationChannel,
   type TemplateContext,
   type RenderedMessage,
+  type NotificationTrigger,
 } from "./notifications/templates";
+import { defaultAdapters } from "./notifications/channels";
 import { generateTrackingToken } from "./passenger/tokens";
 import type { AuditEntry, ImportAuditEntry } from "./audit/log";
 import type { Role } from "./roles/roles";
