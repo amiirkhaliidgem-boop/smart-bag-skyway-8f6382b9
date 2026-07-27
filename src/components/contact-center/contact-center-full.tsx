@@ -10,7 +10,6 @@ import {
   type QualityIncident,
   type NotificationEvent,
   addCallLog,
-  createTestNotification,
 } from "@/lib/store";
 import type { AuditEntry } from "@/lib/audit/log";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -591,57 +590,6 @@ function ConversationsView(p: ConversationsProps) {
                 >
                   <PhoneCall className="h-3.5 w-3.5 mr-1" />
                   Call
-                </Button>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => {
-                    if (active.del) {
-                      createTestNotification({
-                        deliveryId: active.del.deliveryId,
-                        channel: "sms",
-                        operator: "Contact Center",
-                      });
-                      toast.success("SMS queued");
-                    }
-                  }}
-                >
-                  <Send className="h-3.5 w-3.5 mr-1" />
-                  SMS
-                </Button>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => {
-                    if (active.del) {
-                      createTestNotification({
-                        deliveryId: active.del.deliveryId,
-                        channel: "whatsapp",
-                        operator: "Contact Center",
-                      });
-                      toast.success("WhatsApp queued");
-                    }
-                  }}
-                >
-                  <MessageCircle className="h-3.5 w-3.5 mr-1" />
-                  WhatsApp
-                </Button>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => {
-                    if (active.del) {
-                      createTestNotification({
-                        deliveryId: active.del.deliveryId,
-                        channel: "email",
-                        operator: "Contact Center",
-                      });
-                      toast.success("Email queued");
-                    }
-                  }}
-                >
-                  <Mail className="h-3.5 w-3.5 mr-1" />
-                  Email
                 </Button>
                 {trackingUrl && (
                   <Button
