@@ -1,41 +1,52 @@
-## Answer first: what Position actually does today
+## Goal
 
-I checked every use of `position` in the codebase. It is stored on `app_users`, typed in `AdminUser`, edited in the Create/Edit User dialog, and included in the admin search text. That is all.
+One login screen for everyone. After sign-in the system decides the destination from the assigned role — the user never picks a portal.
 
-It does **not** affect permissions (those come only from `role_permissions` via the assigned Role), workflow transitions, approval hierarchy, or any report. Same for **Station** and **Team** — Station is only carried along on the delivery-agent record and never displayed in the Delivery Agent Portal or Dispatch Center.
+- Administrator / Lost & Found Officer / Delivery Coordinator → internal app (their role's default landing page)
+- Delivery Agent → Delivery Agent Portal only
 
-Recommendation: **remove all three** (Station, Team, Position). Role stays the sole access controller, Department stays as the organisational grouping. If you later want a "Supervisor vs Officer" distinction that actually does something, the correct way is a separate Role (e.g. "Lost & Found Supervisor") with its own permission matrix — not a free-text label.
+## Current state (verified)
 
-## The one real constraint: Supabase Auth requires an email
+- Staff sign in on `/auth` with Username-or-Email + password (real Supabase session, RBAC enforced by `AuthGate` + live permissions).
+- Delivery Agents do **not** have accounts. `/driver-portal` renders its own separate PIN screen backed by `driverPinLogin`, and there is exactly one agent record today (`ahmed.mostafa`, EMP-DA001) with a PIN and no linked account.
+- Because `/driver-portal` is behind the session gate, that second login screen is effectively unreachable — this is the root of the split-login problem.
 
-Staff sign-in goes through Supabase Auth, which will not create an account without an email address. So "no email" has to mean *no email the operator has to type*.
+## Approach
 
-Approach: when a staff account is created without an email, the system generates an internal identity `<username>@staff.local` behind the scenes. The operator never sees or types it. Sign-in changes from "Email + Password" to **"Username or Email + Password"** — the login page resolves the username to the internal identity before authenticating. Anyone with a real corporate email can still be given one and can sign in with either.
+Delivery Agents become real accounts (as chosen), so the single permission system stays the only source of truth.
 
-## What changes
+### 1. Agent accounts
 
-**1. Create/Edit User dialog** (`src/routes/admin.tsx`)
-- Required for Staff: Employee ID, Username, Full Name, Department, Role, Status, Password (on create).
-- Optional: Email, Mobile.
-- Remove the Station, Team and Position fields entirely.
+- Administration continues to create agents with Username / Employee ID + PIN, but the PIN now also becomes their sign-in password. PIN is enforced as **6–8 digits** in the create/edit/reset forms and in the server validators.
+- Creating or resetting an agent PIN provisions/updates a matching account using an internal identity derived from the username (`username@agent.local`), assigns the `driver` role, and links `app_users.user_id`.
+- The existing agent has a 4–8 digit PIN with no account; an admin must reset their PIN once (6–8 digits) to activate sign-in. I'll surface a clear "PIN reset required" hint on that record.
 
-**2. Server validation** (`src/lib/admin.functions.ts`)
-- Drop the "Staff accounts require an email address and a password" rule; require only Username + Password on create.
-- Generate the internal `<username>@staff.local` identity when Email is blank, and store `email` as null so the UI keeps showing it as empty.
-- Remove `station` / `team` / `position` from the input schema, the insert/update payload and the returned workspace shape.
-- Editing a user's username does not change the already-created auth identity (kept stable to avoid breaking sign-in); noted in the dialog.
+### 2. Single login page
 
-**3. Sign-in page** (`src/routes/auth.tsx`)
-- Field relabelled "Username or Email". If the value has no `@`, it is resolved to the internal identity before `signInWithPassword`.
-- A small public server function does the username → identity lookup (returns nothing identifying, just the login identity or a generic failure).
+- `/auth` stays the only login screen. The identifier field accepts **Username, Employee ID, or Email**; the second field is Password/PIN.
+- Identity resolution is extended to also match Employee ID and agent accounts, so an agent typing their Employee ID + PIN signs in on the same form.
+- The separate PIN card inside the Delivery Agent Portal is removed; the portal renders for the signed-in agent directly.
 
-**4. Data model cleanup**
-- Remove `station` / `team` / `position` from `AdminUser` and `STATIONS` from `src/lib/admin/modules.ts`, and from the delivery-agent directory type in `src/lib/admin/agents.ts`.
-- Database columns are left in place (nullable, unused) so nothing breaks; a follow-up migration can drop them once you confirm.
+### 3. Automatic redirect
+
+- After sign-in the role decides the landing route: `driver` → `/driver-portal`; all other roles → their existing default landing page. No portal chooser anywhere.
+- The Delivery Agent Portal binds to the signed-in agent's own record instead of a locally-typed name.
+
+### 4. Session protection
+
+- The existing route guard already blocks disallowed paths; it is tightened so an agent hitting any internal URL (`/admin`, `/lost-found`, `/delivery`, `/reports`, `/workflow-monitor`, …) is redirected straight back to `/driver-portal` rather than to a generic landing page.
+- Agent-only navigation: the app sidebar/chrome is not shown for the agent portal.
+- Access control keeps flowing from role/permission records — no hardcoded page lists added.
 
 ## Technical notes
 
-- Uniqueness: Username becomes the operational login key, so it must be unique — a unique index on `app_users.username` is added, and the save function returns a clear "Username already in use" message.
-- Employee ID uniqueness is enforced the same way.
-- Delivery agents are unaffected: they keep signing in to the Delivery Agent Portal with Username/Employee ID + PIN.
-- Permission resolution (`current_user_permissions`, `has_permission`) is untouched — Role remains the only source of access.
+- Migration: extend `login_identity_for_username` to resolve staff **and** driver accounts and to match on `employee_id` as well as `username`; keep it security-definer, returning only the internal identity string.
+- `src/lib/admin.functions.ts`: PIN schema `\d{6,8}`; on create/PIN-reset call the Auth Admin API to create/update the agent's user and upsert the `driver` row in `user_roles`; keep the PIN hash for backwards compatibility.
+- `src/lib/rbac.ts`: `defaultPathForRole('driver')` already returns `/driver-portal`; add the same driver-first rule to the permission-driven landing (`firstAllowedPath`) so managed accounts redirect identically.
+- `src/routes/auth.tsx`: single form, resolve identity → `signInWithPassword` → role lookup → redirect.
+- `src/routes/driver-portal.tsx`: delete `DriverLogin`, derive the agent from the session (`app_users` row for `auth.uid()`), keep the EN/AR toggle and the rest of the portal untouched.
+- `driverPinLogin` is retired from the UI once the portal no longer has its own login.
+
+## Out of scope
+
+No visual redesign of the login page or the Agent Portal; no changes to delivery workflow, notifications, or the Passenger Portal.
