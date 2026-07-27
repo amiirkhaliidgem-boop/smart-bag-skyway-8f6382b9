@@ -1,14 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import {
-  useStore,
-  createTestNotification,
-  setNotificationStatus,
-  type NotificationEvent,
-} from "@/lib/store";
-import { WORKFLOW_LABELS, WORKFLOW_STATUSES, type WorkflowStatus } from "@/lib/workflow/statuses";
+import { useStore, type NotificationEvent } from "@/lib/store";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -18,10 +11,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Bell, Send, MessageSquare, Mail, Smartphone, Loader2, CheckCircle2, AlertTriangle, Clock } from "lucide-react";
+import {
+  Bell,
+  MessageSquare,
+  Mail,
+  Smartphone,
+  Loader2,
+  CheckCircle2,
+  AlertTriangle,
+  Clock,
+  Lock,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
-import { toast } from "sonner";
-import type { NotificationChannel } from "@/lib/notifications/templates";
+import { triggerLabel, type NotificationChannel } from "@/lib/notifications/templates";
 
 export const Route = createFileRoute("/notifications")({
   head: () => ({
@@ -42,7 +44,6 @@ const CHANNEL_META: Record<NotificationChannel, { label: string; icon: typeof Ma
 
 function NotificationCenter() {
   const notifications = useStore((s) => s.notifications);
-  const deliveries = useStore((s) => s.deliveries);
 
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [channelFilter, setChannelFilter] = useState<string>("all");
@@ -50,11 +51,6 @@ function NotificationCenter() {
   const [passengerFilter, setPassengerFilter] = useState<string>("");
   const [deliveryFilter, setDeliveryFilter] = useState<string>("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
-
-  // Test form
-  const [testDelivery, setTestDelivery] = useState<string>(deliveries[0]?.deliveryId ?? "");
-  const [testChannel, setTestChannel] = useState<NotificationChannel>("sms");
-  const [testWorkflow, setTestWorkflow] = useState<WorkflowStatus>("OUT_FOR_DELIVERY");
 
   const filtered = useMemo(() => {
     return notifications.filter((n) => {
