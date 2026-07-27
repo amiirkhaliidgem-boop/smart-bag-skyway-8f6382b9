@@ -391,6 +391,11 @@ function UsersTab({ data }: { data: AdminWorkspaceData }) {
                   >
                     {u.status}
                   </Badge>
+                  {u.user_type === "driver" && !u.user_id && (
+                    <div className="mt-1 text-[11px] text-amber-600">
+                      PIN reset required to activate sign-in
+                    </div>
+                  )}
                 </TableCell>
                 <TableCell className="text-xs text-muted-foreground">
                   {fmt(u.last_login_at)}
