@@ -3,7 +3,7 @@
 // WhatsApp, Email, and Push channels. Real providers are wired later
 // via `src/lib/integrations/*` — this file defines contract + copy.
 
-import type { WorkflowStatus } from "../workflow/statuses";
+import { WORKFLOW_LABELS, type WorkflowStatus } from "../workflow/statuses";
 
 export type NotificationChannel = "sms" | "whatsapp" | "email" | "push";
 
