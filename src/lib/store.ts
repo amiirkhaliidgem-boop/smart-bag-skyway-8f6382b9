@@ -1332,6 +1332,20 @@ export function setDeliveryStage(
     role: opts.role,
     force: backward,
   });
+  // Stages that carry passenger meaning but share a canonical WorkflowStatus
+  // with another stage get their own notification trigger, so the passenger
+  // never receives a message that contradicts the real operational state.
+  const extraTrigger: NotificationTrigger | null =
+    stage === "Scheduled"
+      ? "STAGE_SCHEDULED"
+      : stage === "Collected Bag"
+        ? "STAGE_COLLECTED"
+        : stage === "Delivery Failed"
+          ? "STAGE_DELIVERY_FAILED"
+          : stage === "Returned to Airport"
+            ? "STAGE_RETURNED_TO_AIRPORT"
+            : null;
+  if (extraTrigger) enqueueNotifications(deliveryId, extraTrigger);
   // Mirror the operational stage into the L&F case so Lost & Found and
   // Delivery Management never show conflicting statuses.
   if (d.bagId) {
