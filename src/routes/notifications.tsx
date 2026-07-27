@@ -110,34 +110,6 @@ function NotificationCenter() {
     };
   }, [notifications]);
 
-  function simulateSend(events: NotificationEvent[]) {
-    events.forEach((e, i) => {
-      setTimeout(() => setNotificationStatus(e.id, "sending"), 400 + i * 120);
-      setTimeout(() => setNotificationStatus(e.id, "sent"), 1600 + i * 120);
-    });
-  }
-
-  function sendTest() {
-    const events = createTestNotification({
-      deliveryId: testDelivery,
-      channel: testChannel,
-      workflowStatus: testWorkflow,
-      operator: "Ops Console",
-    });
-    if (!events.length) {
-      toast.error("No template available for that combination");
-      return;
-    }
-    toast.success(`Queued ${events.length} test notification${events.length > 1 ? "s" : ""}`);
-    setSelectedId(events[0].id);
-    simulateSend(events);
-  }
-
-  function resend(n: NotificationEvent) {
-    setNotificationStatus(n.id, "queued");
-    simulateSend([n]);
-  }
-
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -153,6 +125,15 @@ function NotificationCenter() {
         </div>
       </div>
 
+      <div className="flex items-start gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+        <Lock className="h-4 w-4 shrink-0 mt-px text-muted-foreground" />
+        <p>
+          Read-only monitor. Passenger notifications are generated automatically by the
+          Workflow Engine on every operational transition — they cannot be created,
+          edited or sent manually from this screen.
+        </p>
+      </div>
+
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <Kpi label="Total" value={counts.total} icon={Bell} />
         <Kpi label="Queued" value={counts.queued} icon={Clock} tone="warning" />
@@ -160,57 +141,6 @@ function NotificationCenter() {
         <Kpi label="Sent" value={counts.sent} icon={CheckCircle2} tone="success" />
         <Kpi label="Failed" value={counts.failed} icon={AlertTriangle} tone="danger" />
       </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <Send className="h-4 w-4" />
-            Send Test Notification
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-3 md:grid-cols-5">
-          <div className="space-y-1">
-            <Label className="text-xs">Delivery</Label>
-            <Select value={testDelivery} onValueChange={setTestDelivery}>
-              <SelectTrigger><SelectValue placeholder="Select delivery" /></SelectTrigger>
-              <SelectContent>
-                {deliveries.map((d) => (
-                  <SelectItem key={d.deliveryId} value={d.deliveryId}>
-                    {d.deliveryId} — {d.passengerName}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1">
-            <Label className="text-xs">Channel</Label>
-            <Select value={testChannel} onValueChange={(v) => setTestChannel(v as NotificationChannel)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {(Object.keys(CHANNEL_META) as NotificationChannel[]).map((c) => (
-                  <SelectItem key={c} value={c}>{CHANNEL_META[c].label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1 md:col-span-2">
-            <Label className="text-xs">Workflow Status</Label>
-            <Select value={testWorkflow} onValueChange={(v) => setTestWorkflow(v as WorkflowStatus)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {WORKFLOW_STATUSES.map((s) => (
-                  <SelectItem key={s} value={s}>{WORKFLOW_LABELS[s].en}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex items-end">
-            <Button className="w-full" onClick={sendTest}>
-              <Send className="h-4 w-4 mr-2" /> Send Test
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
 
       <Card>
         <CardHeader>
