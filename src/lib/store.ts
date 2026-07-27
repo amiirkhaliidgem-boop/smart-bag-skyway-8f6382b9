@@ -1333,6 +1333,7 @@ export function setDeliveryStage(
     actor: opts.actor ?? "system",
     role: opts.role,
     force: backward,
+    silent: backward,
   });
   // Stages that carry passenger meaning but share a canonical WorkflowStatus
   // with another stage get their own notification trigger, so the passenger
