@@ -1,28 +1,33 @@
 ## Goal
-Hide the unfinished Contact Center functionality behind a professional Coming Soon page for the Pilot/Go Live release, without deleting any existing code or changing engines.
+Make Workflow Monitor a true live board over the existing ecosystem, and remove the Station filter. UI/read-only change — no engine, schema, or write-path modifications.
 
-## Approach
-1. **Preserve existing implementation**
-   - Move the full `src/routes/contact-center.tsx` page implementation to `src/components/contact-center/contact-center-full.tsx` as a regular component export.
-   - Keep all helper components, types, hooks, and logic intact; only remove TanStack route-specific boilerplate from the moved file.
+## Current state (verified)
+- `src/routes/workflow-monitor.tsx` already reads `useStore` (Supabase-backed, realtime-synced) — so it isn't literally demo data, but:
+  - Rows are built **only** from `workflow` records, so Lost & Found cases that haven't reached Delivery never appear (that's why "Cases Waiting" and "In Storage" show 0 in the screenshot).
+  - Status column renders the raw `WorkflowStatus`, not the operational `DeliveryStage` used by Delivery Management / Agent Portal, so rows can look out of sync with those modules.
+  - Elapsed time is computed once per render and never ticks.
+  - A `Station` filter exists and matches on substrings of the address.
 
-2. **Create the Coming Soon component**
-   - Add `src/components/contact-center/contact-center-coming-soon.tsx`.
-   - Use the existing design system: `Card`, `CardContent`, standard typography, semantic colors (`text-primary`, `text-muted-foreground`, `bg-muted`, `border-border`), and the `Headphones` icon from `lucide-react`.
-   - Render a centered card with:
-     - Title: "Contact Center Operations"
-     - Subtitle: "Coming Soon"
-     - Body: "This module will be available in a future release."
+## Changes (all inside `src/routes/workflow-monitor.tsx`)
 
-3. **Update the route file**
-   - Replace `src/routes/contact-center.tsx` with a thin route wrapper that imports `ContactCenterComingSoon` and renders it inside the existing app layout.
-   - Keep the route's `head()` metadata.
+1. **Unified live row model**
+   - Build rows from `cases` joined to `deliveries` and `workflow` (read-only selectors from the store).
+   - Include L&F cases with no delivery yet, so the pre-delivery part of the lifecycle is visible.
+   - Per row, derive: case/PIR, passenger, bag tag, current stage (delivery stage when a delivery exists, otherwise the L&F/workflow status), delivery agent, last transition timestamp, next step, and feedback-submitted flag.
 
-4. **Verify**
-   - Run typecheck/build to confirm no unused-import errors and that the route still registers correctly.
-   - Confirm the sidebar "Contact Center" entry opens the Coming Soon page and that the layout, sidebar, and header remain unchanged.
+2. **Remove Station filter**
+   - Delete the Station `Select` and its state/filter logic; grid becomes Search + Delivery Agent + Status.
 
-## Out of Scope
-- No changes to Workflow, Notification, Timeline, Audit, Delivery, Passenger, RBAC, or database logic.
-- No sidebar removal or renaming.
-- No deletion of existing Contact Center code.
+3. **Status display aligned with the modules**
+   - Use `DeliveryStage` labels/colors from `src/lib/delivery/stages.ts` when a delivery exists, and `LF_STATUS_LABEL`/colors from `src/lib/lost-found/statuses.ts` before hand-off, so the monitor mirrors exactly what L&F and Dispatch show.
+   - Status filter options become the same unified list.
+
+4. **Live sync + ticking elapsed**
+   - Store already pushes Supabase realtime updates, so any transition (L&F create → Ready for Delivery → Assigned → Accepted → Out for Delivery → OTP Verified → Delivered → Feedback Submitted) re-renders the board automatically.
+   - Add a 30s interval tick so Elapsed/SLA badges stay accurate without a manual refresh.
+
+5. **KPIs recomputed from the unified rows**
+   - Cases Waiting (L&F pre-hand-off), In Storage, Ready for Delivery, Out for Delivery, Delivered, Delayed (SLA breach), Quality Alerts, Returned — all derived from the same live rows so the numbers match the table.
+
+## Out of scope
+No changes to Workflow, Delivery, Notification, Timeline, Audit engines, the store's write paths, or the database schema. No new routes or duplicate state.
