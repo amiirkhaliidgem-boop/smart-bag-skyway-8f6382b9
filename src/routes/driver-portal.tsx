@@ -6,10 +6,11 @@ import {
   driverCollect,
   driverStartTrip,
   driverMarkDelivered,
-  driverPool,
   reportDriverPosition,
   type Delivery,
 } from "@/lib/store";
+import { useServerFn } from "@tanstack/react-start";
+import { driverPinLogin } from "@/lib/admin.functions";
 import { getDeliveryStage } from "@/lib/store";
 import {
   stopNavigationHref,
@@ -63,12 +64,17 @@ function DriverPortalPage() {
 
 function DriverPortalBody() {
   const [signedIn, setSignedIn] = useState(false);
-  const [driver, setDriver] = useState(driverPool[0]);
+  const [driver, setDriver] = useState("");
   const { dir, lang } = useDriverLang();
   return (
     <div dir={dir} lang={lang}>
       {!signedIn ? (
-        <DriverLogin driver={driver} setDriver={setDriver} onSignIn={() => setSignedIn(true)} />
+        <DriverLogin
+          onSignIn={(name) => {
+            setDriver(name);
+            setSignedIn(true);
+          }}
+        />
       ) : (
         <DriverDashboard driver={driver} onSignOut={() => setSignedIn(false)} />
       )}
@@ -76,16 +82,11 @@ function DriverPortalBody() {
   );
 }
 
-function DriverLogin({
-  driver,
-  setDriver,
-  onSignIn,
-}: {
-  driver: string;
-  setDriver: (s: string) => void;
-  onSignIn: () => void;
-}) {
+function DriverLogin({ onSignIn }: { onSignIn: (name: string) => void }) {
   const [pin, setPin] = useState("");
+  const [identifier, setIdentifier] = useState("");
+  const [busy, setBusy] = useState(false);
+  const login = useServerFn(driverPinLogin);
   const { t } = useDriverLang();
   return (
     <div className="max-w-md mx-auto pt-8">
@@ -99,15 +100,12 @@ function DriverLogin({
         <CardContent className="space-y-4">
           <div className="space-y-1.5">
             <Label>{t.driverLabel}</Label>
-            <select
-              className="h-10 w-full rounded-md border border-input bg-background px-2 text-sm"
-              value={driver}
-              onChange={(e) => setDriver(e.target.value)}
-            >
-              {driverPool.map((d) => (
-                <option key={d} value={d}>{d}</option>
-              ))}
-            </select>
+            <Input
+              value={identifier}
+              onChange={(e) => setIdentifier(e.target.value)}
+              placeholder="Username or Employee ID"
+              autoComplete="username"
+            />
           </div>
           <div className="space-y-1.5">
             <Label>{t.pinLabel}</Label>
@@ -116,18 +114,27 @@ function DriverLogin({
               value={pin}
               onChange={(e) => setPin(e.target.value)}
               placeholder={t.pinPlaceholder}
-              maxLength={4}
+              maxLength={8}
             />
           </div>
           <Button
             className="w-full"
-            onClick={() => {
-              if (pin !== "1234") {
+            disabled={busy || !identifier || pin.length < 4}
+            onClick={async () => {
+              setBusy(true);
+              try {
+                const res = await login({ data: { identifier, pin } });
+                if (!res.ok) {
+                  toast.error(res.error ?? t.invalidPin);
+                  return;
+                }
+                onSignIn(res.agent.name);
+                toast.success(t.welcome(res.agent.name));
+              } catch {
                 toast.error(t.invalidPin);
-                return;
+              } finally {
+                setBusy(false);
               }
-              onSignIn();
-              toast.success(t.welcome(driver));
             }}
           >
             {t.signInAction}

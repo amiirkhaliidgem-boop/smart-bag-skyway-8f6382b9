@@ -1,8 +1,8 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useState } from "react";
+import { useDeliveryAgents } from "@/lib/admin/agents";
 import {
   useStore,
-  driverPool,
   assignDriver,
   resendOtp,
   ensurePassengerToken,
@@ -341,9 +341,12 @@ function AssignDialog({
   onOpenChange: (v: boolean) => void;
   delivery: Delivery;
 }) {
-  const [driver, setDriver] = useState(
-    delivery.driver && delivery.driver !== "—" ? delivery.driver : driverPool[0],
+  const { names: agentNames } = useDeliveryAgents();
+  const [driverPick, setDriverPick] = useState(
+    delivery.driver && delivery.driver !== "—" ? delivery.driver : "",
   );
+  const driver = driverPick || agentNames[0] || "—";
+  const setDriver = setDriverPick;
   function submit(e: React.FormEvent) {
     e.preventDefault();
     assignDriver(delivery.deliveryId, driver, { actor: "Delivery Coordinator" });
@@ -366,7 +369,7 @@ function AssignDialog({
               value={driver}
               onChange={(e) => setDriver(e.target.value)}
             >
-              {driverPool.map((d) => <option key={d} value={d}>{d}</option>)}
+              {agentNames.map((d) => <option key={d} value={d}>{d}</option>)}
             </select>
           </div>
           <DialogFooter>

@@ -1,8 +1,8 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
+import { useDeliveryAgents } from "@/lib/admin/agents";
 import {
   useStore,
-  driverPool,
   assignDriver,
   bulkAssignDriver,
   getDeliveryStage,
@@ -515,7 +515,10 @@ function BulkAssignDialog({
   deliveries: Delivery[];
   onDone: () => void;
 }) {
-  const [driver, setDriver] = useState(driverPool[0]);
+  const { names: agentNames } = useDeliveryAgents();
+  const [driverPick, setDriverPick] = useState("");
+  const driver = driverPick || agentNames[0] || "—";
+  const setDriver = setDriverPick;
   const [note, setNote] = useState("");
   const deliveryIds = deliveries.map((d) => d.deliveryId);
   const allAssigned =
@@ -557,7 +560,7 @@ function BulkAssignDialog({
               value={driver}
               onChange={(e) => setDriver(e.target.value)}
             >
-              {driverPool.map((d) => <option key={d} value={d}>{d}</option>)}
+              {agentNames.map((d) => <option key={d} value={d}>{d}</option>)}
             </select>
           </div>
           <div className="space-y-1.5">
@@ -589,7 +592,10 @@ function SingleAssignDialog({
   onClose: () => void;
 }) {
   const d = useStore((s) => (deliveryId ? s.deliveries.find((x) => x.deliveryId === deliveryId) : undefined));
-  const [driver, setDriver] = useState(driverPool[0]);
+  const { names: agentNames } = useDeliveryAgents();
+  const [driverPick, setDriverPick] = useState("");
+  const driver = driverPick || agentNames[0] || "—";
+  const setDriver = setDriverPick;
   const open = !!deliveryId;
   const wasAssigned = !!(d?.driver && d.driver !== "—");
   function submit(e: React.FormEvent) {
@@ -618,7 +624,7 @@ function SingleAssignDialog({
               value={driver}
               onChange={(e) => setDriver(e.target.value)}
             >
-              {driverPool.map((dv) => <option key={dv} value={dv}>{dv}</option>)}
+              {agentNames.map((dv) => <option key={dv} value={dv}>{dv}</option>)}
             </select>
           </div>
           <DialogFooter>
