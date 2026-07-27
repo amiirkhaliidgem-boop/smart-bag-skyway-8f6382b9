@@ -16,7 +16,8 @@ import {
   type RenderedMessage,
   type NotificationTrigger,
 } from "./notifications/templates";
-import { defaultAdapters } from "./notifications/channels";
+import { enabledChannels, getProvider } from "./notifications/registry";
+import { dispatchEvents, type DispatchPatch } from "./notifications/dispatch";
 import { generateTrackingToken } from "./passenger/tokens";
 import type { AuditEntry, ImportAuditEntry } from "./audit/log";
 import type { Role } from "./roles/roles";
@@ -205,6 +206,13 @@ export interface NotificationEvent {
   pirNumber?: string;
   operator?: string;
   sentAt?: string;
+  /** Provider that handled (or last attempted) this event, e.g. "simulated-sms". */
+  provider?: string;
+  /** Provider-side message id returned on a successful send. */
+  providerId?: string;
+  attempts?: number;
+  lastAttemptAt?: string;
+  failureReason?: string;
 }
 
 export interface BaggageCase {
