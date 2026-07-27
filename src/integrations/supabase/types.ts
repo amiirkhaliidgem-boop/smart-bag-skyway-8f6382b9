@@ -14,6 +14,72 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_audit_log: {
+        Row: {
+          action: string
+          actor_name: string
+          actor_role: string | null
+          actor_user_id: string | null
+          created_at: string
+          details: string
+          id: string
+          target: string
+        }
+        Insert: {
+          action: string
+          actor_name?: string
+          actor_role?: string | null
+          actor_user_id?: string | null
+          created_at?: string
+          details?: string
+          id?: string
+          target?: string
+        }
+        Update: {
+          action?: string
+          actor_name?: string
+          actor_role?: string | null
+          actor_user_id?: string | null
+          created_at?: string
+          details?: string
+          id?: string
+          target?: string
+        }
+        Relationships: []
+      }
+      app_roles: {
+        Row: {
+          created_at: string
+          description: string
+          id: string
+          is_system: boolean
+          key: string
+          legacy_role: Database["public"]["Enums"]["app_role"] | null
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string
+          id?: string
+          is_system?: boolean
+          key: string
+          legacy_role?: Database["public"]["Enums"]["app_role"] | null
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          id?: string
+          is_system?: boolean
+          key?: string
+          legacy_role?: Database["public"]["Enums"]["app_role"] | null
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       app_state: {
         Row: {
           id: string
@@ -35,6 +101,69 @@ export type Database = {
           updated_at?: string
           updated_by?: string | null
           version?: number
+        }
+        Relationships: []
+      }
+      app_users: {
+        Row: {
+          created_at: string
+          department: string
+          driver_pin_hash: string | null
+          driver_pin_salt: string | null
+          email: string | null
+          employee_id: string
+          full_name: string
+          id: string
+          last_login_at: string | null
+          mobile: string | null
+          position: string
+          station: string
+          status: string
+          team: string
+          updated_at: string
+          user_id: string | null
+          user_type: string
+          username: string
+        }
+        Insert: {
+          created_at?: string
+          department?: string
+          driver_pin_hash?: string | null
+          driver_pin_salt?: string | null
+          email?: string | null
+          employee_id: string
+          full_name: string
+          id?: string
+          last_login_at?: string | null
+          mobile?: string | null
+          position?: string
+          station?: string
+          status?: string
+          team?: string
+          updated_at?: string
+          user_id?: string | null
+          user_type?: string
+          username: string
+        }
+        Update: {
+          created_at?: string
+          department?: string
+          driver_pin_hash?: string | null
+          driver_pin_salt?: string | null
+          email?: string | null
+          employee_id?: string
+          full_name?: string
+          id?: string
+          last_login_at?: string | null
+          mobile?: string | null
+          position?: string
+          station?: string
+          status?: string
+          team?: string
+          updated_at?: string
+          user_id?: string | null
+          user_type?: string
+          username?: string
         }
         Relationships: []
       }
@@ -140,6 +269,77 @@ export type Database = {
         }
         Relationships: []
       }
+      role_permissions: {
+        Row: {
+          action: string
+          allowed: boolean
+          id: string
+          module: string
+          role_id: string
+          updated_at: string
+        }
+        Insert: {
+          action: string
+          allowed?: boolean
+          id?: string
+          module: string
+          role_id: string
+          updated_at?: string
+        }
+        Update: {
+          action?: string
+          allowed?: boolean
+          id?: string
+          module?: string
+          role_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "role_permissions_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "app_roles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_role_assignments: {
+        Row: {
+          app_user_id: string
+          assigned_at: string
+          id: string
+          role_id: string
+        }
+        Insert: {
+          app_user_id: string
+          assigned_at?: string
+          id?: string
+          role_id: string
+        }
+        Update: {
+          app_user_id?: string
+          assigned_at?: string
+          id?: string
+          role_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_role_assignments_app_user_id_fkey"
+            columns: ["app_user_id"]
+            isOneToOne: true
+            referencedRelation: "app_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_role_assignments_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "app_roles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -170,7 +370,18 @@ export type Database = {
         Args: { p_action: string; p_token: string }
         Returns: boolean
       }
+      current_user_permissions: {
+        Args: never
+        Returns: {
+          action: string
+          module: string
+        }[]
+      }
       get_passenger_view: { Args: { p_token: string }; Returns: Json }
+      has_permission: {
+        Args: { _action: string; _module: string; _user_id: string }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
