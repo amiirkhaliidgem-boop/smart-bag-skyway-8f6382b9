@@ -912,28 +912,6 @@ function KpiCard({
   );
 }
 
-function FieldDate({
-  label,
-  value,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-}) {
-  return (
-    <div className="space-y-1.5">
-      <Label className="text-xs">{label}</Label>
-      <Input
-        type="date"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="h-9"
-      />
-    </div>
-  );
-}
-
 function FieldSelect({
   label,
   value,
