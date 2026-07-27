@@ -280,7 +280,7 @@ function NotificationCenter() {
                   <Row k="PIR Number" v={selected.pirNumber ?? "—"} mono />
                   <Row k="Delivery ID" v={selected.deliveryId} mono />
                   <Row k="Channel" v={CHANNEL_META[selected.channel].label} />
-                  <Row k="Trigger" v={WORKFLOW_LABELS[selected.status]?.en ?? selected.status} />
+                  <Row k="Trigger" v={triggerLabel(selected.status)} />
                   <Row k="Operator" v={selected.operator ?? "system"} />
                   <Row
                     k="Time"
