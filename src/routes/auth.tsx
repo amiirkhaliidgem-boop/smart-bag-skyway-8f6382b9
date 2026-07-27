@@ -128,7 +128,7 @@ async function resolveLoginIdentity(input: string): Promise<string> {
           <form onSubmit={submit} className="space-y-4">
             <div className="space-y-1.5">
               <Label htmlFor="identifier">
-                {mode === "signin" ? "Username or Email" : "Email"}
+                {mode === "signin" ? "Username, Employee ID, or Email" : "Email"}
               </Label>
               <Input
                 id="identifier"
@@ -140,7 +140,7 @@ async function resolveLoginIdentity(input: string): Promise<string> {
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">{mode === "signin" ? "Password / PIN" : "Password"}</Label>
               <Input
                 id="password"
                 type="password"
