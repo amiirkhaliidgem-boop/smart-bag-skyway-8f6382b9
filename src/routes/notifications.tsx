@@ -203,13 +203,12 @@ function NotificationCenter() {
                     <th className="text-left px-3 py-2 font-medium">Trigger</th>
                     <th className="text-left px-3 py-2 font-medium">Status</th>
                     <th className="text-left px-3 py-2 font-medium">Time</th>
-                    <th className="text-right px-3 py-2 font-medium">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filtered.length === 0 && (
                     <tr>
-                      <td colSpan={7} className="text-center py-10 text-sm text-muted-foreground">
+                      <td colSpan={6} className="text-center py-10 text-sm text-muted-foreground">
                         No notifications match the current filters.
                       </td>
                     </tr>
@@ -241,7 +240,7 @@ function NotificationCenter() {
                           </span>
                           <div className="text-[11px] text-muted-foreground uppercase">{n.locale}</div>
                         </td>
-                        <td className="px-3 py-2 text-xs">{WORKFLOW_LABELS[n.status]?.en ?? n.status}</td>
+                        <td className="px-3 py-2 text-xs">{triggerLabel(n.status)}</td>
                         <td className="px-3 py-2">
                           <StatusPill status={n.status_} />
                         </td>
@@ -253,20 +252,6 @@ function NotificationCenter() {
                           <div className="text-[11px] text-muted-foreground">
                             {n.operator ?? "system"}
                           </div>
-                        </td>
-                        <td className="px-3 py-2 text-right">
-                          {(n.status_ === "failed" || n.status_ === "sent") && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                resend(n);
-                              }}
-                            >
-                              Resend
-                            </Button>
-                          )}
                         </td>
                       </tr>
                     );
