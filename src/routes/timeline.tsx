@@ -566,36 +566,75 @@ function TimelinePage() {
   const feedback = useStore((s) => s.feedback);
   const incidents = useStore((s) => s.qualityIncidents);
   const audit = useStore((s) => s.audit);
+  const callLogs = useStore((s) => s.callLogs);
+  const ioAudit = useStore((s) => s.ioAudit);
 
   const events = useMemo(
     () =>
-      buildEvents(cases, deliveries, workflow, notifications, feedback, incidents, audit),
-    [cases, deliveries, workflow, notifications, feedback, incidents, audit],
+      buildEvents(
+        cases,
+        deliveries,
+        workflow,
+        notifications,
+        feedback,
+        incidents,
+        audit,
+        callLogs,
+        ioAudit,
+      ),
+    [
+      cases,
+      deliveries,
+      workflow,
+      notifications,
+      feedback,
+      incidents,
+      audit,
+      callLogs,
+      ioAudit,
+    ],
   );
 
   const drivers = useMemo(
     () => Array.from(new Set(deliveries.map((d) => d.driver).filter((x) => x && x !== "—"))),
     [deliveries],
   );
-  const passengers = useMemo(
-    () => Array.from(new Set(cases.map((c) => c.passengerName))),
-    [cases],
-  );
   const employees = useMemo(
     () => Array.from(new Set(events.map((e) => e.user))).sort(),
     [events],
   );
+
+  // Universal reference index — lets the global Search box resolve an event
+  // by any operational reference (bag tag, PNR, tracking token, …).
+  const refIndex = useMemo(() => {
+    const caseRefs = new Map<string, string>();
+    for (const c of cases) {
+      caseRefs.set(
+        c.bagId,
+        [
+          c.bagTagNumber,
+          ...(c.baggage?.bagTags ?? []),
+          c.passenger?.pnr,
+          c.flightNumber,
+          c.contact,
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase(),
+      );
+    }
+    const deliveryRefs = new Map<string, string>();
+    for (const w of workflow) deliveryRefs.set(w.deliveryId, (w.token ?? "").toLowerCase());
+    return { caseRefs, deliveryRefs };
+  }, [cases, workflow]);
 
   const [q, setQ] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [fStatus, setFStatus] = useState<"all" | WorkflowStatus>("all");
   const [fModule, setFModule] = useState<"all" | ModuleSource>("all");
-  const [fDelivery, setFDelivery] = useState("all");
-  const [fPIR, setFPIR] = useState("all");
   const [fEmployee, setFEmployee] = useState("all");
   const [fDriver, setFDriver] = useState("all");
-  const [fPassenger, setFPassenger] = useState("all");
   const [selected, setSelected] = useState<TimelineEvent | null>(null);
 
   const filtered = useMemo(() => {
@@ -605,11 +644,16 @@ function TimelinePage() {
           e.title,
           e.description,
           e.user,
+          e.role,
+          moduleLabel(e.module),
+          e.workflowStatus ? WORKFLOW_LABELS[e.workflowStatus].en : "",
           e.deliveryId,
           e.pirNumber,
           e.bagId,
           e.passengerName,
           e.driver,
+          e.bagId ? refIndex.caseRefs.get(e.bagId) : "",
+          e.deliveryId ? refIndex.deliveryRefs.get(e.deliveryId) : "",
         ]
           .filter(Boolean)
           .join(" ")
@@ -624,14 +668,11 @@ function TimelinePage() {
       }
       if (fStatus !== "all" && e.workflowStatus !== fStatus) return false;
       if (fModule !== "all" && e.module !== fModule) return false;
-      if (fDelivery !== "all" && e.deliveryId !== fDelivery) return false;
-      if (fPIR !== "all" && e.pirNumber !== fPIR) return false;
       if (fEmployee !== "all" && e.user !== fEmployee) return false;
       if (fDriver !== "all" && e.driver !== fDriver) return false;
-      if (fPassenger !== "all" && e.passengerName !== fPassenger) return false;
       return true;
     });
-  }, [events, q, dateFrom, dateTo, fStatus, fModule, fDelivery, fPIR, fEmployee, fDriver, fPassenger]);
+  }, [events, q, dateFrom, dateTo, fStatus, fModule, fEmployee, fDriver, refIndex]);
 
   const kpis = useMemo(() => {
     const byModule = new Map<ModuleSource, number>();
@@ -650,15 +691,9 @@ function TimelinePage() {
     setDateTo("");
     setFStatus("all");
     setFModule("all");
-    setFDelivery("all");
-    setFPIR("all");
     setFEmployee("all");
     setFDriver("all");
-    setFPassenger("all");
   }
-
-  const uniqueDeliveries = Array.from(new Set(deliveries.map((d) => d.deliveryId)));
-  const uniquePIRs = Array.from(new Set(cases.map((c) => c.pirNumber)));
 
   return (
     <div className="space-y-6">
