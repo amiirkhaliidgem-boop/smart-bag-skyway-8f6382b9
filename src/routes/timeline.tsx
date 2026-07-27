@@ -1168,15 +1168,6 @@ function SourceFields({ event }: { event: TimelineEvent }) {
   }
 }
 
-function FieldLegacy({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
-  return (
-    <div>
-      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
-      <p className={cn("text-xs", mono && "font-mono")}>{value}</p>
-    </div>
-  );
-}
-
 function Section({
   title,
   icon: Icon,
