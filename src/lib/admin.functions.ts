@@ -1,0 +1,450 @@
+import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import type { AdminWorkspaceData } from "@/lib/admin/modules";
+
+export const getAdminWorkspace = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<AdminWorkspaceData> => {
+    const { assertAdmin } = await import("@/lib/admin/guard.server");
+    await assertAdmin(context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const [users, roles, permissions, audit, assignments] = await Promise.all([
+      supabaseAdmin.from("app_users").select("*").order("full_name"),
+      supabaseAdmin.from("app_roles").select("*").order("name"),
+      supabaseAdmin.from("role_permissions").select("role_id, module, action, allowed"),
+      supabaseAdmin
+        .from("admin_audit_log")
+        .select("id, actor_name, actor_role, action, target, details, created_at")
+        .order("created_at", { ascending: false })
+        .limit(300),
+      supabaseAdmin.from("user_role_assignments").select("app_user_id, role_id"),
+    ]);
+
+    const roleByUser = new Map(
+      (assignments.data ?? []).map((a) => [a.app_user_id as string, a.role_id as string]),
+    );
+
+    return {
+      users: (users.data ?? []).map((u) => ({
+        id: u.id,
+        user_id: u.user_id,
+        employee_id: u.employee_id,
+        full_name: u.full_name,
+        username: u.username,
+        email: u.email,
+        mobile: u.mobile,
+        department: u.department,
+        station: u.station,
+        team: u.team,
+        position: u.position,
+        status: u.status,
+        user_type: u.user_type,
+        last_login_at: u.last_login_at,
+        created_at: u.created_at,
+        role_id: roleByUser.get(u.id) ?? null,
+        has_pin: Boolean(u.driver_pin_hash),
+      })),
+      roles: (roles.data ?? []) as AdminWorkspaceData["roles"],
+      permissions: (permissions.data ?? []) as AdminWorkspaceData["permissions"],
+      audit: (audit.data ?? []) as AdminWorkspaceData["audit"],
+    };
+  });
+
+const userInput = z.object({
+  id: z.string().uuid().optional(),
+  employeeId: z.string().trim().min(1).max(40),
+  fullName: z.string().trim().min(1).max(120),
+  username: z.string().trim().min(2).max(60),
+  email: z.string().trim().email().max(255).optional().or(z.literal("")),
+  mobile: z.string().trim().max(40).optional().or(z.literal("")),
+  department: z.string().trim().max(80).default(""),
+  station: z.string().trim().max(80).default("Airport"),
+  team: z.string().trim().max(80).default(""),
+  position: z.string().trim().max(80).default(""),
+  status: z.enum(["Active", "Disabled", "Invited"]).default("Active"),
+  userType: z.enum(["staff", "driver"]).default("staff"),
+  roleId: z.string().uuid(),
+  password: z.string().min(6).max(72).optional().or(z.literal("")),
+  pin: z.string().regex(/^\d{4,8}$/).optional().or(z.literal("")),
+});
+
+export const saveAppUser = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) => userInput.parse(data))
+  .handler(async ({ data, context }) => {
+    const { assertAdmin, logAdminAction, syncLegacyRole } = await import("@/lib/admin/guard.server");
+    const actor = await assertAdmin(context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { hashPin } = await import("@/lib/admin/pin.server");
+
+    const row: Record<string, unknown> = {
+      employee_id: data.employeeId,
+      full_name: data.fullName,
+      username: data.username,
+      email: data.email || null,
+      mobile: data.mobile || null,
+      department: data.department,
+      station: data.station,
+      team: data.team,
+      position: data.position,
+      status: data.status,
+      user_type: data.userType,
+    };
+
+    if (data.pin) {
+      const { hash, salt } = hashPin(data.pin);
+      row.driver_pin_hash = hash;
+      row.driver_pin_salt = salt;
+    }
+
+    let appUserId = data.id ?? null;
+
+    if (appUserId) {
+      const { error } = await supabaseAdmin.from("app_users").update(row).eq("id", appUserId);
+      if (error) throw new Error(error.message);
+      await logAdminAction(actor, "User Updated", data.fullName, `Employee ${data.employeeId}`);
+    } else {
+      if (data.userType === "staff") {
+        if (!data.email || !data.password) {
+          throw new Error("Staff accounts require an email address and a password.");
+        }
+        const created = await supabaseAdmin.auth.admin.createUser({
+          email: data.email,
+          password: data.password,
+          email_confirm: true,
+          user_metadata: { full_name: data.fullName },
+        });
+        if (created.error) throw new Error(created.error.message);
+        row.user_id = created.data.user?.id ?? null;
+      }
+      const { data: inserted, error } = await supabaseAdmin
+        .from("app_users")
+        .insert(row as never)
+        .select("id")
+        .single();
+      if (error) throw new Error(error.message);
+      appUserId = inserted.id;
+      await logAdminAction(
+        actor,
+        "User Created",
+        data.fullName,
+        `${data.userType === "driver" ? "Delivery Agent" : "Staff"} · ${data.employeeId}`,
+      );
+    }
+
+    const { error: assignError } = await supabaseAdmin
+      .from("user_role_assignments")
+      .upsert({ app_user_id: appUserId!, role_id: data.roleId }, { onConflict: "app_user_id" });
+    if (assignError) throw new Error(assignError.message);
+    await syncLegacyRole(appUserId!, data.roleId);
+
+    return { id: appUserId };
+  });
+
+export const setUserStatus = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z.object({ id: z.string().uuid(), status: z.enum(["Active", "Disabled", "Invited"]) }).parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    const { assertAdmin, logAdminAction } = await import("@/lib/admin/guard.server");
+    const actor = await assertAdmin(context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: user } = await supabaseAdmin
+      .from("app_users")
+      .select("full_name, user_id")
+      .eq("id", data.id)
+      .maybeSingle();
+    const { error } = await supabaseAdmin
+      .from("app_users")
+      .update({ status: data.status })
+      .eq("id", data.id);
+    if (error) throw new Error(error.message);
+    if (user?.user_id) {
+      await supabaseAdmin.auth.admin.updateUserById(user.user_id, {
+        ban_duration: data.status === "Disabled" ? "876000h" : "none",
+      });
+    }
+    await logAdminAction(
+      actor,
+      data.status === "Disabled" ? "User Disabled" : "User Activated",
+      user?.full_name ?? data.id,
+    );
+    return { ok: true };
+  });
+
+export const deleteAppUser = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) => z.object({ id: z.string().uuid() }).parse(data))
+  .handler(async ({ data, context }) => {
+    const { assertAdmin, logAdminAction } = await import("@/lib/admin/guard.server");
+    const actor = await assertAdmin(context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: user } = await supabaseAdmin
+      .from("app_users")
+      .select("full_name, user_id")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (user?.user_id === context.userId) throw new Error("You cannot delete your own account.");
+    const { error } = await supabaseAdmin.from("app_users").delete().eq("id", data.id);
+    if (error) throw new Error(error.message);
+    if (user?.user_id) {
+      await supabaseAdmin.from("user_roles").delete().eq("user_id", user.user_id);
+      await supabaseAdmin.auth.admin.deleteUser(user.user_id);
+    }
+    await logAdminAction(actor, "User Deleted", user?.full_name ?? data.id);
+    return { ok: true };
+  });
+
+export const resetUserCredential = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z
+      .object({
+        id: z.string().uuid(),
+        password: z.string().min(6).max(72).optional(),
+        pin: z.string().regex(/^\d{4,8}$/).optional(),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    const { assertAdmin, logAdminAction } = await import("@/lib/admin/guard.server");
+    const actor = await assertAdmin(context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { hashPin } = await import("@/lib/admin/pin.server");
+    const { data: user } = await supabaseAdmin
+      .from("app_users")
+      .select("full_name, user_id")
+      .eq("id", data.id)
+      .maybeSingle();
+
+    if (data.password) {
+      if (!user?.user_id) throw new Error("This account has no sign-in identity.");
+      const { error } = await supabaseAdmin.auth.admin.updateUserById(user.user_id, {
+        password: data.password,
+      });
+      if (error) throw new Error(error.message);
+      await logAdminAction(actor, "Password Reset", user.full_name);
+    }
+    if (data.pin) {
+      const { hash, salt } = hashPin(data.pin);
+      const { error } = await supabaseAdmin
+        .from("app_users")
+        .update({ driver_pin_hash: hash, driver_pin_salt: salt })
+        .eq("id", data.id);
+      if (error) throw new Error(error.message);
+      await logAdminAction(actor, "Password Reset", user?.full_name ?? data.id, "Delivery Agent PIN reset");
+    }
+    return { ok: true };
+  });
+
+export const assignUserRole = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z.object({ id: z.string().uuid(), roleId: z.string().uuid() }).parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    const { assertAdmin, logAdminAction, syncLegacyRole } = await import("@/lib/admin/guard.server");
+    const actor = await assertAdmin(context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin
+      .from("user_role_assignments")
+      .upsert({ app_user_id: data.id, role_id: data.roleId }, { onConflict: "app_user_id" });
+    if (error) throw new Error(error.message);
+    await syncLegacyRole(data.id, data.roleId);
+    const [{ data: user }, { data: role }] = await Promise.all([
+      supabaseAdmin.from("app_users").select("full_name").eq("id", data.id).maybeSingle(),
+      supabaseAdmin.from("app_roles").select("name").eq("id", data.roleId).maybeSingle(),
+    ]);
+    await logAdminAction(actor, "Role Changed", user?.full_name ?? data.id, `Role set to ${role?.name ?? ""}`);
+    return { ok: true };
+  });
+
+export const saveRole = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z
+      .object({
+        id: z.string().uuid().optional(),
+        name: z.string().trim().min(2).max(80),
+        description: z.string().trim().max(300).default(""),
+        cloneFromRoleId: z.string().uuid().optional(),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    const { assertAdmin, logAdminAction } = await import("@/lib/admin/guard.server");
+    const actor = await assertAdmin(context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    if (data.id) {
+      const { error } = await supabaseAdmin
+        .from("app_roles")
+        .update({ name: data.name, description: data.description })
+        .eq("id", data.id);
+      if (error) throw new Error(error.message);
+      await logAdminAction(actor, "Permission Modified", data.name, "Role details updated");
+      return { id: data.id };
+    }
+
+    const key = `${data.name.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "")}_${Date.now()
+      .toString(36)
+      .slice(-4)}`;
+    const { data: inserted, error } = await supabaseAdmin
+      .from("app_roles")
+      .insert({ key, name: data.name, description: data.description, is_system: false })
+      .select("id")
+      .single();
+    if (error) throw new Error(error.message);
+
+    const modulesList = (await import("@/lib/admin/modules")).RBAC_MODULES;
+    const actionsList = (await import("@/lib/admin/modules")).RBAC_ACTIONS;
+    let source: { module: string; action: string; allowed: boolean }[] = [];
+    if (data.cloneFromRoleId) {
+      const { data: src } = await supabaseAdmin
+        .from("role_permissions")
+        .select("module, action, allowed")
+        .eq("role_id", data.cloneFromRoleId);
+      source = src ?? [];
+    }
+    const allowedSet = new Set(source.filter((s) => s.allowed).map((s) => `${s.module}|${s.action}`));
+    const rows = modulesList.flatMap((m) =>
+      actionsList.map((a) => ({
+        role_id: inserted.id,
+        module: m,
+        action: a,
+        allowed: allowedSet.has(`${m}|${a}`),
+      })),
+    );
+    const { error: permError } = await supabaseAdmin.from("role_permissions").insert(rows);
+    if (permError) throw new Error(permError.message);
+
+    await logAdminAction(
+      actor,
+      "Permission Modified",
+      data.name,
+      data.cloneFromRoleId ? "Role cloned" : "Role created",
+    );
+    return { id: inserted.id };
+  });
+
+export const deleteRole = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) => z.object({ id: z.string().uuid() }).parse(data))
+  .handler(async ({ data, context }) => {
+    const { assertAdmin, logAdminAction } = await import("@/lib/admin/guard.server");
+    const actor = await assertAdmin(context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: role } = await supabaseAdmin
+      .from("app_roles")
+      .select("name, is_system")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (role?.is_system) throw new Error("Built-in roles cannot be deleted.");
+    const { count } = await supabaseAdmin
+      .from("user_role_assignments")
+      .select("id", { count: "exact", head: true })
+      .eq("role_id", data.id);
+    if ((count ?? 0) > 0) throw new Error("Reassign the users on this role before deleting it.");
+    const { error } = await supabaseAdmin.from("app_roles").delete().eq("id", data.id);
+    if (error) throw new Error(error.message);
+    await logAdminAction(actor, "Permission Modified", role?.name ?? data.id, "Role deleted");
+    return { ok: true };
+  });
+
+export const savePermissions = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z
+      .object({
+        roleId: z.string().uuid(),
+        changes: z
+          .array(z.object({ module: z.string(), action: z.string(), allowed: z.boolean() }))
+          .max(200),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    const { assertAdmin, logAdminAction } = await import("@/lib/admin/guard.server");
+    const actor = await assertAdmin(context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const rows = data.changes.map((c) => ({
+      role_id: data.roleId,
+      module: c.module,
+      action: c.action,
+      allowed: c.allowed,
+      updated_at: new Date().toISOString(),
+    }));
+    const { error } = await supabaseAdmin
+      .from("role_permissions")
+      .upsert(rows, { onConflict: "role_id,module,action" });
+    if (error) throw new Error(error.message);
+    const { data: role } = await supabaseAdmin
+      .from("app_roles")
+      .select("name")
+      .eq("id", data.roleId)
+      .maybeSingle();
+    await logAdminAction(
+      actor,
+      "Permission Modified",
+      role?.name ?? data.roleId,
+      `${data.changes.length} permission change(s) saved`,
+    );
+    return { ok: true };
+  });
+
+/** Delivery Agent Portal sign-in: username or employee ID + PIN. */
+export const driverPinLogin = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) =>
+    z
+      .object({
+        identifier: z.string().trim().min(2).max(60),
+        pin: z.string().regex(/^\d{4,8}$/),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { verifyPin } = await import("@/lib/admin/pin.server");
+    const id = data.identifier.trim();
+    const { data: rows } = await supabaseAdmin
+      .from("app_users")
+      .select("id, full_name, employee_id, username, station, status, driver_pin_hash, driver_pin_salt")
+      .eq("user_type", "driver")
+      .or(`username.eq.${id},employee_id.eq.${id}`)
+      .limit(1);
+    const agent = rows?.[0];
+    if (!agent || agent.status !== "Active") {
+      return { ok: false as const, error: "Account not found or disabled." };
+    }
+    if (!verifyPin(data.pin, agent.driver_pin_hash, agent.driver_pin_salt)) {
+      return { ok: false as const, error: "Invalid PIN." };
+    }
+    await supabaseAdmin
+      .from("app_users")
+      .update({ last_login_at: new Date().toISOString() })
+      .eq("id", agent.id);
+    return {
+      ok: true as const,
+      agent: {
+        id: agent.id,
+        name: agent.full_name,
+        employeeId: agent.employee_id,
+        station: agent.station,
+      },
+    };
+  });
+
+/** Records the current sign-in timestamp for the authenticated staff member. */
+export const touchLastLogin = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    await supabaseAdmin
+      .from("app_users")
+      .update({ last_login_at: new Date().toISOString() })
+      .eq("user_id", context.userId);
+    return { ok: true };
+  });
