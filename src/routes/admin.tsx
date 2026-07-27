@@ -453,7 +453,8 @@ function UsersTab({ data }: { data: AdminWorkspaceData }) {
             <DialogTitle>{form.id ? "Edit User" : "Create User"}</DialogTitle>
             <DialogDescription>
               Staff accounts sign in with their username and password — email is optional.
-              Delivery agents sign in to the Delivery Agent Portal with a username and PIN.
+              Delivery agents sign in on the same login page with their username or
+              employee ID and their PIN, and land in the Delivery Agent Portal.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 sm:grid-cols-2">
@@ -560,9 +561,10 @@ function UsersTab({ data }: { data: AdminWorkspaceData }) {
                 />
               </Field>
             ) : (
-              <Field label={form.id ? "New PIN (optional)" : "Portal PIN (4-8 digits)"}>
+              <Field label={form.id ? "New PIN (optional, 6-8 digits)" : "Portal PIN (6-8 digits)"}>
                 <Input
                   inputMode="numeric"
+                  maxLength={8}
                   value={form.pin}
                   onChange={(e) => setForm((f) => ({ ...f, pin: e.target.value }))}
                 />
@@ -596,7 +598,10 @@ function UsersTab({ data }: { data: AdminWorkspaceData }) {
             type={resetTarget?.user_type === "driver" ? "text" : "password"}
             value={credential}
             onChange={(e) => setCredential(e.target.value)}
-            placeholder={resetTarget?.user_type === "driver" ? "New PIN" : "New password"}
+            placeholder={
+              resetTarget?.user_type === "driver" ? "New PIN (6-8 digits)" : "New password"
+            }
+            maxLength={resetTarget?.user_type === "driver" ? 8 : undefined}
           />
           <DialogFooter>
             <Button variant="outline" onClick={() => setResetTarget(null)}>
