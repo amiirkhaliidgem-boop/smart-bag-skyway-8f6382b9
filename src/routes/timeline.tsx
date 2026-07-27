@@ -1101,6 +1101,82 @@ function Field({ label, value, mono }: { label: string; value: string; mono?: bo
   );
 }
 
+// Extra read-only fields taken straight from the originating record, so the
+// selected event shows its complete operational detail.
+function SourceFields({ event }: { event: TimelineEvent }) {
+  const raw = event.raw as Record<string, unknown>;
+  const get = (k: string) => {
+    const v = raw?.[k];
+    return v === undefined || v === null || v === "" ? undefined : String(v);
+  };
+  switch (event.module) {
+    case "Notifications": {
+      const n = event.raw as NotificationEvent;
+      if (!n?.channel) return null;
+      return (
+        <>
+          <Field label="Channel" value={n.channel.toUpperCase()} />
+          <Field label="Delivery State" value={n.status_} />
+          {n.provider && <Field label="Provider" value={n.provider} mono />}
+          {n.attempts !== undefined && <Field label="Attempts" value={String(n.attempts)} />}
+          {n.failureReason && <Field label="Last Failure" value={n.failureReason} />}
+        </>
+      );
+    }
+    case "ContactCenter": {
+      const c = event.raw as CallLog;
+      if (!c?.direction) return null;
+      return (
+        <>
+          <Field label="Direction" value={c.direction} />
+          <Field label="Phone" value={c.phone} mono />
+          <Field label="Duration" value={`${c.durationSec}s`} />
+        </>
+      );
+    }
+    case "Quality": {
+      const q = event.raw as QualityIncident;
+      if (!q?.category) return null;
+      return (
+        <>
+          <Field label="Category" value={q.category} />
+          <Field label="Severity" value={q.severity} />
+          <Field label="Incident Status" value={q.status} />
+        </>
+      );
+    }
+    case "Feedback": {
+      const f = event.raw as Feedback;
+      if (f?.rating === undefined) return null;
+      return (
+        <>
+          <Field label="Rating" value={`${f.rating}/5`} />
+          <Field label="Resolved" value={f.resolved ? "Yes" : "No"} />
+        </>
+      );
+    }
+    default: {
+      const stage = get("stage");
+      const otp = get("otpStatus");
+      return (
+        <>
+          {stage && <Field label="Stage" value={stage} />}
+          {otp && <Field label="OTP Status" value={otp} />}
+        </>
+      );
+    }
+  }
+}
+
+function FieldLegacy({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+  return (
+    <div>
+      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className={cn("text-xs", mono && "font-mono")}>{value}</p>
+    </div>
+  );
+}
+
 function Section({
   title,
   icon: Icon,
