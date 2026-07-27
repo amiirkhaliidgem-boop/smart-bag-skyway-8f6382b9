@@ -36,9 +36,6 @@ export const getAdminWorkspace = createServerFn({ method: "GET" })
         email: u.email,
         mobile: u.mobile,
         department: u.department,
-        station: u.station,
-        team: u.team,
-        position: u.position,
         status: u.status,
         user_type: u.user_type,
         last_login_at: u.last_login_at,
@@ -60,9 +57,6 @@ const userInput = z.object({
   email: z.string().trim().email().max(255).optional().or(z.literal("")),
   mobile: z.string().trim().max(40).optional().or(z.literal("")),
   department: z.string().trim().max(80).default(""),
-  station: z.string().trim().max(80).default("Airport"),
-  team: z.string().trim().max(80).default(""),
-  position: z.string().trim().max(80).default(""),
   status: z.enum(["Active", "Disabled", "Invited"]).default("Active"),
   userType: z.enum(["staff", "driver"]).default("staff"),
   roleId: z.string().uuid(),
@@ -86,9 +80,6 @@ export const saveAppUser = createServerFn({ method: "POST" })
       email: data.email || null,
       mobile: data.mobile || null,
       department: data.department,
-      station: data.station,
-      team: data.team,
-      position: data.position,
       status: data.status,
       user_type: data.userType,
     };
@@ -103,15 +94,19 @@ export const saveAppUser = createServerFn({ method: "POST" })
 
     if (appUserId) {
       const { error } = await supabaseAdmin.from("app_users").update(row as never).eq("id", appUserId);
-      if (error) throw new Error(error.message);
+      if (error) throw new Error(friendlyUserError(error.message));
       await logAdminAction(actor, "User Updated", data.fullName, `Employee ${data.employeeId}`);
     } else {
       if (data.userType === "staff") {
-        if (!data.email || !data.password) {
-          throw new Error("Staff accounts require an email address and a password.");
+        if (!data.password) {
+          throw new Error("Staff accounts require a password.");
         }
+        // Supabase Auth requires an email identity. When the operator does not
+        // supply one, derive an internal identity from the username so staff can
+        // sign in with Username + Password.
+        const identity = data.email || `${data.username.trim().toLowerCase()}@staff.local`;
         const created = await supabaseAdmin.auth.admin.createUser({
-          email: data.email,
+          email: identity,
           password: data.password,
           email_confirm: true,
           user_metadata: { full_name: data.fullName },
@@ -124,7 +119,7 @@ export const saveAppUser = createServerFn({ method: "POST" })
         .insert(row as never)
         .select("id")
         .single();
-      if (error) throw new Error(error.message);
+      if (error) throw new Error(friendlyUserError(error.message));
       appUserId = inserted.id;
       await logAdminAction(
         actor,
