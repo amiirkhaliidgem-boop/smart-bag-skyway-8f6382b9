@@ -216,6 +216,12 @@ export function isExtraTrigger(t: NotificationTrigger): t is ExtraTrigger {
   return (EXTRA_TRIGGERS as readonly string[]).includes(t);
 }
 
+export function triggerLabel(t: NotificationTrigger, locale: "en" | "ar" = "en"): string {
+  return isExtraTrigger(t)
+    ? EXTRA_TRIGGER_LABELS[t][locale]
+    : (WORKFLOW_LABELS[t]?.[locale] ?? t);
+}
+
 // Map any trigger back to the canonical WorkflowStatus it belongs to, so
 // Timeline / Reports keep a single status vocabulary.
 export function triggerWorkflowStatus(t: NotificationTrigger): WorkflowStatus {
