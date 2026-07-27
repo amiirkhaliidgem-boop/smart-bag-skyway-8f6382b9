@@ -714,6 +714,7 @@ import {
 } from "./persistence";
 
 let bootstrapped = false;
+let drained = false;
 function applyRemote(payload: unknown, _version: number) {
   const base = defaults();
   const parsed = (payload ?? {}) as Partial<State>;
@@ -744,6 +745,11 @@ function applyRemote(payload: unknown, _version: number) {
     };
   }
   listeners.forEach((l) => l());
+  // First snapshot from the server: resume anything left mid-flight.
+  if (!drained) {
+    drained = true;
+    setTimeout(drainPendingNotifications, 0);
+  }
 }
 
 function ensureBootstrap() {
