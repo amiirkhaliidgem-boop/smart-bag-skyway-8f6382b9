@@ -833,7 +833,9 @@ function pushAudit(entry: Omit<AuditEntry, "id" | "at">) {
   state = { ...state, audit: [full, ...state.audit] };
 }
 
-function enqueueNotifications(deliveryId: string, status: WorkflowStatus) {
+// The Workflow Engine is the ONLY producer of passenger notifications.
+// Nothing outside this module may create a NotificationEvent.
+function enqueueNotifications(deliveryId: string, trigger: NotificationTrigger) {
   const d = state.deliveries.find((x) => x.deliveryId === deliveryId);
   if (!d) return;
   const rec = state.workflow.find((w) => w.deliveryId === deliveryId);
@@ -848,12 +850,12 @@ function enqueueNotifications(deliveryId: string, status: WorkflowStatus) {
   const events: NotificationEvent[] = [];
   for (const channel of channels) {
     for (const locale of ["en", "ar"] as const) {
-      const msg = renderTemplate(status, channel, locale, ctx);
+      const msg = renderTemplate(trigger, channel, locale, ctx);
       if (!msg) continue;
       events.push({
         id: `NTF-${state.notifications.length + events.length + 1}`,
         deliveryId,
-        status,
+        status: trigger,
         channel,
         locale,
         to: d.mobile,
@@ -877,7 +879,25 @@ function enqueueNotifications(deliveryId: string, status: WorkflowStatus) {
         note: `${e.channel}/${e.locale} → ${e.to}`,
       });
     }
+    // The engine — not the UI — owns the queued → sending → sent lifecycle,
+    // so status advances regardless of which screen the operator is on.
+    dispatchQueued(events);
   }
+}
+
+// Hands each queued event to its channel adapter. Adapters in
+// `notifications/channels.ts` are still no-ops (simulated transport); the
+// real provider swap happens there without touching this engine.
+function dispatchQueued(events: NotificationEvent[]) {
+  events.forEach((e, i) => {
+    setTimeout(() => {
+      setNotificationStatus(e.id, "sending");
+      void defaultAdapters[e.channel]
+        .send({ channel: e.channel, to: e.to, message: e.message, locale: e.locale })
+        .then((res) => setNotificationStatus(e.id, res.ok ? "sent" : "failed"))
+        .catch(() => setNotificationStatus(e.id, "failed"));
+    }, 400 + i * 120);
+  });
 }
 
 export function transitionWorkflow(
