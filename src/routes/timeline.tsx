@@ -731,21 +731,30 @@ function TimelinePage() {
           <div className="space-y-1.5 sm:col-span-2 lg:col-span-2">
             <Label className="text-xs">Search</Label>
             <Input
-              placeholder="Search events, PIR, delivery, driver, passenger…"
+              placeholder="Search any reference — PIR, delivery ID, bag tag, passenger, agent…"
               value={q}
               onChange={(e) => setQ(e.target.value)}
               className="h-9"
             />
           </div>
-          <FieldDate label="From" value={dateFrom} onChange={setDateFrom} />
-          <FieldDate label="To" value={dateTo} onChange={setDateTo} />
+          <div className="sm:col-span-2 flex items-end">
+            <DateRangeFilter
+              from={dateFrom}
+              to={dateTo}
+              onFromChange={setDateFrom}
+              onToChange={setDateTo}
+            />
+          </div>
           <FieldSelect
             label="Module"
             value={fModule}
             onChange={(v) => setFModule(v as "all" | ModuleSource)}
             options={[
               { v: "all", l: "All modules" },
-              ...(Object.keys(MODULE_STYLES) as ModuleSource[]).map((m) => ({ v: m, l: m })),
+              ...(Object.keys(MODULE_STYLES) as ModuleSource[]).map((m) => ({
+                v: m,
+                l: moduleLabel(m),
+              })),
             ]}
           />
           <FieldSelect
@@ -758,24 +767,6 @@ function TimelinePage() {
                 v: s,
                 l: WORKFLOW_LABELS[s].en,
               })),
-            ]}
-          />
-          <FieldSelect
-            label="Delivery ID"
-            value={fDelivery}
-            onChange={setFDelivery}
-            options={[
-              { v: "all", l: "All deliveries" },
-              ...uniqueDeliveries.map((d) => ({ v: d, l: d })),
-            ]}
-          />
-          <FieldSelect
-            label="PIR Number"
-            value={fPIR}
-            onChange={setFPIR}
-            options={[
-              { v: "all", l: "All PIRs" },
-              ...uniquePIRs.map((p) => ({ v: p, l: p })),
             ]}
           />
           <FieldSelect
@@ -794,15 +785,6 @@ function TimelinePage() {
             options={[
               { v: "all", l: "All delivery agents" },
               ...drivers.map((d) => ({ v: d, l: d })),
-            ]}
-          />
-          <FieldSelect
-            label="Passenger"
-            value={fPassenger}
-            onChange={setFPassenger}
-            options={[
-              { v: "all", l: "All passengers" },
-              ...passengers.map((p) => ({ v: p, l: p })),
             ]}
           />
         </CardContent>
