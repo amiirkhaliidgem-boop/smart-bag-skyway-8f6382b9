@@ -194,7 +194,7 @@ export interface WorkflowRecord {
 export interface NotificationEvent {
   id: string;
   deliveryId: string;
-  status: WorkflowStatus;
+  status: NotificationTrigger;
   channel: NotificationChannel;
   locale: "en" | "ar";
   to: string;
