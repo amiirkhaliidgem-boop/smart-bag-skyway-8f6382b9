@@ -8,14 +8,17 @@ import type {
   NotificationEvent,
   QualityIncident,
   WorkflowRecord,
+  CallLog,
 } from "@/lib/store";
-import type { AuditEntry } from "@/lib/audit/log";
+import type { AuditEntry, ImportAuditEntry } from "@/lib/audit/log";
+import { lfStatusLabel } from "@/lib/lost-found/statuses";
 import { WORKFLOW_LABELS, type WorkflowStatus } from "@/lib/workflow/statuses";
 import { triggerLabel, triggerWorkflowStatus } from "@/lib/notifications/templates";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { DateRangeFilter } from "@/components/filters/date-range-filter";
 import { cn } from "@/lib/utils";
 import {
   Activity,
@@ -27,10 +30,12 @@ import {
   MapPin,
   MessageSquare,
   Package,
-  QrCode,
+  PhoneCall,
   ShieldAlert,
+  StickyNote,
   Star,
   Truck,
+  UploadCloud,
   UserCheck,
   Warehouse,
   X,
@@ -60,7 +65,9 @@ type ModuleSource =
   | "Audit"
   | "Feedback"
   | "LostFound"
-  | "Delivery";
+  | "Delivery"
+  | "ContactCenter"
+  | "DataIO";
 
 interface TimelineEvent {
   id: string;
@@ -83,6 +90,9 @@ interface TimelineEvent {
 // Display-only module labels. Stored module keys are unchanged.
 const MODULE_LABELS: Partial<Record<ModuleSource, string>> = {
   Driver: "Delivery Agent",
+  LostFound: "Lost & Found",
+  ContactCenter: "Contact Center",
+  DataIO: "Data Import / Export",
 };
 
 function moduleLabel(m: ModuleSource): string {
@@ -139,6 +149,16 @@ const MODULE_STYLES: Record<ModuleSource, { badge: string; ring: string; dot: st
     badge: "bg-cyan-100 text-cyan-700 border-cyan-200",
     ring: "ring-cyan-300",
     dot: "bg-cyan-500",
+  },
+  ContactCenter: {
+    badge: "bg-orange-100 text-orange-700 border-orange-200",
+    ring: "ring-orange-300",
+    dot: "bg-orange-500",
+  },
+  DataIO: {
+    badge: "bg-fuchsia-100 text-fuchsia-700 border-fuchsia-200",
+    ring: "ring-fuchsia-300",
+    dot: "bg-fuchsia-500",
   },
 };
 
