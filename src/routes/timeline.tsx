@@ -263,19 +263,21 @@ function buildEvents(
   feedback: Feedback[],
   incidents: QualityIncident[],
   audit: AuditEntry[],
+  callLogs: CallLog[],
+  ioAudit: ImportAuditEntry[],
 ): TimelineEvent[] {
   const events: TimelineEvent[] = [];
   const deliveryByBag = new Map(deliveries.map((d) => [d.bagId, d]));
-  const workflowByDelivery = new Map(workflow.map((w) => [w.deliveryId, w]));
+  const caseByBag = new Map(cases.map((c) => [c.bagId, c]));
 
-  // Cases → PIR + Storage + QR
+  // Lost & Found — PIR creation + real recorded status transitions.
   for (const c of cases) {
     events.push({
       id: `EV-PIR-${c.bagId}`,
       at: c.createdAt,
       title: "PIR Created",
       description: `PIR ${c.pirNumber} opened for ${c.passengerName} — flight ${c.flightNumber}.`,
-      user: "Lost & Found Desk",
+      user: c.internal?.createdBy || c.internal?.assignedOfficer || "Lost & Found Desk",
       role: "Lost & Found Agent",
       module: "LostFound",
       workflowStatus: "PIR_CREATED",
@@ -285,49 +287,23 @@ function buildEvents(
       icon: FileText,
       raw: c,
     });
-    if (c.storage) {
+    for (let i = 0; i < (c.lfHistory?.length ?? 0); i++) {
+      const h = c.lfHistory![i];
       events.push({
-        id: `EV-STORE-${c.bagId}`,
-        at: c.createdAt,
-        title: "Bag Registered in Storage",
-        description: `Stored at Zone ${c.storage.zone} · Shelf ${c.storage.shelf} · Position ${c.storage.position}.`,
-        user: "Storage Controller",
-        role: "Baggage Supervisor",
-        module: "Storage",
-        bagId: c.bagId,
-        pirNumber: c.pirNumber,
-        passengerName: c.passengerName,
-        icon: Warehouse,
-        raw: c,
-      });
-      events.push({
-        id: `EV-QR-${c.bagId}`,
-        at: c.createdAt,
-        title: "QR Code Generated",
-        description: `Unique QR code generated for ${c.bagId} and linked to ${c.pirNumber}.`,
-        user: "System",
-        role: "System",
-        module: "Storage",
-        bagId: c.bagId,
-        pirNumber: c.pirNumber,
-        passengerName: c.passengerName,
-        icon: QrCode,
-        raw: c,
-      });
-    }
-    if (c.status !== "Missing") {
-      events.push({
-        id: `EV-LOCATED-${c.bagId}`,
-        at: c.createdAt,
-        title: "Bag Located",
-        description: `Bag ${c.bagId} matched and located at Cairo International Airport.`,
-        user: "Baggage Tracing",
+        id: `EV-LFH-${c.bagId}-${i}-${h.status}`,
+        at: h.at,
+        title: `Lost & Found · ${lfStatusLabel(h.status)}`,
+        description:
+          h.note?.trim() ||
+          `Case ${c.bagId} moved to ${lfStatusLabel(h.status)} in Lost & Found.`,
+        user: h.actor || "Lost & Found Desk",
         role: "Lost & Found Agent",
         module: "LostFound",
         bagId: c.bagId,
         pirNumber: c.pirNumber,
         passengerName: c.passengerName,
-        icon: Package,
+        deliveryId: deliveryByBag.get(c.bagId)?.deliveryId,
+        icon: ClipboardList,
         raw: c,
       });
     }
@@ -422,6 +398,46 @@ function buildEvents(
     });
   }
 
+  // Contact Center — real call logs (incl. portal-generated callbacks).
+  for (const cl of callLogs) {
+    const d = cl.bagId ? deliveryByBag.get(cl.bagId) : undefined;
+    events.push({
+      id: `EV-CALL-${cl.id}`,
+      at: cl.at,
+      title: `Contact Center · ${cl.direction}`,
+      description: `${cl.notes || "Call logged"} — ${cl.phone}${
+        cl.durationSec ? ` · ${Math.round(cl.durationSec / 60)} min` : ""
+      }`,
+      user: cl.agent,
+      role: "Contact Center Agent",
+      module: "ContactCenter",
+      bagId: cl.bagId,
+      pirNumber: cl.pirNumber ?? d?.pirNumber,
+      deliveryId: d?.deliveryId,
+      passengerName: cl.passengerName,
+      icon: PhoneCall,
+      raw: cl,
+    });
+  }
+
+  // Data Import / Export audit entries.
+  for (const io of ioAudit) {
+    events.push({
+      id: `EV-IO-${io.id}`,
+      at: io.at,
+      title: `${io.action === "import.commit" ? "Import Committed" : "Export Generated"} · ${io.moduleLabel}`,
+      description:
+        io.action === "import.commit"
+          ? `${io.fileName ?? "file"} — ${io.accepted ?? 0} accepted, ${io.warnings ?? 0} with warnings, ${io.duplicates ?? 0} duplicates, ${io.rejected ?? 0} rejected of ${io.totalRows ?? 0} rows.`
+          : `${io.format ?? "file"} export generated for ${io.moduleLabel}.`,
+      user: io.actor,
+      role: "Operations",
+      module: "DataIO",
+      icon: UploadCloud,
+      raw: io,
+    });
+  }
+
   // Audit — supplement with entries not already surfaced
   for (const a of audit) {
     if (a.action === "workflow.transition") continue; // already surfaced via history
@@ -441,55 +457,105 @@ function buildEvents(
     });
   }
 
-  // Synthesize QR Scan events for out-for-delivery / delivered deliveries
+  // Delivery Management — only real recorded milestones and notes.
   for (const d of deliveries) {
-    const w = workflowByDelivery.get(d.deliveryId);
-    if (!w) continue;
-    if (
-      w.status === "OUT_FOR_DELIVERY" ||
-      w.status === "DELIVERED" ||
-      w.status === "CLOSED"
-    ) {
-      const anchor = w.history.find((h) => h.status === "CLAIMED_ON_HAND") ??
-        w.history[0];
-      events.push({
-        id: `EV-QRSCAN-${d.deliveryId}`,
-        at: anchor.at,
-        title: "QR Code Scanned",
-        description: `Delivery agent scanned ${d.bagId} at collection — chain of custody handoff.`,
-        user: d.driver,
-        role: "Driver",
+    const kase = caseByBag.get(d.bagId);
+    const base = {
+      deliveryId: d.deliveryId,
+      bagId: d.bagId,
+      pirNumber: d.pirNumber || kase?.pirNumber,
+      driver: d.driver && d.driver !== "—" ? d.driver : undefined,
+      passengerName: d.passengerName,
+    };
+    const milestones: {
+      key: string;
+      at?: string;
+      title: string;
+      description: string;
+      actor: string;
+      role: string;
+      module: ModuleSource;
+      icon: typeof Activity;
+    }[] = [
+      {
+        key: "CREATED",
+        at: d.createdAt,
+        title: "Delivery Order Created",
+        description: `Delivery ${d.deliveryId} created for ${d.passengerName}.`,
+        actor: "Delivery Management",
+        role: "Delivery Coordinator",
+        module: "Delivery",
+        icon: Package,
+      },
+      {
+        key: "ACCEPTED",
+        at: d.acceptedAt,
+        title: "Delivery Agent Accepted",
+        description: `${d.driver} accepted delivery ${d.deliveryId}.`,
+        actor: d.driver,
+        role: "Delivery Agent",
         module: "Driver",
-        deliveryId: d.deliveryId,
-        bagId: d.bagId,
-        pirNumber: d.pirNumber,
-        driver: d.driver,
-        passengerName: d.passengerName,
-        icon: QrCode,
+        icon: UserCheck,
+      },
+      {
+        key: "COLLECTED",
+        at: d.collectedAt,
+        title: "Baggage Collected",
+        description: `${d.driver} collected ${d.bagId} from storage.`,
+        actor: d.driver,
+        role: "Delivery Agent",
+        module: "Storage",
+        icon: Warehouse,
+      },
+      {
+        key: "DELIVERED",
+        at: d.deliveredAt,
+        title: "Baggage Delivered",
+        description: `${d.bagId} handed over to ${d.passengerName}${
+          d.otpStatus === "Verified" ? " after OTP verification" : ""
+        }.`,
+        actor: d.driver,
+        role: "Delivery Agent",
+        module: "Passenger",
+        icon: CheckCircle2,
+      },
+    ];
+    for (const m of milestones) {
+      if (!m.at) continue;
+      events.push({
+        ...base,
+        id: `EV-DEL-${d.deliveryId}-${m.key}`,
+        at: m.at,
+        title: m.title,
+        description: m.description,
+        user: m.actor || "Delivery Management",
+        role: m.role,
+        module: m.module,
+        icon: m.icon,
         raw: d,
       });
     }
-    if (d.otpStatus === "Sent" || d.otpStatus === "Verified") {
+    for (const n of d.notes ?? []) {
       events.push({
-        id: `EV-OTPGEN-${d.deliveryId}`,
-        at: w.history[0].at,
-        title: "OTP Generated",
-        description: `Delivery OTP issued to ${d.passengerName} on ${d.mobile}.`,
-        user: "Notification Engine",
-        role: "System",
-        module: "Notifications",
-        deliveryId: d.deliveryId,
-        bagId: d.bagId,
-        pirNumber: d.pirNumber,
-        passengerName: d.passengerName,
-        icon: ShieldAlert,
-        raw: d,
+        ...base,
+        id: `EV-NOTE-${n.id}`,
+        at: n.at,
+        title: "Internal Note Added",
+        description: n.text,
+        user: n.actor,
+        role: "Delivery Coordinator",
+        module: "Delivery",
+        icon: StickyNote,
+        raw: n,
       });
     }
   }
 
-  events.sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
-  return events;
+  const byId = new Map<string, TimelineEvent>();
+  for (const e of events) if (e.at) byId.set(e.id, e);
+  return Array.from(byId.values()).sort(
+    (a, b) => new Date(b.at).getTime() - new Date(a.at).getTime(),
+  );
 }
 
 function TimelinePage() {
