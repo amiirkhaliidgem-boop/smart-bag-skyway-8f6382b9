@@ -18,6 +18,11 @@ import { Toaster } from "../components/ui/sonner";
 import { supabase } from "@/integrations/supabase/client";
 import type { Session } from "@supabase/supabase-js";
 import { RoleContext, canAccessPath, defaultPathForRole, useCurrentRole } from "@/lib/rbac";
+import {
+  PermissionContext,
+  firstAllowedPath,
+  useLivePermissions,
+} from "@/lib/permissions";
 import { toast } from "sonner";
 
 function NotFoundComponent() {
@@ -172,6 +177,16 @@ function AuthGate() {
       ? claimedRole
       : null);
   const roleReadyForSession = resolvedUserId === (session?.user?.id ?? null);
+  const perms = useLivePermissions(session?.user?.id ?? null);
+
+  // Live RBAC is authoritative. Accounts without an Administration record
+  // fall back to the legacy role matrix so nobody is locked out.
+  const allowPath = (pathname: string) =>
+    perms.unmanaged
+      ? canAccessPath(pathname, effectiveRole)
+      : perms.granted.has(`${moduleKeyFor(pathname)}|View`);
+  const landingPath = () =>
+    perms.unmanaged ? defaultPathForRole(effectiveRole) : firstAllowedPath(perms.granted);
 
   useEffect(() => {
     let mounted = true;
@@ -198,7 +213,7 @@ function AuthGate() {
 
   // Role-based redirect for signed-in users on disallowed paths.
   useEffect(() => {
-    if (!ready || !session || roleLoading || !roleReadyForSession) return;
+    if (!ready || !session || roleLoading || !roleReadyForSession || perms.loading) return;
     if (isPublicPath(pathname)) return;
     if (!effectiveRole) {
       // Keep a valid session intact if the role lookup is temporarily
@@ -206,10 +221,11 @@ function AuthGate() {
       toast.error("Unable to verify your staff role. Please refresh and try again.");
       return;
     }
-    if (!canAccessPath(pathname, effectiveRole)) {
-      navigate({ to: defaultPathForRole(effectiveRole), replace: true });
+    if (!allowPath(pathname)) {
+      navigate({ to: landingPath(), replace: true });
     }
-  }, [ready, session, effectiveRole, roleLoading, roleReadyForSession, pathname, navigate]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, session, effectiveRole, roleLoading, roleReadyForSession, pathname, navigate, perms.loading, perms.granted, perms.unmanaged]);
 
   if (!ready) {
     return (
@@ -233,7 +249,7 @@ function AuthGate() {
     );
   }
 
-  if (roleLoading || !roleReadyForSession) {
+  if (roleLoading || !roleReadyForSession || perms.loading) {
     return (
       <div className="min-h-screen grid place-items-center text-sm text-muted-foreground">
         Loading…
@@ -250,7 +266,7 @@ function AuthGate() {
   }
 
   // Block rendering of disallowed routes while the redirect effect runs.
-  if (effectiveRole && !canAccessPath(pathname, effectiveRole)) {
+  if (effectiveRole && !allowPath(pathname)) {
     return (
       <div className="min-h-screen grid place-items-center text-sm text-muted-foreground">
         Redirecting…
@@ -260,7 +276,9 @@ function AuthGate() {
 
   return (
     <RoleContext.Provider value={{ role: effectiveRole, loading: roleLoading }}>
-      <AppShell />
+      <PermissionContext.Provider value={perms}>
+        <AppShell />
+      </PermissionContext.Provider>
     </RoleContext.Provider>
   );
 }

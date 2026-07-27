@@ -35,7 +35,6 @@ export function usePermissions() {
 }
 
 export function useLivePermissions(userId: string | null | undefined): PermissionState {
-  // eslint-disable-next-line react-hooks/rules-of-hooks
   const [granted, setGranted] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [unmanaged, setUnmanaged] = useState(true);
