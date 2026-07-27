@@ -1,43 +1,41 @@
-## Findings (verified, no code changed)
+## Answer first: what Position actually does today
 
-**1. Is the project connected to the right Supabase project?**
-Yes. `supabase/config.toml` and `.env` both point at project ref `sxjuhoghypsbuqquhxib` (the external Supabase project this app is connected to). Connectivity is fine — auth calls and app data reads work.
+I checked every use of `position` in the codebase. It is stored on `app_users`, typed in `AdminUser`, edited in the Create/Edit User dialog, and included in the admin search text. That is all.
 
-**2. Which environment variables are actually missing?**
-Checked the running server environment:
+It does **not** affect permissions (those come only from `role_permissions` via the assigned Role), workflow transitions, approval hierarchy, or any report. Same for **Station** and **Team** — Station is only carried along on the delivery-agent record and never displayed in the Delivery Agent Portal or Dispatch Center.
 
-```text
-SUPABASE_URL                 present
-SUPABASE_PUBLISHABLE_KEY     present
-VITE_SUPABASE_*              present
-LOVABLE_API_KEY              present
-SUPABASE_SERVICE_ROLE_KEY    MISSING   <-- cause of the error
-SUPABASE_DB_URL              MISSING   (not used by app code)
-```
+Recommendation: **remove all three** (Station, Team, Position). Role stays the sole access controller, Department stays as the organisational grouping. If you later want a "Supervisor vs Officer" distinction that actually does something, the correct way is a separate Role (e.g. "Lost & Found Supervisor") with its own permission matrix — not a free-text label.
 
-The auto-populated `.env` only carries the URL, project id and publishable/anon key. Service-role keys are never written there — they must come from project secrets injected into the server runtime. The secret listed on the Supabase side is not the same thing as a runtime secret available to this app's server functions, which is why it looks configured but resolves to undefined.
+## The one real constraint: Supabase Auth requires an email
 
-**3. Does the Administration backend require it?**
-Yes, unavoidably. `src/lib/admin.functions.ts` performs privileged work that RLS deliberately blocks for normal users:
-- reading `app_users` (including PIN hashes), `app_roles`, `role_permissions`, `admin_audit_log`
-- `supabaseAdmin.auth.admin.createUser / updateUserById / deleteUser` — the Auth Admin API only accepts the service role key
-- writing role assignments and audit rows
+Staff sign-in goes through Supabase Auth, which will not create an account without an email address. So "no email" has to mean *no email the operator has to type*.
 
-`src/integrations/supabase/client.server.ts` reads `process.env.SUPABASE_SERVICE_ROLE_KEY` and throws the exact message you saw when it's absent.
+Approach: when a staff account is created without an email, the system generates an internal identity `<username>@staff.local` behind the scenes. The operator never sees or types it. Sign-in changes from "Email + Password" to **"Username or Email + Password"** — the login page resolves the username to the internal identity before authenticating. Anyone with a real corporate email can still be given one and can sign in with either.
 
-**4. Why does everything work until you open Administration?**
-The admin client is lazily created behind a Proxy — nothing touches it at boot. Sign-in, the sidebar, and all other modules use the browser/anon client, so they never need the key. The moment the Administration page runs its `getAdminWorkspace` server function, the first property access on `supabaseAdmin` constructs the client, the env check fails, and the thrown error surfaces as the banner in your screenshot. So the failure is scoped to exactly the one module that needs elevated privileges.
+## What changes
 
-## Fix (configuration only — no code changes)
+**1. Create/Edit User dialog** (`src/routes/admin.tsx`)
+- Required for Staff: Employee ID, Username, Full Name, Department, Role, Status, Password (on create).
+- Optional: Email, Mobile.
+- Remove the Station, Team and Position fields entirely.
 
-1. Get the key: Supabase Dashboard → project `sxjuhoghypsbuqquhxib` → **Project Settings → API Keys** → copy the **`service_role`** key (the secret one, not `anon`/publishable).
-2. In Lovable, save it as a project secret named exactly `SUPABASE_SERVICE_ROLE_KEY`. I'll open the secure secret form for you on approval — you paste the value there; it is never stored in code or in `.env`.
-3. The server runtime picks up the new secret (dev server restart), after which Administration loads.
-4. Verify: open Administration → Users tab lists real rows; Roles/Permissions/Activity Log populate.
+**2. Server validation** (`src/lib/admin.functions.ts`)
+- Drop the "Staff accounts require an email address and a password" rule; require only Username + Password on create.
+- Generate the internal `<username>@staff.local` identity when Email is blank, and store `email` as null so the UI keeps showing it as empty.
+- Remove `station` / `team` / `position` from the input schema, the insert/update payload and the returned workspace shape.
+- Editing a user's username does not change the already-created auth identity (kept stable to avoid breaking sign-in); noted in the dialog.
+
+**3. Sign-in page** (`src/routes/auth.tsx`)
+- Field relabelled "Username or Email". If the value has no `@`, it is resolved to the internal identity before `signInWithPassword`.
+- A small public server function does the username → identity lookup (returns nothing identifying, just the login identity or a generic failure).
+
+**4. Data model cleanup**
+- Remove `station` / `team` / `position` from `AdminUser` and `STATIONS` from `src/lib/admin/modules.ts`, and from the delivery-agent directory type in `src/lib/admin/agents.ts`.
+- Database columns are left in place (nullable, unused) so nothing breaks; a follow-up migration can drop them once you confirm.
 
 ## Technical notes
 
-- No application code is modified by this plan. `client.server.ts`, `guard.server.ts` and `admin.functions.ts` stay exactly as they are.
-- The key stays server-only: it is read inside handlers via `await import("@/integrations/supabase/client.server")`, so it never enters the client bundle.
-- Do not add it as a `VITE_` variable — that would expose an RLS-bypassing key to the browser.
-- If Administration still errors after the secret is saved, the next check is whether the pasted key belongs to project ref `sxjuhoghypsbuqquhxib` (a key from another project fails with an auth error, not this env error).
+- Uniqueness: Username becomes the operational login key, so it must be unique — a unique index on `app_users.username` is added, and the save function returns a clear "Username already in use" message.
+- Employee ID uniqueness is enforced the same way.
+- Delivery agents are unaffected: they keep signing in to the Delivery Agent Portal with Username/Employee ID + PIN.
+- Permission resolution (`current_user_permissions`, `has_permission`) is untouched — Role remains the only source of access.
