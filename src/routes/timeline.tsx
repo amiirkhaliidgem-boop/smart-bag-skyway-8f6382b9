@@ -8,14 +8,17 @@ import type {
   NotificationEvent,
   QualityIncident,
   WorkflowRecord,
+  CallLog,
 } from "@/lib/store";
-import type { AuditEntry } from "@/lib/audit/log";
+import type { AuditEntry, ImportAuditEntry } from "@/lib/audit/log";
+import { lfStatusLabel } from "@/lib/lost-found/statuses";
 import { WORKFLOW_LABELS, type WorkflowStatus } from "@/lib/workflow/statuses";
 import { triggerLabel, triggerWorkflowStatus } from "@/lib/notifications/templates";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { DateRangeFilter } from "@/components/filters/date-range-filter";
 import { cn } from "@/lib/utils";
 import {
   Activity,
@@ -27,10 +30,12 @@ import {
   MapPin,
   MessageSquare,
   Package,
-  QrCode,
+  PhoneCall,
   ShieldAlert,
+  StickyNote,
   Star,
   Truck,
+  UploadCloud,
   UserCheck,
   Warehouse,
   X,
@@ -60,7 +65,9 @@ type ModuleSource =
   | "Audit"
   | "Feedback"
   | "LostFound"
-  | "Delivery";
+  | "Delivery"
+  | "ContactCenter"
+  | "DataIO";
 
 interface TimelineEvent {
   id: string;
@@ -83,6 +90,9 @@ interface TimelineEvent {
 // Display-only module labels. Stored module keys are unchanged.
 const MODULE_LABELS: Partial<Record<ModuleSource, string>> = {
   Driver: "Delivery Agent",
+  LostFound: "Lost & Found",
+  ContactCenter: "Contact Center",
+  DataIO: "Data Import / Export",
 };
 
 function moduleLabel(m: ModuleSource): string {
@@ -139,6 +149,16 @@ const MODULE_STYLES: Record<ModuleSource, { badge: string; ring: string; dot: st
     badge: "bg-cyan-100 text-cyan-700 border-cyan-200",
     ring: "ring-cyan-300",
     dot: "bg-cyan-500",
+  },
+  ContactCenter: {
+    badge: "bg-orange-100 text-orange-700 border-orange-200",
+    ring: "ring-orange-300",
+    dot: "bg-orange-500",
+  },
+  DataIO: {
+    badge: "bg-fuchsia-100 text-fuchsia-700 border-fuchsia-200",
+    ring: "ring-fuchsia-300",
+    dot: "bg-fuchsia-500",
   },
 };
 
@@ -243,19 +263,21 @@ function buildEvents(
   feedback: Feedback[],
   incidents: QualityIncident[],
   audit: AuditEntry[],
+  callLogs: CallLog[],
+  ioAudit: ImportAuditEntry[],
 ): TimelineEvent[] {
   const events: TimelineEvent[] = [];
   const deliveryByBag = new Map(deliveries.map((d) => [d.bagId, d]));
-  const workflowByDelivery = new Map(workflow.map((w) => [w.deliveryId, w]));
+  const caseByBag = new Map(cases.map((c) => [c.bagId, c]));
 
-  // Cases → PIR + Storage + QR
+  // Lost & Found — PIR creation + real recorded status transitions.
   for (const c of cases) {
     events.push({
       id: `EV-PIR-${c.bagId}`,
       at: c.createdAt,
       title: "PIR Created",
       description: `PIR ${c.pirNumber} opened for ${c.passengerName} — flight ${c.flightNumber}.`,
-      user: "Lost & Found Desk",
+      user: c.internal?.createdBy || c.internal?.assignedOfficer || "Lost & Found Desk",
       role: "Lost & Found Agent",
       module: "LostFound",
       workflowStatus: "PIR_CREATED",
@@ -265,49 +287,22 @@ function buildEvents(
       icon: FileText,
       raw: c,
     });
-    if (c.storage) {
+    for (let i = 0; i < (c.lfHistory?.length ?? 0); i++) {
+      const h = c.lfHistory![i];
       events.push({
-        id: `EV-STORE-${c.bagId}`,
-        at: c.createdAt,
-        title: "Bag Registered in Storage",
-        description: `Stored at Zone ${c.storage.zone} · Shelf ${c.storage.shelf} · Position ${c.storage.position}.`,
-        user: "Storage Controller",
-        role: "Baggage Supervisor",
-        module: "Storage",
-        bagId: c.bagId,
-        pirNumber: c.pirNumber,
-        passengerName: c.passengerName,
-        icon: Warehouse,
-        raw: c,
-      });
-      events.push({
-        id: `EV-QR-${c.bagId}`,
-        at: c.createdAt,
-        title: "QR Code Generated",
-        description: `Unique QR code generated for ${c.bagId} and linked to ${c.pirNumber}.`,
-        user: "System",
-        role: "System",
-        module: "Storage",
-        bagId: c.bagId,
-        pirNumber: c.pirNumber,
-        passengerName: c.passengerName,
-        icon: QrCode,
-        raw: c,
-      });
-    }
-    if (c.status !== "Missing") {
-      events.push({
-        id: `EV-LOCATED-${c.bagId}`,
-        at: c.createdAt,
-        title: "Bag Located",
-        description: `Bag ${c.bagId} matched and located at Cairo International Airport.`,
-        user: "Baggage Tracing",
+        id: `EV-LFH-${c.bagId}-${i}-${h.status}`,
+        at: h.at,
+        title: `Lost & Found · ${lfStatusLabel(h.status)}`,
+        description:
+          h.note?.trim() || `Case ${c.bagId} moved to ${lfStatusLabel(h.status)} in Lost & Found.`,
+        user: h.actor || "Lost & Found Desk",
         role: "Lost & Found Agent",
         module: "LostFound",
         bagId: c.bagId,
         pirNumber: c.pirNumber,
         passengerName: c.passengerName,
-        icon: Package,
+        deliveryId: deliveryByBag.get(c.bagId)?.deliveryId,
+        icon: ClipboardList,
         raw: c,
       });
     }
@@ -402,6 +397,46 @@ function buildEvents(
     });
   }
 
+  // Contact Center — real call logs (incl. portal-generated callbacks).
+  for (const cl of callLogs) {
+    const d = cl.bagId ? deliveryByBag.get(cl.bagId) : undefined;
+    events.push({
+      id: `EV-CALL-${cl.id}`,
+      at: cl.at,
+      title: `Contact Center · ${cl.direction}`,
+      description: `${cl.notes || "Call logged"} — ${cl.phone}${
+        cl.durationSec ? ` · ${Math.round(cl.durationSec / 60)} min` : ""
+      }`,
+      user: cl.agent,
+      role: "Contact Center Agent",
+      module: "ContactCenter",
+      bagId: cl.bagId,
+      pirNumber: cl.pirNumber ?? d?.pirNumber,
+      deliveryId: d?.deliveryId,
+      passengerName: cl.passengerName,
+      icon: PhoneCall,
+      raw: cl,
+    });
+  }
+
+  // Data Import / Export audit entries.
+  for (const io of ioAudit) {
+    events.push({
+      id: `EV-IO-${io.id}`,
+      at: io.at,
+      title: `${io.action === "import.commit" ? "Import Committed" : "Export Generated"} · ${io.moduleLabel}`,
+      description:
+        io.action === "import.commit"
+          ? `${io.fileName ?? "file"} — ${io.accepted ?? 0} accepted, ${io.warnings ?? 0} with warnings, ${io.duplicates ?? 0} duplicates, ${io.rejected ?? 0} rejected of ${io.totalRows ?? 0} rows.`
+          : `${io.format ?? "file"} export generated for ${io.moduleLabel}.`,
+      user: io.actor,
+      role: "Operations",
+      module: "DataIO",
+      icon: UploadCloud,
+      raw: io,
+    });
+  }
+
   // Audit — supplement with entries not already surfaced
   for (const a of audit) {
     if (a.action === "workflow.transition") continue; // already surfaced via history
@@ -421,55 +456,105 @@ function buildEvents(
     });
   }
 
-  // Synthesize QR Scan events for out-for-delivery / delivered deliveries
+  // Delivery Management — only real recorded milestones and notes.
   for (const d of deliveries) {
-    const w = workflowByDelivery.get(d.deliveryId);
-    if (!w) continue;
-    if (
-      w.status === "OUT_FOR_DELIVERY" ||
-      w.status === "DELIVERED" ||
-      w.status === "CLOSED"
-    ) {
-      const anchor = w.history.find((h) => h.status === "CLAIMED_ON_HAND") ??
-        w.history[0];
-      events.push({
-        id: `EV-QRSCAN-${d.deliveryId}`,
-        at: anchor.at,
-        title: "QR Code Scanned",
-        description: `Delivery agent scanned ${d.bagId} at collection — chain of custody handoff.`,
-        user: d.driver,
-        role: "Driver",
+    const kase = caseByBag.get(d.bagId);
+    const base = {
+      deliveryId: d.deliveryId,
+      bagId: d.bagId,
+      pirNumber: d.pirNumber || kase?.pirNumber,
+      driver: d.driver && d.driver !== "—" ? d.driver : undefined,
+      passengerName: d.passengerName,
+    };
+    const milestones: {
+      key: string;
+      at?: string;
+      title: string;
+      description: string;
+      actor: string;
+      role: string;
+      module: ModuleSource;
+      icon: typeof Activity;
+    }[] = [
+      {
+        key: "CREATED",
+        at: d.createdAt,
+        title: "Delivery Order Created",
+        description: `Delivery ${d.deliveryId} created for ${d.passengerName}.`,
+        actor: "Delivery Management",
+        role: "Delivery Coordinator",
+        module: "Delivery",
+        icon: Package,
+      },
+      {
+        key: "ACCEPTED",
+        at: d.acceptedAt,
+        title: "Delivery Agent Accepted",
+        description: `${d.driver} accepted delivery ${d.deliveryId}.`,
+        actor: d.driver,
+        role: "Delivery Agent",
         module: "Driver",
-        deliveryId: d.deliveryId,
-        bagId: d.bagId,
-        pirNumber: d.pirNumber,
-        driver: d.driver,
-        passengerName: d.passengerName,
-        icon: QrCode,
+        icon: UserCheck,
+      },
+      {
+        key: "COLLECTED",
+        at: d.collectedAt,
+        title: "Baggage Collected",
+        description: `${d.driver} collected ${d.bagId} from storage.`,
+        actor: d.driver,
+        role: "Delivery Agent",
+        module: "Storage",
+        icon: Warehouse,
+      },
+      {
+        key: "DELIVERED",
+        at: d.deliveredAt,
+        title: "Baggage Delivered",
+        description: `${d.bagId} handed over to ${d.passengerName}${
+          d.otpStatus === "Verified" ? " after OTP verification" : ""
+        }.`,
+        actor: d.driver,
+        role: "Delivery Agent",
+        module: "Passenger",
+        icon: CheckCircle2,
+      },
+    ];
+    for (const m of milestones) {
+      if (!m.at) continue;
+      events.push({
+        ...base,
+        id: `EV-DEL-${d.deliveryId}-${m.key}`,
+        at: m.at,
+        title: m.title,
+        description: m.description,
+        user: m.actor || "Delivery Management",
+        role: m.role,
+        module: m.module,
+        icon: m.icon,
         raw: d,
       });
     }
-    if (d.otpStatus === "Sent" || d.otpStatus === "Verified") {
+    for (const n of d.notes ?? []) {
       events.push({
-        id: `EV-OTPGEN-${d.deliveryId}`,
-        at: w.history[0].at,
-        title: "OTP Generated",
-        description: `Delivery OTP issued to ${d.passengerName} on ${d.mobile}.`,
-        user: "Notification Engine",
-        role: "System",
-        module: "Notifications",
-        deliveryId: d.deliveryId,
-        bagId: d.bagId,
-        pirNumber: d.pirNumber,
-        passengerName: d.passengerName,
-        icon: ShieldAlert,
-        raw: d,
+        ...base,
+        id: `EV-NOTE-${n.id}`,
+        at: n.at,
+        title: "Internal Note Added",
+        description: n.text,
+        user: n.actor,
+        role: "Delivery Coordinator",
+        module: "Delivery",
+        icon: StickyNote,
+        raw: n,
       });
     }
   }
 
-  events.sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
-  return events;
+  const byId = new Map<string, TimelineEvent>();
+  for (const e of events) if (e.at) byId.set(e.id, e);
+  return Array.from(byId.values()).sort(
+    (a, b) => new Date(b.at).getTime() - new Date(a.at).getTime(),
+  );
 }
 
 function TimelinePage() {
@@ -480,36 +565,56 @@ function TimelinePage() {
   const feedback = useStore((s) => s.feedback);
   const incidents = useStore((s) => s.qualityIncidents);
   const audit = useStore((s) => s.audit);
+  const callLogs = useStore((s) => s.callLogs);
+  const ioAudit = useStore((s) => s.ioAudit);
 
   const events = useMemo(
     () =>
-      buildEvents(cases, deliveries, workflow, notifications, feedback, incidents, audit),
-    [cases, deliveries, workflow, notifications, feedback, incidents, audit],
+      buildEvents(
+        cases,
+        deliveries,
+        workflow,
+        notifications,
+        feedback,
+        incidents,
+        audit,
+        callLogs,
+        ioAudit,
+      ),
+    [cases, deliveries, workflow, notifications, feedback, incidents, audit, callLogs, ioAudit],
   );
 
   const drivers = useMemo(
     () => Array.from(new Set(deliveries.map((d) => d.driver).filter((x) => x && x !== "—"))),
     [deliveries],
   );
-  const passengers = useMemo(
-    () => Array.from(new Set(cases.map((c) => c.passengerName))),
-    [cases],
-  );
-  const employees = useMemo(
-    () => Array.from(new Set(events.map((e) => e.user))).sort(),
-    [events],
-  );
+  const employees = useMemo(() => Array.from(new Set(events.map((e) => e.user))).sort(), [events]);
+
+  // Universal reference index — lets the global Search box resolve an event
+  // by any operational reference (bag tag, PNR, tracking token, …).
+  const refIndex = useMemo(() => {
+    const caseRefs = new Map<string, string>();
+    for (const c of cases) {
+      caseRefs.set(
+        c.bagId,
+        [c.bagTagNumber, ...(c.baggage?.bagTags ?? []), c.passenger?.pnr, c.flightNumber, c.contact]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase(),
+      );
+    }
+    const deliveryRefs = new Map<string, string>();
+    for (const w of workflow) deliveryRefs.set(w.deliveryId, (w.token ?? "").toLowerCase());
+    return { caseRefs, deliveryRefs };
+  }, [cases, workflow]);
 
   const [q, setQ] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [fStatus, setFStatus] = useState<"all" | WorkflowStatus>("all");
   const [fModule, setFModule] = useState<"all" | ModuleSource>("all");
-  const [fDelivery, setFDelivery] = useState("all");
-  const [fPIR, setFPIR] = useState("all");
   const [fEmployee, setFEmployee] = useState("all");
   const [fDriver, setFDriver] = useState("all");
-  const [fPassenger, setFPassenger] = useState("all");
   const [selected, setSelected] = useState<TimelineEvent | null>(null);
 
   const filtered = useMemo(() => {
@@ -519,11 +624,16 @@ function TimelinePage() {
           e.title,
           e.description,
           e.user,
+          e.role,
+          moduleLabel(e.module),
+          e.workflowStatus ? WORKFLOW_LABELS[e.workflowStatus].en : "",
           e.deliveryId,
           e.pirNumber,
           e.bagId,
           e.passengerName,
           e.driver,
+          e.bagId ? refIndex.caseRefs.get(e.bagId) : "",
+          e.deliveryId ? refIndex.deliveryRefs.get(e.deliveryId) : "",
         ]
           .filter(Boolean)
           .join(" ")
@@ -538,14 +648,11 @@ function TimelinePage() {
       }
       if (fStatus !== "all" && e.workflowStatus !== fStatus) return false;
       if (fModule !== "all" && e.module !== fModule) return false;
-      if (fDelivery !== "all" && e.deliveryId !== fDelivery) return false;
-      if (fPIR !== "all" && e.pirNumber !== fPIR) return false;
       if (fEmployee !== "all" && e.user !== fEmployee) return false;
       if (fDriver !== "all" && e.driver !== fDriver) return false;
-      if (fPassenger !== "all" && e.passengerName !== fPassenger) return false;
       return true;
     });
-  }, [events, q, dateFrom, dateTo, fStatus, fModule, fDelivery, fPIR, fEmployee, fDriver, fPassenger]);
+  }, [events, q, dateFrom, dateTo, fStatus, fModule, fEmployee, fDriver, refIndex]);
 
   const kpis = useMemo(() => {
     const byModule = new Map<ModuleSource, number>();
@@ -564,15 +671,9 @@ function TimelinePage() {
     setDateTo("");
     setFStatus("all");
     setFModule("all");
-    setFDelivery("all");
-    setFPIR("all");
     setFEmployee("all");
     setFDriver("all");
-    setFPassenger("all");
   }
-
-  const uniqueDeliveries = Array.from(new Set(deliveries.map((d) => d.deliveryId)));
-  const uniquePIRs = Array.from(new Set(cases.map((c) => c.pirNumber)));
 
   return (
     <div className="space-y-6">
@@ -591,10 +692,30 @@ function TimelinePage() {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <KpiCard icon={Activity} label="Events (filtered)" value={kpis.total} tone="text-primary bg-primary/10" />
-        <KpiCard icon={Truck} label="Workflow Transitions" value={kpis.workflow} tone="text-cyan-700 bg-cyan-100" />
-        <KpiCard icon={Bell} label="Notifications" value={kpis.notifications} tone="text-sky-700 bg-sky-100" />
-        <KpiCard icon={AlertTriangle} label="Quality Incidents" value={kpis.quality} tone="text-rose-700 bg-rose-100" />
+        <KpiCard
+          icon={Activity}
+          label="Events (filtered)"
+          value={kpis.total}
+          tone="text-primary bg-primary/10"
+        />
+        <KpiCard
+          icon={Truck}
+          label="Workflow Transitions"
+          value={kpis.workflow}
+          tone="text-cyan-700 bg-cyan-100"
+        />
+        <KpiCard
+          icon={Bell}
+          label="Notifications"
+          value={kpis.notifications}
+          tone="text-sky-700 bg-sky-100"
+        />
+        <KpiCard
+          icon={AlertTriangle}
+          label="Quality Incidents"
+          value={kpis.quality}
+          tone="text-rose-700 bg-rose-100"
+        />
       </div>
 
       <Card>
@@ -610,21 +731,30 @@ function TimelinePage() {
           <div className="space-y-1.5 sm:col-span-2 lg:col-span-2">
             <Label className="text-xs">Search</Label>
             <Input
-              placeholder="Search events, PIR, delivery, driver, passenger…"
+              placeholder="Search any reference — PIR, delivery ID, bag tag, passenger, agent…"
               value={q}
               onChange={(e) => setQ(e.target.value)}
               className="h-9"
             />
           </div>
-          <FieldDate label="From" value={dateFrom} onChange={setDateFrom} />
-          <FieldDate label="To" value={dateTo} onChange={setDateTo} />
+          <div className="sm:col-span-2 flex items-end">
+            <DateRangeFilter
+              from={dateFrom}
+              to={dateTo}
+              onFromChange={setDateFrom}
+              onToChange={setDateTo}
+            />
+          </div>
           <FieldSelect
             label="Module"
             value={fModule}
             onChange={(v) => setFModule(v as "all" | ModuleSource)}
             options={[
               { v: "all", l: "All modules" },
-              ...(Object.keys(MODULE_STYLES) as ModuleSource[]).map((m) => ({ v: m, l: m })),
+              ...(Object.keys(MODULE_STYLES) as ModuleSource[]).map((m) => ({
+                v: m,
+                l: moduleLabel(m),
+              })),
             ]}
           />
           <FieldSelect
@@ -640,31 +770,10 @@ function TimelinePage() {
             ]}
           />
           <FieldSelect
-            label="Delivery ID"
-            value={fDelivery}
-            onChange={setFDelivery}
-            options={[
-              { v: "all", l: "All deliveries" },
-              ...uniqueDeliveries.map((d) => ({ v: d, l: d })),
-            ]}
-          />
-          <FieldSelect
-            label="PIR Number"
-            value={fPIR}
-            onChange={setFPIR}
-            options={[
-              { v: "all", l: "All PIRs" },
-              ...uniquePIRs.map((p) => ({ v: p, l: p })),
-            ]}
-          />
-          <FieldSelect
             label="Employee"
             value={fEmployee}
             onChange={setFEmployee}
-            options={[
-              { v: "all", l: "All employees" },
-              ...employees.map((e) => ({ v: e, l: e })),
-            ]}
+            options={[{ v: "all", l: "All employees" }, ...employees.map((e) => ({ v: e, l: e }))]}
           />
           <FieldSelect
             label="Delivery Agent"
@@ -673,15 +782,6 @@ function TimelinePage() {
             options={[
               { v: "all", l: "All delivery agents" },
               ...drivers.map((d) => ({ v: d, l: d })),
-            ]}
-          />
-          <FieldSelect
-            label="Passenger"
-            value={fPassenger}
-            onChange={setFPassenger}
-            options={[
-              { v: "all", l: "All passengers" },
-              ...passengers.map((p) => ({ v: p, l: p })),
             ]}
           />
         </CardContent>
@@ -721,9 +821,7 @@ function TimelinePage() {
                         onClick={() => setSelected(e)}
                         className={cn(
                           "w-full text-left rounded-lg border p-3 transition-colors bg-card hover:bg-muted/40",
-                          isSel
-                            ? "border-primary/50 ring-2 " + styles.ring
-                            : "border-border",
+                          isSel ? "border-primary/50 ring-2 " + styles.ring : "border-border",
                         )}
                       >
                         <div className="flex flex-wrap items-center gap-2 mb-1">
@@ -809,28 +907,6 @@ function KpiCard({
   );
 }
 
-function FieldDate({
-  label,
-  value,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-}) {
-  return (
-    <div className="space-y-1.5">
-      <Label className="text-xs">{label}</Label>
-      <Input
-        type="date"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="h-9"
-      />
-    </div>
-  );
-}
-
 function FieldSelect({
   label,
   value,
@@ -902,9 +978,7 @@ function DetailPanel({
       (event.bagId && q.bagId === event.bagId) ||
       (event.deliveryId && q.deliveryId === event.deliveryId),
   );
-  const relAudit = audit.filter(
-    (a) => event.deliveryId && a.entityId === event.deliveryId,
-  );
+  const relAudit = audit.filter((a) => event.deliveryId && a.entityId === event.deliveryId);
 
   return (
     <Card className="h-fit sticky top-20">
@@ -947,6 +1021,7 @@ function DetailPanel({
           {event.bagId && <Field label="Bag ID" value={event.bagId} mono />}
           {event.driver && <Field label="Delivery Agent" value={event.driver} />}
           {event.passengerName && <Field label="Passenger" value={event.passengerName} />}
+          <SourceFields event={event} />
         </div>
 
         <Section title={`Related Notifications (${relNotifs.length})`} icon={Bell}>
@@ -1017,6 +1092,73 @@ function Field({ label, value, mono }: { label: string; value: string; mono?: bo
       <p className={cn("text-xs", mono && "font-mono")}>{value}</p>
     </div>
   );
+}
+
+// Extra read-only fields taken straight from the originating record, so the
+// selected event shows its complete operational detail.
+function SourceFields({ event }: { event: TimelineEvent }) {
+  const raw = event.raw as Record<string, unknown>;
+  const get = (k: string) => {
+    const v = raw?.[k];
+    return v === undefined || v === null || v === "" ? undefined : String(v);
+  };
+  switch (event.module) {
+    case "Notifications": {
+      const n = event.raw as NotificationEvent;
+      if (!n?.channel) return null;
+      return (
+        <>
+          <Field label="Channel" value={n.channel.toUpperCase()} />
+          <Field label="Delivery State" value={n.status_} />
+          {n.provider && <Field label="Provider" value={n.provider} mono />}
+          {n.attempts !== undefined && <Field label="Attempts" value={String(n.attempts)} />}
+          {n.failureReason && <Field label="Last Failure" value={n.failureReason} />}
+        </>
+      );
+    }
+    case "ContactCenter": {
+      const c = event.raw as CallLog;
+      if (!c?.direction) return null;
+      return (
+        <>
+          <Field label="Direction" value={c.direction} />
+          <Field label="Phone" value={c.phone} mono />
+          <Field label="Duration" value={`${c.durationSec}s`} />
+        </>
+      );
+    }
+    case "Quality": {
+      const q = event.raw as QualityIncident;
+      if (!q?.category) return null;
+      return (
+        <>
+          <Field label="Category" value={q.category} />
+          <Field label="Severity" value={q.severity} />
+          <Field label="Incident Status" value={q.status} />
+        </>
+      );
+    }
+    case "Feedback": {
+      const f = event.raw as Feedback;
+      if (f?.rating === undefined) return null;
+      return (
+        <>
+          <Field label="Rating" value={`${f.rating}/5`} />
+          <Field label="Resolved" value={f.resolved ? "Yes" : "No"} />
+        </>
+      );
+    }
+    default: {
+      const stage = get("stage");
+      const otp = get("otpStatus");
+      return (
+        <>
+          {stage && <Field label="Stage" value={stage} />}
+          {otp && <Field label="OTP Status" value={otp} />}
+        </>
+      );
+    }
+  }
 }
 
 function Section({
