@@ -1,14 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import {
-  useStore,
-  createTestNotification,
-  setNotificationStatus,
-  type NotificationEvent,
-} from "@/lib/store";
-import { WORKFLOW_LABELS, WORKFLOW_STATUSES, type WorkflowStatus } from "@/lib/workflow/statuses";
+import { useStore, type NotificationEvent } from "@/lib/store";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -18,10 +11,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Bell, Send, MessageSquare, Mail, Smartphone, Loader2, CheckCircle2, AlertTriangle, Clock } from "lucide-react";
+import {
+  Bell,
+  MessageSquare,
+  Mail,
+  Smartphone,
+  Loader2,
+  CheckCircle2,
+  AlertTriangle,
+  Clock,
+  Lock,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
-import { toast } from "sonner";
-import type { NotificationChannel } from "@/lib/notifications/templates";
+import { triggerLabel, type NotificationChannel } from "@/lib/notifications/templates";
 
 export const Route = createFileRoute("/notifications")({
   head: () => ({
@@ -42,7 +44,6 @@ const CHANNEL_META: Record<NotificationChannel, { label: string; icon: typeof Ma
 
 function NotificationCenter() {
   const notifications = useStore((s) => s.notifications);
-  const deliveries = useStore((s) => s.deliveries);
 
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [channelFilter, setChannelFilter] = useState<string>("all");
@@ -50,11 +51,6 @@ function NotificationCenter() {
   const [passengerFilter, setPassengerFilter] = useState<string>("");
   const [deliveryFilter, setDeliveryFilter] = useState<string>("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
-
-  // Test form
-  const [testDelivery, setTestDelivery] = useState<string>(deliveries[0]?.deliveryId ?? "");
-  const [testChannel, setTestChannel] = useState<NotificationChannel>("sms");
-  const [testWorkflow, setTestWorkflow] = useState<WorkflowStatus>("OUT_FOR_DELIVERY");
 
   const filtered = useMemo(() => {
     return notifications.filter((n) => {
@@ -114,34 +110,6 @@ function NotificationCenter() {
     };
   }, [notifications]);
 
-  function simulateSend(events: NotificationEvent[]) {
-    events.forEach((e, i) => {
-      setTimeout(() => setNotificationStatus(e.id, "sending"), 400 + i * 120);
-      setTimeout(() => setNotificationStatus(e.id, "sent"), 1600 + i * 120);
-    });
-  }
-
-  function sendTest() {
-    const events = createTestNotification({
-      deliveryId: testDelivery,
-      channel: testChannel,
-      workflowStatus: testWorkflow,
-      operator: "Ops Console",
-    });
-    if (!events.length) {
-      toast.error("No template available for that combination");
-      return;
-    }
-    toast.success(`Queued ${events.length} test notification${events.length > 1 ? "s" : ""}`);
-    setSelectedId(events[0].id);
-    simulateSend(events);
-  }
-
-  function resend(n: NotificationEvent) {
-    setNotificationStatus(n.id, "queued");
-    simulateSend([n]);
-  }
-
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -157,6 +125,15 @@ function NotificationCenter() {
         </div>
       </div>
 
+      <div className="flex items-start gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+        <Lock className="h-4 w-4 shrink-0 mt-px text-muted-foreground" />
+        <p>
+          Read-only monitor. Passenger notifications are generated automatically by the
+          Workflow Engine on every operational transition — they cannot be created,
+          edited or sent manually from this screen.
+        </p>
+      </div>
+
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <Kpi label="Total" value={counts.total} icon={Bell} />
         <Kpi label="Queued" value={counts.queued} icon={Clock} tone="warning" />
@@ -164,57 +141,6 @@ function NotificationCenter() {
         <Kpi label="Sent" value={counts.sent} icon={CheckCircle2} tone="success" />
         <Kpi label="Failed" value={counts.failed} icon={AlertTriangle} tone="danger" />
       </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <Send className="h-4 w-4" />
-            Send Test Notification
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-3 md:grid-cols-5">
-          <div className="space-y-1">
-            <Label className="text-xs">Delivery</Label>
-            <Select value={testDelivery} onValueChange={setTestDelivery}>
-              <SelectTrigger><SelectValue placeholder="Select delivery" /></SelectTrigger>
-              <SelectContent>
-                {deliveries.map((d) => (
-                  <SelectItem key={d.deliveryId} value={d.deliveryId}>
-                    {d.deliveryId} — {d.passengerName}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1">
-            <Label className="text-xs">Channel</Label>
-            <Select value={testChannel} onValueChange={(v) => setTestChannel(v as NotificationChannel)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {(Object.keys(CHANNEL_META) as NotificationChannel[]).map((c) => (
-                  <SelectItem key={c} value={c}>{CHANNEL_META[c].label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1 md:col-span-2">
-            <Label className="text-xs">Workflow Status</Label>
-            <Select value={testWorkflow} onValueChange={(v) => setTestWorkflow(v as WorkflowStatus)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {WORKFLOW_STATUSES.map((s) => (
-                  <SelectItem key={s} value={s}>{WORKFLOW_LABELS[s].en}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex items-end">
-            <Button className="w-full" onClick={sendTest}>
-              <Send className="h-4 w-4 mr-2" /> Send Test
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
 
       <Card>
         <CardHeader>
@@ -277,13 +203,12 @@ function NotificationCenter() {
                     <th className="text-left px-3 py-2 font-medium">Trigger</th>
                     <th className="text-left px-3 py-2 font-medium">Status</th>
                     <th className="text-left px-3 py-2 font-medium">Time</th>
-                    <th className="text-right px-3 py-2 font-medium">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filtered.length === 0 && (
                     <tr>
-                      <td colSpan={7} className="text-center py-10 text-sm text-muted-foreground">
+                      <td colSpan={6} className="text-center py-10 text-sm text-muted-foreground">
                         No notifications match the current filters.
                       </td>
                     </tr>
@@ -315,7 +240,7 @@ function NotificationCenter() {
                           </span>
                           <div className="text-[11px] text-muted-foreground uppercase">{n.locale}</div>
                         </td>
-                        <td className="px-3 py-2 text-xs">{WORKFLOW_LABELS[n.status]?.en ?? n.status}</td>
+                        <td className="px-3 py-2 text-xs">{triggerLabel(n.status)}</td>
                         <td className="px-3 py-2">
                           <StatusPill status={n.status_} />
                         </td>
@@ -327,20 +252,6 @@ function NotificationCenter() {
                           <div className="text-[11px] text-muted-foreground">
                             {n.operator ?? "system"}
                           </div>
-                        </td>
-                        <td className="px-3 py-2 text-right">
-                          {(n.status_ === "failed" || n.status_ === "sent") && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                resend(n);
-                              }}
-                            >
-                              Resend
-                            </Button>
-                          )}
                         </td>
                       </tr>
                     );
@@ -369,7 +280,7 @@ function NotificationCenter() {
                   <Row k="PIR Number" v={selected.pirNumber ?? "—"} mono />
                   <Row k="Delivery ID" v={selected.deliveryId} mono />
                   <Row k="Channel" v={CHANNEL_META[selected.channel].label} />
-                  <Row k="Trigger" v={WORKFLOW_LABELS[selected.status]?.en ?? selected.status} />
+                  <Row k="Trigger" v={triggerLabel(selected.status)} />
                   <Row k="Operator" v={selected.operator ?? "system"} />
                   <Row
                     k="Time"

@@ -11,6 +11,7 @@ import type {
 } from "@/lib/store";
 import type { AuditEntry } from "@/lib/audit/log";
 import { WORKFLOW_LABELS, type WorkflowStatus } from "@/lib/workflow/statuses";
+import { triggerLabel, triggerWorkflowStatus } from "@/lib/notifications/templates";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -350,7 +351,7 @@ function buildEvents(
       user: n.operator ?? "Notification Engine",
       role: "Delivery Coordinator",
       module: "Notifications",
-      workflowStatus: n.status,
+      workflowStatus: triggerWorkflowStatus(n.status),
       deliveryId: n.deliveryId,
       pirNumber: n.pirNumber,
       passengerName: n.passengerName,
@@ -953,7 +954,7 @@ function DetailPanel({
             <MiniRow
               key={n.id}
               title={`${n.channel.toUpperCase()} · ${n.locale.toUpperCase()}`}
-              subtitle={`${WORKFLOW_LABELS[n.status].en} — ${n.status_}`}
+              subtitle={`${triggerLabel(n.status)} — ${n.status_}`}
               at={n.createdAt}
             />
           ))}

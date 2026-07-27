@@ -14,7 +14,9 @@ import {
   type NotificationChannel,
   type TemplateContext,
   type RenderedMessage,
+  type NotificationTrigger,
 } from "./notifications/templates";
+import { defaultAdapters } from "./notifications/channels";
 import { generateTrackingToken } from "./passenger/tokens";
 import type { AuditEntry, ImportAuditEntry } from "./audit/log";
 import type { Role } from "./roles/roles";
@@ -192,7 +194,7 @@ export interface WorkflowRecord {
 export interface NotificationEvent {
   id: string;
   deliveryId: string;
-  status: WorkflowStatus;
+  status: NotificationTrigger;
   channel: NotificationChannel;
   locale: "en" | "ar";
   to: string;
@@ -831,7 +833,9 @@ function pushAudit(entry: Omit<AuditEntry, "id" | "at">) {
   state = { ...state, audit: [full, ...state.audit] };
 }
 
-function enqueueNotifications(deliveryId: string, status: WorkflowStatus) {
+// The Workflow Engine is the ONLY producer of passenger notifications.
+// Nothing outside this module may create a NotificationEvent.
+function enqueueNotifications(deliveryId: string, trigger: NotificationTrigger) {
   const d = state.deliveries.find((x) => x.deliveryId === deliveryId);
   if (!d) return;
   const rec = state.workflow.find((w) => w.deliveryId === deliveryId);
@@ -846,12 +850,12 @@ function enqueueNotifications(deliveryId: string, status: WorkflowStatus) {
   const events: NotificationEvent[] = [];
   for (const channel of channels) {
     for (const locale of ["en", "ar"] as const) {
-      const msg = renderTemplate(status, channel, locale, ctx);
+      const msg = renderTemplate(trigger, channel, locale, ctx);
       if (!msg) continue;
       events.push({
         id: `NTF-${state.notifications.length + events.length + 1}`,
         deliveryId,
-        status,
+        status: trigger,
         channel,
         locale,
         to: d.mobile,
@@ -875,13 +879,31 @@ function enqueueNotifications(deliveryId: string, status: WorkflowStatus) {
         note: `${e.channel}/${e.locale} → ${e.to}`,
       });
     }
+    // The engine — not the UI — owns the queued → sending → sent lifecycle,
+    // so status advances regardless of which screen the operator is on.
+    dispatchQueued(events);
   }
+}
+
+// Hands each queued event to its channel adapter. Adapters in
+// `notifications/channels.ts` are still no-ops (simulated transport); the
+// real provider swap happens there without touching this engine.
+function dispatchQueued(events: NotificationEvent[]) {
+  events.forEach((e, i) => {
+    setTimeout(() => {
+      setNotificationStatus(e.id, "sending");
+      void defaultAdapters[e.channel]
+        .send({ channel: e.channel, to: e.to, message: e.message, locale: e.locale })
+        .then((res) => setNotificationStatus(e.id, res.ok ? "sent" : "failed"))
+        .catch(() => setNotificationStatus(e.id, "failed"));
+    }, 400 + i * 120);
+  });
 }
 
 export function transitionWorkflow(
   deliveryId: string,
   next: WorkflowStatus,
-  opts: { actor?: string; role?: Role; force?: boolean } = {},
+  opts: { actor?: string; role?: Role; force?: boolean; silent?: boolean } = {},
 ) {
   ensureWorkflow(deliveryId);
   const current = state.workflow.find((w) => w.deliveryId === deliveryId)!;
@@ -940,7 +962,9 @@ export function transitionWorkflow(
     fromStatus: from,
     toStatus: next,
   });
-  enqueueNotifications(deliveryId, next);
+  // `silent` is used for corrective / backward transitions whose passenger
+  // message is emitted by the caller under a more accurate trigger.
+  if (!opts.silent) enqueueNotifications(deliveryId, next);
   emit();
   return updated;
 }
@@ -1309,7 +1333,22 @@ export function setDeliveryStage(
     actor: opts.actor ?? "system",
     role: opts.role,
     force: backward,
+    silent: backward,
   });
+  // Stages that carry passenger meaning but share a canonical WorkflowStatus
+  // with another stage get their own notification trigger, so the passenger
+  // never receives a message that contradicts the real operational state.
+  const extraTrigger: NotificationTrigger | null =
+    stage === "Scheduled"
+      ? "STAGE_SCHEDULED"
+      : stage === "Collected Bag"
+        ? "STAGE_COLLECTED"
+        : stage === "Delivery Failed"
+          ? "STAGE_DELIVERY_FAILED"
+          : stage === "Returned to Airport"
+            ? "STAGE_RETURNED_TO_AIRPORT"
+            : null;
+  if (extraTrigger) enqueueNotifications(deliveryId, extraTrigger);
   // Mirror the operational stage into the L&F case so Lost & Found and
   // Delivery Management never show conflicting statuses.
   if (d.bagId) {
@@ -1782,50 +1821,4 @@ export function setNotificationStatus(
     ),
   };
   emit();
-}
-
-export function createTestNotification(input: {
-  deliveryId?: string;
-  channel: NotificationChannel;
-  workflowStatus?: WorkflowStatus;
-  operator?: string;
-}): NotificationEvent[] {
-  const delivery =
-    state.deliveries.find((d) => d.deliveryId === input.deliveryId) ??
-    state.deliveries[0];
-  if (!delivery) return [];
-  const rec = state.workflow.find((w) => w.deliveryId === delivery.deliveryId);
-  const workflowStatus: WorkflowStatus =
-    input.workflowStatus ?? "OUT_FOR_DELIVERY";
-  const ctx: TemplateContext = {
-    passengerName: delivery.passengerName,
-    pirNumber: delivery.pirNumber,
-    driverName: delivery.driver,
-    otp: delivery.otpCode,
-    trackingUrl: rec ? `/passenger/${rec.token}` : undefined,
-  };
-  const events: NotificationEvent[] = [];
-  for (const locale of ["en", "ar"] as const) {
-    const msg = renderTemplate(workflowStatus, input.channel, locale, ctx);
-    if (!msg) continue;
-    events.push({
-      id: `NTF-TEST-${Date.now()}-${locale}`,
-      deliveryId: delivery.deliveryId,
-      status: workflowStatus,
-      channel: input.channel,
-      locale,
-      to: delivery.mobile,
-      message: msg,
-      createdAt: new Date().toISOString(),
-      status_: "queued",
-      passengerName: delivery.passengerName,
-      pirNumber: delivery.pirNumber,
-      operator: input.operator ?? "Test Operator",
-    });
-  }
-  if (events.length) {
-    state = { ...state, notifications: [...events, ...state.notifications] };
-    emit();
-  }
-  return events;
 }

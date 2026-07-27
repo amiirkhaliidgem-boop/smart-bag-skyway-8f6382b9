@@ -1,33 +1,49 @@
 ## Goal
-Make Workflow Monitor a true live board over the existing ecosystem, and remove the Station filter. UI/read-only change — no engine, schema, or write-path modifications.
 
-## Current state (verified)
-- `src/routes/workflow-monitor.tsx` already reads `useStore` (Supabase-backed, realtime-synced) — so it isn't literally demo data, but:
-  - Rows are built **only** from `workflow` records, so Lost & Found cases that haven't reached Delivery never appear (that's why "Cases Waiting" and "In Storage" show 0 in the screenshot).
-  - Status column renders the raw `WorkflowStatus`, not the operational `DeliveryStage` used by Delivery Management / Agent Portal, so rows can look out of sync with those modules.
-  - Elapsed time is computed once per render and never ticks.
-  - A `Station` filter exists and matches on substrings of the address.
+Enforce the system philosophy: **only the Workflow Engine creates notifications**. The Notification Center becomes a pure monitoring dashboard. Providers stay simulated — no real SMS/WhatsApp wiring in this phase.
 
-## Changes (all inside `src/routes/workflow-monitor.tsx`)
+## 1. Remove every manual send path
 
-1. **Unified live row model**
-   - Build rows from `cases` joined to `deliveries` and `workflow` (read-only selectors from the store).
-   - Include L&F cases with no delivery yet, so the pre-delivery part of the lifecycle is visible.
-   - Per row, derive: case/PIR, passenger, bag tag, current stage (delivery stage when a delivery exists, otherwise the L&F/workflow status), delivery agent, last transition timestamp, next step, and feedback-submitted flag.
+Delete `createTestNotification()` from `src/lib/store.ts` and all six call sites:
 
-2. **Remove Station filter**
-   - Delete the Station `Select` and its state/filter logic; grid becomes Search + Delivery Agent + Status.
+- `src/routes/notifications.tsx` — remove the entire "Send Test Notification" card, its form state, and the per-row **Resend** button.
+- `src/routes/delivery.index.tsx` — remove the row-level **Notify** button and the bulk "Notify passengers" dialog.
+- `src/routes/delivery.$deliveryId.tsx` — remove the **Notify Passenger** action button.
+- `src/components/contact-center/contact-center-full.tsx` — remove the three manual send actions (file is currently unrendered behind the Coming Soon page, but is cleaned up so it can't reintroduce the pattern).
+- Drop the now-unused `notify` flag from the stage-action helper in `src/lib/delivery/stages.ts`.
 
-3. **Status display aligned with the modules**
-   - Use `DeliveryStage` labels/colors from `src/lib/delivery/stages.ts` when a delivery exists, and `LF_STATUS_LABEL`/colors from `src/lib/lost-found/statuses.ts` before hand-off, so the monitor mirrors exactly what L&F and Dispatch show.
-   - Status filter options become the same unified list.
+After this, the only writers to `state.notifications` are `enqueueNotifications()` and the send-lifecycle updater.
 
-4. **Live sync + ticking elapsed**
-   - Store already pushes Supabase realtime updates, so any transition (L&F create → Ready for Delivery → Assigned → Accepted → Out for Delivery → OTP Verified → Delivered → Feedback Submitted) re-renders the board automatically.
-   - Add a 30s interval tick so Elapsed/SLA badges stay accurate without a manual refresh.
+## 2. Move the send lifecycle into the engine
 
-5. **KPIs recomputed from the unified rows**
-   - Cases Waiting (L&F pre-hand-off), In Storage, Ready for Delivery, Out for Delivery, Delivered, Delayed (SLA breach), Quality Alerts, Returned — all derived from the same live rows so the numbers match the table.
+Today `queued → sending → sent` is faked with `setTimeout` inside the Notification Center component, so the log only advances while that page is open. Move it into `src/lib/store.ts`, immediately after `enqueueNotifications()` creates events, so status advances regardless of which page the operator is on. The simulated adapter path routes through `src/lib/notifications/channels.ts` (still no-op) so swapping in a real provider later is a one-file change.
 
-## Out of scope
-No changes to Workflow, Delivery, Notification, Timeline, Audit engines, the store's write paths, or the database schema. No new routes or duplicate state.
+`setNotificationStatus` stays exported but becomes engine/adapter-internal — no UI calls it.
+
+## 3. Notification Center becomes read-only
+
+Keep: KPI cards, filters, event table, bilingual message preview. Remove: send form, resend, any action column. Add a short header note stating notifications are generated automatically by the Workflow Engine and cannot be sent manually.
+
+The **Failed** KPI stays (it will be reachable once real providers land) but no failure-triggered action button.
+
+## 4. Close the trigger-coverage gap
+
+Templates exist for only 5 of the workflow statuses; every other transition silently produces nothing. Add EN/AR SMS + WhatsApp templates for the remaining passenger-relevant transitions so the log reflects the real lifecycle:
+
+- `SCHEDULED` — delivery scheduled
+- `COLLECTED` — bag collected from the airport
+- `DELIVERY_FAILED` — attempt failed, contact centre will follow up
+- `RETURNED_TO_AIRPORT` — bag returned to airport storage
+
+Internal-only statuses (driver accept/reject, dispatch bookkeeping) intentionally get **no** passenger template.
+
+## Technical notes
+
+- Email and Push remain contract-only (no templates); they stay in the channel union for the future provider phase.
+- `operator` on every event will now always be `"Workflow Engine"`, making the ledger unambiguous for audit. Existing historical rows tagged with an operator name are left untouched.
+- Every generated event continues to write a `notification.dispatch` audit entry.
+- No schema or Supabase changes; notifications persist through the existing shared-state sync.
+
+## Out of scope (next phase)
+
+Real Twilio/Meta/SES credentials, delivery receipts, retry/backoff, per-passenger channel preference and opt-out.
