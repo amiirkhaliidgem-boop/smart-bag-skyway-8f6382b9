@@ -1028,6 +1028,7 @@ function DetailPanel({
           {event.bagId && <Field label="Bag ID" value={event.bagId} mono />}
           {event.driver && <Field label="Delivery Agent" value={event.driver} />}
           {event.passengerName && <Field label="Passenger" value={event.passengerName} />}
+          <SourceFields event={event} />
         </div>
 
         <Section title={`Related Notifications (${relNotifs.length})`} icon={Bell}>
