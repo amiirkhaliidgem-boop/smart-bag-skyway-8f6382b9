@@ -15,11 +15,6 @@ import {
   Bell,
   Activity,
   ShieldCheck,
-  Users as UsersIcon,
-  KeySquare,
-  Building2,
-  MapPin,
-  UsersRound,
   GitBranch,
   Plug,
   Radio,
@@ -33,6 +28,7 @@ import iabLogo from "@/assets/iab-logo.jpeg.asset.json";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "@tanstack/react-router";
 import { useRole, canAccessPath, ROLE_LABELS } from "@/lib/rbac";
+import { usePermissions } from "@/lib/permissions";
 
 const navSections: {
   label: string;
@@ -99,12 +95,7 @@ const navSections: {
   {
     label: "Administration",
     items: [
-      { to: "/admin", label: "Users", icon: UsersIcon, search: { section: "users" }, matchSearchKey: "users" },
-      { to: "/admin", label: "Roles", icon: ShieldCheck, search: { section: "roles" }, matchSearchKey: "roles" },
-      { to: "/admin", label: "Permissions", icon: KeySquare, search: { section: "permissions" }, matchSearchKey: "permissions" },
-      { to: "/admin", label: "Departments", icon: Building2, search: { section: "departments" }, matchSearchKey: "departments" },
-      { to: "/admin", label: "Stations", icon: MapPin, search: { section: "stations" }, matchSearchKey: "stations" },
-      { to: "/admin", label: "Teams", icon: UsersRound, search: { section: "teams" }, matchSearchKey: "teams" },
+      { to: "/admin", label: "Administration", icon: ShieldCheck },
     ],
   },
   {
@@ -125,11 +116,14 @@ export function AppShell() {
   });
   const [mobileOpen, setMobileOpen] = useState(false);
   const { role } = useRole();
+  const perms = usePermissions();
 
   const visibleSections = navSections
     .map((section) => ({
       ...section,
-      items: section.items.filter((item) => canAccessPath(item.to, role)),
+      items: section.items.filter((item) =>
+        perms.unmanaged ? canAccessPath(item.to, role) : perms.canAccess(item.to),
+      ),
     }))
     .filter((section) => section.items.length > 0);
 
