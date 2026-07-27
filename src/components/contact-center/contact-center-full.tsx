@@ -1,4 +1,3 @@
-import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import {
   useStore,
@@ -40,12 +39,7 @@ import {
   Search,
 } from "lucide-react";
 
-export const Route = createFileRoute("/contact-center")({
-  head: () => ({ meta: [{ title: "Contact Center — Smart Baggage Ecosystem" }] }),
-  component: ContactCenterPage,
-});
-
-function ContactCenterPage() {
+export function ContactCenterFull() {
   const cases = useStore((s) => s.cases);
   const calls = useStore((s) => s.callLogs);
   const whatsapp = useStore((s) => s.whatsapp);
