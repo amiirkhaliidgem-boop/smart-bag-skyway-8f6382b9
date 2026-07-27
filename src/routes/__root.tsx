@@ -23,6 +23,7 @@ import {
   firstAllowedPath,
   useLivePermissions,
 } from "@/lib/permissions";
+import { moduleForPath } from "@/lib/admin/modules";
 import { toast } from "sonner";
 
 function NotFoundComponent() {
@@ -184,7 +185,7 @@ function AuthGate() {
   const allowPath = (pathname: string) =>
     perms.unmanaged
       ? canAccessPath(pathname, effectiveRole)
-      : perms.granted.has(`${moduleKeyFor(pathname)}|View`);
+      : perms.granted.has(`${moduleForPath(pathname)}|View`);
   const landingPath = () =>
     perms.unmanaged ? defaultPathForRole(effectiveRole) : firstAllowedPath(perms.granted);
 
