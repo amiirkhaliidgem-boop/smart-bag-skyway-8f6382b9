@@ -102,7 +102,7 @@ export const saveAppUser = createServerFn({ method: "POST" })
     let appUserId = data.id ?? null;
 
     if (appUserId) {
-      const { error } = await supabaseAdmin.from("app_users").update(row).eq("id", appUserId);
+      const { error } = await supabaseAdmin.from("app_users").update(row as never).eq("id", appUserId);
       if (error) throw new Error(error.message);
       await logAdminAction(actor, "User Updated", data.fullName, `Employee ${data.employeeId}`);
     } else {
