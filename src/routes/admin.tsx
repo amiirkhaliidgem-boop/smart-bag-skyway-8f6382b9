@@ -18,7 +18,6 @@ import {
   RBAC_ACTIONS,
   RBAC_MODULES,
   DEPARTMENTS,
-  STATIONS,
   type AdminUserRecord,
   type AdminWorkspaceData,
 } from "@/lib/admin/modules";
@@ -211,9 +210,6 @@ const EMPTY_FORM = {
   email: "",
   mobile: "",
   department: DEPARTMENTS[0] as string,
-  station: STATIONS[0] as string,
-  team: "",
-  position: "",
   status: "Active" as "Active" | "Disabled" | "Invited",
   userType: "staff" as "staff" | "driver",
   roleId: "",
@@ -281,7 +277,7 @@ function UsersTab({ data }: { data: AdminWorkspaceData }) {
     return data.users.filter((u) => {
       if (roleFilter !== "all" && u.role_id !== roleFilter) return false;
       if (!q) return true;
-      return [u.full_name, u.username, u.employee_id, u.email ?? "", u.department, u.position]
+      return [u.full_name, u.username, u.employee_id, u.email ?? "", u.department]
         .join(" ")
         .toLowerCase()
         .includes(q);
@@ -302,9 +298,6 @@ function UsersTab({ data }: { data: AdminWorkspaceData }) {
       email: u.email ?? "",
       mobile: u.mobile ?? "",
       department: u.department || DEPARTMENTS[0],
-      station: u.station || STATIONS[0],
-      team: u.team ?? "",
-      position: u.position ?? "",
       status: (u.status as "Active") ?? "Active",
       userType: (u.user_type as "staff") ?? "staff",
       roleId: u.role_id ?? data.roles[0]?.id ?? "",
@@ -459,8 +452,8 @@ function UsersTab({ data }: { data: AdminWorkspaceData }) {
           <DialogHeader>
             <DialogTitle>{form.id ? "Edit User" : "Create User"}</DialogTitle>
             <DialogDescription>
-              Staff accounts sign in with email and password. Delivery agents sign in to the
-              Delivery Agent Portal with a username and PIN.
+              Staff accounts sign in with their username and password — email is optional.
+              Delivery agents sign in to the Delivery Agent Portal with a username and PIN.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 sm:grid-cols-2">
@@ -496,14 +489,14 @@ function UsersTab({ data }: { data: AdminWorkspaceData }) {
                 onChange={(e) => setForm((f) => ({ ...f, username: e.target.value }))}
               />
             </Field>
-            <Field label="Email">
+            <Field label="Email (optional)">
               <Input
                 type="email"
                 value={form.email}
                 onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
               />
             </Field>
-            <Field label="Mobile">
+            <Field label="Mobile (optional)">
               <Input
                 value={form.mobile}
                 onChange={(e) => setForm((f) => ({ ...f, mobile: e.target.value }))}
@@ -525,35 +518,6 @@ function UsersTab({ data }: { data: AdminWorkspaceData }) {
                   ))}
                 </SelectContent>
               </Select>
-            </Field>
-            <Field label="Station">
-              <Select
-                value={form.station}
-                onValueChange={(v) => setForm((f) => ({ ...f, station: v }))}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {STATIONS.map((s) => (
-                    <SelectItem key={s} value={s}>
-                      {s}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
-            <Field label="Position">
-              <Input
-                value={form.position}
-                onChange={(e) => setForm((f) => ({ ...f, position: e.target.value }))}
-              />
-            </Field>
-            <Field label="Team">
-              <Input
-                value={form.team}
-                onChange={(e) => setForm((f) => ({ ...f, team: e.target.value }))}
-              />
             </Field>
             <Field label="Role">
               <Select
