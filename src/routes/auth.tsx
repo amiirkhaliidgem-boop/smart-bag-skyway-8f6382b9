@@ -39,7 +39,7 @@ export const Route = createFileRoute("/auth")({
 function AuthPage() {
   const navigate = useNavigate();
   const [mode, setMode] = useState<"signin" | "signup">("signin");
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -58,13 +58,14 @@ function AuthPage() {
     try {
       if (mode === "signup") {
         const { error } = await supabase.auth.signUp({
-          email,
+          email: identifier,
           password,
           options: { emailRedirectTo: `${window.location.origin}/` },
         });
         if (error) throw error;
         toast.success("Account created. You are signed in.");
       } else {
+        const email = await resolveLoginIdentity(identifier);
         const { error, data } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
         toast.success("Signed in.");
@@ -100,6 +101,17 @@ async function resolveDefaultPath(userId: string | null): Promise<string> {
   return defaultPathForRole(role);
 }
 
+/**
+ * Staff may sign in with a username (no corporate email required). Usernames are
+ * resolved to the account's internal sign-in identity before authenticating.
+ */
+async function resolveLoginIdentity(input: string): Promise<string> {
+  const value = input.trim();
+  if (value.includes("@")) return value;
+  const { data } = await supabase.rpc("login_identity_for_username", { _username: value });
+  return (typeof data === "string" && data) || `${value.toLowerCase()}@staff.local`;
+}
+
   return (
     <div className="min-h-screen grid place-items-center bg-background p-6">
       <Card className="w-full max-w-md">
@@ -115,14 +127,16 @@ async function resolveDefaultPath(userId: string | null): Promise<string> {
         <CardContent>
           <form onSubmit={submit} className="space-y-4">
             <div className="space-y-1.5">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="identifier">
+                {mode === "signin" ? "Username or Email" : "Email"}
+              </Label>
               <Input
-                id="email"
-                type="email"
+                id="identifier"
+                type={mode === "signin" ? "text" : "email"}
                 required
-                autoComplete="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                autoComplete={mode === "signin" ? "username" : "email"}
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
               />
             </div>
             <div className="space-y-1.5">

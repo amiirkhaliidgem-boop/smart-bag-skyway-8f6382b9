@@ -80,8 +80,6 @@ export const DEPARTMENTS = [
   "Administration",
 ] as const;
 
-export const STATIONS = ["Airport", "Downtown Hub", "Remote"] as const;
-
 export interface AdminUserRecord {
   id: string;
   user_id: string | null;
@@ -91,9 +89,6 @@ export interface AdminUserRecord {
   email: string | null;
   mobile: string | null;
   department: string;
-  station: string;
-  team: string;
-  position: string;
   status: string;
   user_type: string;
   last_login_at: string | null;
