@@ -11,7 +11,6 @@ import {
 import {
   closeDelivery,
   resendOtp,
-  createTestNotification,
   ensurePassengerToken,
 } from "@/lib/store";
 import { renderTemplate, type NotificationChannel } from "@/lib/notifications/templates";
@@ -146,7 +145,6 @@ function DispatchCenter() {
   // ---- Selection (bulk actions)
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkAssignOpen, setBulkAssignOpen] = useState(false);
-  const [bulkNotifyOpen, setBulkNotifyOpen] = useState(false);
   const [assignFor, setAssignFor] = useState<string | null>(null);
   const toggleAll = () => {
     if (selected.size === filtered.length) setSelected(new Set());
@@ -203,13 +201,6 @@ function DispatchCenter() {
                 }
                 toast.success(`OTP resent for ${sent} delivery${sent === 1 ? "" : "s"}`);
               },
-            },
-            {
-              key: "notify",
-              label: "Notify Passenger",
-              icon: Bell,
-              variant: "outline",
-              onClick: () => setBulkNotifyOpen(true),
             },
             {
               key: "print",
@@ -350,12 +341,6 @@ function DispatchCenter() {
         deliveries={deliveries.filter((d) => selected.has(d.deliveryId))}
         onDone={() => setSelected(new Set())}
       />
-      <BulkNotifyDialog
-        open={bulkNotifyOpen}
-        onOpenChange={setBulkNotifyOpen}
-        deliveries={deliveries.filter((d) => selected.has(d.deliveryId))}
-        onDone={() => setSelected(new Set())}
-      />
       <SingleAssignDialog
         deliveryId={assignFor}
         onClose={() => setAssignFor(null)}
@@ -450,18 +435,6 @@ function RowActions({
       {(acts.assign || acts.reassign) && (
         <button className={btn} onClick={onAssign}>
           <UserCheck className="h-3 w-3" /> {acts.reassign ? "Reassign" : "Assign"}
-        </button>
-      )}
-      {acts.notify && (
-        <button
-          className={btn}
-          onClick={() => {
-            ensurePassengerToken(id);
-            const events = createTestNotification({ deliveryId: id, channel: "sms", operator: "Delivery Coordinator" });
-            toast.success(events.length ? "Passenger notified" : "No template available");
-          }}
-        >
-          <Bell className="h-3 w-3" /> Notify
         </button>
       )}
       {acts.resendOtp && (
@@ -601,125 +574,6 @@ function BulkAssignDialog({
             <Button type="submit">
               {mode === "reassign" ? "Reassign" : "Assign"}
             </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-const NOTIFY_TEMPLATES: { status: WorkflowStatus; label: string }[] = [
-  { status: "DELIVERY_APPROVED", label: "Delivery Approved" },
-  { status: "DRIVER_ASSIGNED", label: "Delivery Agent Assigned (Portal + OTP)" },
-  { status: "OUT_FOR_DELIVERY", label: "Out for Delivery" },
-  { status: "DRIVER_ARRIVED", label: "Delivery Agent Arrived" },
-  { status: "DELIVERED", label: "Delivered" },
-];
-
-function BulkNotifyDialog({
-  open,
-  onOpenChange,
-  deliveries,
-  onDone,
-}: {
-  open: boolean;
-  onOpenChange: (v: boolean) => void;
-  deliveries: Delivery[];
-  onDone: () => void;
-}) {
-  const [channel, setChannel] = useState<NotificationChannel>("sms");
-  const [status, setStatus] = useState<WorkflowStatus>("OUT_FOR_DELIVERY");
-
-  const preview = useMemo(() => {
-    const sample = deliveries[0];
-    if (!sample) return null;
-    const token = ensurePassengerToken(sample.deliveryId);
-    return renderTemplate(status, channel, "en", {
-      passengerName: sample.passengerName,
-      pirNumber: sample.pirNumber,
-      driverName: sample.driver,
-      otp: sample.otpCode,
-      trackingUrl: token ? `/passenger/${token}` : undefined,
-    });
-  }, [deliveries, status, channel]);
-
-  function submit(e: React.FormEvent) {
-    e.preventDefault();
-    let sent = 0;
-    let skipped = 0;
-    for (const d of deliveries) {
-      ensurePassengerToken(d.deliveryId);
-      const events = createTestNotification({
-        deliveryId: d.deliveryId,
-        channel,
-        workflowStatus: status,
-        operator: "Delivery Coordinator",
-      });
-      if (events.length) sent++;
-      else skipped++;
-    }
-    if (sent) toast.success(`Notified ${sent} passenger${sent === 1 ? "" : "s"} via ${channel.toUpperCase()}`);
-    if (skipped) toast.warning(`${skipped} skipped — no ${channel} template for this status`);
-    onOpenChange(false);
-    onDone();
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Bulk Notify Passenger</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={submit} className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            Send a notification individually to every passenger across {deliveries.length}{" "}
-            selected {deliveries.length === 1 ? "delivery" : "deliveries"}.
-          </p>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label>Channel</Label>
-              <select
-                className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
-                value={channel}
-                onChange={(e) => setChannel(e.target.value as NotificationChannel)}
-              >
-                <option value="sms">SMS</option>
-                <option value="whatsapp">WhatsApp</option>
-                <option value="email">Email</option>
-                <option value="push">Push</option>
-              </select>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Template</Label>
-              <select
-                className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
-                value={status}
-                onChange={(e) => setStatus(e.target.value as WorkflowStatus)}
-              >
-                {NOTIFY_TEMPLATES.map((t) => (
-                  <option key={t.status} value={t.status}>{t.label}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-[11px] text-muted-foreground">Preview (sample: {deliveries[0]?.passengerName ?? "—"})</Label>
-            <div className="rounded-md border border-border bg-muted/40 p-3 text-xs whitespace-pre-wrap min-h-[80px]">
-              {preview ? (
-                <>
-                  {preview.subject && <div className="font-semibold mb-1">{preview.subject}</div>}
-                  {preview.body}
-                </>
-              ) : (
-                <span className="italic text-muted-foreground">
-                  No {channel} template available for this status.
-                </span>
-              )}
-            </div>
-          </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button type="submit" disabled={!preview}>Send</Button>
           </DialogFooter>
         </form>
       </DialogContent>
