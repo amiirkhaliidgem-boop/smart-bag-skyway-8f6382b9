@@ -451,48 +451,6 @@ export const savePermissions = createServerFn({ method: "POST" })
   });
 
 /** Delivery Agent Portal sign-in: username or employee ID + PIN. */
-export const driverPinLogin = createServerFn({ method: "POST" })
-  .inputValidator((data: unknown) =>
-    z
-      .object({
-        identifier: z.string().trim().min(2).max(60),
-        pin: z.string().regex(/^\d{4,8}$/),
-      })
-      .parse(data),
-  )
-  .handler(async ({ data }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { verifyPin } = await import("@/lib/admin/pin.server");
-    const id = data.identifier.trim();
-    const { data: rows } = await supabaseAdmin
-      .from("app_users")
-      .select("id, full_name, employee_id, username, station, status, driver_pin_hash, driver_pin_salt")
-      .eq("user_type", "driver")
-      .or(`username.eq.${id},employee_id.eq.${id}`)
-      .limit(1);
-    const agent = rows?.[0];
-    if (!agent || agent.status !== "Active") {
-      return { ok: false as const, error: "Account not found or disabled." };
-    }
-    if (!verifyPin(data.pin, agent.driver_pin_hash, agent.driver_pin_salt)) {
-      return { ok: false as const, error: "Invalid PIN." };
-    }
-    await supabaseAdmin
-      .from("app_users")
-      .update({ last_login_at: new Date().toISOString() })
-      .eq("id", agent.id);
-    return {
-      ok: true as const,
-      agent: {
-        id: agent.id,
-        name: agent.full_name,
-        employeeId: agent.employee_id,
-        station: agent.station,
-      },
-    };
-  });
-
-/** Records the current sign-in timestamp for the authenticated staff member. */
 export const touchLastLogin = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
