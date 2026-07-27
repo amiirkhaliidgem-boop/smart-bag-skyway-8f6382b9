@@ -240,7 +240,7 @@ export const resetUserCredential = createServerFn({ method: "POST" })
       .object({
         id: z.string().uuid(),
         password: z.string().min(6).max(72).optional(),
-        pin: z.string().regex(/^\d{4,8}$/).optional(),
+        pin: z.string().regex(/^\d{6,8}$/, "PIN must be 6 to 8 digits.").optional(),
       })
       .parse(data),
   )
@@ -251,7 +251,7 @@ export const resetUserCredential = createServerFn({ method: "POST" })
     const { hashPin } = await import("@/lib/admin/pin.server");
     const { data: user } = await supabaseAdmin
       .from("app_users")
-      .select("full_name, user_id")
+      .select("full_name, user_id, username, email, user_type")
       .eq("id", data.id)
       .maybeSingle();
 
@@ -270,6 +270,26 @@ export const resetUserCredential = createServerFn({ method: "POST" })
         .update({ driver_pin_hash: hash, driver_pin_salt: salt })
         .eq("id", data.id);
       if (error) throw new Error(error.message);
+      // The PIN is also the agent's password on the unified login page.
+      const { ensureAuthIdentity } = await import("@/lib/admin/identity.server");
+      const authUserId = await ensureAuthIdentity({
+        appUserId: data.id,
+        username: user?.username ?? "",
+        email: user?.email,
+        fullName: user?.full_name ?? "",
+        userType: "driver",
+        password: data.pin,
+        existingUserId: user?.user_id ?? null,
+      });
+      if (!user?.user_id && authUserId) {
+        const { syncLegacyRole } = await import("@/lib/admin/guard.server");
+        const { data: assignment } = await supabaseAdmin
+          .from("user_role_assignments")
+          .select("role_id")
+          .eq("app_user_id", data.id)
+          .maybeSingle();
+        if (assignment?.role_id) await syncLegacyRole(data.id, assignment.role_id);
+      }
       await logAdminAction(actor, "Password Reset", user?.full_name ?? data.id, "Delivery Agent PIN reset");
     }
     return { ok: true };
