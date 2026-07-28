@@ -37,6 +37,7 @@ import { Route as DeliveryIndexRouteImport } from './routes/delivery.index'
 import { Route as PassengerTokenRouteImport } from './routes/passenger.$token'
 import { Route as LostFoundBagIdRouteImport } from './routes/lost-found.$bagId'
 import { Route as DeliveryDeliveryIdRouteImport } from './routes/delivery.$deliveryId'
+import { Route as ApiPublicNotificationsDrainRouteImport } from './routes/api/public/notifications/drain'
 
 const WorkflowMonitorRoute = WorkflowMonitorRouteImport.update({
   id: '/workflow-monitor',
@@ -178,6 +179,12 @@ const DeliveryDeliveryIdRoute = DeliveryDeliveryIdRouteImport.update({
   path: '/$deliveryId',
   getParentRoute: () => DeliveryRoute,
 } as any)
+const ApiPublicNotificationsDrainRoute =
+  ApiPublicNotificationsDrainRouteImport.update({
+    id: '/api/public/notifications/drain',
+    path: '/api/public/notifications/drain',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -208,6 +215,7 @@ export interface FileRoutesByFullPath {
   '/delivery/': typeof DeliveryIndexRoute
   '/lost-found/': typeof LostFoundIndexRoute
   '/passenger/': typeof PassengerIndexRoute
+  '/api/public/notifications/drain': typeof ApiPublicNotificationsDrainRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -235,6 +243,7 @@ export interface FileRoutesByTo {
   '/delivery': typeof DeliveryIndexRoute
   '/lost-found': typeof LostFoundIndexRoute
   '/passenger': typeof PassengerIndexRoute
+  '/api/public/notifications/drain': typeof ApiPublicNotificationsDrainRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -266,6 +275,7 @@ export interface FileRoutesById {
   '/delivery/': typeof DeliveryIndexRoute
   '/lost-found/': typeof LostFoundIndexRoute
   '/passenger/': typeof PassengerIndexRoute
+  '/api/public/notifications/drain': typeof ApiPublicNotificationsDrainRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -298,6 +308,7 @@ export interface FileRouteTypes {
     | '/delivery/'
     | '/lost-found/'
     | '/passenger/'
+    | '/api/public/notifications/drain'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -325,6 +336,7 @@ export interface FileRouteTypes {
     | '/delivery'
     | '/lost-found'
     | '/passenger'
+    | '/api/public/notifications/drain'
   id:
     | '__root__'
     | '/'
@@ -355,6 +367,7 @@ export interface FileRouteTypes {
     | '/delivery/'
     | '/lost-found/'
     | '/passenger/'
+    | '/api/public/notifications/drain'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -380,6 +393,7 @@ export interface RootRouteChildren {
   TimelineRoute: typeof TimelineRoute
   TrackingRoute: typeof TrackingRoute
   WorkflowMonitorRoute: typeof WorkflowMonitorRoute
+  ApiPublicNotificationsDrainRoute: typeof ApiPublicNotificationsDrainRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -580,6 +594,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DeliveryDeliveryIdRouteImport
       parentRoute: typeof DeliveryRoute
     }
+    '/api/public/notifications/drain': {
+      id: '/api/public/notifications/drain'
+      path: '/api/public/notifications/drain'
+      fullPath: '/api/public/notifications/drain'
+      preLoaderRoute: typeof ApiPublicNotificationsDrainRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -648,6 +669,7 @@ const rootRouteChildren: RootRouteChildren = {
   TimelineRoute: TimelineRoute,
   TrackingRoute: TrackingRoute,
   WorkflowMonitorRoute: WorkflowMonitorRoute,
+  ApiPublicNotificationsDrainRoute: ApiPublicNotificationsDrainRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
