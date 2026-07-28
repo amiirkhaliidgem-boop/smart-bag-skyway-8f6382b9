@@ -11,7 +11,6 @@ import {
   mapWorkflow,
   type OpsSnapshot,
 } from "./ops.mapping";
-import { DEFAULT_STATION } from "./store";
 
 type Row = Record<string, any>;
 
@@ -124,7 +123,7 @@ export async function buildSnapshot(supabase: SupabaseClient<any>): Promise<OpsS
   const s = (stations as Row[])[0];
   const station = s
     ? { code: s.code, name: s.name, lat: s.lat, lng: s.lng }
-    : DEFAULT_STATION;
+    : { code: "APT", name: "Airport", lat: 0, lng: 0 };
 
   const driverPositions: OpsSnapshot["driverPositions"] = {};
   for (const p of positions as Row[]) {
