@@ -239,6 +239,45 @@ export type Database = {
         }
         Relationships: []
       }
+      failure_reasons: {
+        Row: {
+          active: boolean
+          allows_retry: boolean
+          code: string
+          created_at: string
+          id: string
+          label_ar: string
+          label_en: string
+          sort_order: number
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          active?: boolean
+          allows_retry?: boolean
+          code: string
+          created_at?: string
+          id?: string
+          label_ar?: string
+          label_en: string
+          sort_order?: number
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          active?: boolean
+          allows_retry?: boolean
+          code?: string
+          created_at?: string
+          id?: string
+          label_ar?: string
+          label_en?: string
+          sort_order?: number
+          updated_at?: string
+          version?: number
+        }
+        Relationships: []
+      }
       passenger_feedback: {
         Row: {
           comments: string
@@ -330,6 +369,78 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      sla_policies: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          stage: Database["public"]["Enums"]["delivery_stage"]
+          target_minutes: number
+          updated_at: string
+          version: number
+          warn_at_pct: number
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          stage: Database["public"]["Enums"]["delivery_stage"]
+          target_minutes: number
+          updated_at?: string
+          version?: number
+          warn_at_pct?: number
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          stage?: Database["public"]["Enums"]["delivery_stage"]
+          target_minutes?: number
+          updated_at?: string
+          version?: number
+          warn_at_pct?: number
+        }
+        Relationships: []
+      }
+      stations: {
+        Row: {
+          code: string
+          created_at: string
+          id: string
+          is_default: boolean
+          lat: number
+          lng: number
+          name: string
+          timezone: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          lat: number
+          lng: number
+          name: string
+          timezone?: string
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          lat?: number
+          lng?: number
+          name?: string
+          timezone?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: []
       }
       user_role_assignments: {
         Row: {
@@ -429,6 +540,8 @@ export type Database = {
         Args: { _username: string }
         Returns: string
       }
+      next_case_no: { Args: never; Returns: string }
+      next_delivery_no: { Args: never; Returns: string }
       passenger_confirm_delivery: {
         Args: { p_token: string }
         Returns: boolean
@@ -463,6 +576,59 @@ export type Database = {
         | "agent"
         | "driver"
         | "viewer"
+      case_priority: "Normal" | "VIP"
+      delivery_method: "Home Delivery" | "Airport Pickup"
+      delivery_stage:
+        | "Ready for Delivery"
+        | "Scheduled"
+        | "Assigned"
+        | "Driver Accepted"
+        | "Collected Bag"
+        | "Out for Delivery"
+        | "Delivered"
+        | "Delivery Failed"
+        | "Returned to Airport"
+      incident_severity: "High" | "Medium" | "Low"
+      incident_state: "Open" | "Under Review" | "Resolved"
+      lf_status:
+        | "Open"
+        | "Tracing"
+        | "Located"
+        | "Arrived at Airport"
+        | "Waiting Customs Clearance"
+        | "Ready for Delivery"
+        | "Assigned Driver"
+        | "Out for Delivery"
+        | "Delivered"
+        | "Closed"
+      notification_channel: "sms" | "whatsapp" | "email" | "push"
+      notification_state: "queued" | "sending" | "sent" | "failed" | "cancelled"
+      otp_state: "Pending" | "Sent" | "Verified" | "Failed" | "Expired"
+      timeline_module:
+        | "lost_found"
+        | "delivery"
+        | "agent_portal"
+        | "passenger_portal"
+        | "workflow"
+        | "notification"
+        | "otp"
+        | "feedback"
+        | "quality"
+        | "admin"
+        | "system"
+      workflow_status:
+        | "PIR_CREATED"
+        | "HOME_DELIVERY_REQUESTED"
+        | "DELIVERY_APPROVED"
+        | "DRIVER_ASSIGNED"
+        | "READY_FOR_COLLECTION"
+        | "CLAIMED_ON_HAND"
+        | "OUT_FOR_DELIVERY"
+        | "DRIVER_ARRIVED"
+        | "OTP_VERIFIED"
+        | "DELIVERED"
+        | "FEEDBACK_SUBMITTED"
+        | "CLOSED"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -597,6 +763,63 @@ export const Constants = {
         "agent",
         "driver",
         "viewer",
+      ],
+      case_priority: ["Normal", "VIP"],
+      delivery_method: ["Home Delivery", "Airport Pickup"],
+      delivery_stage: [
+        "Ready for Delivery",
+        "Scheduled",
+        "Assigned",
+        "Driver Accepted",
+        "Collected Bag",
+        "Out for Delivery",
+        "Delivered",
+        "Delivery Failed",
+        "Returned to Airport",
+      ],
+      incident_severity: ["High", "Medium", "Low"],
+      incident_state: ["Open", "Under Review", "Resolved"],
+      lf_status: [
+        "Open",
+        "Tracing",
+        "Located",
+        "Arrived at Airport",
+        "Waiting Customs Clearance",
+        "Ready for Delivery",
+        "Assigned Driver",
+        "Out for Delivery",
+        "Delivered",
+        "Closed",
+      ],
+      notification_channel: ["sms", "whatsapp", "email", "push"],
+      notification_state: ["queued", "sending", "sent", "failed", "cancelled"],
+      otp_state: ["Pending", "Sent", "Verified", "Failed", "Expired"],
+      timeline_module: [
+        "lost_found",
+        "delivery",
+        "agent_portal",
+        "passenger_portal",
+        "workflow",
+        "notification",
+        "otp",
+        "feedback",
+        "quality",
+        "admin",
+        "system",
+      ],
+      workflow_status: [
+        "PIR_CREATED",
+        "HOME_DELIVERY_REQUESTED",
+        "DELIVERY_APPROVED",
+        "DRIVER_ASSIGNED",
+        "READY_FOR_COLLECTION",
+        "CLAIMED_ON_HAND",
+        "OUT_FOR_DELIVERY",
+        "DRIVER_ARRIVED",
+        "OTP_VERIFIED",
+        "DELIVERED",
+        "FEEDBACK_SUBMITTED",
+        "CLOSED",
       ],
     },
   },
