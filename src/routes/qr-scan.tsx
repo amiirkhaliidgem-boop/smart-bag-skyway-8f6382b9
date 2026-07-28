@@ -85,11 +85,6 @@ function QrScanPage() {
               />
               <Button type="submit" size="icon"><Search className="h-4 w-4" /></Button>
             </form>
-            <div className="text-[11px] text-muted-foreground">
-              Demo: <button className="underline" onClick={() => lookup("BAG-100233")}>BAG-100233</button>{" "}
-              ·{" "}
-              <button className="underline" onClick={() => lookup("CAIQR88410")}>CAIQR88410</button>
-            </div>
           </CardContent>
         </Card>
 

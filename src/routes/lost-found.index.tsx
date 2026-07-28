@@ -15,6 +15,7 @@ import {
   type LFStatus,
 } from "@/lib/lost-found/statuses";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { SnapshotTruncationNotice } from "@/components/snapshot-truncation-notice";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -291,6 +292,8 @@ function LostFoundPage() {
         <Kpi label="Ready / Assigned" value={kpis.readyDelivery} tone="violet" />
         <Kpi label="Delivered / Closed" value={kpis.delivered} tone="emerald" />
       </div>
+
+      <SnapshotTruncationNotice collection="cases" noun="cases" />
 
       {selected.size > 0 && (
         <BulkToolbar

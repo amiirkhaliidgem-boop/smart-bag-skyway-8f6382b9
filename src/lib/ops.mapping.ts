@@ -46,6 +46,10 @@ export interface OpsSnapshot {
   caseVersions: Record<string, number>;
   deliveryVersions: Record<string, number>;
   agents: { id: string; name: string; employeeId: string }[];
+  /** True when the collection hit its read cap and older rows are not loaded. */
+  truncated: { cases: boolean; deliveries: boolean; audit: boolean; notifications: boolean };
+  /** The cap that was applied, so the UI can say "most recent N". */
+  limits: { cases: number; deliveries: number; audit: number; notifications: number };
 }
 
 export function mapCase(

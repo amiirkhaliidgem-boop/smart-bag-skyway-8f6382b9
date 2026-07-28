@@ -326,6 +326,24 @@ export interface DriverRoute {
   stops: string[]; // deliveryId in visit order
   computedAt: string;
 }
+
+/** Which snapshot collections hit their read cap, and the cap that applied. */
+export interface SnapshotTruncation {
+  cases: boolean;
+  deliveries: boolean;
+  audit: boolean;
+  notifications: boolean;
+  limits: { cases: number; deliveries: number; audit: number; notifications: number };
+}
+
+const EMPTY_TRUNCATION: SnapshotTruncation = {
+  cases: false,
+  deliveries: false,
+  audit: false,
+  notifications: false,
+  limits: { cases: 0, deliveries: 0, audit: 0, notifications: 0 },
+};
+
 interface State {
   cases: BaggageCase[];
   deliveries: Delivery[];
@@ -340,6 +358,7 @@ interface State {
   station: Station;
   driverPositions: Record<string, DriverPosition>;
   driverRoutes: Record<string, DriverRoute>;
+  truncated: SnapshotTruncation;
 }
 
 function emptyState(): State {
@@ -357,6 +376,7 @@ function emptyState(): State {
     station: DEFAULT_STATION,
     driverPositions: {},
     driverRoutes: {},
+    truncated: EMPTY_TRUNCATION,
   };
 }
 
@@ -420,6 +440,7 @@ export async function refreshOps(): Promise<void> {
         station: snap.station,
         driverPositions: snap.driverPositions,
         driverRoutes: snap.driverRoutes,
+        truncated: { ...snap.truncated, limits: snap.limits },
       };
       caseIds = snap.caseIds;
       deliveryIds = snap.deliveryIds;
@@ -449,8 +470,18 @@ function scheduleRefresh() {
 function boot() {
   if (booted || typeof window === "undefined") return;
   booted = true;
-  void refreshOps();
-  supabase.auth.onAuthStateChange((_e, session) => {
+  // The operational snapshot is an authenticated read. Public surfaces
+  // (the passenger tracking portal) must never call it: doing so produced a
+  // guaranteed "Unauthorized: No authorization header provided" on every
+  // page load. Hydrate only once a session actually exists.
+  if (window.location.pathname.startsWith("/passenger/")) return;
+
+  void supabase.auth.getSession().then(({ data }) => {
+    if (data.session) void refreshOps();
+  });
+
+  supabase.auth.onAuthStateChange((event, session) => {
+    if (event === "TOKEN_REFRESHED" || event === "INITIAL_SESSION") return;
     if (session) void refreshOps();
     else {
       state = emptyState();

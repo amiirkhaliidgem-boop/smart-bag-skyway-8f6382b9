@@ -27,6 +27,7 @@ import {
   type DeliveryStage,
 } from "@/lib/delivery/stages";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { SnapshotTruncationNotice } from "@/components/snapshot-truncation-notice";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -282,6 +283,8 @@ function DispatchCenter() {
           </div>
         </CardHeader>
       </Card>
+
+      <SnapshotTruncationNotice collection="deliveries" noun="deliveries" />
 
       <Card>
         <CardContent className="p-0">
