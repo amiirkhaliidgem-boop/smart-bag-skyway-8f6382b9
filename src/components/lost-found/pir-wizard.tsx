@@ -259,7 +259,7 @@ export function PirWizard({
     });
   }
 
-  function submit() {
+  async function submit() {
     if (!canSubmit) {
       toast.error("Please complete every required field before submitting.");
       return;

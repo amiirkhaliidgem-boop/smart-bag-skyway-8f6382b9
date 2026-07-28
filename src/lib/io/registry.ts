@@ -56,7 +56,7 @@ export const lostFoundSchema: DatasetSchema = {
   templateVersion: "2.0",
   fields: lostFoundFields,
   read: () => getState().cases as unknown as Record<string, unknown>[],
-  apply: (rows: Record<string, unknown>[], ctx) => {
+  apply: async (rows: Record<string, unknown>[], ctx) => {
     const ids: string[] = [];
     let created = 0;
     let warnings = 0;

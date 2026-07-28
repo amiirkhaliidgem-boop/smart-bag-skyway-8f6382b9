@@ -50,7 +50,7 @@ export interface DatasetSchema {
   read: () => Record<string, unknown>[];
   /** Applies validated rows to the store. MUST route through workflow/audit
    *  when the module has workflow semantics. */
-  apply: (rows: Record<string, unknown>[], ctx: ApplyContext) => ApplyResult;
+  apply: (rows: Record<string, unknown>[], ctx: ApplyContext) => ApplyResult | Promise<ApplyResult>;
 }
 
 export interface ApplyContext {
