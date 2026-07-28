@@ -326,6 +326,24 @@ export interface DriverRoute {
   stops: string[]; // deliveryId in visit order
   computedAt: string;
 }
+
+/** Which snapshot collections hit their read cap, and the cap that applied. */
+export interface SnapshotTruncation {
+  cases: boolean;
+  deliveries: boolean;
+  audit: boolean;
+  notifications: boolean;
+  limits: { cases: number; deliveries: number; audit: number; notifications: number };
+}
+
+const EMPTY_TRUNCATION: SnapshotTruncation = {
+  cases: false,
+  deliveries: false,
+  audit: false,
+  notifications: false,
+  limits: { cases: 0, deliveries: 0, audit: 0, notifications: 0 },
+};
+
 interface State {
   cases: BaggageCase[];
   deliveries: Delivery[];
@@ -340,6 +358,7 @@ interface State {
   station: Station;
   driverPositions: Record<string, DriverPosition>;
   driverRoutes: Record<string, DriverRoute>;
+  truncated: SnapshotTruncation;
 }
 
 function emptyState(): State {
