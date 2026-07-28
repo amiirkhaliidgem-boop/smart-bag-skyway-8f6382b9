@@ -971,32 +971,6 @@ export async function reportDriverPosition(
   }
 }
 
-// ---------- Legacy no-ops kept for API compatibility ----------
-// These wrote to `app_state`; the corresponding state is now owned by the
-// Workflow Engine and produced as a side effect of the RPCs above.
-
-export function transitionWorkflow(
-  deliveryId: string,
-  _next: WorkflowStatus,
-  _opts: { actor?: string; role?: Role; force?: boolean; silent?: boolean } = {},
-) {
-  return getWorkflow(deliveryId);
-}
-
-export function updateDelivery(_deliveryId: string, _patch: Partial<Delivery>) {}
-export function addDelivery(_input: Omit<Delivery, "deliveryId">) {
-  return undefined;
-}
-export function setNotificationStatus(_id: string, _status: NotificationEvent["status_"]) {}
-export function drainPendingNotifications() {}
-
-export function addFeedback(_input: Omit<Feedback, "id" | "at">) {
-  return undefined;
-}
-export function addQualityIncident(_input: Omit<QualityIncident, "id" | "at">) {
-  return undefined;
-}
-
 // Contact Center is not backed by production tables yet — these stay
 // in-memory for the current session and are reported as a known gap.
 export function addCallLog(input: Omit<CallLog, "id" | "at">) {
