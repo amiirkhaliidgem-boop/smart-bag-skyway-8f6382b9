@@ -210,57 +210,6 @@ export type Database = {
         }
         Relationships: []
       }
-      app_state: {
-        Row: {
-          id: string
-          payload: Json
-          updated_at: string
-          updated_by: string | null
-          version: number
-        }
-        Insert: {
-          id?: string
-          payload?: Json
-          updated_at?: string
-          updated_by?: string | null
-          version?: number
-        }
-        Update: {
-          id?: string
-          payload?: Json
-          updated_at?: string
-          updated_by?: string | null
-          version?: number
-        }
-        Relationships: []
-      }
-      app_state_history: {
-        Row: {
-          app_state_id: string
-          archived_at: string
-          archived_by: string | null
-          id: number
-          payload: Json
-          version: number
-        }
-        Insert: {
-          app_state_id: string
-          archived_at?: string
-          archived_by?: string | null
-          id?: never
-          payload: Json
-          version: number
-        }
-        Update: {
-          app_state_id?: string
-          archived_at?: string
-          archived_by?: string | null
-          id?: never
-          payload?: Json
-          version?: number
-        }
-        Relationships: []
-      }
       app_users: {
         Row: {
           created_at: string
@@ -2108,14 +2057,6 @@ export type Database = {
           p_token: string
         }
         Returns: boolean
-      }
-      save_app_state: {
-        Args: { p_expected_version: number; p_payload: Json }
-        Returns: {
-          current_payload: Json
-          current_version: number
-          saved: boolean
-        }[]
       }
       wf_actor: {
         Args: never
