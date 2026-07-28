@@ -255,13 +255,13 @@ function Kpi({
     emerald: "bg-emerald-100 text-emerald-700",
   };
   return (
-    <Card>
+    <Card className="rounded-xl">
       <CardContent className="p-4 flex items-center gap-3">
-        <div className={`h-10 w-10 rounded-lg grid place-items-center ${tones[tone]}`}>
+        <div className={`h-10 w-10 shrink-0 rounded-lg grid place-items-center ${tones[tone]}`}>
           <div className="h-5 w-5">{icon}</div>
         </div>
-        <div>
-          <p className="text-xs text-muted-foreground">{label}</p>
+        <div className="min-w-0">
+          <p className="truncate text-xs text-muted-foreground">{label}</p>
           <p className="text-xl font-bold tabular-nums">{value}</p>
         </div>
       </CardContent>
@@ -323,14 +323,11 @@ function RouteSection({
           </p>
         )}
         {route.length > 0 && fullRouteHref && (
-          <a
-            href={fullRouteHref}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-1.5 h-9 px-3 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90"
-          >
-            <RouteIcon className="h-4 w-4" /> {t.navigateFullRoute}
-          </a>
+          <Button asChild size="sm" className="gap-1.5">
+            <a href={fullRouteHref} target="_blank" rel="noreferrer">
+              <RouteIcon className="h-4 w-4" /> {t.navigateFullRoute}
+            </a>
+          </Button>
         )}
         {route.map((d, i) => (
           <DeliveryCard
@@ -442,14 +439,11 @@ function DeliveryCard({
       </div>
       <div className="flex flex-wrap gap-2 mt-3">
         {legOrigin && (
-          <a
-            href={stopNavigationHref(legOrigin, d)}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-1.5 h-9 px-3 rounded-md border border-input bg-background text-sm font-medium hover:bg-muted"
-          >
-            <Navigation className="h-4 w-4" /> {t.navigateToStop}
-          </a>
+          <Button asChild size="sm" variant="outline" className="gap-1.5">
+            <a href={stopNavigationHref(legOrigin, d)} target="_blank" rel="noreferrer">
+              <Navigation className="h-4 w-4" /> {t.navigateToStop}
+            </a>
+          </Button>
         )}
         {stage === "Assigned" && (
           <Button
