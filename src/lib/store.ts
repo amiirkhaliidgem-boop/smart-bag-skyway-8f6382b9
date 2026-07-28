@@ -710,7 +710,6 @@ function load(): State {
 import {
   initPersistence,
   scheduleRemotePush,
-  markRemoteApply,
 } from "./persistence";
 
 let bootstrapped = false;
@@ -721,8 +720,9 @@ function applyRemote(payload: unknown, _version: number) {
   state = {
     ...base,
     ...parsed,
-    workflow:
-      parsed.workflow && parsed.workflow.length ? parsed.workflow : base.workflow,
+    // Empty arrays are authoritative. Falling back to seeded workflow data
+    // resurrected records that had legitimately been removed remotely.
+    workflow: parsed.workflow ?? base.workflow,
     notifications: parsed.notifications ?? base.notifications,
     audit: parsed.audit ?? base.audit,
     ioAudit: parsed.ioAudit ?? base.ioAudit,
@@ -760,10 +760,9 @@ function ensureBootstrap() {
   // a case are authenticated and need the store hydrated to resolve the
   // token → case fallback in TokenPortal.
   bootstrapped = true;
-  // Prime state to defaults so seed data is visible before auth completes;
-  // once signed in, remote state (if any) replaces it.
+  // Prime state only for hydration-safe rendering. Persistence has a hard
+  // loading gate, so these defaults can never be written to Supabase.
   state = defaults();
-  markRemoteApply(); // don't push the freshly-seeded defaults immediately
   listeners.forEach((l) => l());
   void initPersistence(applyRemote);
 }
