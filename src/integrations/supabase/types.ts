@@ -47,6 +47,136 @@ export type Database = {
         }
         Relationships: []
       }
+      agent_positions: {
+        Row: {
+          accuracy: number | null
+          agent_id: string
+          lat: number
+          lng: number
+          reported_at: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          accuracy?: number | null
+          agent_id: string
+          lat: number
+          lng: number
+          reported_at?: string
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          accuracy?: number | null
+          agent_id?: string
+          lat?: number
+          lng?: number
+          reported_at?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_positions_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "app_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agent_route_stops: {
+        Row: {
+          delivery_id: string
+          id: string
+          label: string
+          lat: number | null
+          leg_km: number
+          lng: number | null
+          route_id: string
+          seq: number
+        }
+        Insert: {
+          delivery_id: string
+          id?: string
+          label?: string
+          lat?: number | null
+          leg_km?: number
+          lng?: number | null
+          route_id: string
+          seq: number
+        }
+        Update: {
+          delivery_id?: string
+          id?: string
+          label?: string
+          lat?: number | null
+          leg_km?: number
+          lng?: number | null
+          route_id?: string
+          seq?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_route_stops_delivery_id_fkey"
+            columns: ["delivery_id"]
+            isOneToOne: false
+            referencedRelation: "deliveries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_route_stops_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "agent_routes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agent_routes: {
+        Row: {
+          agent_id: string
+          computed_at: string
+          id: string
+          origin_label: string
+          origin_lat: number
+          origin_lng: number
+          total_km: number
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          agent_id: string
+          computed_at?: string
+          id?: string
+          origin_label?: string
+          origin_lat: number
+          origin_lng: number
+          total_km?: number
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          agent_id?: string
+          computed_at?: string
+          id?: string
+          origin_label?: string
+          origin_lat?: number
+          origin_lng?: number
+          total_km?: number
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_routes_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "app_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       app_roles: {
         Row: {
           created_at: string
@@ -667,51 +797,6 @@ export type Database = {
           },
         ]
       }
-      delivery_public_view: {
-        Row: {
-          airline: string | null
-          bag_id: string | null
-          bag_tag: string | null
-          delivery_id: string
-          flight_date: string | null
-          flight_no: string | null
-          otp_code: string | null
-          passenger_name: string | null
-          pir_number: string | null
-          stage: string | null
-          status: string | null
-          updated_at: string
-        }
-        Insert: {
-          airline?: string | null
-          bag_id?: string | null
-          bag_tag?: string | null
-          delivery_id: string
-          flight_date?: string | null
-          flight_no?: string | null
-          otp_code?: string | null
-          passenger_name?: string | null
-          pir_number?: string | null
-          stage?: string | null
-          status?: string | null
-          updated_at?: string
-        }
-        Update: {
-          airline?: string | null
-          bag_id?: string | null
-          bag_tag?: string | null
-          delivery_id?: string
-          flight_date?: string | null
-          flight_no?: string | null
-          otp_code?: string | null
-          passenger_name?: string | null
-          pir_number?: string | null
-          stage?: string | null
-          status?: string | null
-          updated_at?: string
-        }
-        Relationships: []
-      }
       failure_reasons: {
         Row: {
           active: boolean
@@ -751,62 +836,436 @@ export type Database = {
         }
         Relationships: []
       }
-      passenger_feedback: {
+      notification_attempts: {
         Row: {
-          comments: string
-          created_at: string
-          delivery_id: string
-          id: string
-          rating: number
-          resolved: boolean
-          token: string
+          attempt_no: number
+          attempted_at: string
+          error: string
+          id: number
+          notification_id: string
+          provider: string
+          provider_message_id: string | null
+          succeeded: boolean
         }
         Insert: {
-          comments?: string
-          created_at?: string
-          delivery_id: string
-          id?: string
-          rating: number
-          resolved?: boolean
-          token: string
+          attempt_no: number
+          attempted_at?: string
+          error?: string
+          id?: never
+          notification_id: string
+          provider?: string
+          provider_message_id?: string | null
+          succeeded?: boolean
         }
         Update: {
-          comments?: string
+          attempt_no?: number
+          attempted_at?: string
+          error?: string
+          id?: never
+          notification_id?: string
+          provider?: string
+          provider_message_id?: string | null
+          succeeded?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_attempts_notification_id_fkey"
+            columns: ["notification_id"]
+            isOneToOne: false
+            referencedRelation: "notification_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notification_events: {
+        Row: {
+          attempt_count: number
+          body: string
+          case_id: string | null
+          channel: Database["public"]["Enums"]["notification_channel"]
+          created_at: string
+          delivery_id: string | null
+          failure_reason: string
+          id: string
+          last_attempt_at: string | null
+          locale: string
+          next_attempt_at: string
+          provider: string | null
+          provider_message_id: string | null
+          recipient: string
+          sent_at: string | null
+          state: Database["public"]["Enums"]["notification_state"]
+          subject: string
+          trigger_status: Database["public"]["Enums"]["workflow_status"]
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          attempt_count?: number
+          body?: string
+          case_id?: string | null
+          channel: Database["public"]["Enums"]["notification_channel"]
+          created_at?: string
+          delivery_id?: string | null
+          failure_reason?: string
+          id?: string
+          last_attempt_at?: string | null
+          locale?: string
+          next_attempt_at?: string
+          provider?: string | null
+          provider_message_id?: string | null
+          recipient?: string
+          sent_at?: string | null
+          state?: Database["public"]["Enums"]["notification_state"]
+          subject?: string
+          trigger_status: Database["public"]["Enums"]["workflow_status"]
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          attempt_count?: number
+          body?: string
+          case_id?: string | null
+          channel?: Database["public"]["Enums"]["notification_channel"]
+          created_at?: string
+          delivery_id?: string | null
+          failure_reason?: string
+          id?: string
+          last_attempt_at?: string | null
+          locale?: string
+          next_attempt_at?: string
+          provider?: string | null
+          provider_message_id?: string | null
+          recipient?: string
+          sent_at?: string | null
+          state?: Database["public"]["Enums"]["notification_state"]
+          subject?: string
+          trigger_status?: Database["public"]["Enums"]["workflow_status"]
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_events_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "baggage_cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_events_delivery_id_fkey"
+            columns: ["delivery_id"]
+            isOneToOne: false
+            referencedRelation: "deliveries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      otp_challenges: {
+        Row: {
+          attempts: number
+          code: string
+          created_at: string
+          delivery_id: string
+          expires_at: string
+          id: string
+          issued_at: string
+          issued_by: string | null
+          locked_at: string | null
+          max_attempts: number
+          state: Database["public"]["Enums"]["otp_state"]
+          updated_at: string
+          verified_at: string | null
+          version: number
+        }
+        Insert: {
+          attempts?: number
+          code: string
+          created_at?: string
+          delivery_id: string
+          expires_at: string
+          id?: string
+          issued_at?: string
+          issued_by?: string | null
+          locked_at?: string | null
+          max_attempts?: number
+          state?: Database["public"]["Enums"]["otp_state"]
+          updated_at?: string
+          verified_at?: string | null
+          version?: number
+        }
+        Update: {
+          attempts?: number
+          code?: string
           created_at?: string
           delivery_id?: string
+          expires_at?: string
           id?: string
+          issued_at?: string
+          issued_by?: string | null
+          locked_at?: string | null
+          max_attempts?: number
+          state?: Database["public"]["Enums"]["otp_state"]
+          updated_at?: string
+          verified_at?: string | null
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "otp_challenges_delivery_id_fkey"
+            columns: ["delivery_id"]
+            isOneToOne: false
+            referencedRelation: "deliveries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      passenger_feedback: {
+        Row: {
+          case_id: string
+          comments: string
+          delivery_id: string
+          id: string
+          link_id: string | null
+          rating: number
+          resolved: boolean
+          submitted_at: string
+        }
+        Insert: {
+          case_id: string
+          comments?: string
+          delivery_id: string
+          id?: string
+          link_id?: string | null
+          rating: number
+          resolved?: boolean
+          submitted_at?: string
+        }
+        Update: {
+          case_id?: string
+          comments?: string
+          delivery_id?: string
+          id?: string
+          link_id?: string | null
           rating?: number
           resolved?: boolean
-          token?: string
+          submitted_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "passenger_feedback_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "baggage_cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "passenger_feedback_delivery_id_fkey"
+            columns: ["delivery_id"]
+            isOneToOne: false
+            referencedRelation: "deliveries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "passenger_feedback_link_id_fkey"
+            columns: ["link_id"]
+            isOneToOne: false
+            referencedRelation: "passenger_links"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       passenger_links: {
         Row: {
+          case_id: string
           channel: string
+          created_at: string
           delivery_id: string
           expires_at: string | null
+          id: string
           issued_at: string
+          last_viewed_at: string | null
           revoked_at: string | null
           token: string
+          updated_at: string
+          version: number
+          view_count: number
         }
         Insert: {
+          case_id: string
           channel?: string
+          created_at?: string
           delivery_id: string
           expires_at?: string | null
+          id?: string
           issued_at?: string
+          last_viewed_at?: string | null
           revoked_at?: string | null
           token: string
+          updated_at?: string
+          version?: number
+          view_count?: number
         }
         Update: {
+          case_id?: string
           channel?: string
+          created_at?: string
           delivery_id?: string
           expires_at?: string | null
+          id?: string
           issued_at?: string
+          last_viewed_at?: string | null
           revoked_at?: string | null
           token?: string
+          updated_at?: string
+          version?: number
+          view_count?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "passenger_links_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "baggage_cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "passenger_links_delivery_id_fkey"
+            columns: ["delivery_id"]
+            isOneToOne: false
+            referencedRelation: "deliveries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      passenger_view: {
+        Row: {
+          airline: string | null
+          bag_tag: string | null
+          case_id: string
+          delivered_at: string | null
+          delivery_id: string
+          flight_date: string | null
+          flight_no: string | null
+          otp_code: string | null
+          otp_state: Database["public"]["Enums"]["otp_state"] | null
+          passenger_name: string
+          pir_number: string
+          stage: Database["public"]["Enums"]["delivery_stage"]
+          updated_at: string
+          workflow_status: Database["public"]["Enums"]["workflow_status"]
+        }
+        Insert: {
+          airline?: string | null
+          bag_tag?: string | null
+          case_id: string
+          delivered_at?: string | null
+          delivery_id: string
+          flight_date?: string | null
+          flight_no?: string | null
+          otp_code?: string | null
+          otp_state?: Database["public"]["Enums"]["otp_state"] | null
+          passenger_name?: string
+          pir_number?: string
+          stage: Database["public"]["Enums"]["delivery_stage"]
+          updated_at?: string
+          workflow_status: Database["public"]["Enums"]["workflow_status"]
+        }
+        Update: {
+          airline?: string | null
+          bag_tag?: string | null
+          case_id?: string
+          delivered_at?: string | null
+          delivery_id?: string
+          flight_date?: string | null
+          flight_no?: string | null
+          otp_code?: string | null
+          otp_state?: Database["public"]["Enums"]["otp_state"] | null
+          passenger_name?: string
+          pir_number?: string
+          stage?: Database["public"]["Enums"]["delivery_stage"]
+          updated_at?: string
+          workflow_status?: Database["public"]["Enums"]["workflow_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "passenger_view_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "baggage_cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "passenger_view_delivery_id_fkey"
+            columns: ["delivery_id"]
+            isOneToOne: true
+            referencedRelation: "deliveries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quality_incidents: {
+        Row: {
+          case_id: string | null
+          category: string
+          created_at: string
+          delivery_id: string | null
+          description: string
+          id: string
+          reported_by: string
+          resolution_note: string
+          resolved_at: string | null
+          severity: Database["public"]["Enums"]["incident_severity"]
+          state: Database["public"]["Enums"]["incident_state"]
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          case_id?: string | null
+          category: string
+          created_at?: string
+          delivery_id?: string | null
+          description?: string
+          id?: string
+          reported_by?: string
+          resolution_note?: string
+          resolved_at?: string | null
+          severity?: Database["public"]["Enums"]["incident_severity"]
+          state?: Database["public"]["Enums"]["incident_state"]
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          case_id?: string | null
+          category?: string
+          created_at?: string
+          delivery_id?: string | null
+          description?: string
+          id?: string
+          reported_by?: string
+          resolution_note?: string
+          resolved_at?: string | null
+          severity?: Database["public"]["Enums"]["incident_severity"]
+          state?: Database["public"]["Enums"]["incident_state"]
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quality_incidents_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "baggage_cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quality_incidents_delivery_id_fkey"
+            columns: ["delivery_id"]
+            isOneToOne: false
+            referencedRelation: "deliveries"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       role_permissions: {
         Row: {
@@ -1100,10 +1559,6 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      _passenger_apply_action: {
-        Args: { p_action: string; p_token: string }
-        Returns: boolean
-      }
       current_app_user_id: { Args: never; Returns: string }
       current_user_permissions: {
         Args: never
@@ -1112,7 +1567,6 @@ export type Database = {
           module: string
         }[]
       }
-      get_passenger_view: { Args: { p_token: string }; Returns: Json }
       has_permission: {
         Args: { _action: string; _module: string; _user_id: string }
         Returns: boolean
@@ -1140,23 +1594,6 @@ export type Database = {
       }
       next_case_no: { Args: never; Returns: string }
       next_delivery_no: { Args: never; Returns: string }
-      passenger_confirm_delivery: {
-        Args: { p_token: string }
-        Returns: boolean
-      }
-      passenger_report_misconduct: {
-        Args: { p_token: string }
-        Returns: boolean
-      }
-      passenger_submit_feedback: {
-        Args: {
-          p_comments: string
-          p_rating: number
-          p_resolved: boolean
-          p_token: string
-        }
-        Returns: boolean
-      }
       save_app_state: {
         Args: { p_expected_version: number; p_payload: Json }
         Returns: {
