@@ -357,6 +357,7 @@ function emptyState(): State {
     station: DEFAULT_STATION,
     driverPositions: {},
     driverRoutes: {},
+    truncated: EMPTY_TRUNCATION,
   };
 }
 
