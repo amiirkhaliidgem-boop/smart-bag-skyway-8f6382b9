@@ -470,8 +470,18 @@ function scheduleRefresh() {
 function boot() {
   if (booted || typeof window === "undefined") return;
   booted = true;
-  void refreshOps();
-  supabase.auth.onAuthStateChange((_e, session) => {
+  // The operational snapshot is an authenticated read. Public surfaces
+  // (the passenger tracking portal) must never call it: doing so produced a
+  // guaranteed "Unauthorized: No authorization header provided" on every
+  // page load. Hydrate only once a session actually exists.
+  if (window.location.pathname.startsWith("/passenger/")) return;
+
+  void supabase.auth.getSession().then(({ data }) => {
+    if (data.session) void refreshOps();
+  });
+
+  supabase.auth.onAuthStateChange((event, session) => {
+    if (event === "TOKEN_REFRESHED" || event === "INITIAL_SESSION") return;
     if (session) void refreshOps();
     else {
       state = emptyState();
