@@ -440,6 +440,7 @@ export async function refreshOps(): Promise<void> {
         station: snap.station,
         driverPositions: snap.driverPositions,
         driverRoutes: snap.driverRoutes,
+        truncated: { ...snap.truncated, limits: snap.limits },
       };
       caseIds = snap.caseIds;
       deliveryIds = snap.deliveryIds;
