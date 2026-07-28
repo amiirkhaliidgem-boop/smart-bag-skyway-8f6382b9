@@ -1,149 +1,73 @@
-# Stability RCA and Production Migration Plan
+# Production Backend — Phase 1
 
-## Executive conclusion
+Clean break from the single `app_state` JSON row. Every business entity gets its own table, and the Workflow Engine moves into the database as the only writer of operational state. Single station, no storage buckets, providers stay simulated.
 
-The application is unstable because its operational source of truth was changed from normalized database records into one shared Supabase row: `public.app_state(id='global')`. Every signed-in browser loads the entire JSON payload, mutates it locally, and writes the whole payload back.
+## Architectural decisions (confirm anything you disagree with)
 
-That design creates three connected failure modes:
+1. **Status model.** One canonical `workflow_status` enum on the workflow engine. `baggage_cases.lf_status` and `deliveries.stage` become *derived, engine-written* columns — never writable by a module. L&F ownership still ends at "Ready for Delivery".
+2. **Append-only event tables.** `workflow_events`, `timeline_events`, `audit_events`, `notification_events` are insert-only for all app roles (no UPDATE/DELETE grant). Notification delivery attempts live in a separate mutable `notification_attempts` outbox.
+3. **One transition function.** `wf_transition(delivery_id, to_status, actor, reason, metadata)` validates the transition, updates the owning row, and writes workflow + timeline + audit + notification rows in one transaction. Staff RPCs, driver RPCs, and passenger token RPCs all call it — no second state machine.
+4. **Optimistic concurrency per row.** Each mutable operational table carries `version integer` + `updated_at`. Writes pass an expected version; mismatch raises a typed conflict the UI can retry, replacing the global snapshot version.
+5. **Frontend owns zero business logic.** React calls typed `createServerFn` wrappers; those call SQL functions. `src/lib/store.ts` is retired.
 
-1. **Data can be overwritten:** concurrent or not-yet-hydrated clients perform last-write-wins replacement of the complete application state.
-2. **Modules can drift:** internal modules read the JSON snapshot, while the public Passenger Portal and feedback features also read projection tables. Those projections can retain records that are no longer present in the overwritten master snapshot.
-3. **Preview contexts can disagree:** each browser context has its own Supabase session, in-memory store, version counter, debounce timer, and realtime subscription. Their local states can differ temporarily and one can overwrite the other.
-
-No new feature work should proceed until the stabilization acceptance tests below pass.
-
-## Verified RCA
-
-### 1. Data loss
-
-- The live `app_state` row currently contains **8 cases, 4 deliveries, and 4 workflow records**, at version **5**.
-- `delivery_public_view` still contains **24 delivery projections**. Twenty are absent from the current `app_state` payload.
-- This proves the records did not disappear because of a UI filter. The singleton master snapshot was replaced with a smaller payload, while an older projection retained evidence of prior deliveries.
-- `src/lib/persistence.ts` updates `app_state` using only `id='global'`. It computes `version + 1` in the browser but does not require the database version to still match. Two clients can therefore read version N and both write version N+1; the later write silently removes the earlier client’s changes.
-- A client can initialize with seeded/default store data before the authoritative snapshot has safely completed hydration. There is a hydration indicator, but it is not enforced as a hard precondition for every write. This makes a smaller seed/default payload capable of replacing live data.
-- On a failed push, the client records the payload as its latest value before Supabase confirms persistence, so failures can also be mistaken for successful saves.
-- The 250 ms single-timer debounce can discard a real mutation when a remote echo already occupies the timer slot.
-
-**Root cause:** whole-document client writes without server-side concurrency control, combined with unsafe hydration/debounce behavior.
-
-### 2. Module synchronization
-
-- L&F, Delivery, Workflow Monitor, Notifications, Timeline, and most Feedback data are arrays inside the same client-side JSON store.
-- Passenger Portal data is served from `passenger_links`, `delivery_public_view`, and `passenger_feedback`, synchronized from the JSON payload through database functions/projections.
-- The current 24-versus-4 delivery mismatch confirms these sources are no longer consistent.
-- Workflow rules are implemented both in TypeScript and in passenger-facing PL/pgSQL functions. They are separate implementations and can evolve differently.
-- Empty remote arrays can fall back to seeded defaults during `applyRemote`, allowing stale workflow data to be resurrected instead of honoring an authoritative empty state.
-- Business audit data is an editable JSON array rather than an append-only database log; it can be overwritten with the rest of the snapshot.
-
-**Root cause:** one mutable JSON aggregate plus secondary projections, with no database-enforced relationships or single transactional workflow engine.
-
-### 3. Runtime inconsistency between Chat Preview and New Tab
-
-- Supabase authentication is persisted in browser `localStorage`. Embedded preview storage and top-level-tab storage can hydrate at different times or be partitioned by browser rules.
-- Session, role lookup, permission lookup, store bootstrap, and realtime connection are separate asynchronous steps. Route guards can resolve differently depending on timing.
-- Each context has independent module-level values for `localVersion`, `lastPayload`, suppression state, and its realtime channel.
-- HMR can preserve or recreate the embedded preview’s in-memory state while a new tab performs a clean bootstrap.
-- Both contexts point to the same Supabase project; the repository does not show competing project URLs. The divergence is therefore session/bootstrap/concurrency related, not evidence of two configured databases.
-
-**Root cause:** origin/context-dependent auth hydration layered over unsafe client-side state ownership.
-
-### 4. Access-control regression contributing to instability
-
-- Migration `20260718011555...sql` revoked authenticated execution of `public.has_role(...)`, while current RLS policies on administration tables call `has_role` for authorized access.
-- Runtime evidence included permission-denied responses for role/agent helper functions. This can make role and delivery-agent resolution fail or fall back differently across sessions.
-- `app_state` itself is writable by any authenticated account, so a Delivery Agent or other low-privilege signed-in account can technically replace the complete operational snapshot despite UI route restrictions.
-
-**Root cause:** database grants/RLS do not consistently match application RBAC, and UI authorization is carrying responsibilities that must be enforced in the database.
-
-## Stabilization implementation
-
-### Phase 0 — Freeze and preserve evidence
-
-1. Freeze feature development and operational writes during recovery.
-2. Export the current `app_state`, `delivery_public_view`, `passenger_links`, feedback, RBAC, and audit-related records.
-3. Preserve Supabase backup/PITR availability and identify the last known-good timestamp.
-4. Do not delete the 20 orphan projection rows; treat them as recovery evidence.
-5. Produce a reconciliation report keyed by Delivery ID, Bag ID, PIR, and tracking token. Mark records as fully recoverable, partially recoverable, or backup-required.
-
-### Phase 1 — Stop further loss in the current architecture
-
-1. Add a hard persistence state machine: `uninitialized → loading → hydrated → saving/error`. No remote write is allowed before `hydrated`.
-2. Replace unconditional browser updates with an authenticated server function/database operation that performs optimistic concurrency: update only when `version = expectedVersion`.
-3. On conflict, refetch and present/retry a deterministic merge; never silently overwrite.
-4. Mark `lastPayload` and increment local version only after a confirmed database write.
-5. Replace the single debounce slot with a trailing queued save so mutations arriving during a pending save are not discarded.
-6. Make remote applies side-effect-free: they must not schedule a write-back, generate defaults, or resurrect empty arrays.
-7. Surface persistence/realtime failures in the UI and retain a retryable pending mutation rather than only logging a warning.
-8. Tighten temporary `app_state` RLS so only explicitly authorized staff workflows can read/write it; Delivery Agents must not have blanket update access.
-9. Repair only the function grants required by current RBAC and agent-list flows, using least privilege. Keep internal-only SECURITY DEFINER functions revoked from public/anon.
-
-### Phase 2 — Recover and reconcile data
-
-1. Restore the last known-good `app_state` snapshot from PITR/backup if available.
-2. Reapply newer valid records by reconciling projection rows, passenger links, feedback, and audit evidence rather than replacing the snapshot blindly.
-3. If PITR is unavailable, reconstruct only fields supported by surviving records and report unrecoverable fields explicitly.
-4. Regenerate public projections from the reconciled source and verify one-to-one Delivery ID/token mappings.
-5. Validate counts and references across L&F, Delivery, Workflow, Agent Portal, Passenger Portal, Timeline, Notifications, Feedback, and Audit.
-
-### Phase 3 — Move to the production data model
-
-Replace `app_state` as the source of truth with normalized tables:
+## Proposed schema
 
 ```text
-baggage_cases 1 ─── 0..1 deliveries
-     │                    │
-     │                    ├── driver_assignments
-     │                    ├── delivery_stops / route plans
-     │                    ├── passenger_links
-     │                    ├── otp_challenges
-     │                    └── feedback
-     │
-     ├── case_bags
-     ├── workflow_events
-     ├── notifications
-     ├── timeline_events
-     └── audit_events
+stations (single row, config)
 
-app_users ─── user_role_assignments ─── app_roles ─── role_permissions
+baggage_cases ──1:N── case_bags
+     │      1:0..1
+     ├── deliveries ──1:N── delivery_notes
+     │        ├── otp_challenges
+     │        ├── passenger_links ──1:N── passenger_feedback
+     │        └── quality_incidents
+     ├── workflow_events   (append-only)
+     ├── timeline_events   (append-only)
+     └── audit_events      (append-only)
+
+notification_events ──1:N── notification_attempts
+delivery_agents (view over app_users) ── agent_positions ── agent_routes
+app_users ── user_role_assignments ── app_roles ── role_permissions
 ```
 
-Implementation rules:
+Key constraints: unique `pir_number`, unique `delivery_no`, unique active `passenger_links.token`, unique bag tag per case, FKs everywhere with `ON DELETE RESTRICT` on operational data, `CHECK` on enums via native Postgres enums. Indexes on every status/stage column, `created_at`, assigned agent, PIR, bag tag, and token. Time-based rules (OTP expiry, link expiry) use validation triggers, not CHECK constraints.
 
-- Stable UUID primary keys; unique PIR, Delivery ID, active tracking-token constraints where business rules require them.
-- Foreign keys for all relationships and indexes on operational search/status/date/assignment columns.
-- A canonical current status on the owned entity plus immutable workflow events.
-- One server-side workflow transition function/service executes status validation, entity updates, assignment changes, OTP creation, notifications, timeline events, and audit events in one database transaction.
-- No direct browser writes to protected workflow tables; React calls authenticated TanStack server functions.
-- Passenger RPCs call the same workflow transition engine rather than maintaining a second state machine.
-- Realtime subscribes to normalized record changes for UI refresh only; it never owns persistence.
-- Business audit/workflow events are append-only and cannot be updated or deleted by normal application roles.
-- Retain public passenger access through narrow token-scoped RPCs/views that expose only approved fields.
+Views: `v_dispatch_board` (delivery + case + agent join for the Dispatch Center), `v_workflow_monitor` (live status + elapsed + SLA), `delivery_public_view` regenerated as a real projection of the normalized tables.
 
-### Phase 4 — Security and production hardening
+## New entities / rules I need approved
 
-1. Define RLS by role and record responsibility for every operational table; do not rely on hidden menus or route guards.
-2. Keep roles in dedicated role tables and verify admin decisions server-side.
-3. Revoke default function execution, then explicitly grant only required RPCs to `anon` or `authenticated`.
-4. Add rate limiting/lockout and audit events for username/PIN authentication attempts.
-5. Use structured server errors, retries for transient failures, observability, alerting, and correlation IDs.
-6. Enable managed backups/PITR, document restore drills, retention, RPO, and RTO.
-7. Add migration rehearsals, rollback procedures, staging, and production smoke tests.
-8. Load-test concurrent dispatcher/agent/passenger transitions before go-live.
+These do not exist today and are required for a correct production model:
 
-## Required verification before feature work resumes
+- **`delivery_no` human identifier** separate from the UUID PK (operations reference "DEL-000123", not a UUID).
+- **`otp_challenges` as its own table** with attempt counter, expiry, lockout after N failures — currently OTP is a plain string field with no attempt limiting.
+- **`sla_policies` table** (target minutes per stage) so SLA% is data-driven instead of hardcoded in the Workflow Monitor.
+- **`failure_reasons` reference table** driving "Failed" and "Returned to Airport", so reasons are reportable rather than free text.
+- **`notification_attempts` outbox** with retry count and next-attempt time — the current model can't retry a failed send.
+- **Assumption:** a baggage case has at most one *active* delivery, but re-delivery after a failure creates a new delivery row linked to the same case (enforced by a partial unique index on active deliveries). Say the word if re-delivery should reuse the same record.
+- **Assumption:** agents are `app_users` with `user_type='driver'`; no separate agents table.
 
-- Two simultaneous authenticated sessions update different cases without either update being lost.
-- Refresh, embedded preview, and new tab show identical record counts and statuses after clean bootstrap.
-- A stale client receives a version conflict and cannot overwrite newer data.
-- A failed save remains visibly pending/retryable and is not marked persisted.
-- L&F handover creates exactly one linked delivery transactionally.
-- Agent actions update Delivery, Workflow, Timeline, Notifications, Passenger projection, and Audit atomically.
-- Passenger OTP completion uses the same transition rules and cannot produce an invalid state.
-- Delivery Agents cannot read or update unrelated operational/admin records through direct Data API calls.
-- Public token access exposes only the intended passenger fields.
-- Reconciliation totals and orphan counts are zero, or every remaining exception is documented and approved.
-- Backup restore and rollback are tested in staging.
+## Build order
 
-## Recovery limitation
+1. **Migration 1 — foundation.** Enums, `stations`, RBAC tables (kept, cleaned), `wf_transition` scaffolding, `updated_at`/version triggers, audit trigger helper.
+2. **Migration 2 — operational core.** `baggage_cases`, `case_bags`, `deliveries`, `delivery_notes`, event tables, GRANTs + RLS on every table (role-scoped: L&F reads/writes cases only, coordinators deliveries only, agents only deliveries assigned to them, admins all).
+3. **Migration 3 — engine.** `wf_transition`, `lf_create_case`, `lf_bulk_status`, `schedule_delivery`, `assign_agent` (issues OTP + passenger link + queues notifications), `agent_accept/collect/start/deliver/fail`, passenger token RPCs rewritten to call `wf_transition`.
+4. **Migration 4 — projections + monitoring.** Views, `delivery_public_view` regeneration trigger, `system_health` function (row counts, stuck deliveries, failed notification backlog).
+5. **Migration 5 — dev seed.** Idempotent seed guarded so it can never run against a non-empty production database.
+6. **Server layer.** `src/lib/*.functions.ts` per domain (cases, deliveries, agents, passenger, admin, notifications), all `requireSupabaseAuth` except the public passenger token path. Zod validation on every input. Typed conflict/permission errors.
+7. **Frontend rewire.** Replace `useStore()` with TanStack Query hooks per module; delete `src/lib/store.ts` and `src/lib/persistence.ts`; drop `app_state`, `app_state_history`, and `save_app_state` in the final migration.
 
-The surviving 20 delivery projections contain useful recovery evidence, but they do not necessarily contain every original case, workflow, notification, note, and audit field. Complete restoration requires a Supabase backup/PITR snapshot from before the overwrite. Without that, recovery must be conservative and any non-reconstructable fields must be reported rather than invented.
+## Non-negotiables carried through
+
+- Every `CREATE TABLE` ships with GRANTs, RLS enabled, and role-scoped policies in the same migration.
+- Roles stay in `user_roles`/`user_role_assignments`, checked server-side via `has_role`/`has_permission` security-definer functions.
+- Passenger access stays token-scoped through security-definer RPCs exposing only approved fields; `anon` gets no table grants.
+- No `USING (true)` policies, no service-role RLS workarounds.
+- Migrations are forward-only and numbered; each has a documented rollback statement in its description.
+
+## What this deliberately does not include
+
+No new features, no UI redesign, no real provider credentials, no storage buckets, no multi-station scoping. Route optimization stays in the engine layer but keeps its current nearest-neighbour implementation, now persisted to `agent_routes`.
+
+## Risk
+
+The clean break means each module is briefly non-functional until step 7 rewires it. I'll rewire in this order — L&F → Delivery → Agent Portal → Passenger → Admin/monitoring — and report at each boundary. Old demo data is discarded as you instructed; `app_state` is dropped only in the last migration so nothing is lost before you sign off.
