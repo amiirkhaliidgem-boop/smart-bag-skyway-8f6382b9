@@ -60,7 +60,7 @@ export const getPassengerViewByToken = createServerFn({ method: "GET" })
   .inputValidator((input) => z.object({ token: z.string().min(4) }).parse(input))
   .handler(async ({ data }): Promise<PassengerView> => {
     const sb = serverPublicClient();
-    const { data: rpcData, error } = await sb.rpc("get_passenger_view", {
+    const { data: rpcData, error } = await sb.rpc("passenger_get_view", {
       p_token: data.token,
     });
     if (error) {
@@ -68,7 +68,7 @@ export const getPassengerViewByToken = createServerFn({ method: "GET" })
       return EMPTY_VIEW;
     }
     if (!rpcData) return EMPTY_VIEW;
-    const row = rpcData as {
+    const row = rpcData as unknown as {
       passenger_name: string | null;
       status: string | null;
       stage: string | null;

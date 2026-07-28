@@ -38,8 +38,8 @@ export function FeedbackDashboard() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("passenger_feedback")
-        .select("id, delivery_id, rating, resolved, comments, created_at")
-        .order("created_at", { ascending: false })
+        .select("id, delivery_id, rating, resolved, comments, submitted_at")
+        .order("submitted_at", { ascending: false })
         .limit(1000);
       if (error) return [];
       return data ?? [];
@@ -100,7 +100,7 @@ export function FeedbackDashboard() {
             rating: r.rating,
             resolved: r.resolved,
             comments: r.comments ?? "",
-            at: r.created_at,
+            at: r.submitted_at,
           },
           deliveryById.get(r.delivery_id)?.bagId ?? "",
           r.delivery_id,
