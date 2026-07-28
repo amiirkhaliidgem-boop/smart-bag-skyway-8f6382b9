@@ -48,6 +48,7 @@ import {
   LanguageToggle,
   useDriverLang,
 } from "@/lib/i18n/driver-language";
+import { DriverShell } from "@/components/driver-shell";
 
 export const Route = createFileRoute("/driver-portal")({
   head: () => ({ meta: [{ title: "Delivery Agent Portal — Smart Baggage Ecosystem" }] }),
@@ -206,22 +207,18 @@ function DriverDashboard({ driver }: { driver: string }) {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{t.portalTitle}</h1>
-          <p className="text-sm text-muted-foreground mt-1">
+      <header className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 sm:flex sm:flex-wrap sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="truncate text-xl font-bold tracking-tight sm:text-2xl">
+            {t.portalTitle}
+          </h1>
+          <p className="mt-1 truncate text-sm text-muted-foreground">
             {t.signedInAs} <span className="font-medium text-foreground">{driver}</span>
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <LanguageToggle />
-          <Button variant="outline" size="sm" onClick={onSignOut} className="gap-2">
-            <LogOut className="h-4 w-4" /> {t.signOut}
-          </Button>
-        </div>
-      </div>
+      </header>
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Kpi label={t.stopsToday} value={route.length} icon={<Package />} tone="indigo" />
         <Kpi
           label={t.outForDelivery}
