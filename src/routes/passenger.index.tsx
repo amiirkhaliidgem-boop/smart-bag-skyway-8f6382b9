@@ -1203,14 +1203,6 @@ function FeedbackScreen({
           comments: feedbackComments,
         },
       });
-    } else {
-      addFeedback({
-        bagId: delivery.bagId,
-        passengerName: delivery.passengerName,
-        resolved: safe === "yes",
-        rating: avg,
-        comments: feedbackComments,
-      });
     }
     onSubmit();
   }
