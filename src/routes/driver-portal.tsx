@@ -35,7 +35,6 @@ import {
   Phone,
   CheckCircle2,
   PackageCheck,
-  LogOut,
   Navigation,
   Package,
   Crosshair,
@@ -45,9 +44,9 @@ import {
 import { toast } from "sonner";
 import {
   DriverLanguageProvider,
-  LanguageToggle,
   useDriverLang,
 } from "@/lib/i18n/driver-language";
+import { DriverShell } from "@/components/driver-shell";
 
 export const Route = createFileRoute("/driver-portal")({
   head: () => ({ meta: [{ title: "Delivery Agent Portal — Smart Baggage Ecosystem" }] }),
@@ -67,32 +66,56 @@ function DriverPortalBody() {
   const navigate = useNavigate();
   const [driver, setDriver] = useState<string | null>(null);
   const [resolving, setResolving] = useState(true);
+  const [hasSession, setHasSession] = useState(false);
 
   // The signed-in account IS the agent — there is no second login here.
+  // The session can hydrate late (embedded preview iframes restore storage
+  // slower), so we also re-resolve on every auth state change instead of
+  // latching the first, possibly session-less, lookup.
   useEffect(() => {
     let cancelled = false;
-    void (async () => {
-      const { data: auth } = await supabase.auth.getUser();
-      const uid = auth.user?.id;
-      if (!uid) {
-        if (!cancelled) setResolving(false);
-        return;
-      }
+
+    const resolveFor = async (userId: string | undefined, metaName?: unknown) => {
+      if (!userId) return;
       const { data } = await supabase
         .from("app_users")
         .select("full_name")
-        .eq("user_id", uid)
+        .eq("user_id", userId)
         .maybeSingle();
       if (cancelled) return;
       setDriver(
         data?.full_name ??
-          (auth.user?.user_metadata?.full_name as string | undefined) ??
-          null,
+          (typeof metaName === "string" && metaName ? metaName : null),
       );
       setResolving(false);
+    };
+
+    void (async () => {
+      const { data: auth } = await supabase.auth.getUser();
+      if (cancelled) return;
+      if (!auth.user?.id) {
+        // No session yet — stay in the loading state and wait for
+        // onAuthStateChange rather than showing the "not linked" message.
+        return;
+      }
+      setHasSession(true);
+      await resolveFor(auth.user.id, auth.user.user_metadata?.full_name);
     })();
+
+    const { data: sub } = supabase.auth.onAuthStateChange((_evt, session) => {
+      if (cancelled) return;
+      if (!session?.user?.id) {
+        setHasSession(false);
+        setDriver(null);
+        return;
+      }
+      setHasSession(true);
+      void resolveFor(session.user.id, session.user.user_metadata?.full_name);
+    });
+
     return () => {
       cancelled = true;
+      sub.subscription.unsubscribe();
     };
   }, []);
 
@@ -103,20 +126,22 @@ function DriverPortalBody() {
 
   return (
     <div dir={dir} lang={lang}>
-      {resolving ? (
-        <div className="py-16 text-center text-sm text-muted-foreground">Loading…</div>
-      ) : !driver ? (
-        <div className="py-16 text-center text-sm text-muted-foreground">
-          This account is not linked to a Delivery Agent record.
-        </div>
-      ) : (
-        <DriverDashboard driver={driver} onSignOut={() => void signOut()} />
-      )}
+      <DriverShell agentName={driver} onSignOut={() => void signOut()}>
+        {resolving || !hasSession ? (
+          <div className="py-16 text-center text-sm text-muted-foreground">Loading…</div>
+        ) : !driver ? (
+          <div className="py-16 text-center text-sm text-muted-foreground">
+            This account is not linked to a Delivery Agent record.
+          </div>
+        ) : (
+          <DriverDashboard driver={driver} />
+        )}
+      </DriverShell>
     </div>
   );
 }
 
-function DriverDashboard({ driver, onSignOut }: { driver: string; onSignOut: () => void }) {
+function DriverDashboard({ driver }: { driver: string }) {
   const { t } = useDriverLang();
   // Route optimization is owned by the Workflow Engine (see
   // `computeDriverRoute` in src/lib/store.ts). The Driver Portal only
@@ -180,22 +205,18 @@ function DriverDashboard({ driver, onSignOut }: { driver: string; onSignOut: () 
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{t.portalTitle}</h1>
-          <p className="text-sm text-muted-foreground mt-1">
+      <header className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 sm:flex sm:flex-wrap sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="truncate text-xl font-bold tracking-tight sm:text-2xl">
+            {t.portalTitle}
+          </h1>
+          <p className="mt-1 truncate text-sm text-muted-foreground">
             {t.signedInAs} <span className="font-medium text-foreground">{driver}</span>
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <LanguageToggle />
-          <Button variant="outline" size="sm" onClick={onSignOut} className="gap-2">
-            <LogOut className="h-4 w-4" /> {t.signOut}
-          </Button>
-        </div>
-      </div>
+      </header>
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Kpi label={t.stopsToday} value={route.length} icon={<Package />} tone="indigo" />
         <Kpi
           label={t.outForDelivery}
@@ -234,13 +255,13 @@ function Kpi({
     emerald: "bg-emerald-100 text-emerald-700",
   };
   return (
-    <Card>
+    <Card className="rounded-xl">
       <CardContent className="p-4 flex items-center gap-3">
-        <div className={`h-10 w-10 rounded-lg grid place-items-center ${tones[tone]}`}>
+        <div className={`h-10 w-10 shrink-0 rounded-lg grid place-items-center ${tones[tone]}`}>
           <div className="h-5 w-5">{icon}</div>
         </div>
-        <div>
-          <p className="text-xs text-muted-foreground">{label}</p>
+        <div className="min-w-0">
+          <p className="truncate text-xs text-muted-foreground">{label}</p>
           <p className="text-xl font-bold tabular-nums">{value}</p>
         </div>
       </CardContent>
@@ -302,14 +323,11 @@ function RouteSection({
           </p>
         )}
         {route.length > 0 && fullRouteHref && (
-          <a
-            href={fullRouteHref}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-1.5 h-9 px-3 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90"
-          >
-            <RouteIcon className="h-4 w-4" /> {t.navigateFullRoute}
-          </a>
+          <Button asChild size="sm" className="gap-1.5">
+            <a href={fullRouteHref} target="_blank" rel="noreferrer">
+              <RouteIcon className="h-4 w-4" /> {t.navigateFullRoute}
+            </a>
+          </Button>
         )}
         {route.map((d, i) => (
           <DeliveryCard
@@ -384,7 +402,7 @@ function DeliveryCard({
 
   return (
     <div
-      className={`rounded-lg border p-4 transition-colors ${
+      className={`rounded-xl border p-4 transition-colors ${
         isCurrent
           ? "border-primary bg-primary/5 ring-1 ring-primary/30"
           : "border-border hover:bg-muted/30 opacity-90"
@@ -421,14 +439,11 @@ function DeliveryCard({
       </div>
       <div className="flex flex-wrap gap-2 mt-3">
         {legOrigin && (
-          <a
-            href={stopNavigationHref(legOrigin, d)}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-1.5 h-9 px-3 rounded-md border border-input bg-background text-sm font-medium hover:bg-muted"
-          >
-            <Navigation className="h-4 w-4" /> {t.navigateToStop}
-          </a>
+          <Button asChild size="sm" variant="outline" className="gap-1.5">
+            <a href={stopNavigationHref(legOrigin, d)} target="_blank" rel="noreferrer">
+              <Navigation className="h-4 w-4" /> {t.navigateToStop}
+            </a>
+          </Button>
         )}
         {stage === "Assigned" && (
           <Button
