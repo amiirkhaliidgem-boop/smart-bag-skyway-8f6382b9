@@ -259,5 +259,17 @@ export async function buildSnapshot(supabase: SupabaseClient<any>): Promise<OpsS
     caseVersions,
     deliveryVersions,
     agents,
+    truncated: {
+      cases: (cases as Row[]).length >= SNAPSHOT_LIMITS.cases,
+      deliveries: (deliveries as Row[]).length >= SNAPSHOT_LIMITS.deliveries,
+      audit: (auditRows as Row[]).length >= SNAPSHOT_LIMITS.audit,
+      notifications: (notifRows as Row[]).length >= SNAPSHOT_LIMITS.notifications,
+    },
+    limits: {
+      cases: SNAPSHOT_LIMITS.cases,
+      deliveries: SNAPSHOT_LIMITS.deliveries,
+      audit: SNAPSHOT_LIMITS.audit,
+      notifications: SNAPSHOT_LIMITS.notifications,
+    },
   };
 }
