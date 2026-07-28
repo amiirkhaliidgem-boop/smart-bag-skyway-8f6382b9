@@ -402,7 +402,7 @@ function DeliveryCard({
 
   return (
     <div
-      className={`rounded-lg border p-4 transition-colors ${
+      className={`rounded-xl border p-4 transition-colors ${
         isCurrent
           ? "border-primary bg-primary/5 ring-1 ring-primary/30"
           : "border-border hover:bg-muted/30 opacity-90"
