@@ -14,6 +14,22 @@ import {
 
 type Row = Record<string, any>;
 
+// PostgREST caps every response at 1000 rows. Reading without an explicit
+// bound therefore truncates *silently* once the dataset grows. Every
+// collection below is bounded on purpose and reports whether it hit the cap
+// so the UI can say "showing the most recent N" instead of hiding rows.
+export const SNAPSHOT_LIMITS = {
+  cases: 500,
+  deliveries: 500,
+  workflowEvents: 900,
+  audit: 500,
+  notifications: 500,
+  feedback: 500,
+  incidents: 500,
+  notes: 900,
+  otps: 900,
+} as const;
+
 export async function buildSnapshot(supabase: SupabaseClient<any>): Promise<OpsSnapshot> {
   const q = <T = Row[]>(p: any) => p.then((r: any) => (r.data ?? []) as T);
 
@@ -37,23 +53,80 @@ export async function buildSnapshot(supabase: SupabaseClient<any>): Promise<OpsS
     failureReasons,
   ] = await Promise.all([
     q(supabase.from("stations").select("*").order("is_default", { ascending: false })),
-    q(supabase.from("baggage_cases").select("*").order("created_at", { ascending: false })),
-    q(supabase.from("case_bags").select("*")),
-    q(supabase.from("deliveries").select("*").order("created_at", { ascending: false })),
-    q(supabase.from("delivery_notes").select("*").order("created_at")),
-    q(supabase.from("otp_challenges").select("*").order("issued_at", { ascending: false })),
+    q(
+      supabase
+        .from("baggage_cases")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(SNAPSHOT_LIMITS.cases),
+    ),
+    q(supabase.from("case_bags").select("*").limit(SNAPSHOT_LIMITS.cases * 2)),
+    q(
+      supabase
+        .from("deliveries")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(SNAPSHOT_LIMITS.deliveries),
+    ),
+    q(
+      supabase
+        .from("delivery_notes")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(SNAPSHOT_LIMITS.notes),
+    ),
+    q(
+      supabase
+        .from("otp_challenges")
+        .select("*")
+        .order("issued_at", { ascending: false })
+        .limit(SNAPSHOT_LIMITS.otps),
+    ),
     q(supabase.from("passenger_links").select("*").is("revoked_at", null)),
-    q(supabase.from("workflow_events").select("*").order("occurred_at")),
-    q(supabase.from("audit_events").select("*").order("occurred_at", { ascending: false }).limit(500)),
-    q(supabase.from("notification_events").select("*").order("created_at", { ascending: false }).limit(500)),
-    q(supabase.from("passenger_feedback").select("*").order("submitted_at", { ascending: false })),
-    q(supabase.from("quality_incidents").select("*").order("created_at", { ascending: false })),
+    q(
+      supabase
+        .from("workflow_events")
+        .select("*")
+        .order("occurred_at", { ascending: false })
+        .limit(SNAPSHOT_LIMITS.workflowEvents),
+    ),
+    q(
+      supabase
+        .from("audit_events")
+        .select("*")
+        .order("occurred_at", { ascending: false })
+        .limit(SNAPSHOT_LIMITS.audit),
+    ),
+    q(
+      supabase
+        .from("notification_events")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(SNAPSHOT_LIMITS.notifications),
+    ),
+    q(
+      supabase
+        .from("passenger_feedback")
+        .select("*")
+        .order("submitted_at", { ascending: false })
+        .limit(SNAPSHOT_LIMITS.feedback),
+    ),
+    q(
+      supabase
+        .from("quality_incidents")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(SNAPSHOT_LIMITS.incidents),
+    ),
     q(supabase.from("agent_positions").select("*")),
     q(supabase.from("agent_routes").select("*")),
     q(supabase.from("agent_route_stops").select("*").order("seq")),
     q(supabase.from("app_users").select("id, full_name, employee_id, user_type, status")),
     q(supabase.from("failure_reasons").select("*")),
   ]);
+
+  // `workflow_events` feeds per-case history; the mappers expect ascending order.
+  (wfEvents as Row[]).sort((a, b) => String(a.occurred_at).localeCompare(String(b.occurred_at)));
 
   const caseById = new Map<string, Row>(cases.map((c: Row) => [c.id, c]));
   const deliveryById = new Map<string, Row>(deliveries.map((d: Row) => [d.id, d]));
