@@ -984,11 +984,34 @@ export function logIoAudit(entry: Omit<ImportAuditEntry, "id" | "at">) {
   const full: ImportAuditEntry = { ...entry, id: `IO-${Date.now()}`, at: new Date().toISOString() };
   state = { ...state, ioAudit: [full, ...state.ioAudit] };
   notify();
+  // Persist to the administration audit trail (fire-and-forget).
+  void logDataIoEvent({
+    data: {
+      action: full.action,
+      actor: full.actor ?? "Operator",
+      target: `${full.moduleLabel ?? full.moduleId ?? "Data I/O"}${full.fileName ? ` · ${full.fileName}` : ""}`,
+      details: JSON.stringify({
+        format: full.format,
+        totalRows: full.totalRows,
+        accepted: full.accepted,
+        rejected: full.rejected,
+        warnings: full.warnings,
+        duplicates: full.duplicates,
+      }),
+    },
+  }).catch(reportError);
   return full;
 }
 
-export function setStation(patch: Partial<Station>) {
-  state = { ...state, station: { ...state.station, ...patch } };
+export async function setStation(patch: Partial<Station>) {
+  const next = { ...state.station, ...patch };
+  state = { ...state, station: next };
   notify();
+  try {
+    await saveStation({ data: next });
+    await refreshOps();
+  } catch (err) {
+    reportError(err);
+  }
   return state.station;
 }
