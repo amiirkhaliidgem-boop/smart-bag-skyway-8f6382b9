@@ -308,12 +308,12 @@ export function PirWizard({
       });
       toast.success(`Case ${caseData.pirNumber} updated`);
     } else {
-      const created = addCase({
+      const created = await addCase({
         ...commonPatch as Omit<BaggageCase, "bagId" | "status" | "storage" | "createdAt">,
         documents: [],
         initialLfStatus: "Open",
       });
-      toast.success(`Case registered · ${created.pirNumber} · ${created.bagId}`);
+      if (created) toast.success(`Case registered · ${created.pirNumber} · ${created.bagId}`);
     }
     onClose();
   }

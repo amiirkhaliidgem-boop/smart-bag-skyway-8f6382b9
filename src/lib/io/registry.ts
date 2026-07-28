@@ -87,7 +87,7 @@ export const lostFoundSchema: DatasetSchema = {
         .filter((v) => v !== undefined && v !== null && String(v).trim() !== "")
         .join(" — ");
 
-      const c = addCase({
+      const c = await addCase({
         passengerName: String(raw.passengerName ?? "").trim(),
         flightNumber: String(raw.flightNumber ?? ""),
         pirNumber: String(raw.pirNumber ?? "").trim(),
@@ -128,7 +128,7 @@ export const lostFoundSchema: DatasetSchema = {
         incomplete: incomplete || undefined,
         missingFields: incomplete ? missingFields : undefined,
       });
-      ids.push(c.bagId);
+      if (c) ids.push(c.bagId);
       created++;
     }
     return { created, updated: 0, skipped: 0, warnings, rejected: 0, ids };

@@ -197,9 +197,9 @@ function LostFoundPage() {
   const selectedIds = Array.from(selected);
   function clearSelection() { setSelected(new Set()); }
 
-  function runAssignDelivery() {
+  async function runAssignDelivery() {
     if (selectedIds.length === 0) return;
-    const res = bulkAssignDelivery(selectedIds, { actor: "L&F Officer" });
+    const res = await bulkAssignDelivery(selectedIds, { actor: "L&F Officer" });
     const parts: string[] = [];
     if (res.handedOver) parts.push(`${res.handedOver} handed over to Delivery`);
     if (res.alreadyHandedOver) parts.push(`${res.alreadyHandedOver} already handed over`);

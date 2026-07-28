@@ -385,16 +385,15 @@ function AssignDialog({
 function NotesTab({ d }: { d: Delivery }) {
   const [text, setText] = useState("");
   const notes = d.notes ?? [];
-  function submit(e: React.FormEvent) {
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
-    const n = addDeliveryNote(d.deliveryId, text, {
+    if (!text.trim()) return;
+    await addDeliveryNote(d.deliveryId, text, {
       actor: "Delivery Coordinator",
       role: "DeliveryCoordinator",
     });
-    if (n) {
-      setText("");
-      toast.success("Note added");
-    }
+    setText("");
+    toast.success("Note added");
   }
   return (
     <Card>
