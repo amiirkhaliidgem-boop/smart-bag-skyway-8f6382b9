@@ -35,7 +35,6 @@ import {
   Phone,
   CheckCircle2,
   PackageCheck,
-  LogOut,
   Navigation,
   Package,
   Crosshair,
@@ -45,7 +44,6 @@ import {
 import { toast } from "sonner";
 import {
   DriverLanguageProvider,
-  LanguageToggle,
   useDriverLang,
 } from "@/lib/i18n/driver-language";
 import { DriverShell } from "@/components/driver-shell";
