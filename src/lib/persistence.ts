@@ -30,7 +30,7 @@ const hydrationListeners = new Set<() => void>();
 function markHydrated() {
   if (hydrated) return;
   hydrated = true;
-  status = "hydrated";
+  if (status !== "error") status = "hydrated";
   notifyStatus();
   hydrationListeners.forEach((fn) => {
     try { fn(); } catch { /* noop */ }
@@ -96,7 +96,11 @@ export async function initPersistence(
     if (s) {
       status = "loading";
       notifyStatus();
-      void bootstrap(applyRemote).finally(markHydrated);
+      void bootstrap(applyRemote).finally(() => {
+        if (status !== "error") status = "hydrated";
+        notifyStatus();
+        markHydrated();
+      });
     } else {
       teardownChannel();
       status = "hydrated";
@@ -198,7 +202,7 @@ async function pushNow(snapshot: unknown) {
   const expectedVersion = localVersion;
   const { data, error } = await supabase.rpc("save_app_state", {
     p_expected_version: expectedVersion,
-    p_payload: snapshot as Json,
+    p_payload: JSON.parse(serialized) as Json,
   });
   saveInFlight = false;
 

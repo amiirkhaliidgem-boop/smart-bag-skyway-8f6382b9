@@ -180,6 +180,20 @@ function AuthGate() {
   const roleReadyForSession = resolvedUserId === (session?.user?.id ?? null);
   const perms = useLivePermissions(session?.user?.id ?? null);
 
+  useEffect(() => {
+    const handlePersistenceStatus = (event: Event) => {
+      const detail = (event as CustomEvent<{ status?: string; message?: string }>).detail;
+      if (detail?.status === "error" && detail.message) {
+        toast.error("Shared data was not saved", {
+          description: detail.message,
+          duration: 10_000,
+        });
+      }
+    };
+    window.addEventListener("app:persistence-status", handlePersistenceStatus);
+    return () => window.removeEventListener("app:persistence-status", handlePersistenceStatus);
+  }, []);
+
   // Live RBAC is authoritative. Accounts without an Administration record
   // fall back to the legacy role matrix so nobody is locked out.
   const allowPath = (pathname: string) => {
