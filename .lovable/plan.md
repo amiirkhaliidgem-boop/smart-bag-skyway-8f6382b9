@@ -1,55 +1,44 @@
-## Is the backend foundation complete?
+## Where things actually stand
 
-Yes for the database layer. The schema, engines and security are in place:
+Verified by reading the code, not assumed:
 
-- Normalized tables: cases, bags, deliveries, notes, OTP challenges, passenger links/view/feedback, notifications + attempts, quality incidents, agent positions/routes, RBAC tables.
-- Engines in SQL: `wf_transition` (the only writer of operational state), `wf_journal` (workflow + timeline + audit in one transaction), `wf_queue_notification`, `wf_refresh_passenger_view`, `wf_recompute_route`.
-- Action RPCs: `lf_*`, `dm_*`, `agent_*`, `passenger_*`, `notif_*`.
-- RLS + grants on every table, append-only journals, token-only anon access.
+- `src/lib/store.ts` (1019 lines) is already a read-through projection over PostgreSQL: `refreshOps()` pulls `loadOpsSnapshot`, and every mutation (`lf_*`, `dm_*`, `agent_*`) goes through `callOpsRpc`. `app_state` is no longer read or written.
+- `src/lib/admin.functions.ts` already exposes the full Phase C RBAC surface: `getAdminWorkspace`, `saveAppUser`, `setUserStatus`, `deleteAppUser`, `resetUserCredential`, `assignUserRole`, `saveRole`, `deleteRole`, `savePermissions`, `touchLastLogin`.
+- The remaining work is not "migrate screens" — it is a set of **no-op stubs and dead bindings** left behind by the Phase A rewrite:
+  - `driverPool` is an empty array (`store.ts:374`), and `src/lib/admin/agents.ts` still reads it — agent pickers can render empty.
+  - Stubs that silently do nothing: `addCaseDocument`, `removeCaseDocument`, `updateDelivery`, `addDelivery`, `setNotificationStatus`, `drainPendingNotifications`, `addFeedback`, `addQualityIncident`, `addCallLog`, `logIoAudit`, `setStation`, `transitionWorkflow`.
+  - `src/lib/__tests__/otp-flow.test.ts` still calls the old synchronous store API and cannot pass.
 
-Not complete: the **application layer**. 32 files still import `src/lib/store.ts`, and `src/lib/persistence.ts` still reads/writes `app_state`. Only `passenger.functions.ts` and `admin.functions.ts` exist. `app_state` is still present in the database and must be dropped last.
+## Phase B — Operational portals
 
-## Phase A — Core Workflow
-
-Server layer (new files, all `createServerFn` + `requireSupabaseAuth`, Zod-validated, thin wrappers):
-
-```text
-src/lib/cases.functions.ts        list/get cases, lf_create_case, lf_update_case,
-                                  lf_set_status, lf_bulk_set_status
-src/lib/deliveries.functions.ts   dispatch board, delivery detail, dm_schedule,
-                                  dm_assign_agent, dm_resend_otp, dm_add_note,
-                                  dm_mark_failed, dm_mark_returned, dm_close
-src/lib/journal.functions.ts      timeline_events, audit_events, workflow_events feeds
-src/lib/notifications.functions.ts  read-only notification_events + attempts
-src/lib/agents.functions.ts       list_delivery_agents
-```
-
-Client layer: one query-hooks module per domain (`src/hooks/use-cases.ts`, `use-deliveries.ts`, …) exposing the same shapes the current screens consume, so JSX stays untouched. Loaders use `ensureQueryData`; mutations invalidate the affected keys. Realtime subscription on `deliveries` / `baggage_cases` replaces the `app_state` broadcast channel.
-
-Screens rewired in this order, each fully off `store.ts` before the next: Lost & Found list + detail + PIR wizard + print/export → Delivery dispatch + detail + POD → Workflow Monitor → Timeline → Notification Center.
-
-## Phase B — Operational Portals
-
-- Delivery Agent Portal → `agent_advance`, `agent_complete_delivery`, `agent_report_position`; route list read from `agent_routes` / `agent_route_stops` (no client-side optimization).
-- Passenger Portal → already on `passenger_get_view`; verify token issuance now comes from `dm_assign_agent` and remove the store-based token fallback.
-- Customer Feedback → read `passenger_feedback` joined to deliveries.
-- Track Baggage shared component → resolve through the new tables.
+1. **Delivery Agent portal** (`src/routes/driver-portal.tsx`): keep the UI as-is; confirm every action routes to `agent_advance` / `agent_complete_delivery` / `agent_report_position`, and that the route list reads `agent_routes` / `agent_route_stops` from the snapshot rather than any client-side optimizer. Remove the client `routing/optimize.ts` call path if it is still in play.
+2. **Agent directory**: replace `driverPool` with a real source backed by the `list_delivery_agents()` RPC, surfaced through the ops snapshot so assignment dialogs (dispatch, bulk assign) show live agents.
+3. **Passenger portal / Track Baggage**: `passenger.$token.tsx` is already on `passenger_get_view`; point `src/components/tracking/track-baggage.tsx` and `passenger.index.tsx` at the same resolver so there is one lookup path.
+4. **Feedback + quality**: wire `addFeedback` to `passenger_submit_feedback` and `addQualityIncident` to a real write (new `quality_incidents` insert path), so the read-only dashboards have real producers.
 
 ## Phase C — Administration
 
-Users, roles, permissions, RBAC and auth onto `app_users`, `app_roles`, `role_permissions`, `user_role_assignments`, `user_roles`, `admin_audit_log`, via `admin.functions.ts` (extended) and `current_user_permissions` / `has_permission`. Import/Export and Reports move to the new tables in this phase too, since they read every domain.
+1. Point `src/routes/admin.tsx` fully at `admin.functions.ts` (it largely is); remove any residual store reads for users/roles.
+2. Persist admin-side settings that are currently stubs: `setStation` → `stations` table; `logIoAudit` → `admin_audit_log`; notification state changes → read-only (the outbox owns them, so the stubs get deleted rather than implemented).
+3. Contact Center call logs and case documents have **no production tables**. Two options — I'll default to (a) unless you say otherwise:
+   - (a) leave them explicitly out of scope and mark the surfaces as non-persistent in the UI, or
+   - (b) add `call_logs` and `case_documents` tables + RLS in a migration.
 
 ## Decommission
 
-Only after Phase C: delete `src/lib/store.ts` and `src/lib/persistence.ts`, then a final migration dropping `app_state`, `app_state_history`, `save_app_state`, and `archive_app_state_version`.
+Delete the dead stubs from `store.ts`, delete or rewrite `src/lib/__tests__/otp-flow.test.ts` against the RPC layer, and drop `app_state`, `app_state_history`, `save_app_state`, `archive_app_state_version` in a final migration.
+
+## System-wide validation (after Phase C)
+
+1. **Static**: typecheck + lint + `rg` sweep proving no module imports a removed stub and no file references `app_state`.
+2. **Database**: Supabase linter + security scan; confirm RLS and GRANTs on every table; confirm no `SECURITY DEFINER` function is executable by `anon` unless intentionally public.
+3. **End-to-end workflow run** driven through the live app with a real signed-in session: create a PIR → set Ready for Delivery → confirm auto-created delivery → schedule → assign agent (OTP + passenger token minted) → agent accepts / collects / starts → OTP-verified delivery → feedback. After each step, assert the state is identical in L&F, Dispatch, Delivery Details, Workflow Monitor, Timeline, Audit, Notifications, Agent Portal, and Passenger Portal.
+4. **RBAC matrix**: sign in as each role (admin, L&F officer, coordinator, agent) and verify sidebar visibility plus direct-URL guards.
+5. **Runtime consistency**: same route in preview iframe and a fresh tab must render identical data after refresh.
+6. **Report**: a written validation report listing what passed, what is unverified, and any remaining architectural gaps.
 
 ## Technical notes
 
-- Every mutation passes the row's `version` for optimistic concurrency; a `40001` error surfaces as a "reload and retry" toast.
-- No business rules move into React — screens only call RPCs and render results.
-- Some current UI fields have no column yet (call logs, WhatsApp threads, warehouse/storage extras). Where a field has no home in the new schema I'll either map it to `metadata`/notes or flag it as a gap in the phase report rather than inventing a table mid-phase.
-- Reporting per phase: what was migrated, what still depends on legacy code, architectural issues found, recommendations before continuing.
-
-## Risk
-
-Each module is briefly broken while it is rewired; the phase boundary is the checkpoint. Old demo data is not recovered — the new tables start empty apart from reference data.
+- Every mutation keeps passing the row `version` for optimistic concurrency; `40001` surfaces as a reload-and-retry toast.
+- No business rules move into React — screens call RPCs and render.
+- UI is frozen: this phase changes data sources, not layout.

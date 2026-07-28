@@ -4,10 +4,6 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import {
   useStore,
-  updateDelivery,
-  addFeedback,
-  addQualityIncident,
-  addCallLog,
   getDeliveryStage,
   type Delivery,
   type BaggageCase,
@@ -215,29 +211,6 @@ function TrackScreen({
     if (!next && !reported) {
       if (token) {
         await mutatePassenger({ data: { token, action: "report-misconduct" } });
-      } else {
-        addQualityIncident({
-        bagId: delivery.bagId,
-        deliveryId: delivery.deliveryId,
-        passengerName: delivery.passengerName,
-        driver: delivery.driver,
-        category: "Possible Misconduct",
-        severity: "High",
-        status: "Open",
-        description:
-          "Passenger indicated an employee requested money, tips, gifts or unofficial payment during delivery. Auto-flagged from Passenger Portal.",
-        });
-        addCallLog({
-        passengerName: delivery.passengerName,
-        phone: delivery.mobile,
-        pirNumber: delivery.pirNumber,
-        bagId: delivery.bagId,
-        agent: "System Alert",
-        direction: "Callback Required",
-        durationSec: 0,
-        notes:
-          "HIGH PRIORITY — Possible misconduct reported via Passenger Portal. Escalated to Contact Center Supervisor.",
-        });
       }
       setReported(true);
       toast.error(
@@ -249,11 +222,6 @@ function TrackScreen({
   async function confirm() {
     if (token) {
       await mutatePassenger({ data: { token, action: "confirm-delivery" } });
-    } else {
-      updateDelivery(delivery.deliveryId, {
-        status: "Delivered",
-        otpStatus: "Verified",
-      });
     }
     onConfirmed();
   }
@@ -1234,14 +1202,6 @@ function FeedbackScreen({
           rating: avg,
           comments: feedbackComments,
         },
-      });
-    } else {
-      addFeedback({
-        bagId: delivery.bagId,
-        passengerName: delivery.passengerName,
-        resolved: safe === "yes",
-        rating: avg,
-        comments: feedbackComments,
       });
     }
     onSubmit();
