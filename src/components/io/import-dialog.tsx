@@ -96,7 +96,7 @@ export function ImportDialog({ schema, open, onOpenChange, actor = "Operator", o
       await new Promise((r) => setTimeout(r, 60));
       setProgress(p);
     }
-    const res = commitImport(schema, report, { actor, fileName: report.fileName });
+    const res = await commitImport(schema, report, { actor, fileName: report.fileName });
     logIoAudit({
       action: "import.commit",
       actor,

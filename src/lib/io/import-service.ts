@@ -73,12 +73,11 @@ export function buildValidationReport(
   return report;
 }
 
-export function commitImport(
+export async function commitImport(
   schema: DatasetSchema,
   report: ValidationReport,
   ctx: ApplyContext,
-): ApplyResult {
+): Promise<ApplyResult> {
   const accepted = report.rows.filter((r) => !r.rejected).map((r) => r.data);
-  const result = schema.apply(accepted as never, ctx);
-  return result;
+  return await schema.apply(accepted as never, ctx);
 }

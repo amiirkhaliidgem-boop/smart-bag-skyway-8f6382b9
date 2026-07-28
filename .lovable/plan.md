@@ -1,73 +1,55 @@
-# Production Backend — Phase 1
+## Is the backend foundation complete?
 
-Clean break from the single `app_state` JSON row. Every business entity gets its own table, and the Workflow Engine moves into the database as the only writer of operational state. Single station, no storage buckets, providers stay simulated.
+Yes for the database layer. The schema, engines and security are in place:
 
-## Architectural decisions (confirm anything you disagree with)
+- Normalized tables: cases, bags, deliveries, notes, OTP challenges, passenger links/view/feedback, notifications + attempts, quality incidents, agent positions/routes, RBAC tables.
+- Engines in SQL: `wf_transition` (the only writer of operational state), `wf_journal` (workflow + timeline + audit in one transaction), `wf_queue_notification`, `wf_refresh_passenger_view`, `wf_recompute_route`.
+- Action RPCs: `lf_*`, `dm_*`, `agent_*`, `passenger_*`, `notif_*`.
+- RLS + grants on every table, append-only journals, token-only anon access.
 
-1. **Status model.** One canonical `workflow_status` enum on the workflow engine. `baggage_cases.lf_status` and `deliveries.stage` become *derived, engine-written* columns — never writable by a module. L&F ownership still ends at "Ready for Delivery".
-2. **Append-only event tables.** `workflow_events`, `timeline_events`, `audit_events`, `notification_events` are insert-only for all app roles (no UPDATE/DELETE grant). Notification delivery attempts live in a separate mutable `notification_attempts` outbox.
-3. **One transition function.** `wf_transition(delivery_id, to_status, actor, reason, metadata)` validates the transition, updates the owning row, and writes workflow + timeline + audit + notification rows in one transaction. Staff RPCs, driver RPCs, and passenger token RPCs all call it — no second state machine.
-4. **Optimistic concurrency per row.** Each mutable operational table carries `version integer` + `updated_at`. Writes pass an expected version; mismatch raises a typed conflict the UI can retry, replacing the global snapshot version.
-5. **Frontend owns zero business logic.** React calls typed `createServerFn` wrappers; those call SQL functions. `src/lib/store.ts` is retired.
+Not complete: the **application layer**. 32 files still import `src/lib/store.ts`, and `src/lib/persistence.ts` still reads/writes `app_state`. Only `passenger.functions.ts` and `admin.functions.ts` exist. `app_state` is still present in the database and must be dropped last.
 
-## Proposed schema
+## Phase A — Core Workflow
+
+Server layer (new files, all `createServerFn` + `requireSupabaseAuth`, Zod-validated, thin wrappers):
 
 ```text
-stations (single row, config)
-
-baggage_cases ──1:N── case_bags
-     │      1:0..1
-     ├── deliveries ──1:N── delivery_notes
-     │        ├── otp_challenges
-     │        ├── passenger_links ──1:N── passenger_feedback
-     │        └── quality_incidents
-     ├── workflow_events   (append-only)
-     ├── timeline_events   (append-only)
-     └── audit_events      (append-only)
-
-notification_events ──1:N── notification_attempts
-delivery_agents (view over app_users) ── agent_positions ── agent_routes
-app_users ── user_role_assignments ── app_roles ── role_permissions
+src/lib/cases.functions.ts        list/get cases, lf_create_case, lf_update_case,
+                                  lf_set_status, lf_bulk_set_status
+src/lib/deliveries.functions.ts   dispatch board, delivery detail, dm_schedule,
+                                  dm_assign_agent, dm_resend_otp, dm_add_note,
+                                  dm_mark_failed, dm_mark_returned, dm_close
+src/lib/journal.functions.ts      timeline_events, audit_events, workflow_events feeds
+src/lib/notifications.functions.ts  read-only notification_events + attempts
+src/lib/agents.functions.ts       list_delivery_agents
 ```
 
-Key constraints: unique `pir_number`, unique `delivery_no`, unique active `passenger_links.token`, unique bag tag per case, FKs everywhere with `ON DELETE RESTRICT` on operational data, `CHECK` on enums via native Postgres enums. Indexes on every status/stage column, `created_at`, assigned agent, PIR, bag tag, and token. Time-based rules (OTP expiry, link expiry) use validation triggers, not CHECK constraints.
+Client layer: one query-hooks module per domain (`src/hooks/use-cases.ts`, `use-deliveries.ts`, …) exposing the same shapes the current screens consume, so JSX stays untouched. Loaders use `ensureQueryData`; mutations invalidate the affected keys. Realtime subscription on `deliveries` / `baggage_cases` replaces the `app_state` broadcast channel.
 
-Views: `v_dispatch_board` (delivery + case + agent join for the Dispatch Center), `v_workflow_monitor` (live status + elapsed + SLA), `delivery_public_view` regenerated as a real projection of the normalized tables.
+Screens rewired in this order, each fully off `store.ts` before the next: Lost & Found list + detail + PIR wizard + print/export → Delivery dispatch + detail + POD → Workflow Monitor → Timeline → Notification Center.
 
-## New entities / rules I need approved
+## Phase B — Operational Portals
 
-These do not exist today and are required for a correct production model:
+- Delivery Agent Portal → `agent_advance`, `agent_complete_delivery`, `agent_report_position`; route list read from `agent_routes` / `agent_route_stops` (no client-side optimization).
+- Passenger Portal → already on `passenger_get_view`; verify token issuance now comes from `dm_assign_agent` and remove the store-based token fallback.
+- Customer Feedback → read `passenger_feedback` joined to deliveries.
+- Track Baggage shared component → resolve through the new tables.
 
-- **`delivery_no` human identifier** separate from the UUID PK (operations reference "DEL-000123", not a UUID).
-- **`otp_challenges` as its own table** with attempt counter, expiry, lockout after N failures — currently OTP is a plain string field with no attempt limiting.
-- **`sla_policies` table** (target minutes per stage) so SLA% is data-driven instead of hardcoded in the Workflow Monitor.
-- **`failure_reasons` reference table** driving "Failed" and "Returned to Airport", so reasons are reportable rather than free text.
-- **`notification_attempts` outbox** with retry count and next-attempt time — the current model can't retry a failed send.
-- **Assumption:** a baggage case has at most one *active* delivery, but re-delivery after a failure creates a new delivery row linked to the same case (enforced by a partial unique index on active deliveries). Say the word if re-delivery should reuse the same record.
-- **Assumption:** agents are `app_users` with `user_type='driver'`; no separate agents table.
+## Phase C — Administration
 
-## Build order
+Users, roles, permissions, RBAC and auth onto `app_users`, `app_roles`, `role_permissions`, `user_role_assignments`, `user_roles`, `admin_audit_log`, via `admin.functions.ts` (extended) and `current_user_permissions` / `has_permission`. Import/Export and Reports move to the new tables in this phase too, since they read every domain.
 
-1. **Migration 1 — foundation.** Enums, `stations`, RBAC tables (kept, cleaned), `wf_transition` scaffolding, `updated_at`/version triggers, audit trigger helper.
-2. **Migration 2 — operational core.** `baggage_cases`, `case_bags`, `deliveries`, `delivery_notes`, event tables, GRANTs + RLS on every table (role-scoped: L&F reads/writes cases only, coordinators deliveries only, agents only deliveries assigned to them, admins all).
-3. **Migration 3 — engine.** `wf_transition`, `lf_create_case`, `lf_bulk_status`, `schedule_delivery`, `assign_agent` (issues OTP + passenger link + queues notifications), `agent_accept/collect/start/deliver/fail`, passenger token RPCs rewritten to call `wf_transition`.
-4. **Migration 4 — projections + monitoring.** Views, `delivery_public_view` regeneration trigger, `system_health` function (row counts, stuck deliveries, failed notification backlog).
-5. **Migration 5 — dev seed.** Idempotent seed guarded so it can never run against a non-empty production database.
-6. **Server layer.** `src/lib/*.functions.ts` per domain (cases, deliveries, agents, passenger, admin, notifications), all `requireSupabaseAuth` except the public passenger token path. Zod validation on every input. Typed conflict/permission errors.
-7. **Frontend rewire.** Replace `useStore()` with TanStack Query hooks per module; delete `src/lib/store.ts` and `src/lib/persistence.ts`; drop `app_state`, `app_state_history`, and `save_app_state` in the final migration.
+## Decommission
 
-## Non-negotiables carried through
+Only after Phase C: delete `src/lib/store.ts` and `src/lib/persistence.ts`, then a final migration dropping `app_state`, `app_state_history`, `save_app_state`, and `archive_app_state_version`.
 
-- Every `CREATE TABLE` ships with GRANTs, RLS enabled, and role-scoped policies in the same migration.
-- Roles stay in `user_roles`/`user_role_assignments`, checked server-side via `has_role`/`has_permission` security-definer functions.
-- Passenger access stays token-scoped through security-definer RPCs exposing only approved fields; `anon` gets no table grants.
-- No `USING (true)` policies, no service-role RLS workarounds.
-- Migrations are forward-only and numbered; each has a documented rollback statement in its description.
+## Technical notes
 
-## What this deliberately does not include
-
-No new features, no UI redesign, no real provider credentials, no storage buckets, no multi-station scoping. Route optimization stays in the engine layer but keeps its current nearest-neighbour implementation, now persisted to `agent_routes`.
+- Every mutation passes the row's `version` for optimistic concurrency; a `40001` error surfaces as a "reload and retry" toast.
+- No business rules move into React — screens only call RPCs and render results.
+- Some current UI fields have no column yet (call logs, WhatsApp threads, warehouse/storage extras). Where a field has no home in the new schema I'll either map it to `metadata`/notes or flag it as a gap in the phase report rather than inventing a table mid-phase.
+- Reporting per phase: what was migrated, what still depends on legacy code, architectural issues found, recommendations before continuing.
 
 ## Risk
 
-The clean break means each module is briefly non-functional until step 7 rewires it. I'll rewire in this order — L&F → Delivery → Agent Portal → Passenger → Admin/monitoring — and report at each boundary. Old demo data is discarded as you instructed; `app_state` is dropped only in the last migration so nothing is lost before you sign off.
+Each module is briefly broken while it is rewired; the phase boundary is the checkpoint. Old demo data is not recovered — the new tables start empty apart from reference data.

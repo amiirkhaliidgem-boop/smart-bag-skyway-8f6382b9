@@ -56,7 +56,7 @@ export const lostFoundSchema: DatasetSchema = {
   templateVersion: "2.0",
   fields: lostFoundFields,
   read: () => getState().cases as unknown as Record<string, unknown>[],
-  apply: (rows: Record<string, unknown>[], ctx) => {
+  apply: async (rows: Record<string, unknown>[], ctx) => {
     const ids: string[] = [];
     let created = 0;
     let warnings = 0;
@@ -87,7 +87,7 @@ export const lostFoundSchema: DatasetSchema = {
         .filter((v) => v !== undefined && v !== null && String(v).trim() !== "")
         .join(" — ");
 
-      const c = addCase({
+      const c = await addCase({
         passengerName: String(raw.passengerName ?? "").trim(),
         flightNumber: String(raw.flightNumber ?? ""),
         pirNumber: String(raw.pirNumber ?? "").trim(),
@@ -128,7 +128,7 @@ export const lostFoundSchema: DatasetSchema = {
         incomplete: incomplete || undefined,
         missingFields: incomplete ? missingFields : undefined,
       });
-      ids.push(c.bagId);
+      if (c) ids.push(c.bagId);
       created++;
     }
     return { created, updated: 0, skipped: 0, warnings, rejected: 0, ids };

@@ -1,36 +1,26 @@
+// ---------------------------------------------------------------------------
+// Operational projection cache.
+//
+// PostgreSQL is the single source of truth. This module holds a read-only
+// projection of the normalized production tables and forwards every mutation
+// to the Workflow Engine functions in the database. It contains no business
+// rules, no seed data and no `app_state`.
+// ---------------------------------------------------------------------------
+
 import { useSyncExternalStore } from "react";
-import {
-  WORKFLOW_STATUSES,
-  type WorkflowStatus,
-  canTransition,
-} from "./workflow/statuses";
-import {
-  toCaseStatus,
-  toDeliveryStatus,
-  fromDeliveryStatus,
-} from "./workflow/mapping";
-import {
-  renderTemplate,
-  type NotificationChannel,
-  type TemplateContext,
-  type RenderedMessage,
-  type NotificationTrigger,
+import { WORKFLOW_STATUSES, type WorkflowStatus } from "./workflow/statuses";
+import type {
+  NotificationChannel,
+  RenderedMessage,
+  NotificationTrigger,
 } from "./notifications/templates";
-import { enabledChannels, getProvider } from "./notifications/registry";
-import { dispatchEvents, type DispatchPatch } from "./notifications/dispatch";
-import { generateTrackingToken } from "./passenger/tokens";
 import type { AuditEntry, ImportAuditEntry } from "./audit/log";
 import type { Role } from "./roles/roles";
 import type { LFStatus } from "./lost-found/statuses";
-import { LF_TO_WORKFLOW, canTransitionLf } from "./lost-found/statuses";
-import {
-  type DeliveryStage,
-  stageToWorkflow,
-  stageToLegacyStatus,
-  stageFromLegacy,
-} from "./delivery/stages";
-import { stageToLfStatus } from "./delivery/stages";
+import { type DeliveryStage, stageFromLegacy } from "./delivery/stages";
 import type { FailureReason } from "./delivery/stages";
+import { loadOpsSnapshot, callOpsRpc } from "./ops.functions";
+import { supabase } from "@/integrations/supabase/client";
 
 export type CaseStatus =
   | "Missing"
@@ -335,359 +325,29 @@ export interface DriverRoute {
   stops: string[]; // deliveryId in visit order
   computedAt: string;
 }
-
-const driverPool = [
-  "Ahmed Mostafa",
-  "Karim El-Sayed",
-  "Youssef Hassan",
-  "Omar Nabil",
-  "Mahmoud Farouk",
-];
-
-const seedCases: BaggageCase[] = [
-  {
-    bagId: "BAG-100231",
-    passengerName: "Mariam Hossam",
-    flightNumber: "MS985",
-    pirNumber: "CAIMS12045",
-    bagTagNumber: "MS548921",
-    arrivalDate: "2026-06-18",
-    contact: "+20 100 234 5512",
-    email: "mariam.hossam@example.com",
-    description: "Black Samsonite hardshell, 28in, red ribbon on handle",
-    status: "Delivered",
-    storage: { zone: "A", shelf: "03", position: "12" },
-    createdAt: "2026-06-18T09:14:00Z",
-    resolvedAt: "2026-06-19T16:40:00Z",
-  },
-  {
-    bagId: "BAG-100232",
-    passengerName: "Tarek Abdelrahman",
-    flightNumber: "TK694",
-    pirNumber: "CAITK13902",
-    bagTagNumber: "TK220981",
-    arrivalDate: "2026-06-19",
-    contact: "+20 122 884 7710",
-    email: "tarek.a@example.com",
-    description: "Navy soft-shell American Tourister, 24in, name tag attached",
-    status: "Ready For Delivery",
-    storage: { zone: "B", shelf: "07", position: "04" },
-    createdAt: "2026-06-19T11:02:00Z",
-  },
-  {
-    bagId: "BAG-100233",
-    passengerName: "Layla Ibrahim",
-    flightNumber: "EK927",
-    pirNumber: "CAIEK77120",
-    bagTagNumber: "EK771203",
-    arrivalDate: "2026-06-20",
-    contact: "+20 111 552 0991",
-    email: "layla.ibrahim@example.com",
-    description: "Silver Delsey cabin trolley with blue strap",
-    status: "Stored",
-    storage: { zone: "A", shelf: "11", position: "02" },
-    createdAt: "2026-06-20T07:45:00Z",
-  },
-  {
-    bagId: "BAG-100234",
-    passengerName: "Hassan El-Shenawy",
-    flightNumber: "LH582",
-    pirNumber: "CAILH40118",
-    bagTagNumber: "LH401184",
-    arrivalDate: "2026-06-20",
-    contact: "+20 100 998 2210",
-    email: "h.shenawy@example.com",
-    description: "Large black Tumi suitcase, gold zipper, 30in",
-    status: "Out For Delivery",
-    storage: { zone: "C", shelf: "02", position: "08" },
-    createdAt: "2026-06-20T14:21:00Z",
-  },
-  {
-    bagId: "BAG-100235",
-    passengerName: "Nour Adel",
-    flightNumber: "AF553",
-    pirNumber: "CAIAF66302",
-    bagTagNumber: "AF663021",
-    arrivalDate: "2026-06-21",
-    contact: "+20 109 332 1145",
-    email: "nour.adel@example.com",
-    description: "Pink Kipling backpack with monkey keychain",
-    status: "Located",
-    storage: { zone: "B", shelf: "01", position: "10" },
-    createdAt: "2026-06-21T05:30:00Z",
-  },
-  {
-    bagId: "BAG-100236",
-    passengerName: "Sherif Mounir",
-    flightNumber: "QR1303",
-    pirNumber: "CAIQR88410",
-    bagTagNumber: "QR884103",
-    arrivalDate: "2026-06-21",
-    contact: "+20 122 100 4477",
-    email: "sherif.mounir@example.com",
-    description: "Olive green duffel bag, leather handles, no wheels",
-    status: "Missing",
-    storage: null,
-    createdAt: "2026-06-21T08:55:00Z",
-  },
-  {
-    bagId: "BAG-100237",
-    passengerName: "Dina Saad",
-    flightNumber: "MS777",
-    pirNumber: "CAIMS90021",
-    bagTagNumber: "MS900213",
-    arrivalDate: "2026-06-19",
-    contact: "+20 100 778 3320",
-    email: "dina.saad@example.com",
-    description: "Red Rimowa cabin, dented top-left corner",
-    status: "Delivered",
-    storage: { zone: "A", shelf: "05", position: "09" },
-    createdAt: "2026-06-19T16:10:00Z",
-    resolvedAt: "2026-06-20T12:30:00Z",
-  },
-  {
-    bagId: "BAG-100238",
-    passengerName: "Omar Khaled",
-    flightNumber: "BA155",
-    pirNumber: "CAIBA22907",
-    bagTagNumber: "BA229073",
-    arrivalDate: "2026-06-20",
-    contact: "+20 111 220 9988",
-    email: "omar.khaled@example.com",
-    description: "Grey North Face hiking backpack, 65L, sleeping bag attached",
-    status: "Ready For Delivery",
-    storage: { zone: "C", shelf: "09", position: "01" },
-    createdAt: "2026-06-20T19:00:00Z",
-  },
-];
-
-const seedDeliveries: Delivery[] = [
-  {
-    deliveryId: "DEL-50012",
-    bagId: "BAG-100234",
-    passengerName: "Hassan El-Shenawy",
-    address: "14 Road 9, Maadi, Cairo",
-    mobile: "+20 100 998 2210",
-    pirNumber: "CAILH40118",
-    priority: "VIP",
-    status: "Out For Delivery",
-    driver: "Ahmed Mostafa",
-    eta: "2026-06-23T19:30:00Z",
-    otpStatus: "Sent",
-    otpCode: "4819",
-    driverLocation: { lat: 30.058, lng: 31.245, label: "Salah Salem, Cairo" },
-    destination: { lat: 29.96, lng: 31.258, label: "Maadi, Cairo" },
-  },
-  {
-    deliveryId: "DEL-50013",
-    bagId: "BAG-100232",
-    passengerName: "Tarek Abdelrahman",
-    address: "27 El-Nasr St, Nasr City, Cairo",
-    mobile: "+20 122 884 7710",
-    pirNumber: "CAITK13902",
-    priority: "Normal",
-    status: "Assigned",
-    driver: "Karim El-Sayed",
-    eta: "2026-06-23T21:00:00Z",
-    otpStatus: "Pending",
-    otpCode: "3021",
-    destination: { lat: 30.05, lng: 31.34, label: "Nasr City, Cairo" },
-  },
-  {
-    deliveryId: "DEL-50014",
-    bagId: "BAG-100238",
-    passengerName: "Omar Khaled",
-    address: "8 Mohamed Mazhar, Zamalek, Cairo",
-    mobile: "+20 111 220 9988",
-    pirNumber: "CAIBA22907",
-    priority: "Normal",
-    status: "Pending",
-    driver: "—",
-    eta: "2026-06-24T10:00:00Z",
-    otpStatus: "Pending",
-    otpCode: "7756",
-    destination: { lat: 30.063, lng: 31.219, label: "Zamalek, Cairo" },
-  },
-  {
-    deliveryId: "DEL-50011",
-    bagId: "BAG-100231",
-    passengerName: "Mariam Hossam",
-    address: "55 El-Tahrir, Dokki, Giza",
-    mobile: "+20 100 234 5512",
-    pirNumber: "CAIMS12045",
-    priority: "Normal",
-    status: "Delivered",
-    driver: "Youssef Hassan",
-    eta: "2026-06-19T16:40:00Z",
-    otpStatus: "Verified",
-    otpCode: "9100",
-    destination: { lat: 30.038, lng: 31.211, label: "Dokki, Giza" },
-  },
-];
-
-const seedCallLogs: CallLog[] = [
-  {
-    id: "CL-9001",
-    bagId: "BAG-100236",
-    pirNumber: "CAIQR88410",
-    passengerName: "Sherif Mounir",
-    phone: "+20 122 100 4477",
-    agent: "Sara Mahmoud",
-    direction: "Inbound",
-    durationSec: 312,
-    notes: "Passenger requesting update on missing bag. Promised callback within 2h.",
-    at: "2026-06-23T08:14:00Z",
-  },
-  {
-    id: "CL-9002",
-    bagId: "BAG-100234",
-    pirNumber: "CAILH40118",
-    passengerName: "Hassan El-Shenawy",
-    phone: "+20 100 998 2210",
-    agent: "Mohamed Reda",
-    direction: "Outbound",
-    durationSec: 184,
-    notes: "Confirmed delivery window 19:00–20:30, OTP sent via SMS.",
-    at: "2026-06-23T14:02:00Z",
-  },
-  {
-    id: "CL-9003",
-    bagId: "BAG-100232",
-    pirNumber: "CAITK13902",
-    passengerName: "Tarek Abdelrahman",
-    phone: "+20 122 884 7710",
-    agent: "Sara Mahmoud",
-    direction: "Callback Required",
-    durationSec: 0,
-    notes: "Voicemail left. Customer to confirm delivery address.",
-    at: "2026-06-23T15:20:00Z",
-  },
-  {
-    id: "CL-9004",
-    passengerName: "Yara Magdy",
-    phone: "+20 100 442 1009",
-    agent: "Hadeer Samir",
-    direction: "No Answer",
-    durationSec: 0,
-    notes: "First attempt — no answer. Retry scheduled.",
-    at: "2026-06-23T16:48:00Z",
-  },
-];
-
-const seedWhatsapp: WhatsAppMessage[] = [
-  {
-    id: "WA-7001",
-    passengerName: "Hassan El-Shenawy",
-    phone: "+20 100 998 2210",
-    pirNumber: "CAILH40118",
-    lastMessage: "Delivery agent is 10 min away. Please share OTP at handover.",
-    unread: 0,
-    at: "2026-06-23T18:40:00Z",
-    thread: [
-      { from: "Passenger", text: "Hi, any update on my bag?", at: "2026-06-23T14:00:00Z" },
-      { from: "Agent", text: "Hello Mr. Hassan, your bag is out for delivery now.", at: "2026-06-23T14:05:00Z" },
-      { from: "Agent", text: "Delivery agent is 10 min away. Please share OTP at handover.", at: "2026-06-23T18:40:00Z" },
-    ],
-  },
-  {
-    id: "WA-7002",
-    passengerName: "Layla Ibrahim",
-    phone: "+20 111 552 0991",
-    pirNumber: "CAIEK77120",
-    lastMessage: "We located your bag in Zone A. Scheduling delivery tomorrow.",
-    unread: 2,
-    at: "2026-06-23T11:22:00Z",
-    thread: [
-      { from: "Passenger", text: "Where is my luggage??", at: "2026-06-23T10:01:00Z" },
-      { from: "Agent", text: "We located your bag in Zone A. Scheduling delivery tomorrow.", at: "2026-06-23T11:22:00Z" },
-    ],
-  },
-  {
-    id: "WA-7003",
-    passengerName: "Nour Adel",
-    phone: "+20 109 332 1145",
-    pirNumber: "CAIAF66302",
-    lastMessage: "Thanks! Received the bag in good condition.",
-    unread: 0,
-    at: "2026-06-22T20:11:00Z",
-    thread: [
-      { from: "Agent", text: "Your bag has been delivered. Please confirm receipt.", at: "2026-06-22T19:50:00Z" },
-      { from: "Passenger", text: "Thanks! Received the bag in good condition.", at: "2026-06-22T20:11:00Z" },
-    ],
-  },
-];
-
-const seedFeedback: Feedback[] = [
-  {
-    id: "FB-3001",
-    bagId: "BAG-100231",
-    passengerName: "Mariam Hossam",
-    resolved: true,
-    rating: 5,
-    comments: "Excellent service. Delivery agent was punctual and very polite.",
-    at: "2026-06-19T17:10:00Z",
-  },
-  {
-    id: "FB-3002",
-    bagId: "BAG-100237",
-    passengerName: "Dina Saad",
-    resolved: true,
-    rating: 4,
-    comments: "Slight delay but communication was clear. Thank you.",
-    at: "2026-06-20T13:00:00Z",
-  },
-  {
-    id: "FB-3003",
-    bagId: "BAG-100234",
-    passengerName: "Hassan El-Shenawy",
-    resolved: false,
-    rating: 3,
-    comments: "Delivery still in progress at time of survey.",
-    at: "2026-06-23T19:00:00Z",
-  },
-];
-
-let state: State = load();
-const listeners = new Set<() => void>();
-
-function defaults(): State {
-  const workflow: WorkflowRecord[] = seedDeliveries.map((d) => ({
-    deliveryId: d.deliveryId,
-    bagId: d.bagId,
-    status: fromDeliveryStatus(d.status),
-    token: generateTrackingToken(d.deliveryId),
-    history: [
-      {
-        status: fromDeliveryStatus(d.status),
-        at: new Date().toISOString(),
-        actor: "system",
-      },
-    ],
-  }));
-  return {
-    cases: seedCases,
-    deliveries: seedDeliveries,
-    callLogs: seedCallLogs,
-    whatsapp: seedWhatsapp,
-    feedback: seedFeedback,
-    qualityIncidents: [],
-    workflow,
-    notifications: [],
-    audit: [],
-    ioAudit: [],
-    station: DEFAULT_STATION,
-    driverPositions: {},
-    driverRoutes: {},
-  };
+interface State {
+  cases: BaggageCase[];
+  deliveries: Delivery[];
+  callLogs: CallLog[];
+  whatsapp: WhatsAppMessage[];
+  feedback: Feedback[];
+  qualityIncidents: QualityIncident[];
+  workflow: WorkflowRecord[];
+  notifications: NotificationEvent[];
+  audit: AuditEntry[];
+  ioAudit: ImportAuditEntry[];
+  station: Station;
+  driverPositions: Record<string, DriverPosition>;
+  driverRoutes: Record<string, DriverRoute>;
 }
 
-function load(): State {
-  const defaults: State = {
-    cases: seedCases,
-    deliveries: seedDeliveries,
-    callLogs: seedCallLogs,
-    whatsapp: seedWhatsapp,
-    feedback: seedFeedback,
+function emptyState(): State {
+  return {
+    cases: [],
+    deliveries: [],
+    callLogs: [],
+    whatsapp: [],
+    feedback: [],
     qualityIncidents: [],
     workflow: [],
     notifications: [],
@@ -697,84 +357,24 @@ function load(): State {
     driverPositions: {},
     driverRoutes: {},
   };
-  // Always start from defaults on both server and client so SSR HTML
-  // matches the first client render. localStorage is merged in after
-  // hydration via `hydrateFromStorage()` scheduled below.
-  return defaults;
 }
 
-// -- Supabase-backed persistence (single source of truth) ------------------
-// The store keeps its full behavior. On the client, we bootstrap from
-// `app_state` in Supabase, subscribe to realtime changes, and push every
-// mutation back. Preview and Open-in-New-Tab therefore see the same state.
-import {
-  initPersistence,
-  scheduleRemotePush,
-} from "./persistence";
+let state: State = emptyState();
+const listeners = new Set<() => void>();
 
-let bootstrapped = false;
-let drained = false;
-function applyRemote(payload: unknown, _version: number) {
-  const base = defaults();
-  const parsed = (payload ?? {}) as Partial<State>;
-  state = {
-    ...base,
-    ...parsed,
-    // Empty arrays are authoritative. Falling back to seeded workflow data
-    // resurrected records that had legitimately been removed remotely.
-    workflow: parsed.workflow ?? base.workflow,
-    notifications: parsed.notifications ?? base.notifications,
-    audit: parsed.audit ?? base.audit,
-    ioAudit: parsed.ioAudit ?? base.ioAudit,
-    station: parsed.station ?? base.station,
-    driverPositions: parsed.driverPositions ?? base.driverPositions,
-    driverRoutes: parsed.driverRoutes ?? base.driverRoutes,
-  };
-  // Coerce legacy Cairo-specific L&F statuses persisted before the
-  // airport-neutral rename into the current canonical values.
-  if (state.cases?.length) {
-    state = {
-      ...state,
-      cases: state.cases.map((c) => {
-        const v = c.lfStatus as unknown as string | undefined;
-        if (v === "In Transit to Cairo" || v === "Arrived at Cairo") {
-          return { ...c, lfStatus: "Arrived at Airport" as LFStatus };
-        }
-        return c;
-      }),
-    };
-  }
+// Identifier maps: the UI speaks human identifiers (BAG-000123 / DEL-000123),
+// the database speaks UUIDs.
+let caseIds: Record<string, string> = {};
+let deliveryIds: Record<string, string> = {};
+let agentIds: Record<string, string> = {};
+let caseVersions: Record<string, number> = {};
+let deliveryVersions: Record<string, number> = {};
+
+/** Active Delivery Agents, refreshed from `app_users` on every snapshot. */
+export const driverPool: string[] = [];
+
+function notify() {
   listeners.forEach((l) => l());
-  // First snapshot from the server: resume anything left mid-flight.
-  if (!drained) {
-    drained = true;
-    setTimeout(drainPendingNotifications, 0);
-  }
-}
-
-function ensureBootstrap() {
-  if (bootstrapped || typeof window === "undefined") return;
-  // Note: we intentionally do NOT short-circuit on `/passenger/` here.
-  // Passenger visitors are unauthenticated, so `initPersistence` won't
-  // fetch or push the staff snapshot (session gate + RLS). Staff previewing
-  // a case are authenticated and need the store hydrated to resolve the
-  // token → case fallback in TokenPortal.
-  bootstrapped = true;
-  // Prime state only for hydration-safe rendering. Persistence has a hard
-  // loading gate, so these defaults can never be written to Supabase.
-  state = defaults();
-  listeners.forEach((l) => l());
-  void initPersistence(applyRemote);
-}
-
-if (typeof window !== "undefined") {
-  // Defer to after React's initial hydration so HTML doesn't mismatch.
-  setTimeout(ensureBootstrap, 0);
-}
-
-function emit() {
-  listeners.forEach((l) => l());
-  scheduleRemotePush(() => state);
 }
 
 function subscribe(l: () => void) {
@@ -791,6 +391,115 @@ export function useStore<T>(selector: (s: State) => T): T {
   return selector(snapshot);
 }
 
+export function getState() {
+  return state;
+}
+
+export { WORKFLOW_STATUSES };
+
+// ---------- Hydration ----------
+
+let hydrating: Promise<void> | null = null;
+let booted = false;
+
+export async function refreshOps(): Promise<void> {
+  if (hydrating) return hydrating;
+  hydrating = (async () => {
+    try {
+      const snap = await loadOpsSnapshot();
+      state = {
+        ...state,
+        cases: snap.cases,
+        deliveries: snap.deliveries,
+        workflow: snap.workflow,
+        notifications: snap.notifications,
+        audit: snap.audit,
+        feedback: snap.feedback,
+        qualityIncidents: snap.qualityIncidents,
+        station: snap.station,
+        driverPositions: snap.driverPositions,
+        driverRoutes: snap.driverRoutes,
+      };
+      caseIds = snap.caseIds;
+      deliveryIds = snap.deliveryIds;
+      agentIds = snap.agentIds;
+      caseVersions = snap.caseVersions;
+      deliveryVersions = snap.deliveryVersions;
+      driverPool.splice(0, driverPool.length, ...snap.agents.map((a) => a.name));
+      notify();
+    } catch (err) {
+      console.warn("[ops] snapshot load failed", err);
+    } finally {
+      hydrating = null;
+    }
+  })();
+  return hydrating;
+}
+
+let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+function scheduleRefresh() {
+  if (refreshTimer) return;
+  refreshTimer = setTimeout(() => {
+    refreshTimer = null;
+    void refreshOps();
+  }, 150);
+}
+
+function boot() {
+  if (booted || typeof window === "undefined") return;
+  booted = true;
+  void refreshOps();
+  supabase.auth.onAuthStateChange((_e, session) => {
+    if (session) void refreshOps();
+    else {
+      state = emptyState();
+      notify();
+    }
+  });
+  const channel = supabase
+    .channel("ops_sync")
+    .on("postgres_changes", { event: "*", schema: "public", table: "deliveries" }, scheduleRefresh)
+    .on("postgres_changes", { event: "*", schema: "public", table: "baggage_cases" }, scheduleRefresh)
+    .on("postgres_changes", { event: "*", schema: "public", table: "notification_events" }, scheduleRefresh)
+    .subscribe();
+  window.addEventListener("beforeunload", () => {
+    void supabase.removeChannel(channel);
+  });
+}
+
+if (typeof window !== "undefined") setTimeout(boot, 0);
+
+// ---------- Engine bridge ----------
+
+type RpcArgs = Record<string, unknown>;
+
+async function rpc(fn: string, args: RpcArgs) {
+  const result = await callOpsRpc({ data: { fn, args } });
+  await refreshOps();
+  return result;
+}
+
+function caseUuid(bagId: string) {
+  return caseIds[bagId];
+}
+function deliveryUuid(deliveryId: string) {
+  return deliveryIds[deliveryId];
+}
+function agentUuid(name: string) {
+  return agentIds[name];
+}
+
+function reportError(err: unknown) {
+  const message = err instanceof Error ? err.message : String(err);
+  console.warn("[ops]", message);
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("app:ops-error", { detail: { message } }));
+  }
+  return message;
+}
+
+// ---------- Read helpers ----------
+
 export function getWorkflow(deliveryId: string): WorkflowRecord | undefined {
   return state.workflow.find((w) => w.deliveryId === deliveryId);
 }
@@ -799,515 +508,195 @@ export function findByToken(token: string): WorkflowRecord | undefined {
   return state.workflow.find((w) => w.token === token);
 }
 
-// Returns the passenger tracking token for a delivery, bootstrapping the
-// workflow record on first access if it does not yet exist. Used by the
-// internal Passenger Portal preview inside Delivery Management. Does not
-// change status, emit notifications, or write audit.
 export function ensurePassengerToken(deliveryId: string): string | undefined {
-  const d = state.deliveries.find((x) => x.deliveryId === deliveryId);
-  if (!d) return undefined;
-  const rec = ensureWorkflow(deliveryId);
-  return rec.token;
+  return state.workflow.find((w) => w.deliveryId === deliveryId)?.token || undefined;
 }
 
-// ---------- Workflow Engine ----------
-function ensureWorkflow(deliveryId: string): WorkflowRecord {
-  let rec = state.workflow.find((w) => w.deliveryId === deliveryId);
-  if (rec) return rec;
-  const d = state.deliveries.find((x) => x.deliveryId === deliveryId);
-  if (!d) throw new Error(`No delivery ${deliveryId}`);
-  rec = {
-    deliveryId,
-    bagId: d.bagId,
-    status: fromDeliveryStatus(d.status),
-    token: generateTrackingToken(deliveryId),
-    history: [
-      {
-        status: fromDeliveryStatus(d.status),
-        at: new Date().toISOString(),
-        actor: "system",
-      },
-    ],
-  };
-  state = { ...state, workflow: [...state.workflow, rec] };
-  // Persist newly bootstrapped workflow (incl. passenger tracking token) to
-  // Supabase via the same push path used by every other workflow update.
-  emit();
-  return rec;
+export function getDeliveryStage(d: Delivery): DeliveryStage {
+  return d.stage ?? stageFromLegacy(d);
 }
 
-function pushAudit(entry: Omit<AuditEntry, "id" | "at">) {
-  const id = `AUD-${state.audit.length + 1}`;
-  const full: AuditEntry = {
-    ...entry,
-    id,
-    at: new Date().toISOString(),
-  };
-  state = { ...state, audit: [full, ...state.audit] };
-}
+// ---------- Lost & Found ----------
 
-function notificationId() {
-  const rand =
-    typeof crypto !== "undefined" && "randomUUID" in crypto
-      ? crypto.randomUUID()
-      : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
-  return `NTF-${rand}`;
-}
-
-// Resolves the address a given channel should deliver to. Email / Push have
-// no source of truth on the delivery record yet, so they resolve to undefined
-// and the event is simply not produced — no engine change is needed once
-// those addresses (and templates) exist.
-function resolveRecipient(d: Delivery, channel: NotificationChannel): string | undefined {
-  switch (channel) {
-    case "sms":
-    case "whatsapp":
-      return d.mobile || undefined;
-    case "email":
-      return undefined;
-    case "push":
-      return undefined;
-  }
-}
-
-// The Workflow Engine is the ONLY producer of passenger notifications.
-// Nothing outside this module may create a NotificationEvent.
-function enqueueNotifications(deliveryId: string, trigger: NotificationTrigger) {
-  const d = state.deliveries.find((x) => x.deliveryId === deliveryId);
-  if (!d) return;
-  const rec = state.workflow.find((w) => w.deliveryId === deliveryId);
-  const ctx: TemplateContext = {
-    passengerName: d.passengerName,
-    pirNumber: d.pirNumber,
-    driverName: d.driver,
-    otp: d.otpCode,
-    trackingUrl: rec ? `/passenger/${rec.token}` : undefined,
-  };
-  // Channels come from the provider registry, so enabling a newly procured
-  // provider automatically starts producing events for that channel.
-  const channels: NotificationChannel[] = enabledChannels();
-  const events: NotificationEvent[] = [];
-  for (const channel of channels) {
-    const to = resolveRecipient(d, channel);
-    if (!to) continue;
-    for (const locale of ["en", "ar"] as const) {
-      const msg = renderTemplate(trigger, channel, locale, ctx);
-      if (!msg) continue;
-      events.push({
-        id: notificationId(),
-        deliveryId,
-        status: trigger,
-        channel,
-        locale,
-        to,
-        message: msg,
-        createdAt: new Date().toISOString(),
-        status_: "queued",
-        attempts: 0,
-        provider: getProvider(channel).adapter.name,
-        passengerName: d.passengerName,
-        pirNumber: d.pirNumber,
-        operator: "Workflow Engine",
-      });
-    }
-  }
-  if (events.length) {
-    state = { ...state, notifications: [...events, ...state.notifications] };
-    for (const e of events) {
-      pushAudit({
-        action: "notification.dispatch",
-        actor: "system",
-        entityType: "notification",
-        entityId: e.id,
-        note: `${e.channel}/${e.locale} → ${e.to}`,
-      });
-    }
-    // The engine — not the UI — owns the queued → sending → sent lifecycle,
-    // so status advances regardless of which screen the operator is on.
-    dispatchQueued(events);
-  }
-}
-
-// Hands each queued event to the dispatch pipeline, which resolves the
-// transport through the provider registry. The engine never touches an
-// adapter directly, so procuring a real provider changes nothing here.
-function dispatchQueued(events: NotificationEvent[]) {
-  if (typeof window === "undefined") return;
-  dispatchEvents(events, applyDispatchPatch);
-}
-
-function applyDispatchPatch(id: string, patch: DispatchPatch) {
-  state = {
-    ...state,
-    notifications: state.notifications.map((n) =>
-      n.id === id
-        ? {
-            ...n,
-            ...patch,
-            failureReason:
-              patch.status_ === "sent" ? undefined : (patch.failureReason ?? n.failureReason),
-            sentAt: patch.status_ === "sent" ? new Date().toISOString() : n.sentAt,
-          }
-        : n,
-    ),
-  };
-  emit();
-}
-
-// Any event left mid-flight by a previous session (tab closed while queued or
-// sending) is picked back up on boot — the queue is never orphaned, exactly
-// as a server-side provider worker would behave.
-export function drainPendingNotifications() {
-  if (typeof window === "undefined") return;
-  const pending = state.notifications.filter(
-    (n) => n.status_ === "queued" || n.status_ === "sending",
-  );
-  if (!pending.length) return;
-  dispatchEvents(
-    pending.map((n) => ({
-      id: n.id,
-      channel: n.channel,
-      to: n.to,
-      locale: n.locale,
-      message: n.message,
-      attempts: 0,
-    })),
-    applyDispatchPatch,
-  );
-}
-
-export function transitionWorkflow(
-  deliveryId: string,
-  next: WorkflowStatus,
-  opts: { actor?: string; role?: Role; force?: boolean; silent?: boolean } = {},
-) {
-  ensureWorkflow(deliveryId);
-  const current = state.workflow.find((w) => w.deliveryId === deliveryId)!;
-  if (!opts.force && !canTransition(current.status, next)) return current;
-  const from = current.status;
-  const updated: WorkflowRecord = {
-    ...current,
-    status: next,
-    history: [
-      ...current.history,
-      {
-        status: next,
-        at: new Date().toISOString(),
-        actor: opts.actor ?? "system",
-        role: opts.role,
-      },
-    ],
-  };
-  state = {
-    ...state,
-    workflow: state.workflow.map((w) => (w.deliveryId === deliveryId ? updated : w)),
-  };
-  // Mirror to legacy Delivery/Case shapes so existing UI keeps working.
-  const legacyD = toDeliveryStatus(next);
-  const legacyC = toCaseStatus(next);
-  state = {
-    ...state,
-    deliveries: state.deliveries.map((d) =>
-      d.deliveryId === deliveryId ? { ...d, status: legacyD } : d,
-    ),
-  };
-  const d = state.deliveries.find((x) => x.deliveryId === deliveryId);
-  if (d) {
-    state = {
-      ...state,
-      cases: state.cases.map((c) =>
-        c.bagId === d.bagId
-          ? {
-              ...c,
-              status: legacyC,
-              resolvedAt:
-                legacyC === "Delivered"
-                  ? c.resolvedAt ?? new Date().toISOString()
-                  : c.resolvedAt,
-            }
-          : c,
-      ),
-    };
-  }
-  pushAudit({
-    action: "workflow.transition",
-    actor: opts.actor ?? "system",
-    role: opts.role,
-    entityType: "delivery",
-    entityId: deliveryId,
-    fromStatus: from,
-    toStatus: next,
-  });
-  // `silent` is used for corrective / backward transitions whose passenger
-  // message is emitted by the caller under a more accurate trigger.
-  if (!opts.silent) enqueueNotifications(deliveryId, next);
-  emit();
-  return updated;
-}
-
-export { WORKFLOW_STATUSES };
-
-export function getState() {
-  return state;
-}
-
-export function addCase(
+export async function addCase(
   input: Omit<BaggageCase, "bagId" | "status" | "storage" | "createdAt"> & {
     initialLfStatus?: LFStatus;
   },
-) {
-  const nextNum =
-    state.cases.reduce((max, c) => {
-      const n = parseInt(c.bagId.replace("BAG-", ""), 10);
-      return Number.isFinite(n) && n > max ? n : max;
-    }, 100000) + 1;
-  const now = new Date().toISOString();
-  const lfStatus: LFStatus = input.initialLfStatus ?? "Open";
-  const newCase: BaggageCase = {
-    ...input,
-    bagId: `BAG-${nextNum}`,
-    status: "Missing",
-    storage: null,
-    createdAt: now,
-    updatedAt: now,
-    lfStatus,
-    documents: input.documents ?? [],
-    lfHistory: [
-      { status: lfStatus, at: now, actor: input.internal?.createdBy ?? "system", note: "Case created" },
-    ],
+): Promise<BaggageCase | null> {
+  const payload = {
+    pir_number: input.pirNumber,
+    passenger_name: input.passengerName,
+    passenger_first_name: input.passenger?.firstName,
+    passenger_middle_name: input.passenger?.middleName,
+    passenger_last_name: input.passenger?.lastName,
+    nationality: input.passenger?.nationality,
+    passport_number: input.passenger?.passportNumber,
+    pnr: input.passenger?.pnr,
+    ticket_number: input.passenger?.ticketNumber,
+    contact_mobile: input.contact,
+    contact_mobile_alt: input.passenger?.mobile2,
+    email: input.email,
+    airline: input.flight?.airline ?? "",
+    flight_number: input.flightNumber,
+    arrival_date: input.arrivalDate || null,
+    arrival_time: input.flight?.arrivalTime,
+    origin_airport: input.flight?.originAirport,
+    destination_airport: input.flight?.destinationAirport,
+    terminal: input.flight?.terminal,
+    arrival_belt: input.flight?.arrivalBelt,
+    number_of_bags: input.baggage?.numberOfBags ?? 1,
+    weight_kg: input.baggage?.weightKg,
+    bag_brand: input.baggage?.brand,
+    bag_color: input.baggage?.color,
+    bag_type: input.baggage?.type,
+    bag_size: input.baggage?.size,
+    distinctive_marks: input.baggage?.distinctiveMarks,
+    fragile: input.baggage?.fragile ?? false,
+    rush_delivery: input.baggage?.rushDelivery ?? false,
+    description: input.description ?? "",
+    priority: input.priority ?? input.internal?.casePriority ?? "Normal",
+    delivery_method: input.delivery?.method ?? "Home Delivery",
+    full_address: input.delivery?.fullAddress ?? "",
+    preferred_delivery_time: input.delivery?.preferredDeliveryTime,
+    google_maps_link: input.delivery?.googleMapsLink,
+    department: input.internal?.department ?? "",
+    internal_notes: input.internal?.internalNotes ?? "",
+    incomplete: input.incomplete ?? false,
+    missing_fields: input.missingFields ?? [],
+    bag_tags: input.baggage?.bagTags?.length
+      ? input.baggage.bagTags
+      : input.bagTagNumber
+        ? [input.bagTagNumber]
+        : [],
   };
-  state = { ...state, cases: [newCase, ...state.cases] };
-  pushAudit({
-    action: "case.create",
-    actor: newCase.internal?.createdBy ?? "system",
-    entityType: "case",
-    entityId: newCase.bagId,
-    note: `PIR ${newCase.pirNumber} — ${newCase.passengerName}`,
-  });
-  emit();
-  return newCase;
+  try {
+    await rpc("lf_create_case", { p_payload: payload });
+    const created = state.cases.find((c) => c.pirNumber === input.pirNumber);
+    if (created && input.initialLfStatus && input.initialLfStatus !== "Open") {
+      await updateLfStatus(created.bagId, input.initialLfStatus, { force: true });
+    }
+    return state.cases.find((c) => c.pirNumber === input.pirNumber) ?? null;
+  } catch (err) {
+    reportError(err);
+    return null;
+  }
 }
 
-export function updateCase(bagId: string, patch: Partial<BaggageCase>) {
-  state = {
-    ...state,
-    cases: state.cases.map((c) =>
-      c.bagId === bagId ? { ...c, ...patch, updatedAt: new Date().toISOString() } : c,
-    ),
-  };
-  emit();
+function casePatchPayload(patch: Partial<BaggageCase>): RpcArgs {
+  const p: RpcArgs = {};
+  if (patch.passengerName !== undefined) p.passenger_name = patch.passengerName;
+  if (patch.flightNumber !== undefined) p.flight_number = patch.flightNumber;
+  if (patch.contact !== undefined) p.contact_mobile = patch.contact;
+  if (patch.email !== undefined) p.email = patch.email;
+  if (patch.description !== undefined) p.description = patch.description;
+  if (patch.arrivalDate !== undefined) p.arrival_date = patch.arrivalDate;
+  if (patch.priority !== undefined) p.priority = patch.priority;
+  if (patch.incomplete !== undefined) p.incomplete = patch.incomplete;
+  if (patch.missingFields !== undefined) p.missing_fields = patch.missingFields;
+  if (patch.storage !== undefined && patch.storage) {
+    p.storage_zone = patch.storage.zone;
+    p.storage_shelf = patch.storage.shelf;
+    p.storage_position = patch.storage.position;
+  }
+  const pa = patch.passenger;
+  if (pa) {
+    if (pa.firstName !== undefined) p.passenger_first_name = pa.firstName;
+    if (pa.middleName !== undefined) p.passenger_middle_name = pa.middleName;
+    if (pa.lastName !== undefined) p.passenger_last_name = pa.lastName;
+    if (pa.nationality !== undefined) p.nationality = pa.nationality;
+    if (pa.passportNumber !== undefined) p.passport_number = pa.passportNumber;
+    if (pa.pnr !== undefined) p.pnr = pa.pnr;
+    if (pa.ticketNumber !== undefined) p.ticket_number = pa.ticketNumber;
+    if (pa.mobile2 !== undefined) p.contact_mobile_alt = pa.mobile2;
+  }
+  const fl = patch.flight;
+  if (fl) {
+    if (fl.airline !== undefined) p.airline = fl.airline;
+    if (fl.arrivalTime !== undefined) p.arrival_time = fl.arrivalTime;
+    if (fl.originAirport !== undefined) p.origin_airport = fl.originAirport;
+    if (fl.destinationAirport !== undefined) p.destination_airport = fl.destinationAirport;
+    if (fl.terminal !== undefined) p.terminal = fl.terminal;
+    if (fl.arrivalBelt !== undefined) p.arrival_belt = fl.arrivalBelt;
+  }
+  const bg = patch.baggage;
+  if (bg) {
+    if (bg.numberOfBags !== undefined) p.number_of_bags = bg.numberOfBags;
+    if (bg.weightKg !== undefined) p.weight_kg = bg.weightKg;
+    if (bg.brand !== undefined) p.bag_brand = bg.brand;
+    if (bg.color !== undefined) p.bag_color = bg.color;
+    if (bg.type !== undefined) p.bag_type = bg.type;
+    if (bg.size !== undefined) p.bag_size = bg.size;
+    if (bg.distinctiveMarks !== undefined) p.distinctive_marks = bg.distinctiveMarks;
+    if (bg.fragile !== undefined) p.fragile = bg.fragile;
+    if (bg.rushDelivery !== undefined) p.rush_delivery = bg.rushDelivery;
+    if (bg.bagTags !== undefined) p.bag_tags = bg.bagTags;
+  }
+  const dl = patch.delivery;
+  if (dl) {
+    if (dl.method !== undefined) p.delivery_method = dl.method;
+    if (dl.fullAddress !== undefined) p.full_address = dl.fullAddress;
+    if (dl.googleMapsLink !== undefined) p.google_maps_link = dl.googleMapsLink;
+    if (dl.preferredDeliveryTime !== undefined) p.preferred_delivery_time = dl.preferredDeliveryTime;
+  }
+  const it = patch.internal;
+  if (it) {
+    if (it.department !== undefined) p.department = it.department;
+    if (it.internalNotes !== undefined) p.internal_notes = it.internalNotes;
+  }
+  return p;
 }
 
-// Enterprise edit: apply a patch, write an audit entry and (optionally) a
-// lfHistory breadcrumb so Activity Timeline reflects the modification.
-// Keeps Workflow Status unchanged unless the caller included lfStatus in the
-// patch — status changes MUST still go through updateLfStatus / the Workflow
-// Engine. Additive; leaves existing consumers of updateCase intact.
-export function editCase(
+export async function updateCase(bagId: string, patch: Partial<BaggageCase>) {
+  const id = caseUuid(bagId);
+  if (!id) return;
+  try {
+    await rpc("lf_update_case", {
+      p_case: id,
+      p_payload: casePatchPayload(patch),
+      p_expected_version: caseVersions[bagId] ?? null,
+    });
+  } catch (err) {
+    reportError(err);
+  }
+}
+
+export async function editCase(
   bagId: string,
   patch: Partial<BaggageCase>,
-  opts: { actor?: string; role?: Role; note?: string } = {},
+  _opts: { actor?: string; role?: Role; note?: string } = {},
 ) {
-  const before = state.cases.find((x) => x.bagId === bagId);
-  if (!before) return;
-  const now = new Date().toISOString();
-  state = {
-    ...state,
-    cases: state.cases.map((c) =>
-      c.bagId === bagId ? { ...c, ...patch, updatedAt: now } : c,
-    ),
-  };
-  pushAudit({
-    action: "case.update",
-    actor: opts.actor ?? "system",
-    role: opts.role,
-    entityType: "case",
-    entityId: bagId,
-    note: opts.note ?? "Case edited",
-  });
-  emit();
+  await updateCase(bagId, patch);
 }
 
-// ---------- Lost & Found status engine ----------
-// Update the canonical L&F status on a case, append to lfHistory, write an
-// audit entry, and mirror into the central Workflow Engine when a matching
-// delivery record exists so timeline / notifications / dashboard stay
-// consistent without duplicating state.
-export function updateLfStatus(
+export async function updateLfStatus(
   bagId: string,
   next: LFStatus,
-  opts: { actor?: string; role?: Role; note?: string; force?: boolean } = {},
+  _opts: { actor?: string; role?: Role; note?: string; force?: boolean } = {},
 ) {
-  const c = state.cases.find((x) => x.bagId === bagId);
-  if (!c) return;
-  const current = c.lfStatus ?? "Open";
-  if (!opts.force && current !== next && !canTransitionLf(current, next)) return;
-  const now = new Date().toISOString();
-  state = {
-    ...state,
-    cases: state.cases.map((x) =>
-      x.bagId === bagId
-        ? {
-            ...x,
-            lfStatus: next,
-            updatedAt: now,
-            lfHistory: [
-              ...(x.lfHistory ?? []),
-              { status: next, at: now, actor: opts.actor ?? "system", note: opts.note },
-            ],
-            resolvedAt:
-              next === "Delivered" || next === "Closed"
-                ? x.resolvedAt ?? now
-                : x.resolvedAt,
-          }
-        : x,
-    ),
-  };
-  pushAudit({
-    action: "case.update",
-    actor: opts.actor ?? "system",
-    role: opts.role,
-    entityType: "case",
-    entityId: bagId,
-    note: `${current} → ${next}${opts.note ? ` · ${opts.note}` : ""}`,
-  });
-  // ---- Enterprise ownership hand-off ----
-  // When the case reaches "Ready for Delivery" and no delivery record has
-  // been created yet, bootstrap one automatically so Delivery Management
-  // takes over ownership. Reuses the SAME bagId, PIR, passenger, address,
-  // and priority — no duplicate records, no copied state. The Workflow
-  // Engine mirror below then generates the tracking token and pushes the
-  // status through the shared engine.
-  if (next === "Ready for Delivery") {
-    const already = state.deliveries.find((d) => d.bagId === bagId);
-    if (!already) {
-      const cc = state.cases.find((x) => x.bagId === bagId);
-      if (cc) {
-        const addr =
-          cc.delivery?.fullAddress ??
-          [
-            cc.delivery?.building,
-            cc.delivery?.street,
-            cc.delivery?.district,
-            cc.delivery?.city,
-            cc.delivery?.governorate,
-            cc.delivery?.country,
-          ]
-            .filter(Boolean)
-            .join(", ");
-        const otp = String(Math.floor(1000 + Math.random() * 9000));
-        const eta = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-        addDelivery({
-          bagId,
-          passengerName: cc.passengerName,
-          address: addr || "—",
-          mobile: cc.contact,
-          pirNumber: cc.pirNumber,
-          priority: cc.priority ?? cc.internal?.casePriority ?? "Normal",
-          status: "Pending",
-          driver: "—",
-          eta,
-          otpStatus: "Pending",
-          otpCode: otp,
-        });
-        pushAudit({
-          action: "delivery.bootstrap",
-          actor: opts.actor ?? "system",
-          role: opts.role,
-          entityType: "case",
-          entityId: bagId,
-          note: "Delivery order created — ownership handed to Delivery Management",
-        });
-      }
-    }
+  const id = caseUuid(bagId);
+  if (!id) return;
+  try {
+    await rpc("lf_set_status", {
+      p_case: id,
+      p_status: next,
+      p_expected_version: caseVersions[bagId] ?? null,
+    });
+  } catch (err) {
+    reportError(err);
   }
-  // Mirror to Workflow Engine when a delivery exists for this bag.
-  const linkedDelivery = state.deliveries.find((d) => d.bagId === bagId);
-  if (linkedDelivery) {
-    const wf = LF_TO_WORKFLOW[next];
-    if (wf) {
-      // transitionWorkflow already handles legacy sync, audit, notifications.
-      try {
-        transitionWorkflow(linkedDelivery.deliveryId, wf, {
-          actor: opts.actor,
-          role: opts.role,
-        });
-      } catch {
-        /* no-op */
-      }
-    }
-  }
-  emit();
 }
 
-export function addCaseDocument(
-  bagId: string,
-  doc: Omit<CaseDocument, "id" | "uploadedAt">,
-) {
-  const c = state.cases.find((x) => x.bagId === bagId);
-  if (!c) return;
-  const id = `DOC-${Date.now()}`;
-  const full: CaseDocument = {
-    ...doc,
-    id,
-    uploadedAt: new Date().toISOString(),
-  };
-  state = {
-    ...state,
-    cases: state.cases.map((x) =>
-      x.bagId === bagId
-        ? { ...x, documents: [...(x.documents ?? []), full], updatedAt: full.uploadedAt }
-        : x,
-    ),
-  };
-  pushAudit({
-    action: "case.update",
-    actor: doc.uploadedBy ?? "system",
-    entityType: "case",
-    entityId: bagId,
-    note: `Document uploaded — ${doc.type}: ${doc.name}`,
-  });
-  emit();
-  return full;
+export async function bulkUpdateCases(bagIds: string[], patch: Partial<BaggageCase>) {
+  for (const bagId of bagIds) await updateCase(bagId, patch);
 }
 
-export function removeCaseDocument(bagId: string, docId: string) {
-  state = {
-    ...state,
-    cases: state.cases.map((x) =>
-      x.bagId === bagId
-        ? { ...x, documents: (x.documents ?? []).filter((d) => d.id !== docId) }
-        : x,
-    ),
-  };
-  emit();
-}
-
-export function bulkUpdateCases(bagIds: string[], patch: Partial<BaggageCase>) {
-  const now = new Date().toISOString();
-  state = {
-    ...state,
-    cases: state.cases.map((c) =>
-      bagIds.includes(c.bagId) ? { ...c, ...patch, updatedAt: now } : c,
-    ),
-  };
-  emit();
-}
-
-// ----------------------------------------------------------------------
-// Bulk hand-off from Lost & Found to Delivery Management.
-// Drives each selected case through the SAME "Ready for Delivery"
-// transition the PIR wizard uses, so the Workflow Engine remains the
-// single source of truth: it bootstraps the Delivery record, mirrors
-// the status through the workflow, and fires the automatic passenger
-// notification. No manual notifications, no direct delivery mutations.
-export function bulkAssignDelivery(
+export async function bulkAssignDelivery(
   bagIds: string[],
-  opts: { actor?: string; role?: Role } = {},
-): { handedOver: number; alreadyHandedOver: number; skipped: number } {
-  let handedOver = 0;
+  _opts: { actor?: string; role?: Role } = {},
+): Promise<{ handedOver: number; alreadyHandedOver: number; skipped: number }> {
   let alreadyHandedOver = 0;
   let skipped = 0;
+  const targets: string[] = [];
   for (const bagId of bagIds) {
     const c = state.cases.find((x) => x.bagId === bagId);
     if (!c) {
@@ -1323,578 +712,308 @@ export function bulkAssignDelivery(
       skipped++;
       continue;
     }
-    updateLfStatus(bagId, "Ready for Delivery", {
-      actor: opts.actor,
-      role: opts.role,
-      note: "Bulk hand-off to Delivery Management",
-      force: true,
-    });
-    handedOver++;
+    targets.push(bagId);
   }
-  return { handedOver, alreadyHandedOver, skipped };
+  let handedOver = 0;
+  if (targets.length) {
+    try {
+      const ids = targets.map((b) => caseUuid(b)).filter(Boolean);
+      handedOver = (await rpc("lf_bulk_set_status", {
+        p_cases: ids,
+        p_status: "Ready for Delivery",
+      })) as number;
+    } catch (err) {
+      reportError(err);
+    }
+  }
+  return { handedOver: handedOver ?? 0, alreadyHandedOver, skipped };
 }
 
-export function assignStorage(
+export async function assignStorage(
   bagId: string,
   storage: { zone: string; shelf: string; position: string },
 ) {
-  updateCase(bagId, { storage, status: "Stored" });
+  await updateCase(bagId, { storage });
 }
 
-export function addDelivery(input: Omit<Delivery, "deliveryId">) {
-  const next =
-    state.deliveries.reduce((max, d) => {
-      const n = parseInt(d.deliveryId.replace("DEL-", ""), 10);
-      return Number.isFinite(n) && n > max ? n : max;
-    }, 50000) + 1;
-  const newDel: Delivery = { ...input, deliveryId: `DEL-${next}` };
-  state = { ...state, deliveries: [newDel, ...state.deliveries] };
-  emit();
-  return newDel;
+// Documents are not part of the production schema yet.
+export function addCaseDocument(
+  _bagId: string,
+  _doc: Omit<CaseDocument, "id" | "uploadedAt">,
+): CaseDocument | undefined {
+  return undefined;
 }
+export function removeCaseDocument(_bagId: string, _docId: string) {}
 
-// ---------- Delivery Management operational helpers ----------
+// ---------- Delivery Management ----------
 
-export function getDeliveryStage(d: Delivery): DeliveryStage {
-  return d.stage ?? stageFromLegacy(d);
-}
-
-function writeDeliveryPatch(deliveryId: string, patch: Partial<Delivery>) {
-  state = {
-    ...state,
-    deliveries: state.deliveries.map((d) =>
-      d.deliveryId === deliveryId
-        ? { ...d, ...patch, lastUpdatedAt: new Date().toISOString() }
-        : d,
-    ),
-  };
-}
-
-export function setDeliveryStage(
+export async function scheduleDelivery(
   deliveryId: string,
-  stage: DeliveryStage,
-  opts: { actor?: string; role?: Role; note?: string; failureReason?: FailureReason } = {},
+  eta: string,
+  _opts: { actor?: string; role?: Role } = {},
 ) {
-  const d = state.deliveries.find((x) => x.deliveryId === deliveryId);
-  if (!d) return;
-  const now = new Date().toISOString();
-  const patch: Partial<Delivery> = {
-    stage,
-    status: stageToLegacyStatus(stage),
-  };
-  if (stage === "Driver Accepted") patch.acceptedAt = now;
-  if (stage === "Collected Bag") patch.collectedAt = now;
-  if (stage === "Delivered") patch.deliveredAt = now;
-  if (stage === "Delivery Failed" && opts.failureReason)
-    patch.failureReason = opts.failureReason;
-  if (stage === "Returned to Airport") {
-    patch.driver = "—";
-    patch.otpStatus = "Pending";
+  const id = deliveryUuid(deliveryId);
+  if (!id) return;
+  try {
+    await rpc("dm_schedule", {
+      p_delivery: id,
+      p_scheduled_for: eta,
+      p_expected_version: deliveryVersions[deliveryId] ?? null,
+    });
+  } catch (err) {
+    reportError(err);
   }
-  writeDeliveryPatch(deliveryId, patch);
-  pushAudit({
-    action: "delivery.update",
-    actor: opts.actor ?? "system",
-    role: opts.role,
-    entityType: "delivery",
-    entityId: deliveryId,
-    note:
-      opts.note ??
-      `Stage → ${stage}${opts.failureReason ? ` · ${opts.failureReason}` : ""}`,
-  });
-  // Feed the Workflow Engine (which triggers Notifications + Timeline + Audit).
-  const wf = stageToWorkflow(stage);
-  const backward = stage === "Delivery Failed" || stage === "Returned to Airport";
-  transitionWorkflow(deliveryId, wf, {
-    actor: opts.actor ?? "system",
-    role: opts.role,
-    force: backward,
-    silent: backward,
-  });
-  // Stages that carry passenger meaning but share a canonical WorkflowStatus
-  // with another stage get their own notification trigger, so the passenger
-  // never receives a message that contradicts the real operational state.
-  const extraTrigger: NotificationTrigger | null =
-    stage === "Scheduled"
-      ? "STAGE_SCHEDULED"
-      : stage === "Collected Bag"
-        ? "STAGE_COLLECTED"
-        : stage === "Delivery Failed"
-          ? "STAGE_DELIVERY_FAILED"
-          : stage === "Returned to Airport"
-            ? "STAGE_RETURNED_TO_AIRPORT"
-            : null;
-  if (extraTrigger) enqueueNotifications(deliveryId, extraTrigger);
-  // Mirror the operational stage into the L&F case so Lost & Found and
-  // Delivery Management never show conflicting statuses.
-  if (d.bagId) {
-    const lf = stageToLfStatus(stage);
-    const c = state.cases.find((x) => x.bagId === d.bagId);
-    if (c && c.lfStatus !== lf) {
-      updateLfStatus(d.bagId, lf, {
-        actor: opts.actor ?? "system",
-        role: opts.role,
-        note: opts.note ?? `Delivery stage → ${stage}`,
-        force: true,
-      });
-    }
-  }
-  recomputeAllDriverRoutes();
-  emit();
 }
 
-export function assignDriver(
+export async function assignDriver(
   deliveryId: string,
   driver: string,
   opts: { actor?: string; role?: Role; note?: string } = {},
 ) {
-  const d = state.deliveries.find((x) => x.deliveryId === deliveryId);
-  if (!d) return;
-  const prev = d.driver && d.driver !== "—" ? d.driver : null;
-  const wasAssigned = !!prev;
-  // Auto-generate OTP (only visible in the Passenger Portal — never shown
-  // to the driver or the dispatcher) and bootstrap the passenger tracking
-  // token before we transition the workflow. Both must exist before the
-  // DRIVER_ASSIGNED notification templates render, otherwise the SMS /
-  // WhatsApp link would be missing.
-  const otpCode = String(Math.floor(1000 + Math.random() * 9000));
-  ensureWorkflow(deliveryId);
-  writeDeliveryPatch(deliveryId, {
-    driver,
-    otpCode,
-    otpStatus: "Sent",
-  });
-  pushAudit({
-    action: "delivery.assign",
-    actor: opts.actor ?? "system",
-    role: opts.role,
-    entityType: "delivery",
-    entityId: deliveryId,
-    note: wasAssigned
-      ? `Delivery agent reassigned — changed from ${prev} to ${driver}`
-      : `Assigned to ${driver}`,
-  });
-  pushAudit({
-    action: "delivery.update",
-    actor: "system",
-    entityType: "delivery",
-    entityId: deliveryId,
-    note: "OTP generated automatically",
-  });
-  // Advance stage to Assigned via the Workflow Engine — this also fires
-  // the DRIVER_ASSIGNED SMS + WhatsApp templates to the passenger,
-  // including the secure Passenger Portal link.
-  setDeliveryStage(deliveryId, "Assigned", {
-    actor: opts.actor,
-    role: opts.role,
-    note: wasAssigned
-      ? `Delivery agent changed from ${prev} to ${driver}`
-      : `Delivery Agent: ${driver}`,
-  });
-  if (opts.note && opts.note.trim()) {
-    addDeliveryNote(deliveryId, opts.note, { actor: opts.actor, role: opts.role });
+  const id = deliveryUuid(deliveryId);
+  const agent = agentUuid(driver);
+  if (!id || !agent) {
+    reportError(new Error(`No active Delivery Agent record for "${driver}"`));
+    return;
+  }
+  try {
+    await rpc("dm_assign_agent", {
+      p_delivery: id,
+      p_agent: agent,
+      p_expected_version: deliveryVersions[deliveryId] ?? null,
+    });
+    if (opts.note?.trim()) await addDeliveryNote(deliveryId, opts.note);
+  } catch (err) {
+    reportError(err);
   }
 }
 
-export function bulkAssignDriver(
+export async function bulkAssignDriver(
   deliveryIds: string[],
   driver: string,
   opts: { actor?: string; role?: Role; note?: string } = {},
 ) {
-  for (const id of deliveryIds) assignDriver(id, driver, opts);
+  for (const id of deliveryIds) await assignDriver(id, driver, opts);
 }
 
-// ----- Driver-side transitions (Delivery Management is the source of
-// truth for the operational stage machine; Driver Portal UI is untouched
-// and will consume these helpers when wired). -----
-
-export function driverAccept(
-  deliveryId: string,
-  opts: { actor?: string; role?: Role } = {},
-) {
-  setDeliveryStage(deliveryId, "Driver Accepted", {
-    ...opts,
-    note: "Delivery agent accepted",
-  });
-}
-
-export function driverReject(
-  deliveryId: string,
-  opts: { actor?: string; role?: Role; note?: string } = {},
-) {
-  const d = state.deliveries.find((x) => x.deliveryId === deliveryId);
-  if (!d) return;
-  const previous = d.driver;
-  // Clear driver and move back to Scheduled so a coordinator can reassign.
-  writeDeliveryPatch(deliveryId, { driver: "—" });
-  pushAudit({
-    action: "delivery.assign",
-    actor: opts.actor ?? previous ?? "system",
-    role: opts.role,
-    entityType: "delivery",
-    entityId: deliveryId,
-    note: `Delivery agent rejected — ${previous ?? "n/a"}${opts.note ? ` · ${opts.note}` : ""}`,
-  });
-  setDeliveryStage(deliveryId, "Scheduled", {
-    actor: opts.actor,
-    role: opts.role,
-    note: "Rescheduled after driver rejection",
-  });
-}
-
-export function driverCollect(
-  deliveryId: string,
-  opts: { actor?: string; role?: Role } = {},
-) {
-  setDeliveryStage(deliveryId, "Collected Bag", opts);
-}
-
-export function driverStartTrip(
-  deliveryId: string,
-  opts: { actor?: string; role?: Role } = {},
-) {
-  setDeliveryStage(deliveryId, "Out for Delivery", opts);
-}
-
-export function driverMarkDelivered(
-  deliveryId: string,
-  opts: { actor?: string; role?: Role } = {},
-) {
-  setDeliveryStage(deliveryId, "Delivered", opts);
-}
-
-export function markDeliveryFailed(
-  deliveryId: string,
-  reason: FailureReason,
-  opts: { actor?: string; role?: Role } = {},
-) {
-  setDeliveryStage(deliveryId, "Delivery Failed", { ...opts, failureReason: reason });
-}
-
-export function markReturnedToAirport(
-  deliveryId: string,
-  opts: { actor?: string; role?: Role } = {},
-) {
-  setDeliveryStage(deliveryId, "Returned to Airport", opts);
-}
-
-export function rescheduleDelivery(
-  deliveryId: string,
-  opts: { actor?: string; role?: Role } = {},
-) {
-  // Returned/failed deliveries become available for scheduling again.
-  writeDeliveryPatch(deliveryId, { failureReason: undefined, driver: "—" });
-  setDeliveryStage(deliveryId, "Ready for Delivery", {
-    ...opts,
-    note: "Rescheduled — back in the queue",
-  });
-}
-
-export function scheduleDelivery(
-  deliveryId: string,
-  eta: string,
-  opts: { actor?: string; role?: Role } = {},
-) {
-  writeDeliveryPatch(deliveryId, { eta });
-  setDeliveryStage(deliveryId, "Scheduled", {
-    ...opts,
-    note: `Scheduled for ${new Date(eta).toLocaleString("en-GB")}`,
-  });
-}
-
-export function addDeliveryNote(
+export async function addDeliveryNote(
   deliveryId: string,
   text: string,
-  opts: { actor?: string; role?: Role } = {},
+  _opts: { actor?: string; role?: Role } = {},
 ) {
-  const d = state.deliveries.find((x) => x.deliveryId === deliveryId);
-  if (!d || !text.trim()) return;
-  const note = {
-    id: `NOTE-${Date.now()}`,
-    at: new Date().toISOString(),
-    actor: opts.actor ?? "system",
-    text: text.trim(),
-  };
-  writeDeliveryPatch(deliveryId, { notes: [...(d.notes ?? []), note] });
-  pushAudit({
-    action: "delivery.update",
-    actor: opts.actor ?? "system",
-    role: opts.role,
-    entityType: "delivery",
-    entityId: deliveryId,
-    note: `Note added: ${note.text.slice(0, 80)}`,
-  });
-  emit();
-  return note;
-}
-
-export function generateOtp(deliveryId: string, opts: { actor?: string } = {}) {
-  const code = String(Math.floor(1000 + Math.random() * 9000));
-  writeDeliveryPatch(deliveryId, { otpCode: code, otpStatus: "Sent" });
-  pushAudit({
-    action: "delivery.update",
-    actor: opts.actor ?? "system",
-    entityType: "delivery",
-    entityId: deliveryId,
-    note: "OTP generated",
-  });
-  emit();
-  return code;
-}
-
-export function resendOtp(deliveryId: string, opts: { actor?: string } = {}) {
-  const d = state.deliveries.find((x) => x.deliveryId === deliveryId);
-  if (!d) return;
-  // If the OTP was cleared (e.g. expired / never generated), mint a new
-  // one before resending. The dispatcher never sees the code — it is only
-  // exposed in the Passenger Portal.
-  const regenerated = !d.otpCode;
-  const code = d.otpCode ?? String(Math.floor(1000 + Math.random() * 9000));
-  writeDeliveryPatch(deliveryId, { otpCode: code, otpStatus: "Sent" });
-  ensureWorkflow(deliveryId);
-  pushAudit({
-    action: "delivery.update",
-    actor: opts.actor ?? "system",
-    entityType: "delivery",
-    entityId: deliveryId,
-    note: regenerated ? "OTP regenerated and resent" : "OTP resent",
-  });
-  // Re-fire the DRIVER_ASSIGNED passenger notifications so the portal
-  // link (and OTP inside it) reaches the passenger again.
-  enqueueNotifications(deliveryId, "DRIVER_ASSIGNED");
-  emit();
-  return code;
-}
-
-export function closeDelivery(deliveryId: string, opts: { actor?: string; role?: Role } = {}) {
-  const d = state.deliveries.find((x) => x.deliveryId === deliveryId);
-  if (!d) return;
-  pushAudit({
-    action: "delivery.update",
-    actor: opts.actor ?? "system",
-    role: opts.role,
-    entityType: "delivery",
-    entityId: deliveryId,
-    note: "Delivery closed",
-  });
-  transitionWorkflow(deliveryId, "CLOSED", { actor: opts.actor, role: opts.role, force: true });
-  emit();
-}
-
-export function updateDelivery(deliveryId: string, patch: Partial<Delivery>) {
-  const prev = state.deliveries.find((x) => x.deliveryId === deliveryId);
-  state = {
-    ...state,
-    deliveries: state.deliveries.map((d) =>
-      d.deliveryId === deliveryId ? { ...d, ...patch } : d,
-    ),
-  };
-  // Sync underlying case status when delivery progresses
-  const d = state.deliveries.find((x) => x.deliveryId === deliveryId);
-  if (d) {
-    const map: Record<DeliveryStatus, CaseStatus | null> = {
-      Pending: null,
-      Assigned: "Ready For Delivery",
-      "Picked Up": "Out For Delivery",
-      "Out For Delivery": "Out For Delivery",
-      Delivered: "Delivered",
-    };
-    const next = map[d.status];
-    if (next) {
-      state = {
-        ...state,
-        cases: state.cases.map((c) =>
-          c.bagId === d.bagId
-            ? {
-                ...c,
-                status: next,
-                resolvedAt:
-                  next === "Delivered"
-                    ? new Date().toISOString()
-                    : c.resolvedAt,
-              }
-            : c,
-        ),
-      };
-    }
+  const id = deliveryUuid(deliveryId);
+  if (!id || !text.trim()) return;
+  try {
+    await rpc("dm_add_note", { p_delivery: id, p_body: text.trim() });
+  } catch (err) {
+    reportError(err);
   }
-  emit();
-  // Feed the central workflow engine when the delivery status changed so
-  // notifications, audit, and passenger portal timeline stay in sync.
-  if (prev && d && prev.status !== d.status) {
-    transitionWorkflow(deliveryId, fromDeliveryStatus(d.status), {
-      actor: patch.driver ?? "system",
+}
+
+export async function resendOtp(deliveryId: string, _opts: { actor?: string } = {}) {
+  const id = deliveryUuid(deliveryId);
+  if (!id) return;
+  try {
+    await rpc("dm_resend_otp", { p_delivery: id });
+  } catch (err) {
+    reportError(err);
+  }
+}
+
+export const generateOtp = resendOtp;
+
+export async function markDeliveryFailed(
+  deliveryId: string,
+  reason: FailureReason,
+  opts: { actor?: string; role?: Role; note?: string } = {},
+) {
+  const id = deliveryUuid(deliveryId);
+  if (!id) return;
+  try {
+    await rpc("dm_mark_failed", {
+      p_delivery: id,
+      p_reason_code: String(reason),
+      p_note: opts.note ?? "",
+      p_expected_version: deliveryVersions[deliveryId] ?? null,
     });
+  } catch (err) {
+    reportError(err);
   }
 }
 
-export function addFeedback(input: Omit<Feedback, "id" | "at">) {
-  const next =
-    state.feedback.reduce((max, f) => {
-      const n = parseInt(f.id.replace("FB-", ""), 10);
-      return Number.isFinite(n) && n > max ? n : max;
-    }, 3000) + 1;
-  const f: Feedback = { ...input, id: `FB-${next}`, at: new Date().toISOString() };
-  state = { ...state, feedback: [f, ...state.feedback] };
-  emit();
-  return f;
+export async function markReturnedToAirport(
+  deliveryId: string,
+  _opts: { actor?: string; role?: Role } = {},
+) {
+  const id = deliveryUuid(deliveryId);
+  if (!id) return;
+  try {
+    await rpc("dm_mark_returned", {
+      p_delivery: id,
+      p_expected_version: deliveryVersions[deliveryId] ?? null,
+    });
+  } catch (err) {
+    reportError(err);
+  }
 }
 
+export async function closeDelivery(
+  deliveryId: string,
+  _opts: { actor?: string; role?: Role } = {},
+) {
+  const id = deliveryUuid(deliveryId);
+  if (!id) return;
+  try {
+    await rpc("dm_close", { p_delivery: id });
+  } catch (err) {
+    reportError(err);
+  }
+}
+
+export async function rescheduleDelivery(
+  deliveryId: string,
+  _opts: { actor?: string; role?: Role } = {},
+) {
+  const id = deliveryUuid(deliveryId);
+  if (!id) return;
+  try {
+    await rpc("dm_schedule", {
+      p_delivery: id,
+      p_scheduled_for: new Date().toISOString(),
+      p_expected_version: deliveryVersions[deliveryId] ?? null,
+    });
+  } catch (err) {
+    reportError(err);
+  }
+}
+
+/** Generic stage move. Routed to the Workflow Engine, which validates it. */
+export async function setDeliveryStage(
+  deliveryId: string,
+  stage: DeliveryStage,
+  opts: { actor?: string; role?: Role; note?: string; failureReason?: FailureReason } = {},
+) {
+  if (stage === "Delivery Failed") {
+    await markDeliveryFailed(deliveryId, (opts.failureReason ?? "OTHER") as FailureReason, opts);
+    return;
+  }
+  if (stage === "Returned to Airport") {
+    await markReturnedToAirport(deliveryId, opts);
+    return;
+  }
+  const id = deliveryUuid(deliveryId);
+  if (!id) return;
+  try {
+    await rpc("wf_transition", {
+      p_delivery: id,
+      p_to: stage,
+      p_reason: opts.note ?? "",
+      p_metadata: {},
+      p_expected_version: deliveryVersions[deliveryId] ?? null,
+    });
+  } catch (err) {
+    reportError(err);
+  }
+}
+
+// ---------- Delivery Agent actions ----------
+
+async function agentAdvance(deliveryId: string, stage: DeliveryStage) {
+  const id = deliveryUuid(deliveryId);
+  if (!id) return;
+  try {
+    await rpc("agent_advance", {
+      p_delivery: id,
+      p_to: stage,
+      p_expected_version: deliveryVersions[deliveryId] ?? null,
+    });
+  } catch (err) {
+    reportError(err);
+  }
+}
+
+export const driverAccept = (deliveryId: string, _opts: { actor?: string; role?: Role } = {}) =>
+  agentAdvance(deliveryId, "Driver Accepted");
+export const driverCollect = (deliveryId: string, _opts: { actor?: string; role?: Role } = {}) =>
+  agentAdvance(deliveryId, "Collected Bag");
+export const driverStartTrip = (deliveryId: string, _opts: { actor?: string; role?: Role } = {}) =>
+  agentAdvance(deliveryId, "Out for Delivery");
+export const driverReject = (deliveryId: string, _opts: { actor?: string; role?: Role; note?: string } = {}) =>
+  agentAdvance(deliveryId, "Scheduled");
+
+export async function driverMarkDelivered(
+  deliveryId: string,
+  opts: { actor?: string; role?: Role; code?: string } = {},
+) {
+  const id = deliveryUuid(deliveryId);
+  if (!id) return;
+  try {
+    await rpc("agent_complete_delivery", { p_delivery: id, p_code: opts.code ?? "" });
+  } catch (err) {
+    reportError(err);
+  }
+}
+
+export async function reportDriverPosition(
+  _driver: string,
+  pos: { lat: number; lng: number; accuracy?: number },
+) {
+  if (!Number.isFinite(pos.lat) || !Number.isFinite(pos.lng)) return;
+  try {
+    await rpc("agent_report_position", {
+      p_lat: pos.lat,
+      p_lng: pos.lng,
+      p_accuracy: pos.accuracy ?? null,
+    });
+  } catch (err) {
+    reportError(err);
+  }
+}
+
+// ---------- Legacy no-ops kept for API compatibility ----------
+// These wrote to `app_state`; the corresponding state is now owned by the
+// Workflow Engine and produced as a side effect of the RPCs above.
+
+export function transitionWorkflow(
+  deliveryId: string,
+  _next: WorkflowStatus,
+  _opts: { actor?: string; role?: Role; force?: boolean; silent?: boolean } = {},
+) {
+  return getWorkflow(deliveryId);
+}
+
+export function updateDelivery(_deliveryId: string, _patch: Partial<Delivery>) {}
+export function addDelivery(_input: Omit<Delivery, "deliveryId">) {
+  return undefined;
+}
+export function setNotificationStatus(_id: string, _status: NotificationEvent["status_"]) {}
+export function drainPendingNotifications() {}
+
+export function addFeedback(_input: Omit<Feedback, "id" | "at">) {
+  return undefined;
+}
+export function addQualityIncident(_input: Omit<QualityIncident, "id" | "at">) {
+  return undefined;
+}
+
+// Contact Center is not backed by production tables yet — these stay
+// in-memory for the current session and are reported as a known gap.
 export function addCallLog(input: Omit<CallLog, "id" | "at">) {
-  const next =
-    state.callLogs.reduce((max, l) => {
-      const n = parseInt(l.id.replace("CL-", ""), 10);
-      return Number.isFinite(n) && n > max ? n : max;
-    }, 9000) + 1;
-  const log: CallLog = { ...input, id: `CL-${next}`, at: new Date().toISOString() };
+  const log: CallLog = { ...input, id: `CL-${Date.now()}`, at: new Date().toISOString() };
   state = { ...state, callLogs: [log, ...state.callLogs] };
-  emit();
+  notify();
   return log;
 }
 
-export function addQualityIncident(
-  input: Omit<QualityIncident, "id" | "at">,
-) {
-  const next =
-    state.qualityIncidents.reduce((max, i) => {
-      const n = parseInt(i.id.replace("QI-", ""), 10);
-      return Number.isFinite(n) && n > max ? n : max;
-    }, 4000) + 1;
-  const incident: QualityIncident = {
-    ...input,
-    id: `QI-${next}`,
-    at: new Date().toISOString(),
-  };
-  state = {
-    ...state,
-    qualityIncidents: [incident, ...state.qualityIncidents],
-  };
-  emit();
-  return incident;
-}
-
-export { driverPool };
-
-// ---------- Import/Export audit ----------
 export function logIoAudit(entry: Omit<ImportAuditEntry, "id" | "at">) {
-  const id = `IO-${state.ioAudit.length + 1}`;
-  const full: ImportAuditEntry = {
-    ...entry,
-    id,
-    at: new Date().toISOString(),
-  };
+  const full: ImportAuditEntry = { ...entry, id: `IO-${Date.now()}`, at: new Date().toISOString() };
   state = { ...state, ioAudit: [full, ...state.ioAudit] };
-  emit();
+  notify();
   return full;
 }
 
-// ---------- Station configuration ----------
-// Origin used by the route optimization engine. Editable from Settings ›
-// Airport so the platform can be deployed at any airport.
 export function setStation(patch: Partial<Station>) {
   state = { ...state, station: { ...state.station, ...patch } };
-  recomputeAllDriverRoutes();
-  emit();
+  notify();
   return state.station;
-}
-
-// ---------- Route Optimization Engine ----------
-// The Workflow Engine owns route optimization. It runs whenever the
-// inputs change: driver assignment, delivery stage, station config, or
-// a new position report from the Driver Portal. Drivers only ever read
-// `driverRoutes[driver]` — they never optimize their own routes.
-import { optimizeRoute } from "./routing/optimize";
-
-function computeDriverRoute(driver: string): DriverRoute | null {
-  const open = state.deliveries.filter(
-    (d) =>
-      d.driver === driver &&
-      getDeliveryStage(d) !== "Delivered" &&
-      getDeliveryStage(d) !== "Delivery Failed" &&
-      getDeliveryStage(d) !== "Returned to Airport",
-  );
-  if (!open.length) return null;
-  const gps = state.driverPositions[driver];
-  const lastCompleted = [...state.deliveries]
-    .filter((d) => d.driver === driver && getDeliveryStage(d) === "Delivered")
-    .sort((a, b) => (a.deliveredAt ?? "").localeCompare(b.deliveredAt ?? ""))
-    .reverse()
-    .find((d) => d.destination)?.destination;
-  let origin: DriverRoute["origin"];
-  if (gps) {
-    origin = { lat: gps.lat, lng: gps.lng, source: "gps" };
-  } else if (lastCompleted) {
-    origin = { lat: lastCompleted.lat, lng: lastCompleted.lng, source: "lastStop" };
-  } else {
-    origin = { lat: state.station.lat, lng: state.station.lng, source: "station" };
-  }
-  const ordered = optimizeRoute(open, { lat: origin.lat, lng: origin.lng });
-  return {
-    driver,
-    origin,
-    stops: ordered.map((d) => d.deliveryId),
-    computedAt: new Date().toISOString(),
-  };
-}
-
-function affectedDrivers(): string[] {
-  const set = new Set<string>();
-  for (const d of state.deliveries) if (d.driver && d.driver !== "—") set.add(d.driver);
-  for (const k of Object.keys(state.driverPositions)) set.add(k);
-  for (const k of Object.keys(state.driverRoutes)) set.add(k);
-  return [...set];
-}
-
-function recomputeAllDriverRoutes() {
-  const next: Record<string, DriverRoute> = {};
-  for (const driver of affectedDrivers()) {
-    const r = computeDriverRoute(driver);
-    if (r) next[driver] = r;
-  }
-  state = { ...state, driverRoutes: next };
-}
-
-// Called by the Driver Portal after acquiring / refreshing GPS. Throttling
-// is the caller's responsibility — the store simply records the fix and
-// triggers a recompute for that driver.
-export function reportDriverPosition(
-  driver: string,
-  pos: { lat: number; lng: number; accuracy?: number },
-) {
-  if (!driver || !Number.isFinite(pos.lat) || !Number.isFinite(pos.lng)) return;
-  state = {
-    ...state,
-    driverPositions: {
-      ...state.driverPositions,
-      [driver]: { lat: pos.lat, lng: pos.lng, accuracy: pos.accuracy, at: new Date().toISOString() },
-    },
-  };
-  const r = computeDriverRoute(driver);
-  state = {
-    ...state,
-    driverRoutes: r
-      ? { ...state.driverRoutes, [driver]: r }
-      : Object.fromEntries(Object.entries(state.driverRoutes).filter(([k]) => k !== driver)),
-  };
-  emit();
-}
-
-// ---------- Notification helpers ----------
-export function setNotificationStatus(
-  id: string,
-  status: NotificationEvent["status_"],
-) {
-  state = {
-    ...state,
-    notifications: state.notifications.map((n) =>
-      n.id === id
-        ? {
-            ...n,
-            status_: status,
-            sentAt: status === "sent" ? new Date().toISOString() : n.sentAt,
-          }
-        : n,
-    ),
-  };
-  emit();
 }
