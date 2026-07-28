@@ -181,17 +181,21 @@ function AuthGate() {
   const perms = useLivePermissions(session?.user?.id ?? null);
 
   useEffect(() => {
-    const handlePersistenceStatus = (event: Event) => {
-      const detail = (event as CustomEvent<{ status?: string; message?: string }>).detail;
-      if (detail?.status === "error" && detail.message) {
-        toast.error("Shared data was not saved", {
-          description: detail.message,
-          duration: 10_000,
-        });
-      }
+    // Surfaces Workflow Engine rejections (validation, permissions, and
+    // optimistic-concurrency conflicts) raised by the operations store.
+    const handleOpsError = (event: Event) => {
+      const detail = (event as CustomEvent<{ message?: string }>).detail;
+      if (!detail?.message) return;
+      const conflict = /version|40001|conflict/i.test(detail.message);
+      toast.error(conflict ? "This record changed elsewhere" : "Operation rejected", {
+        description: conflict
+          ? "Reload the page and retry — someone else updated this record."
+          : detail.message,
+        duration: 10_000,
+      });
     };
-    window.addEventListener("app:persistence-status", handlePersistenceStatus);
-    return () => window.removeEventListener("app:persistence-status", handlePersistenceStatus);
+    window.addEventListener("app:ops-error", handleOpsError);
+    return () => window.removeEventListener("app:ops-error", handleOpsError);
   }, []);
 
   // Live RBAC is authoritative. Accounts without an Administration record
