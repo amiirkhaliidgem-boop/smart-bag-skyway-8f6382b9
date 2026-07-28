@@ -128,11 +128,9 @@ export const mutatePassengerView = createServerFn({ method: "POST" })
   .handler(async ({ data }): Promise<{ ok: boolean }> => {
     const sb = serverPublicClient();
     if (data.action === "confirm-delivery") {
-      const { data: ok, error } = await sb.rpc("passenger_confirm_delivery", {
-        p_token: data.token,
-      });
-      if (error) throw new Error(error.message);
-      return { ok: Boolean(ok) };
+      // Delivery completion is owned by the Delivery Agent's one-time code
+      // verification in the workflow engine. Passengers cannot self-confirm.
+      return { ok: false };
     }
     if (data.action === "report-misconduct") {
       const { data: ok, error } = await sb.rpc("passenger_report_misconduct", {
