@@ -1,44 +1,46 @@
-## Where things actually stand
+Remediation plan derived from the Production Readiness Review. No new features — hardening only. Each block is independently shippable.
 
-Verified by reading the code, not assumed:
+## Block 1 — Critical: scale-safe data reads
 
-- `src/lib/store.ts` (1019 lines) is already a read-through projection over PostgreSQL: `refreshOps()` pulls `loadOpsSnapshot`, and every mutation (`lf_*`, `dm_*`, `agent_*`) goes through `callOpsRpc`. `app_state` is no longer read or written.
-- `src/lib/admin.functions.ts` already exposes the full Phase C RBAC surface: `getAdminWorkspace`, `saveAppUser`, `setUserStatus`, `deleteAppUser`, `resetUserCredential`, `assignUserRole`, `saveRole`, `deleteRole`, `savePermissions`, `touchLastLogin`.
-- The remaining work is not "migrate screens" — it is a set of **no-op stubs and dead bindings** left behind by the Phase A rewrite:
-  - `driverPool` is an empty array (`store.ts:374`), and `src/lib/admin/agents.ts` still reads it — agent pickers can render empty.
-  - Stubs that silently do nothing: `addCaseDocument`, `removeCaseDocument`, `updateDelivery`, `addDelivery`, `setNotificationStatus`, `drainPendingNotifications`, `addFeedback`, `addQualityIncident`, `addCallLog`, `logIoAudit`, `setStation`, `transitionWorkflow`.
-  - `src/lib/__tests__/otp-flow.test.ts` still calls the old synchronous store API and cannot pass.
+The operational snapshot pulls 17 tables with no pagination and will silently truncate at PostgREST's 1000-row cap.
 
-## Phase B — Operational portals
+- Add explicit bounds and server-side filtering to `src/lib/ops.server.ts`: cap `baggage_cases` and `deliveries` to open/active records plus a recent window, cap journals to the last N, and return a `truncated` flag per collection.
+- Surface the flag in the UI as a "showing most recent N" notice rather than silently hiding rows.
+- Split the monolithic snapshot into module-scoped server functions (`loadDispatchSnapshot`, `loadLostFoundSnapshot`, `loadAdminSnapshot`) so a dispatcher click no longer refetches Lost & Found, feedback, quality and route tables.
 
-1. **Delivery Agent portal** (`src/routes/driver-portal.tsx`): keep the UI as-is; confirm every action routes to `agent_advance` / `agent_complete_delivery` / `agent_report_position`, and that the route list reads `agent_routes` / `agent_route_stops` from the snapshot rather than any client-side optimizer. Remove the client `routing/optimize.ts` call path if it is still in play.
-2. **Agent directory**: replace `driverPool` with a real source backed by the `list_delivery_agents()` RPC, surfaced through the ops snapshot so assignment dialogs (dispatch, bulk assign) show live agents.
-3. **Passenger portal / Track Baggage**: `passenger.$token.tsx` is already on `passenger_get_view`; point `src/components/tracking/track-baggage.tsx` and `passenger.index.tsx` at the same resolver so there is one lookup path.
-4. **Feedback + quality**: wire `addFeedback` to `passenger_submit_feedback` and `addQualityIncident` to a real write (new `quality_incidents` insert path), so the read-only dashboards have real producers.
+## Block 2 — Critical: real notification delivery
 
-## Phase C — Administration
+- Add a Twilio/WhatsApp adapter behind the existing adapter registry (no engine changes; provider chosen by env).
+- Add a server route at `src/routes/api/public/notifications/drain.ts` that verifies a shared secret, calls `notif_claim_batch`, dispatches through the adapter, and reports back via `notif_record_result`.
+- Schedule it with pg_cron against the stable project URL.
+- Keep the simulated adapter as the default when no provider secret is set.
 
-1. Point `src/routes/admin.tsx` fully at `admin.functions.ts` (it largely is); remove any residual store reads for users/roles.
-2. Persist admin-side settings that are currently stubs: `setStation` → `stations` table; `logIoAudit` → `admin_audit_log`; notification state changes → read-only (the outbox owns them, so the stubs get deleted rather than implemented).
-3. Contact Center call logs and case documents have **no production tables**. Two options — I'll default to (a) unless you say otherwise:
-   - (a) leave them explicitly out of scope and mark the surfaces as non-persistent in the UI, or
-   - (b) add `call_logs` and `case_documents` tables + RLS in a migration.
+## Block 3 — High: security hardening (migration)
 
-## Decommission
+- `REVOKE EXECUTE ... FROM anon` on every staff-only SECURITY DEFINER function: all `lf_*`, `dm_*`, `agent_*`, `notif_*`, plus `agent_owns`, `current_app_user_id`, `is_ops_staff`. Keep anon execute only on `passenger_get_view`, `passenger_submit_feedback`, `passenger_report_misconduct`, and `login_identity_for_username`.
+- Add a throttle table + check inside the passenger RPCs (per-token attempt counter with a short window) and record `view_count` / `last_viewed_at` on each successful view.
+- Enable leaked-password protection in Supabase Auth settings.
 
-Delete the dead stubs from `store.ts`, delete or rewrite `src/lib/__tests__/otp-flow.test.ts` against the RPC layer, and drop `app_state`, `app_state_history`, `save_app_state`, `archive_app_state_version` in a final migration.
+## Block 4 — High: stop the public-route auth error
 
-## System-wide validation (after Phase C)
+- Gate `boot()` in `src/lib/store.ts` so it only hydrates once an authenticated session exists, and never on `/passenger/*`. Removes the recurring `Unauthorized: No authorization header provided` console error.
 
-1. **Static**: typecheck + lint + `rg` sweep proving no module imports a removed stub and no file references `app_state`.
-2. **Database**: Supabase linter + security scan; confirm RLS and GRANTs on every table; confirm no `SECURITY DEFINER` function is executable by `anon` unless intentionally public.
-3. **End-to-end workflow run** driven through the live app with a real signed-in session: create a PIR → set Ready for Delivery → confirm auto-created delivery → schedule → assign agent (OTP + passenger token minted) → agent accepts / collects / starts → OTP-verified delivery → feedback. After each step, assert the state is identical in L&F, Dispatch, Delivery Details, Workflow Monitor, Timeline, Audit, Notifications, Agent Portal, and Passenger Portal.
-4. **RBAC matrix**: sign in as each role (admin, L&F officer, coordinator, agent) and verify sidebar visibility plus direct-URL guards.
-5. **Runtime consistency**: same route in preview iframe and a fresh tab must render identical data after refresh.
-6. **Report**: a written validation report listing what passed, what is unverified, and any remaining architectural gaps.
+## Block 5 — Medium: indexes and route engine
+
+- Migration adding covering indexes for the 14 unindexed foreign keys listed in the review.
+- Rewrite `wf_recompute_route` to avoid the per-call temp table and delete-loop (single ordered pass in SQL), since it runs on every agent position report.
+
+## Block 6 — Medium: consolidate authorization
+
+- Retire the static path→role matrix in `src/lib/rbac.ts` in favour of the live permission matrix in `src/lib/permissions.tsx`, keeping one code path for sidebar visibility and route guards.
+
+## Block 7 — Low: cleanup
+
+- Remove the demo QR lookup string, the "Demo PIN: 1234" i18n strings, the unused `src/lib/integrations/otp.ts` stub (its `verify()` returns true unconditionally), the client-side `src/lib/routing/optimize.ts` now owned by the database, and the dead `contact-center-full.tsx`.
+- Refresh `.lovable/plan.md` to reflect the completed migration.
 
 ## Technical notes
 
-- Every mutation keeps passing the row `version` for optimistic concurrency; `40001` surfaces as a reload-and-retry toast.
-- No business rules move into React — screens call RPCs and render.
-- UI is frozen: this phase changes data sources, not layout.
+- Blocks 3 and 5 are pure migrations and can ship together.
+- Block 1 changes the snapshot contract, so the store selectors and any component reading `driverPool` must be updated in the same change.
+- No UI/layout changes anywhere in this plan.
