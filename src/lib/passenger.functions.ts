@@ -60,7 +60,7 @@ export const getPassengerViewByToken = createServerFn({ method: "GET" })
   .inputValidator((input) => z.object({ token: z.string().min(4) }).parse(input))
   .handler(async ({ data }): Promise<PassengerView> => {
     const sb = serverPublicClient();
-    const { data: rpcData, error } = await sb.rpc("get_passenger_view", {
+    const { data: rpcData, error } = await sb.rpc("passenger_get_view", {
       p_token: data.token,
     });
     if (error) {
@@ -68,7 +68,7 @@ export const getPassengerViewByToken = createServerFn({ method: "GET" })
       return EMPTY_VIEW;
     }
     if (!rpcData) return EMPTY_VIEW;
-    const row = rpcData as {
+    const row = rpcData as unknown as {
       passenger_name: string | null;
       status: string | null;
       stage: string | null;
@@ -128,11 +128,9 @@ export const mutatePassengerView = createServerFn({ method: "POST" })
   .handler(async ({ data }): Promise<{ ok: boolean }> => {
     const sb = serverPublicClient();
     if (data.action === "confirm-delivery") {
-      const { data: ok, error } = await sb.rpc("passenger_confirm_delivery", {
-        p_token: data.token,
-      });
-      if (error) throw new Error(error.message);
-      return { ok: Boolean(ok) };
+      // Delivery completion is owned by the Delivery Agent's one-time code
+      // verification in the workflow engine. Passengers cannot self-confirm.
+      return { ok: false };
     }
     if (data.action === "report-misconduct") {
       const { data: ok, error } = await sb.rpc("passenger_report_misconduct", {
