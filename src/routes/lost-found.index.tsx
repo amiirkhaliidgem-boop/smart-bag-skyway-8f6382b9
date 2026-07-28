@@ -292,6 +292,8 @@ function LostFoundPage() {
         <Kpi label="Delivered / Closed" value={kpis.delivered} tone="emerald" />
       </div>
 
+      <SnapshotTruncationNotice collection="cases" noun="cases" />
+
       {selected.size > 0 && (
         <BulkToolbar
           count={selected.size}

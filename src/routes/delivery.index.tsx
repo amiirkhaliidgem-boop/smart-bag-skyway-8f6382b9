@@ -283,6 +283,8 @@ function DispatchCenter() {
         </CardHeader>
       </Card>
 
+      <SnapshotTruncationNotice collection="deliveries" noun="deliveries" />
+
       <Card>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
