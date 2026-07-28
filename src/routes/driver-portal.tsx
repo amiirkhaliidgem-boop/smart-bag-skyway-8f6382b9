@@ -67,32 +67,56 @@ function DriverPortalBody() {
   const navigate = useNavigate();
   const [driver, setDriver] = useState<string | null>(null);
   const [resolving, setResolving] = useState(true);
+  const [hasSession, setHasSession] = useState(false);
 
   // The signed-in account IS the agent — there is no second login here.
+  // The session can hydrate late (embedded preview iframes restore storage
+  // slower), so we also re-resolve on every auth state change instead of
+  // latching the first, possibly session-less, lookup.
   useEffect(() => {
     let cancelled = false;
-    void (async () => {
-      const { data: auth } = await supabase.auth.getUser();
-      const uid = auth.user?.id;
-      if (!uid) {
-        if (!cancelled) setResolving(false);
-        return;
-      }
+
+    const resolveFor = async (userId: string | undefined, metaName?: unknown) => {
+      if (!userId) return;
       const { data } = await supabase
         .from("app_users")
         .select("full_name")
-        .eq("user_id", uid)
+        .eq("user_id", userId)
         .maybeSingle();
       if (cancelled) return;
       setDriver(
         data?.full_name ??
-          (auth.user?.user_metadata?.full_name as string | undefined) ??
-          null,
+          (typeof metaName === "string" && metaName ? metaName : null),
       );
       setResolving(false);
+    };
+
+    void (async () => {
+      const { data: auth } = await supabase.auth.getUser();
+      if (cancelled) return;
+      if (!auth.user?.id) {
+        // No session yet — stay in the loading state and wait for
+        // onAuthStateChange rather than showing the "not linked" message.
+        return;
+      }
+      setHasSession(true);
+      await resolveFor(auth.user.id, auth.user.user_metadata?.full_name);
     })();
+
+    const { data: sub } = supabase.auth.onAuthStateChange((_evt, session) => {
+      if (cancelled) return;
+      if (!session?.user?.id) {
+        setHasSession(false);
+        setDriver(null);
+        return;
+      }
+      setHasSession(true);
+      void resolveFor(session.user.id, session.user.user_metadata?.full_name);
+    });
+
     return () => {
       cancelled = true;
+      sub.subscription.unsubscribe();
     };
   }, []);
 
@@ -103,20 +127,22 @@ function DriverPortalBody() {
 
   return (
     <div dir={dir} lang={lang}>
-      {resolving ? (
-        <div className="py-16 text-center text-sm text-muted-foreground">Loading…</div>
-      ) : !driver ? (
-        <div className="py-16 text-center text-sm text-muted-foreground">
-          This account is not linked to a Delivery Agent record.
-        </div>
-      ) : (
-        <DriverDashboard driver={driver} onSignOut={() => void signOut()} />
-      )}
+      <DriverShell agentName={driver} onSignOut={() => void signOut()}>
+        {resolving || !hasSession ? (
+          <div className="py-16 text-center text-sm text-muted-foreground">Loading…</div>
+        ) : !driver ? (
+          <div className="py-16 text-center text-sm text-muted-foreground">
+            This account is not linked to a Delivery Agent record.
+          </div>
+        ) : (
+          <DriverDashboard driver={driver} />
+        )}
+      </DriverShell>
     </div>
   );
 }
 
-function DriverDashboard({ driver, onSignOut }: { driver: string; onSignOut: () => void }) {
+function DriverDashboard({ driver }: { driver: string }) {
   const { t } = useDriverLang();
   // Route optimization is owned by the Workflow Engine (see
   // `computeDriverRoute` in src/lib/store.ts). The Driver Portal only
