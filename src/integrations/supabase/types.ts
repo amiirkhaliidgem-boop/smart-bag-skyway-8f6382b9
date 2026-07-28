@@ -1602,6 +1602,145 @@ export type Database = {
           saved: boolean
         }[]
       }
+      wf_actor: {
+        Args: never
+        Returns: {
+          app_user_id: string
+          display_name: string
+          role_key: string
+        }[]
+      }
+      wf_journal: {
+        Args: {
+          p_action: string
+          p_case: string
+          p_delivery: string
+          p_detail: string
+          p_from: Database["public"]["Enums"]["workflow_status"]
+          p_from_stage: Database["public"]["Enums"]["delivery_stage"]
+          p_metadata?: Json
+          p_module: Database["public"]["Enums"]["timeline_module"]
+          p_reason?: string
+          p_title: string
+          p_to: Database["public"]["Enums"]["workflow_status"]
+          p_to_stage: Database["public"]["Enums"]["delivery_stage"]
+        }
+        Returns: undefined
+      }
+      wf_open_delivery: {
+        Args: { p_case: string }
+        Returns: {
+          accepted_at: string | null
+          address: string
+          assigned_agent_id: string | null
+          assigned_at: string | null
+          attempt_no: number
+          case_id: string
+          closed_at: string | null
+          collected_at: string | null
+          created_at: string
+          created_by: string | null
+          delivered_at: string | null
+          delivery_no: string
+          delivery_type: Database["public"]["Enums"]["delivery_method"]
+          dest_lat: number | null
+          dest_lng: number | null
+          failed_at: string | null
+          failure_note: string
+          failure_reason_id: string | null
+          id: string
+          mobile: string
+          passenger_name: string
+          priority: Database["public"]["Enums"]["case_priority"]
+          returned_at: string | null
+          scheduled_for: string | null
+          stage: Database["public"]["Enums"]["delivery_stage"]
+          started_at: string | null
+          station_id: string
+          updated_at: string
+          version: number
+          workflow_status: Database["public"]["Enums"]["workflow_status"]
+        }
+        SetofOptions: {
+          from: "*"
+          to: "deliveries"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      wf_queue_notification: {
+        Args: {
+          p_delivery: string
+          p_trigger: Database["public"]["Enums"]["workflow_status"]
+        }
+        Returns: undefined
+      }
+      wf_refresh_passenger_view: {
+        Args: { p_delivery: string }
+        Returns: undefined
+      }
+      wf_stage_allowed: {
+        Args: {
+          p_from: Database["public"]["Enums"]["delivery_stage"]
+          p_to: Database["public"]["Enums"]["delivery_stage"]
+        }
+        Returns: boolean
+      }
+      wf_stage_lf: {
+        Args: { p: Database["public"]["Enums"]["delivery_stage"] }
+        Returns: Database["public"]["Enums"]["lf_status"]
+      }
+      wf_stage_workflow: {
+        Args: { p: Database["public"]["Enums"]["delivery_stage"] }
+        Returns: Database["public"]["Enums"]["workflow_status"]
+      }
+      wf_transition: {
+        Args: {
+          p_delivery: string
+          p_expected_version?: number
+          p_metadata?: Json
+          p_reason?: string
+          p_to: Database["public"]["Enums"]["delivery_stage"]
+        }
+        Returns: {
+          accepted_at: string | null
+          address: string
+          assigned_agent_id: string | null
+          assigned_at: string | null
+          attempt_no: number
+          case_id: string
+          closed_at: string | null
+          collected_at: string | null
+          created_at: string
+          created_by: string | null
+          delivered_at: string | null
+          delivery_no: string
+          delivery_type: Database["public"]["Enums"]["delivery_method"]
+          dest_lat: number | null
+          dest_lng: number | null
+          failed_at: string | null
+          failure_note: string
+          failure_reason_id: string | null
+          id: string
+          mobile: string
+          passenger_name: string
+          priority: Database["public"]["Enums"]["case_priority"]
+          returned_at: string | null
+          scheduled_for: string | null
+          stage: Database["public"]["Enums"]["delivery_stage"]
+          started_at: string | null
+          station_id: string
+          updated_at: string
+          version: number
+          workflow_status: Database["public"]["Enums"]["workflow_status"]
+        }
+        SetofOptions: {
+          from: "*"
+          to: "deliveries"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
     }
     Enums: {
       app_role:
