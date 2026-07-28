@@ -168,7 +168,7 @@ export function scheduleRemotePush(getSnapshot: () => unknown): void {
   if (!session) return; // not signed in yet — no push
   // Seed/default state must never be allowed to overwrite Supabase while the
   // authoritative snapshot is still loading.
-  if (!hydrated || status === "loading" || status === "uninitialized") return;
+  if (!hydrated || status !== "hydrated") return;
   queuedSnapshot = getSnapshot;
   if (saveInFlight || pushTimer) return;
   pushTimer = setTimeout(() => {
