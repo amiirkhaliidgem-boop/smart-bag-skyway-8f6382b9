@@ -335,7 +335,14 @@ export interface SnapshotTruncation {
   deliveries: boolean;
   audit: boolean;
   notifications: boolean;
-  limits: { cases: number; deliveries: number; audit: number; notifications: number };
+  timeline: boolean;
+  limits: {
+    cases: number;
+    deliveries: number;
+    audit: number;
+    notifications: number;
+    timeline: number;
+  };
 }
 
 const EMPTY_TRUNCATION: SnapshotTruncation = {
@@ -343,7 +350,8 @@ const EMPTY_TRUNCATION: SnapshotTruncation = {
   deliveries: false,
   audit: false,
   notifications: false,
-  limits: { cases: 0, deliveries: 0, audit: 0, notifications: 0 },
+  timeline: false,
+  limits: { cases: 0, deliveries: 0, audit: 0, notifications: 0, timeline: 0 },
 };
 
 interface State {
@@ -356,6 +364,8 @@ interface State {
   workflow: WorkflowRecord[];
   notifications: NotificationEvent[];
   audit: AuditEntry[];
+  /** Canonical engine-written event log (public.timeline_events). */
+  timeline: TimelineEntry[];
   ioAudit: ImportAuditEntry[];
   station: Station;
   driverPositions: Record<string, DriverPosition>;
@@ -513,10 +523,12 @@ export function refreshOpsActivity(): Promise<void> {
       ...state,
       audit: snap.audit,
       notifications: snap.notifications,
+      timeline: snap.timeline,
       truncated: {
         ...state.truncated,
         audit: snap.truncated.audit,
         notifications: snap.truncated.notifications,
+        timeline: snap.truncated.timeline,
         limits: { ...state.truncated.limits, ...snap.limits },
       },
     };
