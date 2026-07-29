@@ -359,6 +359,15 @@ interface State {
   driverPositions: Record<string, DriverPosition>;
   driverRoutes: Record<string, DriverRoute>;
   truncated: SnapshotTruncation;
+  /** Per-tier hydration flags so screens can show skeletons instead of zeros. */
+  loading: OpsLoading;
+}
+
+/** Which snapshot tier is still in flight. */
+export interface OpsLoading {
+  core: boolean;
+  activity: boolean;
+  secondary: boolean;
 }
 
 function emptyState(): State {
@@ -377,6 +386,7 @@ function emptyState(): State {
     driverPositions: {},
     driverRoutes: {},
     truncated: EMPTY_TRUNCATION,
+    loading: { core: false, activity: false, secondary: false },
   };
 }
 
