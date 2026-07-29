@@ -1,40 +1,42 @@
-## Root cause (confirmed against the live database)
+## Root cause (verified against the live database)
 
-`dm_assign_agent()` fails on **every** call with `40001 – "This record changed since you opened it. Reload and try again."`, and because the whole function is one transaction, everything it did before the failure is rolled back.
+The Workflow Engine is **not** broken. I queried `DEL-000001` and everything downstream of `agent_advance`/`wf_transition` is correct:
 
-Why:
+```text
+deliveries.stage      = Out for Delivery
+deliveries.status     = OUT_FOR_DELIVERY   started_at = 07:11:35Z
+passenger_view.stage  = Out for Delivery   updated_at = 07:11:35Z
+passenger_view.otp    = 754496 (Sent)
+```
 
-1. `dm_assign_agent()` first runs `UPDATE public.deliveries SET assigned_agent_id = …, assigned_at = now()`.
-2. The `deliveries_bump` BEFORE-UPDATE trigger runs `bump_version()`, so `version` goes from N to N+1.
-3. The function then calls `wf_transition(..., p_expected_version := N)` — the version the UI read from the snapshot.
-4. `wf_transition()` re-reads the row, sees `version = N+1 <> N`, and raises the optimistic-concurrency error.
-5. Rollback wipes the agent assignment, the OTP insert, and the `passenger_links` insert that had already run inside the same call.
+So `wf_transition()` did run `wf_journal`, `wf_queue_notification` and `wf_refresh_passenger_view` correctly.
 
-Evidence in the current data: 1 delivery exists (`DEL-000001`, stage `Ready for Delivery`, `assigned_agent_id = NULL`, `version = 0`), while `passenger_links`, `otp_challenges`, and `notification_events` are all empty — exactly the fingerprint of a rolled-back assign. `passenger_view` has its row because `wf_open_delivery()` writes it without any pre-update.
+The failure is in the **passenger portal client**, in `src/routes/passenger.$token.tsx`:
 
-So: no RLS problem, no failed migration, no missing grant, no broken `wf_refresh_passenger_view()`. The engine logic is correct; the version handshake is self-defeating.
+- `synthesizeFromView()` never sets `delivery.stage`. The portal renders from `getDeliveryStage(delivery)`, which then falls back to legacy status mapping.
+- It feeds `view.status` (a workflow enum, e.g. `OUT_FOR_DELIVERY`, `DELIVERED`) into `normaliseDeliveryStatus()`, which only matches human labels (`"Out For Delivery"`, `"Delivered"`). Every real value hits `default:` and returns `"Pending"`.
 
-The same self-invalidating pattern exists in three more functions and will fail the same way whenever the UI passes an expected version:
-- `dm_schedule()` — updates `scheduled_for` before the transition.
-- `dm_mark_failed()` — updates `failure_reason_id` / `failure_note` before the transition.
-- `agent_advance()` when `p_to = 'Scheduled'` — clears the agent before the transition.
+Net effect: the portal shows the pre-assignment stage forever, the OTP card stays hidden (it is gated on stage ≥ Out for Delivery), and the feedback view never unlocks after Delivered — even though the DB is perfectly in sync.
 
-Secondary finding: the tracking token is only minted at assignment. A delivery that exists but has not been assigned yet has no `passenger_links` row, so "View Passenger Portal" legitimately has nothing to open. That is the button error in the screenshot for `DEL-000001`.
+## Fix
 
-## Fix (database only — no UI changes)
+1. **`src/routes/passenger.$token.tsx`** — pass `view.stage` straight through as `delivery.stage` (the DB already returns the canonical `delivery_stage` value), and rewrite `normaliseDeliveryStatus`/`statusToCaseStatus` to map from the workflow enum *and* the stage label, with no silent `default → Pending`. Also derive the L&F stepper status and the delivered flag from the same stage value.
+2. **OTP visibility** — keep the server-side rule as the single gate: `passenger_get_view()` exposes `otp_code` only when stage = `Out for Delivery`; extend it to keep exposing while the delivery is `Out for Delivery` or `Delivery Failed` (retry attempt) and to return `NULL` once `Delivered`/`Returned to Airport`. Client keeps rendering the OTP card only when `otpCode` is non-null, so the DB stays authoritative.
+3. **Feedback eligibility** — the portal switches to the feedback view on `stage === "Delivered"`; with the mapping fixed this works. Confirm `passenger_submit_feedback` still returns true only for a live, non-revoked link.
 
-One migration that reworks the workflow engine:
+## Full-chain verification (after the fix)
 
-1. **Version check before any write.** Add an internal helper `wf_assert_version(p_delivery, p_expected_version)` that locks the delivery row and compares versions. Call it as the *first* statement in `dm_assign_agent`, `dm_schedule`, `dm_mark_failed`, `dm_mark_returned`, and `agent_advance`, then pass `NULL` as the expected version into `wf_transition` so the check is not re-evaluated against the already-bumped row.
-2. **`dm_assign_agent` ordering.** Keep it as: role check → agent validity check → version assert → agent update → expire old OTPs → issue new 6-digit OTP → ensure `passenger_links` row → `wf_transition('Assigned')`, which in turn refreshes `passenger_view` and queues SMS + WhatsApp.
-3. **Mint the tracking token at delivery creation.** Move the "ensure a live `passenger_links` row" step into a small `wf_ensure_passenger_link(p_delivery)` function and call it from `wf_open_delivery()` as well as `dm_assign_agent()`. Every delivery then has a portal link from the moment Lost & Found hands it over, and re-assignment reuses the existing token.
-4. **Backfill.** Create the missing `passenger_links` row for the existing `DEL-000001` and refresh its `passenger_view` so the current UAT record is immediately openable.
+Drive the real RPCs against a test delivery and assert every side-effect table for each transition:
 
-## Verification after the migration
+```text
+Assigned → Driver Accepted → Collected Bag → Out for Delivery
+        → OTP verify → Delivered → Feedback submitted
+```
 
-Run as a real coordinator/admin session:
-- Assign the agent (Ahmed Mostafa) to `DEL-000001` and confirm, by querying the database, that the delivery has `assigned_agent_id` + `assigned_at` set and `stage = 'Assigned'`.
-- Confirm one row in `otp_challenges` (state `Sent`, 6 digits, 24h expiry), one in `passenger_links` (non-revoked, 30-day expiry), `passenger_view` updated with the new stage, and two rows in `notification_events` (sms + whatsapp) carrying the `/passenger/<token>` link.
-- Call `passenger_get_view(token)` and confirm it returns the passenger record (OTP correctly hidden until `Out for Delivery`).
-- Open "View Passenger Portal" in the preview and confirm the portal renders.
-- Re-run the schedule and mark-failed paths to confirm the version handshake no longer self-invalidates.
+For each step check: `deliveries` (stage, workflow_status, the matching `*_at` timestamp, version bump), `workflow_events`, `timeline_events`, `audit_events`, `passenger_view` (stage + otp + updated_at), `notification_events` (queued for DRIVER_ASSIGNED / OUT_FOR_DELIVERY / DELIVERED only), `otp_challenges` state, and `passenger_feedback`.
+
+Then run the portal itself in a headless browser against the live token and screenshot it at Assigned, Out for Delivery (OTP digits visible) and Delivered (feedback form), confirming the polling picks up each change within ~5s.
+
+## Notes
+
+No new routes, no schema changes beyond the one `passenger_get_view` OTP-window tweak, and no changes to the frozen portal visual design.
