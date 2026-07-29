@@ -426,6 +426,11 @@ export function getState() {
   return state;
 }
 
+/** Per-tier hydration flags: use these to render skeletons instead of zeros. */
+export function useOpsLoading(): OpsLoading {
+  return useStore((s) => s.loading);
+}
+
 export { WORKFLOW_STATUSES };
 
 // ---------- Hydration ----------
