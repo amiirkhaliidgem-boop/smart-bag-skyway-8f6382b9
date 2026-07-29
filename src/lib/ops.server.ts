@@ -46,7 +46,12 @@ const q = <T = Row[]>(p: any) => p.then((r: any) => (r.data ?? []) as T);
 /** Small lookup read shared by the activity / secondary tiers. */
 async function loadRefs(supabase: SupabaseClient<any>) {
   const [cases, deliveries, users] = await Promise.all([
-    q(supabase.from("baggage_cases").select("id, case_no").limit(SNAPSHOT_LIMITS.cases)),
+    q(
+      supabase
+        .from("baggage_cases")
+        .select("id, case_no, pir_number, passenger_name")
+        .limit(SNAPSHOT_LIMITS.cases),
+    ),
     q(
       supabase
         .from("deliveries")
@@ -122,7 +127,18 @@ export async function buildCoreSnapshot(supabase: SupabaseClient<any>): Promise<
   for (const l of links as Row[])
     if (!tokenByDelivery.has(l.delivery_id)) tokenByDelivery.set(l.delivery_id, l.token);
 
-  const mappedCases = (cases as Row[]).map((c) => mapCase(c, bags as Row[], wfEvents as Row[]));
+  const mappedCases = (cases as Row[]).map((c) =>
+    mapCase(
+      {
+        ...c,
+        assigned_officer_name: c.assigned_officer_id
+          ? (userById.get(c.assigned_officer_id)?.full_name ?? null)
+          : null,
+      },
+      bags as Row[],
+      wfEvents as Row[],
+    ),
+  );
   const mappedDeliveries = (deliveries as Row[]).map((d) =>
     mapDelivery(
       d,
