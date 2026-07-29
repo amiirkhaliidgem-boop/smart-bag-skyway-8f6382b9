@@ -2066,6 +2066,14 @@ export type Database = {
           role_key: string
         }[]
       }
+      wf_assert_version: {
+        Args: { p_delivery: string; p_expected_version: number }
+        Returns: undefined
+      }
+      wf_ensure_passenger_link: {
+        Args: { p_delivery: string }
+        Returns: string
+      }
       wf_journal: {
         Args: {
           p_action: string
