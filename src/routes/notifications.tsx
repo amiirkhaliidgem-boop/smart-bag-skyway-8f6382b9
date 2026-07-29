@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { triggerLabel, type NotificationChannel } from "@/lib/notifications/templates";
+import { PageLoading } from "@/components/ops-skeleton";
 
 export const Route = createFileRoute("/notifications")({
   head: () => ({
@@ -110,6 +111,12 @@ function NotificationCenter() {
       failed: notifications.filter((n) => n.status_ === "failed").length,
     };
   }, [notifications]);
+
+
+  // Progressive loading: render the page shell with placeholders while this
+  // screen's data tier is still in flight, instead of showing empty values.
+  if (loading.activity && notifications.length === 0)
+    return <PageLoading title={"Notification Center"} kpis={5} />;
 
   return (
     <div className="space-y-6">

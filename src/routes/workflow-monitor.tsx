@@ -29,6 +29,7 @@ import {
   RotateCcw,
   ShieldAlert,
 } from "lucide-react";
+import { PageLoading } from "@/components/ops-skeleton";
 
 export const Route = createFileRoute("/workflow-monitor")({
   head: () => ({
@@ -255,6 +256,12 @@ function WorkflowMonitorPage() {
   };
 
   const agents = Array.from(new Set(allRows.map((r) => r.agent))).filter((d) => d && d !== "—");
+
+
+  // Progressive loading: render the page shell with placeholders while this
+  // screen's data tier is still in flight, instead of showing empty values.
+  if (loading.core && workflow.length === 0)
+    return <PageLoading title={"Workflow Monitor"} subtitle={"Real-time operational board across the full delivery lifecycle."} kpis={5} />;
 
   return (
     <div className="space-y-6">

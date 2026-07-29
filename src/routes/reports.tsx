@@ -13,6 +13,7 @@ import {
   Bar,
   Legend,
 } from "recharts";
+import { PageLoading } from "@/components/ops-skeleton";
 
 export const Route = createFileRoute("/reports")({
   head: () => ({
@@ -69,6 +70,12 @@ function ReportsPage() {
       return acc;
     }, {}),
   ).map(([airline, count]) => ({ airline, count }));
+
+
+  // Progressive loading: render the page shell with placeholders while this
+  // screen's data tier is still in flight, instead of showing empty values.
+  if (loading.core && cases.length === 0)
+    return <PageLoading title={"Operational Reports"} subtitle={"Historical trends across the baggage operation."} kpis={5} />;
 
   return (
     <div className="space-y-6">

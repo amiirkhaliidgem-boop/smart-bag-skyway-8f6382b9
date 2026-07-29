@@ -40,6 +40,7 @@ import {
   Warehouse,
   X,
 } from "lucide-react";
+import { PageLoading } from "@/components/ops-skeleton";
 
 export const Route = createFileRoute("/timeline")({
   head: () => ({
@@ -675,6 +676,12 @@ function TimelinePage() {
     setFEmployee("all");
     setFDriver("all");
   }
+
+
+  // Progressive loading: render the page shell with placeholders while this
+  // screen's data tier is still in flight, instead of showing empty values.
+  if (loading.activity && events.length === 0)
+    return <PageLoading title={"Activity Timeline"} subtitle={"Single source of truth across the ecosystem."} kpis={0} />;
 
   return (
     <div className="space-y-6">
