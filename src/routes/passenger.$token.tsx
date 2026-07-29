@@ -10,6 +10,8 @@ import type {
   Delivery,
   DeliveryStatus,
 } from "@/lib/store";
+import type { DeliveryStage } from "@/lib/delivery/stages";
+import { DELIVERY_STAGES, stageToLegacyStatus } from "@/lib/delivery/stages";
 import iabLogo from "@/assets/iab-logo.jpeg.asset.json";
 import { PassengerPortal } from "./passenger.index";
 
@@ -64,7 +66,8 @@ function synthesizeFromView(view: PassengerView): {
   delivery: Delivery;
   kase: BaggageCase;
 } {
-  const status = normaliseDeliveryStatus(view.status);
+  const stage = normaliseStage(view);
+  const status = stageToLegacyStatus(stage);
   const delivery: Delivery = {
     deliveryId: "",
     bagId: "",
@@ -75,6 +78,7 @@ function synthesizeFromView(view: PassengerView): {
     method: "Home Delivery",
     driver: "—",
     priority: "Normal",
+    stage,
     status,
     otpCode: view.otpCode ?? "",
     otpStatus: view.otpCode ? "Sent" : "Pending",
@@ -89,7 +93,7 @@ function synthesizeFromView(view: PassengerView): {
     arrivalDate: view.flightDate ?? "",
     description: "",
     priority: "Normal",
-    status: statusToCaseStatus(view.status),
+    status: statusToCaseStatus(stage),
     bagTagNumber: view.bagTag ?? "",
     storage: null,
     createdAt: new Date().toISOString(),
@@ -100,32 +104,37 @@ function synthesizeFromView(view: PassengerView): {
   return { delivery, kase };
 }
 
-function normaliseDeliveryStatus(s: string): DeliveryStatus {
-  switch (s) {
-    case "Delivered":
-      return "Delivered";
-    case "Out For Delivery":
-    case "Out for Delivery":
-      return "Out For Delivery";
-    case "Picked Up":
-      return "Picked Up";
-    case "Assigned":
-      return "Assigned";
-    default:
-      return "Pending";
+// The RPC returns the canonical `delivery_stage` label in `stage` and the
+// canonical `workflow_status` enum in `status`. Prefer the stage; fall back to
+// the workflow enum so the portal can never silently regress to "Pending".
+const WORKFLOW_TO_STAGE: Record<string, DeliveryStage> = {
+  PIR_CREATED: "Ready for Delivery",
+  HOME_DELIVERY_REQUESTED: "Ready for Delivery",
+  DELIVERY_APPROVED: "Ready for Delivery",
+  DRIVER_ASSIGNED: "Assigned",
+  READY_FOR_COLLECTION: "Driver Accepted",
+  CLAIMED_ON_HAND: "Collected Bag",
+  OUT_FOR_DELIVERY: "Out for Delivery",
+  DRIVER_ARRIVED: "Out for Delivery",
+  OTP_VERIFIED: "Delivered",
+  DELIVERED: "Delivered",
+  FEEDBACK_SUBMITTED: "Delivered",
+  CLOSED: "Delivered",
+};
+
+function normaliseStage(view: PassengerView): DeliveryStage {
+  const stage = (view.stage ?? "").trim();
+  if ((DELIVERY_STAGES as readonly string[]).includes(stage)) {
+    return stage as DeliveryStage;
   }
+  return WORKFLOW_TO_STAGE[(view.status ?? "").trim()] ?? "Ready for Delivery";
 }
 
-function statusToCaseStatus(s: string): BaggageCase["status"] {
-  switch (s) {
-    case "Delivered":
-      return "Delivered";
-    case "Out For Delivery":
-    case "Out for Delivery":
-      return "Out For Delivery";
-    default:
-      return "Ready For Delivery";
-  }
+function statusToCaseStatus(stage: DeliveryStage): BaggageCase["status"] {
+  const legacy: DeliveryStatus = stageToLegacyStatus(stage);
+  if (legacy === "Delivered") return "Delivered";
+  if (legacy === "Out For Delivery") return "Out For Delivery";
+  return "Ready For Delivery";
 }
 
 function TokenLoading() {
