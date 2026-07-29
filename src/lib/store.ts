@@ -427,6 +427,10 @@ export async function refreshOps(): Promise<void> {
   if (hydrating) return hydrating;
   hydrating = (async () => {
     try {
+      // Protected snapshot: skip entirely when signed out (public routes such as
+      // /auth, /passenger/* render without a session and would otherwise 401).
+      const { data } = await supabase.auth.getSession();
+      if (!data.session) return;
       const snap = await loadOpsSnapshot();
       state = {
         ...state,
