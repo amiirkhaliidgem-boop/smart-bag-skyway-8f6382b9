@@ -20,6 +20,9 @@ import type { LFStatus } from "./lost-found/statuses";
 import { type DeliveryStage, stageFromLegacy } from "./delivery/stages";
 import type { FailureReason } from "./delivery/stages";
 import { loadOpsCore, loadOpsActivity, loadOpsSecondary, callOpsRpc } from "./ops.functions";
+import type { TimelineEntry } from "./ops.mapping";
+
+export type { TimelineEntry };
 import { saveStation, logDataIoEvent } from "./settings.functions";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -393,6 +396,7 @@ function emptyState(): State {
     workflow: [],
     notifications: [],
     audit: [],
+    timeline: [],
     ioAudit: [],
     station: DEFAULT_STATION,
     driverPositions: {},
