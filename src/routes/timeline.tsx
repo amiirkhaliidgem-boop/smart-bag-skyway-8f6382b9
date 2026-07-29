@@ -266,13 +266,41 @@ function buildEvents(
   audit: AuditEntry[],
   callLogs: CallLog[],
   ioAudit: ImportAuditEntry[],
+  timeline: TimelineEntry[],
 ): TimelineEvent[] {
   const events: TimelineEvent[] = [];
   const deliveryByBag = new Map(deliveries.map((d) => [d.bagId, d]));
   const caseByBag = new Map(cases.map((c) => [c.bagId, c]));
 
-  // Lost & Found — PIR creation + real recorded status transitions.
-  for (const c of cases) {
+  // Canonical engine log. Every module journals through the Workflow Engine
+  // (wf_journal / wf_journal_event), so `timeline_events` is the authoritative
+  // record — including Lost & Found transitions (Tracing, Located, …) and
+  // officer assignments. Client-side synthesis only fills the gaps for
+  // browser-local activity (Data I/O, contact centre).
+  for (const t of timeline) {
+    events.push({
+      id: `EV-DB-${t.id}`,
+      at: t.at,
+      title: t.title || t.module,
+      description: t.detail || t.title || "",
+      user: t.actor || "System",
+      role: dbModule(t.module),
+      module: dbModule(t.module),
+      workflowStatus: (WORKFLOW_LABELS as Record<string, unknown>)[t.status]
+        ? (t.status as WorkflowStatus)
+        : undefined,
+      deliveryId: t.deliveryId,
+      bagId: t.bagId,
+      pirNumber: t.pirNumber,
+      passengerName: t.passengerName,
+      icon: MODULE_ICONS[dbModule(t.module)] ?? Activity,
+      raw: t,
+    });
+  }
+
+  // Lost & Found — PIR creation + status transitions, only while the engine
+  // log has not landed yet (first paint / activity tier still loading).
+  for (const c of timeline.length > 0 ? [] : cases) {
     events.push({
       id: `EV-PIR-${c.bagId}`,
       at: c.createdAt,
