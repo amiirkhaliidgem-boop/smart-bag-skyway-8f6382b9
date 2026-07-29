@@ -567,8 +567,16 @@ function boot() {
   // page load. Hydrate only once a session actually exists.
   if (window.location.pathname.startsWith("/passenger/")) return;
 
+  // Mark every tier as loading up front so the first paint shows skeletons
+  // rather than a fully-populated-looking dashboard full of zeros.
+  state = { ...state, loading: { core: true, activity: true, secondary: true } };
+
   void supabase.auth.getSession().then(({ data }) => {
     if (data.session) void refreshOps();
+    else {
+      state = { ...state, loading: { core: false, activity: false, secondary: false } };
+      notify();
+    }
   });
 
   supabase.auth.onAuthStateChange((event, session) => {
