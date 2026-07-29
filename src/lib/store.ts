@@ -20,6 +20,9 @@ import type { LFStatus } from "./lost-found/statuses";
 import { type DeliveryStage, stageFromLegacy } from "./delivery/stages";
 import type { FailureReason } from "./delivery/stages";
 import { loadOpsCore, loadOpsActivity, loadOpsSecondary, callOpsRpc } from "./ops.functions";
+import type { TimelineEntry } from "./ops.mapping";
+
+export type { TimelineEntry };
 import { saveStation, logDataIoEvent } from "./settings.functions";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -114,6 +117,8 @@ export interface CaseDelivery {
 
 export interface CaseInternal {
   assignedOfficer?: string;
+  /** app_users.id of the assigned Lost & Found officer. */
+  assignedOfficerId?: string;
   station?: string;
   department?: string;
   internalNotes?: string;
@@ -333,7 +338,14 @@ export interface SnapshotTruncation {
   deliveries: boolean;
   audit: boolean;
   notifications: boolean;
-  limits: { cases: number; deliveries: number; audit: number; notifications: number };
+  timeline: boolean;
+  limits: {
+    cases: number;
+    deliveries: number;
+    audit: number;
+    notifications: number;
+    timeline: number;
+  };
 }
 
 const EMPTY_TRUNCATION: SnapshotTruncation = {
@@ -341,7 +353,8 @@ const EMPTY_TRUNCATION: SnapshotTruncation = {
   deliveries: false,
   audit: false,
   notifications: false,
-  limits: { cases: 0, deliveries: 0, audit: 0, notifications: 0 },
+  timeline: false,
+  limits: { cases: 0, deliveries: 0, audit: 0, notifications: 0, timeline: 0 },
 };
 
 interface State {
@@ -354,6 +367,8 @@ interface State {
   workflow: WorkflowRecord[];
   notifications: NotificationEvent[];
   audit: AuditEntry[];
+  /** Canonical engine-written event log (public.timeline_events). */
+  timeline: TimelineEntry[];
   ioAudit: ImportAuditEntry[];
   station: Station;
   driverPositions: Record<string, DriverPosition>;
@@ -381,6 +396,7 @@ function emptyState(): State {
     workflow: [],
     notifications: [],
     audit: [],
+    timeline: [],
     ioAudit: [],
     station: DEFAULT_STATION,
     driverPositions: {},
@@ -511,10 +527,12 @@ export function refreshOpsActivity(): Promise<void> {
       ...state,
       audit: snap.audit,
       notifications: snap.notifications,
+      timeline: snap.timeline,
       truncated: {
         ...state.truncated,
         audit: snap.truncated.audit,
         notifications: snap.truncated.notifications,
+        timeline: snap.truncated.timeline,
         limits: { ...state.truncated.limits, ...snap.limits },
       },
     };
@@ -722,6 +740,7 @@ export async function addCase(
 function casePatchPayload(patch: Partial<BaggageCase>): RpcArgs {
   const p: RpcArgs = {};
   if (patch.passengerName !== undefined) p.passenger_name = patch.passengerName;
+  if (patch.pirNumber !== undefined) p.pir_number = patch.pirNumber;
   if (patch.flightNumber !== undefined) p.flight_number = patch.flightNumber;
   if (patch.contact !== undefined) p.contact_mobile = patch.contact;
   if (patch.email !== undefined) p.email = patch.email;
@@ -779,6 +798,7 @@ function casePatchPayload(patch: Partial<BaggageCase>): RpcArgs {
   if (it) {
     if (it.department !== undefined) p.department = it.department;
     if (it.internalNotes !== undefined) p.internal_notes = it.internalNotes;
+    if (it.assignedOfficerId !== undefined) p.assigned_officer_id = it.assignedOfficerId;
   }
   return p;
 }

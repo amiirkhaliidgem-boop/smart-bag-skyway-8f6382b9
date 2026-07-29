@@ -46,6 +46,7 @@ import {
   DropdownMenuCheckboxItem,
 } from "@/components/ui/dropdown-menu";
 import { LfStatusBadge } from "@/components/lf-status-badge";
+import { useStaffOfficers, type StaffOfficer } from "@/lib/admin/officers";
 import { PirWizard } from "@/components/lost-found/pir-wizard";
 import { BulkToolbar } from "@/components/bulk/bulk-toolbar";
 import { DateRangeFilter } from "@/components/filters/date-range-filter";
@@ -88,6 +89,8 @@ type ColKey =
   | "pir" | "passenger" | "flight" | "tag" | "status"
   | "officer" | "priority" | "method" | "created" | "updated";
 
+// Fixed registry columns. The column-toggle selector and the "Last Updated"
+// column were removed on purpose — the registry shows one canonical layout.
 const ALL_COLUMNS: { key: ColKey; label: string; default: boolean }[] = [
   { key: "pir", label: "PIR", default: true },
   { key: "passenger", label: "Passenger", default: true },
@@ -96,10 +99,17 @@ const ALL_COLUMNS: { key: ColKey; label: string; default: boolean }[] = [
   { key: "status", label: "Current Status", default: true },
   { key: "officer", label: "Assigned Officer", default: true },
   { key: "priority", label: "Priority", default: true },
-  { key: "method", label: "Delivery Method", default: false },
+  { key: "method", label: "Delivery Method", default: true },
   { key: "created", label: "Created Date", default: true },
-  { key: "updated", label: "Last Updated", default: false },
 ];
+
+const VISIBLE_COLUMNS = Object.fromEntries(
+  ALL_COLUMNS.map((c) => [c.key, true]),
+) as Record<ColKey, boolean>;
+
+/** Statuses selectable in the registry filter. "Closed" duplicates
+ *  "Delivered" operationally and is intentionally hidden. */
+const FILTER_STATUSES = LF_STATUSES.filter((s) => s !== "Closed");
 
 function LostFoundPage() {
   const cases = useStore((s) => s.cases);
@@ -115,15 +125,8 @@ function LostFoundPage() {
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
   const [sortKey, setSortKey] = useState<ColKey>("created");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
-  const [visible, setVisible] = useState<Record<ColKey, boolean>>(
-    Object.fromEntries(ALL_COLUMNS.map((c) => [c.key, c.default])) as Record<ColKey, boolean>,
-  );
-
-  const officers = useMemo(() => {
-    const s = new Set<string>();
-    for (const c of cases) if (c.internal?.assignedOfficer) s.add(c.internal.assignedOfficer);
-    return Array.from(s).sort();
-  }, [cases]);
+  const visible = VISIBLE_COLUMNS;
+  const officers = useStaffOfficers();
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -234,11 +237,13 @@ function LostFoundPage() {
     clearSelection();
   }
 
-  function runAssignOfficer(officerName: string) {
-    const name = officerName.trim();
-    if (!name) return;
-    bulkUpdateCases(selectedIds, { internal: { assignedOfficer: name } as never });
-    toast.success(`${selectedIds.length} case(s) assigned to ${name}`);
+  function runAssignOfficer(officerId: string) {
+    const officer = officers.find((o) => o.id === officerId);
+    if (!officer) return;
+    void bulkUpdateCases(selectedIds, {
+      internal: { assignedOfficerId: officer.id, assignedOfficer: officer.full_name },
+    } as never);
+    toast.success(`${selectedIds.length} case(s) assigned to ${officer.full_name}`);
     setAssignOfficerOpen(false);
     clearSelection();
   }
@@ -367,34 +372,13 @@ function LostFoundPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Statuses</SelectItem>
-                {LF_STATUSES.map((s) => (
+                {FILTER_STATUSES.map((s) => (
                   <SelectItem key={s} value={s}>{s}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
             <DateRangeFilter from={from} to={to} onFromChange={setFrom} onToChange={setTo} />
             <div className="ml-auto flex items-center gap-2">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-9 gap-1.5">
-                    <Columns3 className="h-3.5 w-3.5" /> Columns
-                    <ChevronDown className="h-3.5 w-3.5" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  {ALL_COLUMNS.map((c) => (
-                    <DropdownMenuCheckboxItem
-                      key={c.key}
-                      checked={visible[c.key]}
-                      onCheckedChange={(v) => setVisible((prev) => ({ ...prev, [c.key]: Boolean(v) }))}
-                    >
-                      {c.label}
-                    </DropdownMenuCheckboxItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
               <Button variant="ghost" size="sm" onClick={resetFilters} className="h-9 gap-1.5">
                 <X className="h-3.5 w-3.5" /> Reset
               </Button>
@@ -576,11 +560,6 @@ function Row({
           {new Date(c.createdAt).toLocaleDateString("en-GB")}
         </td>
       )}
-      {visible.updated && (
-        <td className="px-4 py-3 text-xs text-muted-foreground">
-          {c.updatedAt ? new Date(c.updatedAt).toLocaleString("en-GB") : "—"}
-        </td>
-      )}
       <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
         <Button
           variant="outline"
@@ -600,11 +579,11 @@ function AssignOfficerDialog({
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
-  officers: string[];
+  officers: StaffOfficer[];
   count: number;
-  onSubmit: (name: string) => void;
+  onSubmit: (officerId: string) => void;
 }) {
-  const [name, setName] = useState("");
+  const [officerId, setOfficerId] = useState("");
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
@@ -615,29 +594,30 @@ function AssignOfficerDialog({
           <p className="text-sm text-muted-foreground">
             Assign {count} selected case{count === 1 ? "" : "s"} to an officer.
           </p>
-          {officers.length > 0 && (
-            <div className="space-y-1.5">
-              <Label className="text-xs">Existing officers</Label>
-              <Select value="" onValueChange={setName}>
-                <SelectTrigger className="h-9">
-                  <SelectValue placeholder="Pick an officer" />
-                </SelectTrigger>
-                <SelectContent>
-                  {officers.map((o) => (
-                    <SelectItem key={o} value={o}>{o}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
           <div className="space-y-1.5">
-            <Label className="text-xs">Officer name</Label>
-            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Ahmed Salah" />
+            <Label className="text-xs">Officer</Label>
+            <Select value={officerId} onValueChange={setOfficerId}>
+              <SelectTrigger className="h-9">
+                <SelectValue placeholder="Pick an officer" />
+              </SelectTrigger>
+              <SelectContent>
+                {officers.map((o) => (
+                  <SelectItem key={o.id} value={o.id}>
+                    {o.full_name} · {o.employee_id}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {officers.length === 0 && (
+              <p className="text-xs text-muted-foreground">
+                No active staff found in Administration.
+              </p>
+            )}
           </div>
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={() => onSubmit(name)} disabled={!name.trim()}>Assign</Button>
+          <Button onClick={() => onSubmit(officerId)} disabled={!officerId}>Assign</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

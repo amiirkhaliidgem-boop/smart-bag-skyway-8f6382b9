@@ -34,6 +34,7 @@ export const SNAPSHOT_LIMITS = {
   workflowEvents: 900,
   audit: 500,
   notifications: 500,
+  timeline: 800,
   feedback: 500,
   incidents: 500,
   notes: 900,
@@ -45,7 +46,12 @@ const q = <T = Row[]>(p: any) => p.then((r: any) => (r.data ?? []) as T);
 /** Small lookup read shared by the activity / secondary tiers. */
 async function loadRefs(supabase: SupabaseClient<any>) {
   const [cases, deliveries, users] = await Promise.all([
-    q(supabase.from("baggage_cases").select("id, case_no").limit(SNAPSHOT_LIMITS.cases)),
+    q(
+      supabase
+        .from("baggage_cases")
+        .select("id, case_no, pir_number, passenger_name")
+        .limit(SNAPSHOT_LIMITS.cases),
+    ),
     q(
       supabase
         .from("deliveries")
@@ -121,7 +127,18 @@ export async function buildCoreSnapshot(supabase: SupabaseClient<any>): Promise<
   for (const l of links as Row[])
     if (!tokenByDelivery.has(l.delivery_id)) tokenByDelivery.set(l.delivery_id, l.token);
 
-  const mappedCases = (cases as Row[]).map((c) => mapCase(c, bags as Row[], wfEvents as Row[]));
+  const mappedCases = (cases as Row[]).map((c) =>
+    mapCase(
+      {
+        ...c,
+        assigned_officer_name: c.assigned_officer_id
+          ? (userById.get(c.assigned_officer_id)?.full_name ?? null)
+          : null,
+      },
+      bags as Row[],
+      wfEvents as Row[],
+    ),
+  );
   const mappedDeliveries = (deliveries as Row[]).map((d) =>
     mapDelivery(
       d,
@@ -203,6 +220,33 @@ export async function buildActivitySnapshot(
     ),
   ]);
 
+  const timelineRows = await q(
+    supabase
+      .from("timeline_events")
+      .select("*")
+      .order("occurred_at", { ascending: false })
+      .limit(SNAPSHOT_LIMITS.timeline),
+  );
+
+  const timeline = (timelineRows as Row[]).map((t) => {
+    const kase = t.case_id ? refs.caseById.get(t.case_id) : undefined;
+    const del = t.delivery_id ? refs.deliveryById.get(t.delivery_id) : undefined;
+    return {
+      id: String(t.id),
+      module: t.module as string,
+      title: t.title ?? "",
+      detail: t.detail ?? "",
+      status: t.status ?? "",
+      reference: t.reference ?? "",
+      actor: t.actor_name ?? "System",
+      at: t.occurred_at,
+      bagId: kase?.case_no,
+      deliveryId: del?.delivery_no,
+      pirNumber: kase?.pir_number || undefined,
+      passengerName: del?.passenger_name ?? kase?.passenger_name ?? undefined,
+    };
+  });
+
   const notifications = (notifRows as Row[]).map((n) =>
     mapNotification(n, n.delivery_id ? refs.deliveryById.get(n.delivery_id)?.delivery_no : undefined),
   );
@@ -218,11 +262,17 @@ export async function buildActivitySnapshot(
   return {
     audit,
     notifications,
+    timeline,
     truncated: {
       audit: (auditRows as Row[]).length >= SNAPSHOT_LIMITS.audit,
       notifications: (notifRows as Row[]).length >= SNAPSHOT_LIMITS.notifications,
+      timeline: (timelineRows as Row[]).length >= SNAPSHOT_LIMITS.timeline,
     },
-    limits: { audit: SNAPSHOT_LIMITS.audit, notifications: SNAPSHOT_LIMITS.notifications },
+    limits: {
+      audit: SNAPSHOT_LIMITS.audit,
+      notifications: SNAPSHOT_LIMITS.notifications,
+      timeline: SNAPSHOT_LIMITS.timeline,
+    },
   };
 }
 

@@ -171,7 +171,6 @@ export function PirWizard({
     () =>
       form.firstName.trim() &&
       form.lastName.trim() &&
-      form.pirNumber.trim() &&
       form.bagTags.length > 0 &&
       form.bagTags.every((t) => t.trim()) &&
       form.flightNumber.trim() &&
@@ -192,7 +191,6 @@ export function PirWizard({
       if (!form.flightDate) return "Flight date is required.";
     }
     if (i === 2) {
-      if (!form.pirNumber.trim()) return "PIR number is required.";
       const n = Number(form.numberOfBags);
       if (!Number.isFinite(n) || n < 1) return "Number of bags must be at least 1.";
       if (form.bagTags.length !== n) return "Bag tags must match the number of bags.";
@@ -394,7 +392,13 @@ export function PirWizard({
 
         {step === 2 && (
           <Grid>
-            <Fld label="PIR Number" required><Input value={form.pirNumber} onChange={(e) => set("pirNumber", e.target.value)} /></Fld>
+            <Fld label="PIR Number">
+              <Input
+                value={form.pirNumber}
+                onChange={(e) => set("pirNumber", e.target.value)}
+                placeholder="Optional — a Case ID is generated automatically"
+              />
+            </Fld>
             <Fld label="Number Of Bags" required>
               <Input
                 type="number"

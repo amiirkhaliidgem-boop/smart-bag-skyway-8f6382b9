@@ -10,6 +10,7 @@ import type {
   WorkflowRecord,
   CallLog,
 } from "@/lib/store";
+import type { TimelineEntry } from "@/lib/ops.mapping";
 import type { AuditEntry, ImportAuditEntry } from "@/lib/audit/log";
 import { lfStatusLabel } from "@/lib/lost-found/statuses";
 import { WORKFLOW_LABELS, type WorkflowStatus } from "@/lib/workflow/statuses";
@@ -99,6 +100,37 @@ const MODULE_LABELS: Partial<Record<ModuleSource, string>> = {
 function moduleLabel(m: ModuleSource): string {
   return MODULE_LABELS[m] ?? m;
 }
+
+/** `timeline_events.module` (DB enum) → UI module bucket. */
+const DB_MODULE_MAP: Record<string, ModuleSource> = {
+  lost_found: "LostFound",
+  delivery: "Delivery",
+  agent_portal: "Driver",
+  passenger_portal: "Passenger",
+  workflow: "Workflow",
+  notification: "Notifications",
+  otp: "Notifications",
+  feedback: "Feedback",
+  quality: "Quality",
+  admin: "Audit",
+  system: "Audit",
+};
+
+function dbModule(m: string): ModuleSource {
+  return DB_MODULE_MAP[m] ?? "Workflow";
+}
+
+const MODULE_ICONS: Partial<Record<ModuleSource, typeof Activity>> = {
+  LostFound: ClipboardList,
+  Delivery: Truck,
+  Driver: Truck,
+  Passenger: MapPin,
+  Notifications: Bell,
+  Feedback: CheckCircle2,
+  Quality: AlertTriangle,
+  Audit: Activity,
+  Workflow: Activity,
+};
 
 const MODULE_STYLES: Record<ModuleSource, { badge: string; ring: string; dot: string }> = {
   Workflow: {
@@ -266,13 +298,41 @@ function buildEvents(
   audit: AuditEntry[],
   callLogs: CallLog[],
   ioAudit: ImportAuditEntry[],
+  timeline: TimelineEntry[],
 ): TimelineEvent[] {
   const events: TimelineEvent[] = [];
   const deliveryByBag = new Map(deliveries.map((d) => [d.bagId, d]));
   const caseByBag = new Map(cases.map((c) => [c.bagId, c]));
 
-  // Lost & Found — PIR creation + real recorded status transitions.
-  for (const c of cases) {
+  // Canonical engine log. Every module journals through the Workflow Engine
+  // (wf_journal / wf_journal_event), so `timeline_events` is the authoritative
+  // record — including Lost & Found transitions (Tracing, Located, …) and
+  // officer assignments. Client-side synthesis only fills the gaps for
+  // browser-local activity (Data I/O, contact centre).
+  for (const t of timeline) {
+    events.push({
+      id: `EV-DB-${t.id}`,
+      at: t.at,
+      title: t.title || t.module,
+      description: t.detail || t.title || "",
+      user: t.actor || "System",
+      role: dbModule(t.module),
+      module: dbModule(t.module),
+      workflowStatus: (WORKFLOW_LABELS as Record<string, unknown>)[t.status]
+        ? (t.status as WorkflowStatus)
+        : undefined,
+      deliveryId: t.deliveryId,
+      bagId: t.bagId,
+      pirNumber: t.pirNumber,
+      passengerName: t.passengerName,
+      icon: MODULE_ICONS[dbModule(t.module)] ?? Activity,
+      raw: t,
+    });
+  }
+
+  // Lost & Found — PIR creation + status transitions, only while the engine
+  // log has not landed yet (first paint / activity tier still loading).
+  for (const c of timeline.length > 0 ? [] : cases) {
     events.push({
       id: `EV-PIR-${c.bagId}`,
       at: c.createdAt,
@@ -568,6 +628,7 @@ function TimelinePage() {
   const audit = useStore((s) => s.audit);
   const callLogs = useStore((s) => s.callLogs);
   const ioAudit = useStore((s) => s.ioAudit);
+  const dbTimeline = useStore((s) => s.timeline);
   const loading = useOpsLoading();
 
   const events = useMemo(
@@ -582,8 +643,20 @@ function TimelinePage() {
         audit,
         callLogs,
         ioAudit,
+        dbTimeline,
       ),
-    [cases, deliveries, workflow, notifications, feedback, incidents, audit, callLogs, ioAudit],
+    [
+      cases,
+      deliveries,
+      workflow,
+      notifications,
+      feedback,
+      incidents,
+      audit,
+      callLogs,
+      ioAudit,
+      dbTimeline,
+    ],
   );
 
   const drivers = useMemo(

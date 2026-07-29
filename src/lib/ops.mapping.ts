@@ -54,8 +54,30 @@ export interface OpsCoreSnapshot {
 export interface OpsActivitySnapshot {
   audit: AuditEntry[];
   notifications: NotificationEvent[];
-  truncated: { audit: boolean; notifications: boolean };
-  limits: { audit: number; notifications: number };
+  /** Canonical, engine-written event log (public.timeline_events). */
+  timeline: TimelineEntry[];
+  truncated: { audit: boolean; notifications: boolean; timeline: boolean };
+  limits: { audit: number; notifications: number; timeline: number };
+}
+
+/**
+ * One row of the system-wide event log. Every module journals through the
+ * Workflow Engine (wf_journal / wf_journal_event), so this is the complete
+ * operational history — the UI never synthesizes entries.
+ */
+export interface TimelineEntry {
+  id: string;
+  module: string;
+  title: string;
+  detail: string;
+  status: string;
+  reference: string;
+  actor: string;
+  at: string;
+  bagId?: string;
+  deliveryId?: string;
+  pirNumber?: string;
+  passengerName?: string;
 }
 
 /** Tier 3 — CSAT, quality incidents and live agent geography. */
@@ -140,6 +162,8 @@ export function mapCase(
       department: c.department ?? undefined,
       internalNotes: c.internal_notes ?? undefined,
       casePriority: (c.priority ?? "Normal") as Priority,
+      assignedOfficer: c.assigned_officer_name ?? undefined,
+      assignedOfficerId: c.assigned_officer_id ?? undefined,
     },
     documents: [],
     incomplete: c.incomplete ?? false,
