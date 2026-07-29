@@ -10,6 +10,7 @@ import type {
   WorkflowRecord,
   CallLog,
 } from "@/lib/store";
+import type { TimelineEntry } from "@/lib/ops.mapping";
 import type { AuditEntry, ImportAuditEntry } from "@/lib/audit/log";
 import { lfStatusLabel } from "@/lib/lost-found/statuses";
 import { WORKFLOW_LABELS, type WorkflowStatus } from "@/lib/workflow/statuses";
@@ -99,6 +100,37 @@ const MODULE_LABELS: Partial<Record<ModuleSource, string>> = {
 function moduleLabel(m: ModuleSource): string {
   return MODULE_LABELS[m] ?? m;
 }
+
+/** `timeline_events.module` (DB enum) → UI module bucket. */
+const DB_MODULE_MAP: Record<string, ModuleSource> = {
+  lost_found: "LostFound",
+  delivery: "Delivery",
+  agent_portal: "Driver",
+  passenger_portal: "Passenger",
+  workflow: "Workflow",
+  notification: "Notifications",
+  otp: "Notifications",
+  feedback: "Feedback",
+  quality: "Quality",
+  admin: "Audit",
+  system: "Audit",
+};
+
+function dbModule(m: string): ModuleSource {
+  return DB_MODULE_MAP[m] ?? "Workflow";
+}
+
+const MODULE_ICONS: Partial<Record<ModuleSource, typeof Activity>> = {
+  LostFound: ClipboardList,
+  Delivery: Truck,
+  Driver: Truck,
+  Passenger: MapPin,
+  Notifications: Bell,
+  Feedback: CheckCircle2,
+  Quality: AlertTriangle,
+  Audit: Activity,
+  Workflow: Activity,
+};
 
 const MODULE_STYLES: Record<ModuleSource, { badge: string; ring: string; dot: string }> = {
   Workflow: {
