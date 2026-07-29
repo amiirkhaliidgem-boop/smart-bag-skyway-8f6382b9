@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { useStore } from "@/lib/store";
+import { useStore, useOpsLoading } from "@/lib/store";
 import type {
   BaggageCase,
   Delivery,
@@ -40,6 +40,7 @@ import {
   Warehouse,
   X,
 } from "lucide-react";
+import { PageLoading } from "@/components/ops-skeleton";
 
 export const Route = createFileRoute("/timeline")({
   head: () => ({
@@ -567,6 +568,7 @@ function TimelinePage() {
   const audit = useStore((s) => s.audit);
   const callLogs = useStore((s) => s.callLogs);
   const ioAudit = useStore((s) => s.ioAudit);
+  const loading = useOpsLoading();
 
   const events = useMemo(
     () =>
@@ -674,6 +676,12 @@ function TimelinePage() {
     setFEmployee("all");
     setFDriver("all");
   }
+
+
+  // Progressive loading: render the page shell with placeholders while this
+  // screen's data tier is still in flight, instead of showing empty values.
+  if (loading.activity && events.length === 0)
+    return <PageLoading title={"Activity Timeline"} subtitle={"Single source of truth across the ecosystem."} kpis={0} />;
 
   return (
     <div className="space-y-6">

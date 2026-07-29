@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { useStore, assignStorage } from "@/lib/store";
+import { useStore, useOpsLoading, assignStorage } from "@/lib/store";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +15,7 @@ import {
 import { StatusBadge } from "@/components/status-badge";
 import { Warehouse, MapPin } from "lucide-react";
 import { toast } from "sonner";
+import { PageLoading } from "@/components/ops-skeleton";
 
 export const Route = createFileRoute("/storage")({
   head: () => ({
@@ -28,6 +29,7 @@ export const Route = createFileRoute("/storage")({
 
 function StoragePage() {
   const cases = useStore((s) => s.cases);
+  const loading = useOpsLoading();
   const [editing, setEditing] = useState<string | null>(null);
 
   const stored = cases.filter((c) => c.storage);
@@ -37,6 +39,12 @@ function StoragePage() {
     if (c.storage) acc[c.storage.zone] = (acc[c.storage.zone] ?? 0) + 1;
     return acc;
   }, {});
+
+
+  // Progressive loading: render the page shell with placeholders while this
+  // screen's data tier is still in flight, instead of showing empty values.
+  if (loading.core && cases.length === 0)
+    return <PageLoading title={"Storage Control"} subtitle={"Warehouse zone, shelf and position assignment for all located baggage."} kpis={4} />;
 
   return (
     <div className="space-y-6">

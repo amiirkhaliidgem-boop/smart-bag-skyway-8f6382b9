@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { getDeliveryStage, useStore, type BaggageCase, type Delivery, type WorkflowRecord } from "@/lib/store";
+import { getDeliveryStage, useStore, useOpsLoading, type BaggageCase, type Delivery, type WorkflowRecord } from "@/lib/store";
 import {
   DELIVERY_STAGES,
   STAGE_LABELS,
@@ -29,6 +29,7 @@ import {
   RotateCcw,
   ShieldAlert,
 } from "lucide-react";
+import { PageLoading } from "@/components/ops-skeleton";
 
 export const Route = createFileRoute("/workflow-monitor")({
   head: () => ({
@@ -108,6 +109,7 @@ function WorkflowMonitorPage() {
   const workflow = useStore((s) => s.workflow);
   const feedback = useStore((s) => s.feedback);
   const incidents = useStore((s) => s.qualityIncidents);
+  const loading = useOpsLoading();
 
   const [driver, setDriver] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -254,6 +256,12 @@ function WorkflowMonitorPage() {
   };
 
   const agents = Array.from(new Set(allRows.map((r) => r.agent))).filter((d) => d && d !== "—");
+
+
+  // Progressive loading: render the page shell with placeholders while this
+  // screen's data tier is still in flight, instead of showing empty values.
+  if (loading.core && workflow.length === 0)
+    return <PageLoading title={"Workflow Monitor"} subtitle={"Real-time operational board across the full delivery lifecycle."} kpis={5} />;
 
   return (
     <div className="space-y-6">

@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useStore } from "@/lib/store";
+import { useStore, useOpsLoading } from "@/lib/store";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   AreaChart,
@@ -13,6 +13,7 @@ import {
   Bar,
   Legend,
 } from "recharts";
+import { PageLoading } from "@/components/ops-skeleton";
 
 export const Route = createFileRoute("/reports")({
   head: () => ({
@@ -29,6 +30,7 @@ function ReportsPage() {
   const feedback = useStore((s) => s.feedback);
   const incidents = useStore((s) => s.qualityIncidents);
   const deliveries = useStore((s) => s.deliveries);
+  const loading = useOpsLoading();
 
   const delivered = deliveries.filter((d) => d.status === "Delivered").length;
   const successRate = deliveries.length
@@ -68,6 +70,12 @@ function ReportsPage() {
       return acc;
     }, {}),
   ).map(([airline, count]) => ({ airline, count }));
+
+
+  // Progressive loading: render the page shell with placeholders while this
+  // screen's data tier is still in flight, instead of showing empty values.
+  if (loading.core && cases.length === 0)
+    return <PageLoading title={"Operational Reports"} subtitle={"Historical trends across the baggage operation."} kpis={5} />;
 
   return (
     <div className="space-y-6">

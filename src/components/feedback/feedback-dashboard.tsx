@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useStore } from "@/lib/store";
+import { useStore, useOpsLoading } from "@/lib/store";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -15,6 +15,7 @@ import {
 } from "@/lib/feedback/export-xlsx";
 import { Star, FileSpreadsheet, RotateCcw, Search } from "lucide-react";
 import { toast } from "sonner";
+import { PageLoading } from "@/components/ops-skeleton";
 
 
 const DASH = "—";
@@ -23,6 +24,7 @@ export function FeedbackDashboard() {
   const feedback = useStore((s) => s.feedback);
   const cases = useStore((s) => s.cases);
   const deliveries = useStore((s) => s.deliveries);
+  const loading = useOpsLoading();
 
   const [q, setQ] = useState("");
   const [from, setFrom] = useState("");
@@ -165,6 +167,12 @@ export function FeedbackDashboard() {
     exportFeedbackToXlsx(chosen);
     toast.success(`Exported ${chosen.length} feedback record(s)`);
   }
+
+
+  // Progressive loading: render the page shell with placeholders while this
+  // screen's data tier is still in flight, instead of showing empty values.
+  if (loading.secondary && feedback.length === 0)
+    return <PageLoading title={"Customer Feedback"} kpis={4} />;
 
   return (
     <div className="space-y-6">

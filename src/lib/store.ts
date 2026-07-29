@@ -19,7 +19,7 @@ import type { Role } from "./roles/roles";
 import type { LFStatus } from "./lost-found/statuses";
 import { type DeliveryStage, stageFromLegacy } from "./delivery/stages";
 import type { FailureReason } from "./delivery/stages";
-import { loadOpsSnapshot, callOpsRpc } from "./ops.functions";
+import { loadOpsCore, loadOpsActivity, loadOpsSecondary, callOpsRpc } from "./ops.functions";
 import { saveStation, logDataIoEvent } from "./settings.functions";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -359,6 +359,15 @@ interface State {
   driverPositions: Record<string, DriverPosition>;
   driverRoutes: Record<string, DriverRoute>;
   truncated: SnapshotTruncation;
+  /** Per-tier hydration flags so screens can show skeletons instead of zeros. */
+  loading: OpsLoading;
+}
+
+/** Which snapshot tier is still in flight. */
+export interface OpsLoading {
+  core: boolean;
+  activity: boolean;
+  secondary: boolean;
 }
 
 function emptyState(): State {
@@ -377,6 +386,7 @@ function emptyState(): State {
     driverPositions: {},
     driverRoutes: {},
     truncated: EMPTY_TRUNCATION,
+    loading: { core: false, activity: false, secondary: false },
   };
 }
 
@@ -416,58 +426,135 @@ export function getState() {
   return state;
 }
 
+/** Per-tier hydration flags: use these to render skeletons instead of zeros. */
+export function useOpsLoading(): OpsLoading {
+  return useStore((s) => s.loading);
+}
+
 export { WORKFLOW_STATUSES };
 
 // ---------- Hydration ----------
 
-let hydrating: Promise<void> | null = null;
 let booted = false;
 
-export async function refreshOps(): Promise<void> {
-  if (hydrating) return hydrating;
-  hydrating = (async () => {
+// One in-flight promise per tier. Tiers are fetched in parallel and each one
+// commits to the store the moment it resolves, so the KPI cards never wait for
+// the audit log or the notification queue.
+const inflight: Record<keyof OpsLoading, Promise<void> | null> = {
+  core: null,
+  activity: null,
+  secondary: null,
+};
+
+function setLoading(tier: keyof OpsLoading, value: boolean) {
+  state = { ...state, loading: { ...state.loading, [tier]: value } };
+  notify();
+}
+
+async function hasSession(): Promise<boolean> {
+  // Protected snapshot: skip entirely when signed out (public routes such as
+  // /auth, /passenger/* render without a session and would otherwise 401).
+  const { data } = await supabase.auth.getSession();
+  return !!data.session;
+}
+
+function runTier(tier: keyof OpsLoading, load: () => Promise<void>): Promise<void> {
+  if (inflight[tier]) return inflight[tier]!;
+  const p = (async () => {
     try {
-      // Protected snapshot: skip entirely when signed out (public routes such as
-      // /auth, /passenger/* render without a session and would otherwise 401).
-      const { data } = await supabase.auth.getSession();
-      if (!data.session) return;
-      const snap = await loadOpsSnapshot();
-      state = {
-        ...state,
-        cases: snap.cases,
-        deliveries: snap.deliveries,
-        workflow: snap.workflow,
-        notifications: snap.notifications,
-        audit: snap.audit,
-        feedback: snap.feedback,
-        qualityIncidents: snap.qualityIncidents,
-        station: snap.station,
-        driverPositions: snap.driverPositions,
-        driverRoutes: snap.driverRoutes,
-        truncated: { ...snap.truncated, limits: snap.limits },
-      };
-      caseIds = snap.caseIds;
-      deliveryIds = snap.deliveryIds;
-      agentIds = snap.agentIds;
-      caseVersions = snap.caseVersions;
-      deliveryVersions = snap.deliveryVersions;
-      driverPool.splice(0, driverPool.length, ...snap.agents.map((a) => a.name));
-      notify();
+      if (!(await hasSession())) return;
+      setLoading(tier, true);
+      await load();
     } catch (err) {
-      console.warn("[ops] snapshot load failed", err);
+      console.warn(`[ops] ${tier} snapshot load failed`, err);
     } finally {
-      hydrating = null;
+      inflight[tier] = null;
+      setLoading(tier, false);
     }
   })();
-  return hydrating;
+  inflight[tier] = p;
+  return p;
+}
+
+/** Tier 1 — cases, deliveries, workflow, station, ids/versions, agent pool. */
+export function refreshOpsCore(): Promise<void> {
+  return runTier("core", async () => {
+    const snap = await loadOpsCore();
+    state = {
+      ...state,
+      cases: snap.cases,
+      deliveries: snap.deliveries,
+      workflow: snap.workflow,
+      station: snap.station,
+      truncated: {
+        ...state.truncated,
+        cases: snap.truncated.cases,
+        deliveries: snap.truncated.deliveries,
+        limits: { ...state.truncated.limits, ...snap.limits },
+      },
+    };
+    caseIds = snap.caseIds;
+    deliveryIds = snap.deliveryIds;
+    agentIds = snap.agentIds;
+    caseVersions = snap.caseVersions;
+    deliveryVersions = snap.deliveryVersions;
+    driverPool.splice(0, driverPool.length, ...snap.agents.map((a: { name: string }) => a.name));
+    notify();
+  });
+}
+
+/** Tier 2 — audit trail and notification queue. */
+export function refreshOpsActivity(): Promise<void> {
+  return runTier("activity", async () => {
+    const snap = await loadOpsActivity();
+    state = {
+      ...state,
+      audit: snap.audit,
+      notifications: snap.notifications,
+      truncated: {
+        ...state.truncated,
+        audit: snap.truncated.audit,
+        notifications: snap.truncated.notifications,
+        limits: { ...state.truncated.limits, ...snap.limits },
+      },
+    };
+    notify();
+  });
+}
+
+/** Tier 3 — feedback, quality incidents, agent positions and routes. */
+export function refreshOpsSecondary(): Promise<void> {
+  return runTier("secondary", async () => {
+    const snap = await loadOpsSecondary();
+    state = {
+      ...state,
+      feedback: snap.feedback,
+      qualityIncidents: snap.qualityIncidents,
+      driverPositions: snap.driverPositions,
+      driverRoutes: snap.driverRoutes,
+    };
+    notify();
+  });
+}
+
+/** All tiers, started together. Resolves when the last one lands. */
+export async function refreshOps(): Promise<void> {
+  await Promise.all([refreshOpsCore(), refreshOpsActivity(), refreshOpsSecondary()]);
 }
 
 let refreshTimer: ReturnType<typeof setTimeout> | null = null;
-function scheduleRefresh() {
+let refreshTiers = new Set<keyof OpsLoading>();
+/** Debounced, tier-scoped realtime refresh: only reload what actually changed. */
+function scheduleRefresh(...tiers: (keyof OpsLoading)[]) {
+  tiers.forEach((t) => refreshTiers.add(t));
   if (refreshTimer) return;
   refreshTimer = setTimeout(() => {
     refreshTimer = null;
-    void refreshOps();
+    const pending = refreshTiers;
+    refreshTiers = new Set();
+    if (pending.has("core")) void refreshOpsCore();
+    if (pending.has("activity")) void refreshOpsActivity();
+    if (pending.has("secondary")) void refreshOpsSecondary();
   }, 150);
 }
 
@@ -480,8 +567,16 @@ function boot() {
   // page load. Hydrate only once a session actually exists.
   if (window.location.pathname.startsWith("/passenger/")) return;
 
+  // Mark every tier as loading up front so the first paint shows skeletons
+  // rather than a fully-populated-looking dashboard full of zeros.
+  state = { ...state, loading: { core: true, activity: true, secondary: true } };
+
   void supabase.auth.getSession().then(({ data }) => {
     if (data.session) void refreshOps();
+    else {
+      state = { ...state, loading: { core: false, activity: false, secondary: false } };
+      notify();
+    }
   });
 
   supabase.auth.onAuthStateChange((event, session) => {
@@ -494,9 +589,15 @@ function boot() {
   });
   const channel = supabase
     .channel("ops_sync")
-    .on("postgres_changes", { event: "*", schema: "public", table: "deliveries" }, scheduleRefresh)
-    .on("postgres_changes", { event: "*", schema: "public", table: "baggage_cases" }, scheduleRefresh)
-    .on("postgres_changes", { event: "*", schema: "public", table: "notification_events" }, scheduleRefresh)
+    .on("postgres_changes", { event: "*", schema: "public", table: "deliveries" }, () =>
+      scheduleRefresh("core", "secondary"),
+    )
+    .on("postgres_changes", { event: "*", schema: "public", table: "baggage_cases" }, () =>
+      scheduleRefresh("core"),
+    )
+    .on("postgres_changes", { event: "*", schema: "public", table: "notification_events" }, () =>
+      scheduleRefresh("activity"),
+    )
     .subscribe();
   window.addEventListener("beforeunload", () => {
     void supabase.removeChannel(channel);

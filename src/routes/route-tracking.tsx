@@ -1,9 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { useStore } from "@/lib/store";
+import { useStore, useOpsLoading } from "@/lib/store";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusBadge } from "@/components/status-badge";
 import { MapPin, Truck, Clock, Navigation } from "lucide-react";
+import { PageLoading } from "@/components/ops-skeleton";
 
 export const Route = createFileRoute("/route-tracking")({
   head: () => ({ meta: [{ title: "Route Tracking — Smart Baggage Ecosystem" }] }),
@@ -16,8 +17,15 @@ function RouteTrackingPage() {
       (d) => d.status === "Picked Up" || d.status === "Out For Delivery" || d.status === "Assigned",
     ),
   );
+  const loading = useOpsLoading();
   const [selectedId, setSelectedId] = useState(active[0]?.deliveryId ?? "");
   const selected = active.find((d) => d.deliveryId === selectedId) ?? active[0];
+
+
+  // Progressive loading: render the page shell with placeholders while this
+  // screen's data tier is still in flight, instead of showing empty values.
+  if (loading.core && active.length === 0)
+    return <PageLoading title={"Live Route Tracking"} subtitle={"Monitor driver positions and estimated arrival times across Greater Cairo."} kpis={0} />;
 
   return (
     <div className="space-y-6">

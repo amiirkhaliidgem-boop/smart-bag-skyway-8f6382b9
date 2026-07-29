@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import {
   useStore,
+  useOpsLoading,
   bulkUpdateCases,
   bulkAssignDelivery,
   updateLfStatus,
@@ -67,6 +68,7 @@ import { ImportDialog } from "@/components/io/import-dialog";
 import { lostFoundSchema } from "@/lib/io/registry";
 import { exportCasesToXlsx } from "@/lib/lost-found/export-xlsx";
 import { Upload } from "lucide-react";
+import { PageLoading } from "@/components/ops-skeleton";
 
 export const Route = createFileRoute("/lost-found/")({
   head: () => ({
@@ -101,6 +103,7 @@ const ALL_COLUMNS: { key: ColKey; label: string; default: boolean }[] = [
 
 function LostFoundPage() {
   const cases = useStore((s) => s.cases);
+  const loading = useOpsLoading();
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<LFStatus | "all">("all");
   const [from, setFrom] = useState("");
@@ -254,6 +257,12 @@ function LostFoundPage() {
     if (selectedIds.length === 0) return;
     pirPrintBus.print(selectedIds);
   }
+
+
+  // Progressive loading: render the page shell with placeholders while this
+  // screen's data tier is still in flight, instead of showing empty values.
+  if (loading.core && cases.length === 0)
+    return <PageLoading title={"Lost & Found Management"} kpis={5} />;
 
   return (
     <div className="space-y-6">

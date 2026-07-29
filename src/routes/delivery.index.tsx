@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { useDeliveryAgents } from "@/lib/admin/agents";
 import {
   useStore,
+  useOpsLoading,
   assignDriver,
   bulkAssignDriver,
   getDeliveryStage,
@@ -60,6 +61,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { PodPrintHost, podPrintBus } from "@/components/delivery/pod-print-host";
 import { DateRangeFilter } from "@/components/filters/date-range-filter";
+import { PageLoading } from "@/components/ops-skeleton";
 
 export const Route = createFileRoute("/delivery/")({
   head: () => ({
@@ -77,6 +79,7 @@ export const Route = createFileRoute("/delivery/")({
 
 function DispatchCenter() {
   const deliveries = useStore((s) => s.deliveries);
+  const loading = useOpsLoading();
 
   // ---- Filters (URL-independent; local UI state for this operational view)
   const [q, setQ] = useState("");
@@ -156,6 +159,12 @@ function DispatchCenter() {
     next.has(id) ? next.delete(id) : next.add(id);
     setSelected(next);
   };
+
+
+  // Progressive loading: render the page shell with placeholders while this
+  // screen's data tier is still in flight, instead of showing empty values.
+  if (loading.core && deliveries.length === 0)
+    return <PageLoading title={"Delivery Dispatch Center"} kpis={6} />;
 
   return (
     <div className="space-y-6">

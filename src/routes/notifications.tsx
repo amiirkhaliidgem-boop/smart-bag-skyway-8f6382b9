@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { useStore, type NotificationEvent } from "@/lib/store";
+import { useStore, useOpsLoading, type NotificationEvent } from "@/lib/store";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { triggerLabel, type NotificationChannel } from "@/lib/notifications/templates";
+import { PageLoading } from "@/components/ops-skeleton";
 
 export const Route = createFileRoute("/notifications")({
   head: () => ({
@@ -44,6 +45,7 @@ const CHANNEL_META: Record<NotificationChannel, { label: string; icon: typeof Ma
 
 function NotificationCenter() {
   const notifications = useStore((s) => s.notifications);
+  const loading = useOpsLoading();
 
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [channelFilter, setChannelFilter] = useState<string>("all");
@@ -109,6 +111,12 @@ function NotificationCenter() {
       failed: notifications.filter((n) => n.status_ === "failed").length,
     };
   }, [notifications]);
+
+
+  // Progressive loading: render the page shell with placeholders while this
+  // screen's data tier is still in flight, instead of showing empty values.
+  if (loading.activity && notifications.length === 0)
+    return <PageLoading title={"Notification Center"} kpis={5} />;
 
   return (
     <div className="space-y-6">
