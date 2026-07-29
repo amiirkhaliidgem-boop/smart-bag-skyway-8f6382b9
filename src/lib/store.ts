@@ -19,7 +19,7 @@ import type { Role } from "./roles/roles";
 import type { LFStatus } from "./lost-found/statuses";
 import { type DeliveryStage, stageFromLegacy } from "./delivery/stages";
 import type { FailureReason } from "./delivery/stages";
-import { loadOpsSnapshot, callOpsRpc } from "./ops.functions";
+import { loadOpsCore, loadOpsActivity, loadOpsSecondary, callOpsRpc } from "./ops.functions";
 import { saveStation, logDataIoEvent } from "./settings.functions";
 import { supabase } from "@/integrations/supabase/client";
 
