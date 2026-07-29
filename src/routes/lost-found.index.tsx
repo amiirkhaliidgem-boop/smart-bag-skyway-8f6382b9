@@ -46,6 +46,7 @@ import {
   DropdownMenuCheckboxItem,
 } from "@/components/ui/dropdown-menu";
 import { LfStatusBadge } from "@/components/lf-status-badge";
+import { useStaffOfficers, type StaffOfficer } from "@/lib/admin/officers";
 import { PirWizard } from "@/components/lost-found/pir-wizard";
 import { BulkToolbar } from "@/components/bulk/bulk-toolbar";
 import { DateRangeFilter } from "@/components/filters/date-range-filter";
@@ -578,11 +579,11 @@ function AssignOfficerDialog({
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
-  officers: string[];
+  officers: StaffOfficer[];
   count: number;
-  onSubmit: (name: string) => void;
+  onSubmit: (officerId: string) => void;
 }) {
-  const [name, setName] = useState("");
+  const [officerId, setOfficerId] = useState("");
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
@@ -593,29 +594,30 @@ function AssignOfficerDialog({
           <p className="text-sm text-muted-foreground">
             Assign {count} selected case{count === 1 ? "" : "s"} to an officer.
           </p>
-          {officers.length > 0 && (
-            <div className="space-y-1.5">
-              <Label className="text-xs">Existing officers</Label>
-              <Select value="" onValueChange={setName}>
-                <SelectTrigger className="h-9">
-                  <SelectValue placeholder="Pick an officer" />
-                </SelectTrigger>
-                <SelectContent>
-                  {officers.map((o) => (
-                    <SelectItem key={o} value={o}>{o}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
           <div className="space-y-1.5">
-            <Label className="text-xs">Officer name</Label>
-            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Ahmed Salah" />
+            <Label className="text-xs">Officer</Label>
+            <Select value={officerId} onValueChange={setOfficerId}>
+              <SelectTrigger className="h-9">
+                <SelectValue placeholder="Pick an officer" />
+              </SelectTrigger>
+              <SelectContent>
+                {officers.map((o) => (
+                  <SelectItem key={o.id} value={o.id}>
+                    {o.full_name} · {o.employee_id}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {officers.length === 0 && (
+              <p className="text-xs text-muted-foreground">
+                No active staff found in Administration.
+              </p>
+            )}
           </div>
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={() => onSubmit(name)} disabled={!name.trim()}>Assign</Button>
+          <Button onClick={() => onSubmit(officerId)} disabled={!officerId}>Assign</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
