@@ -70,3 +70,36 @@ export function TableSkeleton({ rows = 6 }: { rows?: number }) {
     </div>
   );
 }
+
+/**
+ * Whole-screen placeholder: real page heading (so navigation feels instant)
+ * plus KPI and table placeholders while that screen's data tier loads.
+ */
+export function PageLoading({
+  title,
+  subtitle,
+  kpis = 5,
+  rows = 6,
+}: {
+  title: string;
+  subtitle?: string;
+  kpis?: number;
+  rows?: number;
+}) {
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{title}</h1>
+        {subtitle ? <p className="text-sm text-muted-foreground mt-1">{subtitle}</p> : null}
+      </div>
+      {kpis > 0 ? (
+        <KpiSkeletonGrid count={kpis} className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4" />
+      ) : null}
+      <Card>
+        <CardContent className="p-0">
+          <TableSkeleton rows={rows} />
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
