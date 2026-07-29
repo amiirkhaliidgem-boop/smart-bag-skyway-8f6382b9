@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useStore } from "@/lib/store";
+import { useStore, useOpsLoading } from "@/lib/store";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   AreaChart,
@@ -29,6 +29,7 @@ function ReportsPage() {
   const feedback = useStore((s) => s.feedback);
   const incidents = useStore((s) => s.qualityIncidents);
   const deliveries = useStore((s) => s.deliveries);
+  const loading = useOpsLoading();
 
   const delivered = deliveries.filter((d) => d.status === "Delivered").length;
   const successRate = deliveries.length

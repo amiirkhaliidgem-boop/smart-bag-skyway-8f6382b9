@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { useStore, type NotificationEvent } from "@/lib/store";
+import { useStore, useOpsLoading, type NotificationEvent } from "@/lib/store";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -44,6 +44,7 @@ const CHANNEL_META: Record<NotificationChannel, { label: string; icon: typeof Ma
 
 function NotificationCenter() {
   const notifications = useStore((s) => s.notifications);
+  const loading = useOpsLoading();
 
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [channelFilter, setChannelFilter] = useState<string>("all");

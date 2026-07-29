@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { useStore, assignStorage } from "@/lib/store";
+import { useStore, useOpsLoading, assignStorage } from "@/lib/store";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,6 +28,7 @@ export const Route = createFileRoute("/storage")({
 
 function StoragePage() {
   const cases = useStore((s) => s.cases);
+  const loading = useOpsLoading();
   const [editing, setEditing] = useState<string | null>(null);
 
   const stored = cases.filter((c) => c.storage);

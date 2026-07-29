@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import {
   useStore,
+  useOpsLoading,
   bulkUpdateCases,
   bulkAssignDelivery,
   updateLfStatus,
@@ -101,6 +102,7 @@ const ALL_COLUMNS: { key: ColKey; label: string; default: boolean }[] = [
 
 function LostFoundPage() {
   const cases = useStore((s) => s.cases);
+  const loading = useOpsLoading();
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<LFStatus | "all">("all");
   const [from, setFrom] = useState("");

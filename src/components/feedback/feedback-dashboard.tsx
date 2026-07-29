@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useStore } from "@/lib/store";
+import { useStore, useOpsLoading } from "@/lib/store";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -23,6 +23,7 @@ export function FeedbackDashboard() {
   const feedback = useStore((s) => s.feedback);
   const cases = useStore((s) => s.cases);
   const deliveries = useStore((s) => s.deliveries);
+  const loading = useOpsLoading();
 
   const [q, setQ] = useState("");
   const [from, setFrom] = useState("");

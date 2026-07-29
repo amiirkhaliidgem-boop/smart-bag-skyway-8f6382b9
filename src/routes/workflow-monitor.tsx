@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { getDeliveryStage, useStore, type BaggageCase, type Delivery, type WorkflowRecord } from "@/lib/store";
+import { getDeliveryStage, useStore, useOpsLoading, type BaggageCase, type Delivery, type WorkflowRecord } from "@/lib/store";
 import {
   DELIVERY_STAGES,
   STAGE_LABELS,
@@ -108,6 +108,7 @@ function WorkflowMonitorPage() {
   const workflow = useStore((s) => s.workflow);
   const feedback = useStore((s) => s.feedback);
   const incidents = useStore((s) => s.qualityIncidents);
+  const loading = useOpsLoading();
 
   const [driver, setDriver] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
