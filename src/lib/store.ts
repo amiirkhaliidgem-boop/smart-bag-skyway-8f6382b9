@@ -740,6 +740,7 @@ export async function addCase(
 function casePatchPayload(patch: Partial<BaggageCase>): RpcArgs {
   const p: RpcArgs = {};
   if (patch.passengerName !== undefined) p.passenger_name = patch.passengerName;
+  if (patch.pirNumber !== undefined) p.pir_number = patch.pirNumber;
   if (patch.flightNumber !== undefined) p.flight_number = patch.flightNumber;
   if (patch.contact !== undefined) p.contact_mobile = patch.contact;
   if (patch.email !== undefined) p.email = patch.email;
@@ -797,6 +798,7 @@ function casePatchPayload(patch: Partial<BaggageCase>): RpcArgs {
   if (it) {
     if (it.department !== undefined) p.department = it.department;
     if (it.internalNotes !== undefined) p.internal_notes = it.internalNotes;
+    if (it.assignedOfficerId !== undefined) p.assigned_officer_id = it.assignedOfficerId;
   }
   return p;
 }
