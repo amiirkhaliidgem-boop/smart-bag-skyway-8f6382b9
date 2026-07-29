@@ -110,7 +110,7 @@ const en: DriverStrings = {
   invalidOtp: "Invalid OTP",
   verifyOtp: "Verify OTP",
   otpHint: "Ask the passenger for the OTP shown in their Passenger Portal.",
-  otpPlaceholder: "4-digit code",
+  otpPlaceholder: "6-digit code",
   cancel: "Cancel",
   confirm: "Confirm",
 };
@@ -168,7 +168,7 @@ const ar: DriverStrings = {
   invalidOtp: "كلمة مرور غير صحيحة",
   verifyOtp: "التحقق من كلمة المرور",
   otpHint: "اطلب من الراكب كلمة المرور الظاهرة في بوابة الركاب.",
-  otpPlaceholder: "رمز من 4 أرقام",
+  otpPlaceholder: "رمز من 6 أرقام",
   cancel: "إلغاء",
   confirm: "تأكيد",
 };
