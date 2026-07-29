@@ -21,6 +21,14 @@ export const KNOWN_AIRLINES = new Set([
 
 const RX_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const RX_PHONE = /^\+?[0-9][0-9 ()-]{6,20}$/;
+// Egyptian mobile numbers as operators actually type them:
+// 01xxxxxxxxx, 0020..., +2010..., with spaces/dashes tolerated.
+const RX_EG_MOBILE = /^(?:\+?20|00?20)?0?1[0-25]\d{8}$/;
+
+/** Digits-only view used for local-format checks. */
+function phoneDigits(v: string): string {
+  return v.replace(/[\s()\-.]/g, "");
+}
 const RX_DATETIME = /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(:\d{2})?(Z|[+-]\d{2}:?\d{2})?$/;
 
 // Flexible date parser. Real-world CSVs from Excel/Numbers arrive in many
@@ -101,9 +109,17 @@ export function validateField(
     case "email":
       if (!RX_EMAIL.test(trimmed)) issues.push({ field: field.key, level: "error", message: `${field.label} is not a valid email.` });
       break;
-    case "phone":
-      if (!RX_PHONE.test(trimmed)) issues.push({ field: field.key, level: "warning", message: `${field.label} format looks unusual.` });
+    case "phone": {
+      const digits = phoneDigits(trimmed);
+      if (!RX_EG_MOBILE.test(digits) && !RX_PHONE.test(trimmed)) {
+        issues.push({
+          field: field.key,
+          level: "warning",
+          message: `${field.label} format looks unusual.`,
+        });
+      }
       break;
+    }
     case "enum":
       if (field.enumValues && !field.enumValues.includes(trimmed)) {
         issues.push({
