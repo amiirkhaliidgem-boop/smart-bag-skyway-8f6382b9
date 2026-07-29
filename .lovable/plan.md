@@ -1,42 +1,41 @@
-## Root cause (verified against the live database)
+## Root cause
 
-The Workflow Engine is **not** broken. I queried `DEL-000001` and everything downstream of `agent_advance`/`wf_transition` is correct:
+The Delivery Agent Portal's Verify OTP dialog is the only remaining 4-digit surface:
 
-```text
-deliveries.stage      = Out for Delivery
-deliveries.status     = OUT_FOR_DELIVERY   started_at = 07:11:35Z
-passenger_view.stage  = Out for Delivery   updated_at = 07:11:35Z
-passenger_view.otp    = 754496 (Sent)
-```
+- `src/routes/driver-portal.tsx` (`OtpDialog`): input is `maxLength={4}`, so a 6-digit code is truncated to the first 4 characters (visible in your screenshot: `7544` of `754496`).
+- The same dialog verifies **client-side**: `if (code.trim() === d.otpCode)`. The agent-side snapshot does not reliably carry the passenger OTP, so even an untruncated code compares against an empty/stale value and shows "Invalid OTP". The database function `agent_complete_delivery(p_delivery, p_code)` is the authoritative verifier and is currently only reached when the client-side check passes.
+- `src/lib/i18n/driver.ts`: placeholders say "4-digit code" / "رمز من 4 أرقام".
+- `src/lib/store.ts` → `driverMarkDelivered` swallows RPC errors via `reportError`, so a rejected OTP would look like a silent no-op instead of an error toast.
 
-So `wf_transition()` did run `wf_journal`, `wf_queue_notification` and `wf_refresh_passenger_view` correctly.
+The 6-digit generation, storage in `otp_challenges`, and the Passenger Portal display are already correct. No hardcoded `1234` exists anywhere in `src/`.
 
-The failure is in the **passenger portal client**, in `src/routes/passenger.$token.tsx`:
+## Changes (no design changes)
 
-- `synthesizeFromView()` never sets `delivery.stage`. The portal renders from `getDeliveryStage(delivery)`, which then falls back to legacy status mapping.
-- It feeds `view.status` (a workflow enum, e.g. `OUT_FOR_DELIVERY`, `DELIVERED`) into `normaliseDeliveryStatus()`, which only matches human labels (`"Out For Delivery"`, `"Delivered"`). Every real value hits `default:` and returns `"Pending"`.
+1. **`src/routes/driver-portal.tsx` — Verify OTP dialog**
+   - `maxLength={6}`, keep digits-only input; Confirm button disabled until exactly 6 digits are entered.
+   - Drop the client-side `code === d.otpCode` comparison entirely. Submit calls `driverMarkDelivered(deliveryId, { code })` and awaits the result.
+   - On success: success toast, close dialog. On rejection/error: keep the dialog open and show the invalid-OTP toast. Same markup/classes as today.
 
-Net effect: the portal shows the pre-assignment stage forever, the OTP card stays hidden (it is gated on stage ≥ Out for Delivery), and the feedback view never unlocks after Delivered — even though the DB is perfectly in sync.
+2. **`src/lib/store.ts` — `driverMarkDelivered`**
+   - Return a `{ ok: boolean; error?: string }` result (or rethrow) instead of silently swallowing, so the dialog can distinguish a wrong code from success. Refresh the snapshot after a successful call so the portal moves the stop to Completed.
 
-## Fix
+3. **`src/lib/i18n/driver.ts`**
+   - Placeholder text → "6-digit code" / "رمز من 6 أرقام". No other copy changes.
 
-1. **`src/routes/passenger.$token.tsx`** — pass `view.stage` straight through as `delivery.stage` (the DB already returns the canonical `delivery_stage` value), and rewrite `normaliseDeliveryStatus`/`statusToCaseStatus` to map from the workflow enum *and* the stage label, with no silent `default → Pending`. Also derive the L&F stepper status and the delivered flag from the same stage value.
-2. **OTP visibility** — keep the server-side rule as the single gate: `passenger_get_view()` exposes `otp_code` only when stage = `Out for Delivery`; extend it to keep exposing while the delivery is `Out for Delivery` or `Delivery Failed` (retry attempt) and to return `NULL` once `Delivered`/`Returned to Airport`. Client keeps rendering the OTP card only when `otpCode` is non-null, so the DB stays authoritative.
-3. **Feedback eligibility** — the portal switches to the feedback view on `stage === "Delivered"`; with the mapping fixed this works. Confirm `passenger_submit_feedback` still returns true only for a live, non-revoked link.
+4. **Sweep for other 4-digit assumptions** across `src/` (inputs, slices, regexes, templates) and fix any found. Current sweep shows only the items above; `src/lib/integrations/otp.ts` already generates 6 digits.
 
-## Full-chain verification (after the fix)
+## End-to-end validation (after the fix)
 
-Drive the real RPCs against a test delivery and assert every side-effect table for each transition:
+Drive one delivery through the full lifecycle with the real portals plus SQL verification:
 
-```text
-Assigned → Driver Accepted → Collected Bag → Out for Delivery
-        → OTP verify → Delivered → Feedback submitted
-```
+Ready for Delivery → Assigned → Driver Accepted → Collected → Out for Delivery → agent enters the real 6-digit OTP → Delivered → Closed.
 
-For each step check: `deliveries` (stage, workflow_status, the matching `*_at` timestamp, version bump), `workflow_events`, `timeline_events`, `audit_events`, `passenger_view` (stage + otp + updated_at), `notification_events` (queued for DRIVER_ASSIGNED / OUT_FOR_DELIVERY / DELIVERED only), `otp_challenges` state, and `passenger_feedback`.
+For the OTP step specifically, confirm in the database that:
+- `otp_challenges` row moves to `Verified`;
+- `deliveries.stage = Delivered` with `delivered_at` set;
+- `workflow_events`, `timeline_events`, `admin_audit_log`/`audit_events` all record the transition;
+- `passenger_view` flips to Delivered and stops exposing the OTP;
+- `notification_events` contains the Delivered notification;
+- the linked `baggage_cases` row reaches Delivered/Closed.
 
-Then run the portal itself in a headless browser against the live token and screenshot it at Assigned, Out for Delivery (OTP digits visible) and Delivered (feedback form), confirming the polling picks up each change within ~5s.
-
-## Notes
-
-No new routes, no schema changes beyond the one `passenger_get_view` OTP-window tweak, and no changes to the frozen portal visual design.
+Then check the live Passenger Portal token renders Delivered, and confirm a wrong code is rejected without advancing any state. Test data created for the run is removed afterwards.

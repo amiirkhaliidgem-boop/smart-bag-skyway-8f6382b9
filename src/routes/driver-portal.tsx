@@ -503,6 +503,7 @@ function DeliveryCard({
 
 function OtpDialog({ d, onClose }: { d: Delivery; onClose: () => void }) {
   const [code, setCode] = useState("");
+  const [busy, setBusy] = useState(false);
   const { t, dir, lang } = useDriverLang();
   return (
     <DialogContent className="max-w-sm" dir={dir} lang={lang}>
@@ -512,13 +513,23 @@ function OtpDialog({ d, onClose }: { d: Delivery; onClose: () => void }) {
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          if (code.trim() === d.otpCode) {
-            driverMarkDelivered(d.deliveryId, { actor: d.driver, role: "Driver" });
-            toast.success(t.deliveredToast);
-            onClose();
-          } else {
-            toast.error(t.invalidOtp);
-          }
+          if (busy || code.length !== 6) return;
+          setBusy(true);
+          void driverMarkDelivered(d.deliveryId, {
+            actor: d.driver,
+            role: "Driver",
+            code,
+          })
+            .then((res) => {
+              if (res.ok) {
+                toast.success(t.deliveredToast);
+                onClose();
+              } else {
+                toast.error(res.error || t.invalidOtp);
+                setCode("");
+              }
+            })
+            .finally(() => setBusy(false));
         }}
         className="space-y-3"
       >
@@ -527,16 +538,21 @@ function OtpDialog({ d, onClose }: { d: Delivery; onClose: () => void }) {
         </p>
         <Input
           value={code}
-          onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
-          maxLength={4}
+          onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+          maxLength={6}
           inputMode="numeric"
+          autoComplete="one-time-code"
           placeholder={t.otpPlaceholder}
           dir="ltr"
           className="text-center tabular-nums"
         />
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={onClose}>{t.cancel}</Button>
-          <Button type="submit">{t.confirm}</Button>
+          <Button type="button" variant="outline" onClick={onClose} disabled={busy}>
+            {t.cancel}
+          </Button>
+          <Button type="submit" disabled={busy || code.length !== 6}>
+            {t.confirm}
+          </Button>
         </DialogFooter>
       </form>
     </DialogContent>

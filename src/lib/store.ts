@@ -976,13 +976,14 @@ export const driverReject = (deliveryId: string, _opts: { actor?: string; role?:
 export async function driverMarkDelivered(
   deliveryId: string,
   opts: { actor?: string; role?: Role; code?: string } = {},
-) {
+): Promise<{ ok: boolean; error?: string }> {
   const id = deliveryUuid(deliveryId);
-  if (!id) return;
+  if (!id) return { ok: false, error: "Delivery not found" };
   try {
     await rpc("agent_complete_delivery", { p_delivery: id, p_code: opts.code ?? "" });
+    return { ok: true };
   } catch (err) {
-    reportError(err);
+    return { ok: false, error: err instanceof Error ? err.message : String(err) };
   }
 }
 
