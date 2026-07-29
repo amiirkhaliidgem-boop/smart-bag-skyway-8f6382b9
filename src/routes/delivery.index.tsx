@@ -77,6 +77,7 @@ export const Route = createFileRoute("/delivery/")({
 
 function DispatchCenter() {
   const deliveries = useStore((s) => s.deliveries);
+  const loading = useOpsLoading();
 
   // ---- Filters (URL-independent; local UI state for this operational view)
   const [q, setQ] = useState("");
