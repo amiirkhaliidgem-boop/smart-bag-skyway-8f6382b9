@@ -628,6 +628,7 @@ function TimelinePage() {
   const audit = useStore((s) => s.audit);
   const callLogs = useStore((s) => s.callLogs);
   const ioAudit = useStore((s) => s.ioAudit);
+  const dbTimeline = useStore((s) => s.timeline);
   const loading = useOpsLoading();
 
   const events = useMemo(
@@ -642,8 +643,20 @@ function TimelinePage() {
         audit,
         callLogs,
         ioAudit,
+        dbTimeline,
       ),
-    [cases, deliveries, workflow, notifications, feedback, incidents, audit, callLogs, ioAudit],
+    [
+      cases,
+      deliveries,
+      workflow,
+      notifications,
+      feedback,
+      incidents,
+      audit,
+      callLogs,
+      ioAudit,
+      dbTimeline,
+    ],
   );
 
   const drivers = useMemo(
