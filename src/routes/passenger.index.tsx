@@ -828,7 +828,10 @@ function OtpHeroCard({
   allChecked: boolean;
   onConfirm: () => void;
 }) {
-  const digits = (code ?? "").padEnd(4, "•").slice(0, 4).split("");
+  // Production one-time codes are 6 digits — render every digit, never a
+  // truncated prefix. Falls back to placeholders while the code is empty.
+  const raw = (code ?? "").trim();
+  const digits = (raw.length > 0 ? raw : "••••••").split("");
   return (
     <div
       className="iab-grain relative overflow-hidden rounded-[32px] px-6 py-8 sm:px-10 sm:py-10 text-white"
@@ -866,15 +869,15 @@ function OtpHeroCard({
           Verification · رمز التحقق
         </div>
 
-        <div className="mt-4 flex items-center justify-center gap-2 sm:gap-3">
+        <div className="mt-4 flex items-center justify-center gap-1.5 sm:gap-2.5">
           {digits.map((d, i) => (
             <div
               key={i}
-              className="h-16 w-14 sm:h-20 sm:w-16 rounded-2xl grid place-items-center bg-white/[0.06] border border-white/10 backdrop-blur"
+              className="h-14 w-11 sm:h-20 sm:w-16 rounded-2xl grid place-items-center bg-white/[0.06] border border-white/10 backdrop-blur"
               style={{ boxShadow: "inset 0 1px 0 rgba(255,255,255,0.15)" }}
             >
               <span
-                className="text-4xl sm:text-5xl tabular-nums text-white"
+                className="text-3xl sm:text-5xl tabular-nums text-white"
                 style={{
                   fontFamily: "var(--font-passenger-display)",
                   fontWeight: 300,
