@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useStore, type CaseStatus } from "@/lib/store";
+import { useStore, useOpsLoading, type CaseStatus } from "@/lib/store";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { KpiSkeletonGrid, ChartSkeleton, ListSkeleton } from "@/components/ops-skeleton";
 import { WORKFLOW_STATUSES, WORKFLOW_LABELS } from "@/lib/workflow/statuses";
 import {
   Luggage,
@@ -49,6 +50,7 @@ function Index() {
   const cases = useStore((s) => s.cases);
   const deliveries = useStore((s) => s.deliveries);
   const feedback = useStore((s) => s.feedback);
+  const loading = useOpsLoading();
 
   const total = cases.length;
   const open = cases.filter((c) => c.status !== "Delivered").length;
@@ -131,6 +133,9 @@ function Index() {
         </p>
       </div>
 
+      {loading.core ? (
+        <KpiSkeletonGrid count={9} />
+      ) : (
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
         {kpis.map((k) => (
           <Card key={k.label} className="overflow-hidden">
@@ -158,6 +163,7 @@ function Index() {
           </Card>
         ))}
       </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-2">
@@ -165,6 +171,9 @@ function Index() {
             <CardTitle className="text-base">Baggage Status Distribution</CardTitle>
           </CardHeader>
           <CardContent>
+            {loading.core ? (
+              <ChartSkeleton />
+            ) : (
             <div className="h-72">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={statusData}>
@@ -187,6 +196,7 @@ function Index() {
                 </BarChart>
               </ResponsiveContainer>
             </div>
+            )}
           </CardContent>
         </Card>
 
@@ -195,6 +205,9 @@ function Index() {
             <CardTitle className="text-base">Status Breakdown</CardTitle>
           </CardHeader>
           <CardContent>
+            {loading.core ? (
+              <ChartSkeleton />
+            ) : (
             <div className="h-72">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -215,6 +228,7 @@ function Index() {
                 </PieChart>
               </ResponsiveContainer>
             </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -224,6 +238,9 @@ function Index() {
           <CardTitle className="text-base">Cases by Carrier</CardTitle>
         </CardHeader>
         <CardContent>
+          {loading.core ? (
+            <ChartSkeleton height="h-64" />
+          ) : (
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={flightAgg} layout="vertical">
@@ -235,6 +252,7 @@ function Index() {
               </BarChart>
             </ResponsiveContainer>
           </div>
+          )}
         </CardContent>
       </Card>
 
@@ -243,6 +261,9 @@ function Index() {
           <CardTitle className="text-base">Delivery Workflow Funnel</CardTitle>
         </CardHeader>
         <CardContent>
+          {loading.core ? (
+            <ListSkeleton rows={6} />
+          ) : (
           <div className="space-y-2">
             {funnel.map((f) => {
               const max = Math.max(1, ...funnel.map((x) => x.count));
@@ -261,6 +282,7 @@ function Index() {
               );
             })}
           </div>
+          )}
         </CardContent>
       </Card>
     </div>
