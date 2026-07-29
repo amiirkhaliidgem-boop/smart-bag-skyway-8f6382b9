@@ -1,12 +1,34 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-/** Full operational snapshot projected from the normalized production tables. */
-export const loadOpsSnapshot = createServerFn({ method: "GET" })
+/**
+ * The operational snapshot is served in three independent tiers so the UI can
+ * paint real KPI values as soon as the core lands instead of waiting for the
+ * whole dataset. Same auth, same limits, same mapping as before.
+ */
+
+/** Tier 1 — cases, deliveries, workflow, station, id/version maps. */
+export const loadOpsCore = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { buildSnapshot } = await import("./ops.server");
-    return buildSnapshot(context.supabase as any);
+    const { buildCoreSnapshot } = await import("./ops.server");
+    return buildCoreSnapshot(context.supabase as any);
+  });
+
+/** Tier 2 — audit trail and notification queue. */
+export const loadOpsActivity = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { buildActivitySnapshot } = await import("./ops.server");
+    return buildActivitySnapshot(context.supabase as any);
+  });
+
+/** Tier 3 — feedback, quality incidents, agent positions and routes. */
+export const loadOpsSecondary = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { buildSecondarySnapshot } = await import("./ops.server");
+    return buildSecondarySnapshot(context.supabase as any);
   });
 
 /** Generic guarded RPC bridge to the Workflow Engine functions in PostgreSQL. */
