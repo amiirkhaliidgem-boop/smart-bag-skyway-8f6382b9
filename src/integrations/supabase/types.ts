@@ -375,7 +375,7 @@ export type Database = {
           passenger_middle_name: string | null
           passenger_name: string
           passport_number: string | null
-          pir_number: string
+          pir_number: string | null
           pnr: string | null
           preferred_delivery_time: string | null
           priority: Database["public"]["Enums"]["case_priority"]
@@ -433,7 +433,7 @@ export type Database = {
           passenger_middle_name?: string | null
           passenger_name: string
           passport_number?: string | null
-          pir_number: string
+          pir_number?: string | null
           pnr?: string | null
           preferred_delivery_time?: string | null
           priority?: Database["public"]["Enums"]["case_priority"]
@@ -491,7 +491,7 @@ export type Database = {
           passenger_middle_name?: string | null
           passenger_name?: string
           passport_number?: string | null
-          pir_number?: string
+          pir_number?: string | null
           pnr?: string | null
           preferred_delivery_time?: string | null
           priority?: Database["public"]["Enums"]["case_priority"]
@@ -1897,7 +1897,7 @@ export type Database = {
           passenger_middle_name: string | null
           passenger_name: string
           passport_number: string | null
-          pir_number: string
+          pir_number: string | null
           pnr: string | null
           preferred_delivery_time: string | null
           priority: Database["public"]["Enums"]["case_priority"]
@@ -1964,7 +1964,7 @@ export type Database = {
           passenger_middle_name: string | null
           passenger_name: string
           passport_number: string | null
-          pir_number: string
+          pir_number: string | null
           pnr: string | null
           preferred_delivery_time: string | null
           priority: Database["public"]["Enums"]["case_priority"]
@@ -1995,6 +1995,15 @@ export type Database = {
           full_name: string
           id: string
           station: string
+        }[]
+      }
+      list_staff_officers: {
+        Args: never
+        Returns: {
+          department: string
+          employee_id: string
+          full_name: string
+          id: string
         }[]
       }
       login_identity_for_username: {
@@ -2090,6 +2099,22 @@ export type Database = {
           p_to_stage: Database["public"]["Enums"]["delivery_stage"]
         }
         Returns: undefined
+      }
+      wf_journal_event: {
+        Args: {
+          p_action?: string
+          p_case?: string
+          p_delivery?: string
+          p_detail?: string
+          p_metadata?: Json
+          p_module: Database["public"]["Enums"]["timeline_module"]
+          p_title: string
+        }
+        Returns: undefined
+      }
+      wf_lf_workflow: {
+        Args: { p: Database["public"]["Enums"]["lf_status"] }
+        Returns: Database["public"]["Enums"]["workflow_status"]
       }
       wf_open_delivery: {
         Args: { p_case: string }
