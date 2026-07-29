@@ -1,49 +1,47 @@
-## RCA (verified in code)
+## What I verified first
 
-`src/lib/store.ts` boots with `emptyState()` and then calls `refreshOps()`, which awaits one monolithic server function `loadOpsSnapshot` (`src/lib/ops.functions.ts` → `src/lib/ops.server.ts`). That handler runs **17 table reads in one round trip** (cases, bags, deliveries, notes, OTPs, links, workflow events, audit, notifications, feedback, incidents, positions, routes, route stops, users, failure reasons, stations) and only then maps them.
+- `timeline_events` exists in the database and `wf_journal()` already writes to it on every L&F status change, delivery transition, notes, OTP and feedback action — but **no code reads it**. `src/routes/timeline.tsx` synthesizes events client-side from projections, which is why several L&F transitions never appear.
+- Assign Officer sends `internal.assignedOfficer`, but `casePatchPayload()` in `src/lib/store.ts` silently drops it and `lf_update_case()` has no `assigned_officer_id` branch → the write is a no-op (no error, no timeline, no audit).
+- `baggage_cases.assigned_officer_id` (uuid → `app_users`) already exists and is unused.
+- The import template prepends a "Template Version" column; phone fields are only warnings, but the row that fails Egyptian numbers needs checking end-to-end against the actual parse path.
+- PIR is required in the wizard (step validation + field) and in the import schema; `baggage_cases.pir_number` is already nullable and `next_case_no()` already produces sequential `BAG-00000X` ids.
+- `LF_STATUSES` (with `Closed`) drives the status filter; `Last Updated` and the Columns toggle live in `ALL_COLUMNS` / the Columns dropdown.
 
-Consequences:
-- Pages render instantly, but every screen reads from the empty store, so KPIs show `0`, charts show empty axes, tables show "no rows" — visually indistinguishable from real emptiness.
-- There is no `loading` flag anywhere in the store, so no screen can show a skeleton.
-- The slowest single query gates all data: notifications, audit and timeline (large, low-priority tables) delay KPI cards (small, high-priority tables).
-- Every realtime change triggers a full 17-table refetch.
+## 1. Timeline becomes the system-wide event log
 
-So this is purely a loading-strategy issue, exactly as reported.
+- Add `timeline_events` to the activity snapshot tier (`src/lib/ops.server.ts`, `ops.mapping.ts`, `ops.functions.ts` tier 2), mapped into a new `timeline` array on the store.
+- Rewrite `src/routes/timeline.tsx` to render that DB feed as the primary source (module, title, detail, actor, case/delivery reference, status), keeping the existing visual design, filters and grouping. Client-side synthesis is removed so no module "writes" timeline entries in the UI layer.
+- Migration: extend `wf_journal()` coverage so the modules that currently bypass it also journal — officer assignment, quality incidents, storage assignment, and import/export runs (a small `wf_journal_simple()` helper for non-transition events). Feedback, notifications, delivery and driver actions already journal and stay unchanged.
 
-## What will change
+## 2. Assign Officer works and synchronizes
 
-### 1. Split the snapshot into three tiers (server)
-`src/lib/ops.server.ts` gets three builders instead of one, sharing the existing mappers so no mapping/business logic changes:
+- Migration: add an `assigned_officer_id` branch to `lf_update_case()` (resolve by `app_users.id`), journaling through `wf_journal()` so Timeline + Audit both record it.
+- Add `list_staff_officers()` (security definer, mirrors `list_delivery_agents()`) returning active non-driver staff.
+- Frontend: `casePatchPayload()` maps `internal.assignedOfficer`; the Assign Officer dialogs in `lost-found.index.tsx` and `lost-found.$bagId.tsx` become a **dropdown of real staff** instead of free text. Case details and the registry column update immediately after the RPC refresh.
 
-- **Core** — stations, `baggage_cases`, `case_bags`, `deliveries`, `app_users`, `failure_reasons`, `otp_challenges`, `passenger_links`, `delivery_notes`: everything the KPI cards, L&F registry, Dispatch Center and charts need.
-- **Activity** — `workflow_events`, `audit_events`, `notification_events`: Timeline, Workflow Monitor, Notification Center, Audit tabs.
-- **Secondary** — `passenger_feedback`, `quality_incidents`, `agent_positions`, `agent_routes`, `agent_route_stops`: CSAT, incidents, route tracking.
+## 3. Import template usability
 
-`src/lib/ops.functions.ts` exposes `loadOpsCore`, `loadOpsActivity`, `loadOpsSecondary` (same `requireSupabaseAuth` middleware, same allow-listed RPC bridge untouched). Existing limits and the truncation reporting are preserved per tier.
+- Drop the "Template Version" column from generated templates (`src/lib/io/template.ts`) while `import-service.ts` keeps tolerating it in older files.
+- Phone handling: accept local Egyptian formats (`010/011/012/015` + 8 digits) alongside international `+20…`, with normalization at parse time; keep non-matching values as warnings, never rejections.
+- Make PIR non-required in the L&F import schema (see item 4).
+- Test after implementation with a generated template containing local-format numbers and confirm rows import as "Imported Successfully".
 
-### 2. Fire the tiers in parallel and commit each as it lands (client)
-`refreshOps()` starts all three requests at once and merges each result into the store the moment it resolves, calling `notify()` per tier. Core typically lands first, so KPIs and tables fill while activity/secondary are still in flight. Failure of one tier no longer blanks the others.
+## 4. PIR Number optional
 
-### 3. Add explicit load state so screens show skeletons, not zeros
-The store gains a small `loading: { core, activity, secondary }` flag plus a `useOpsLoading()` selector. Screens read it to swap in skeletons:
+- Wizard: remove the required marker and the step-4 validation; blank PIR passes.
+- Store/RPC: send `null` for empty PIR; `lf_create_case()` already assigns the sequential `BAG-0000XX` case number.
+- UI fallbacks: registry, case details, PIR report and exports show the Case ID when PIR is empty.
+- Import: PIR optional; duplicate detection only applies when a PIR is present.
 
-- `src/routes/index.tsx` — KPI cards and each chart card get their own skeleton, so cards appear before charts.
-- `src/routes/delivery.index.tsx`, `src/routes/lost-found.index.tsx`, `src/routes/storage.tsx`, `src/routes/workflow-monitor.tsx` — table/KPI skeletons on `core`.
-- `src/routes/timeline.tsx`, `src/routes/notifications.tsx`, `src/routes/reports.tsx`, `src/routes/feedback.tsx`, `src/routes/route-tracking.tsx` — skeletons on their own tier, so they never block core screens.
-- A shared `src/components/ops-skeleton.tsx` supplies KPI-card, chart and table-row placeholders using existing shadcn `Skeleton` + design tokens. No layout, copy, colours or business rules change — only a placeholder instead of a fake `0`.
+## 5. L&F UI cleanup
 
-### 4. Cheaper realtime refresh
-Realtime events on `deliveries` / `baggage_cases` refresh only the **core** tier; `notification_events` refresh only **activity**. Same debounce, far less work per event.
+- Status filter and any selector use `LF_OWNED_STATUSES` plus the read-only downstream ones, with `Closed` removed from user-facing lists (kept in the engine enum and mapping).
+- Remove the `Last Updated` column and the Columns toggle; ship one fixed layout: PIR/Case, Passenger, Flight, Bag Tag, Current Status, Assigned Officer, Priority, Created Date, Actions.
 
-## Explicitly unchanged
-- No migration, no schema, table, RLS, grant, RPC or trigger change.
-- `wf_transition`, `dm_*`, `agent_*`, `lf_*`, `notif_*` and the `callOpsRpc` allow-list are untouched.
-- Mapping functions in `src/lib/ops.mapping.ts` and all KPI/SLA formulas stay byte-identical.
-- No route added or removed; no visual redesign.
+## 6. End-to-end validation
 
-## Expected effect
+Run a scripted UAT case through L&F → Ready for Delivery → assign agent → accept → collect → out for delivery → 6-digit OTP → Delivered, plus officer assignment and a bulk import, then query `timeline_events`, `audit_events`, `notification_events`, `workflow_events` and the projections to confirm each step is recorded. Deliver a written report covering Timeline, Audit, Notifications, Passenger Portal, Dashboard and Reports, and confirming no schema or Workflow Engine regressions.
 
-Measured on the current dataset the snapshot is small, so I will benchmark the real before/after with the dev server rather than quote guesses. Structurally: time-to-first-meaningful-KPI drops from "slowest of 17 queries" to "slowest of ~9 small queries", with heavy audit/notification reads moved off the critical path — the dominant win grows with data volume.
+## Technical notes
 
-## Deliverables at the end
-RCA (above, confirmed against the code), the list of changes actually implemented, measured before/after timings for first KPI paint and full hydration, and explicit confirmation that Workflow Engine and database architecture are unchanged.
+Two migrations (timeline journaling helper + `lf_update_case` officer branch and `list_staff_officers`). Frontend edits: `ops.server.ts`, `ops.mapping.ts`, `ops.functions.ts`, `store.ts`, `timeline.tsx`, `lost-found.index.tsx`, `lost-found.$bagId.tsx`, `pir-wizard.tsx`, `io/template.ts`, `io/registry.ts`, `io/validation.ts`. No changes to the delivery lifecycle, RLS model or passenger portal design.
