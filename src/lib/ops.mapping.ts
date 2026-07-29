@@ -25,17 +25,15 @@ import type { NotificationChannel, NotificationTrigger } from "./notifications/t
 
 type Row = Record<string, any>;
 
-export interface OpsSnapshot {
+/**
+ * Tier 1 — the operational core. Everything the KPI cards, the Lost & Found
+ * registry and the Dispatch Center need to render real values.
+ */
+export interface OpsCoreSnapshot {
   cases: BaggageCase[];
   deliveries: Delivery[];
   workflow: WorkflowRecord[];
-  notifications: NotificationEvent[];
-  audit: AuditEntry[];
-  feedback: Feedback[];
-  qualityIncidents: QualityIncident[];
   station: Station;
-  driverPositions: Record<string, DriverPosition>;
-  driverRoutes: Record<string, DriverRoute>;
   /** case_no → uuid */
   caseIds: Record<string, string>;
   /** delivery_no → uuid */
@@ -47,9 +45,25 @@ export interface OpsSnapshot {
   deliveryVersions: Record<string, number>;
   agents: { id: string; name: string; employeeId: string }[];
   /** True when the collection hit its read cap and older rows are not loaded. */
-  truncated: { cases: boolean; deliveries: boolean; audit: boolean; notifications: boolean };
+  truncated: { cases: boolean; deliveries: boolean };
   /** The cap that was applied, so the UI can say "most recent N". */
-  limits: { cases: number; deliveries: number; audit: number; notifications: number };
+  limits: { cases: number; deliveries: number };
+}
+
+/** Tier 2 — audit trail and notification queue. */
+export interface OpsActivitySnapshot {
+  audit: AuditEntry[];
+  notifications: NotificationEvent[];
+  truncated: { audit: boolean; notifications: boolean };
+  limits: { audit: number; notifications: number };
+}
+
+/** Tier 3 — CSAT, quality incidents and live agent geography. */
+export interface OpsSecondarySnapshot {
+  feedback: Feedback[];
+  qualityIncidents: QualityIncident[];
+  driverPositions: Record<string, DriverPosition>;
+  driverRoutes: Record<string, DriverRoute>;
 }
 
 export function mapCase(
