@@ -158,6 +158,8 @@ export const MONITORED_APIS: { key: string; name: string; kind: "internal" | "ex
   { key: "mobile_platform", name: "Mobile Platform API", kind: "external" },
 ];
 
+export type ConfigValue = string | number | boolean | null;
+
 export interface IntegrationView {
   key: string;
   name: string;
@@ -167,7 +169,7 @@ export interface IntegrationView {
   version: string;
   enabled: boolean;
   status: IntegrationStatus;
-  config: Record<string, unknown>;
+  config: Record<string, ConfigValue>;
   secretsSet: string[];
   lastSuccessAt: string | null;
   lastFailureAt: string | null;
