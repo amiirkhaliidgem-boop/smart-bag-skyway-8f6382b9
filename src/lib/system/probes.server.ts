@@ -382,7 +382,7 @@ export async function probeIntegration(
     case "odoo":
       return probeOdoo(cfg, sec);
     case "mobile_platform":
-      return probeMobilePlatform(cfg);
+      return probeMobilePlatform(cfg, sec);
     case "cloud_database":
       return probeDatabase();
     default:
