@@ -184,6 +184,7 @@ export function mapCase(
 export function mapDelivery(
   d: Row,
   caseNo: string,
+  casePir: string | null | undefined,
   agentName: string | undefined,
   otp: Row | undefined,
   notes: Row[],
@@ -196,7 +197,9 @@ export function mapDelivery(
     passengerName: d.passenger_name ?? "",
     address: d.address ?? "",
     mobile: d.mobile ?? "",
-    pirNumber: d.pir_number ?? "",
+    // PIR lives on the baggage case — deliveries have no PIR column of their
+    // own. Fall back to the Case ID so the UI always has an identifier.
+    pirNumber: (casePir ?? "").trim() || caseNo,
     priority: (d.priority ?? "Normal") as Priority,
     status: stageToLegacyStatus(stage),
     driver: agentName ?? "—",
