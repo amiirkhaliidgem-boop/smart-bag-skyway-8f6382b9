@@ -396,15 +396,19 @@ export async function runHealthSweep(actor: Actor | null) {
 
   for (const row of rows) {
     const def = definitionFor(row.key);
-    // Probe when credentials are stored, when the slot needs no secret at all
-    // (e.g. Mobile Platform), or when the platform manages it (cloud database).
-    // Slots with required fields are only probed once credentials are stored;
-    // credential-free slots (Mobile Platform) are probed as soon as configured.
-    const needsCredentials = (def?.fields ?? []).some((f) => f.required);
+    const cfg = (row.config_public ?? {}) as Record<string, unknown>;
+    // Slots that store credentials are probed once credentials exist. Slots
+    // with no secret at all (Mobile Platform) are probed once every one of
+    // their plain settings is filled in — otherwise they stay "not configured"
+    // instead of being reported as Down for missing setup.
+    const hasSecretField = (def?.fields ?? []).some((f) => f.secret);
+    const plainFields = (def?.fields ?? []).filter((f) => !f.secret && f.kind !== "boolean");
+    const fullyConfigured =
+      plainFields.length > 0 &&
+      plainFields.every((f) => String(cfg[f.name] ?? "").trim() !== "");
     const configured =
-      row.secrets_ciphertext !== null ||
       def?.managed === true ||
-      (!needsCredentials && Object.keys(row.config_public ?? {}).length > 0);
+      (hasSecretField ? row.secrets_ciphertext !== null : fullyConfigured);
     if (!configured) continue;
     await testIntegration(actor, row.key, undefined, "test");
   }
