@@ -7,6 +7,12 @@ export interface ProbeResult {
   detail: string;
   error: string;
   body?: string;
+  /**
+   * True when the slot has not been configured at all. The caller must NOT
+   * record a health sample or an error status for these — they stay
+   * "not configured" instead of masquerading as a failure.
+   */
+  notProbeable?: boolean;
 }
 
 const TIMEOUT_MS = 12_000;
@@ -39,9 +45,13 @@ function requireFields(
   return missing.length ? `Missing configuration: ${missing.join(", ")}` : null;
 }
 
+function notConfigured(missing: string): ProbeResult {
+  return { ok: false, detail: "", error: missing, notProbeable: true };
+}
+
 async function probeGoogleMaps(cfg: Record<string, unknown>, sec: Record<string, string>) {
   const missing = requireFields({ api_key: sec.api_key }, ["api_key"]);
-  if (missing) return { ok: false, detail: "", error: missing };
+  if (missing) return notConfigured(missing);
   const url = `https://maps.googleapis.com/maps/api/geocode/json?address=Cairo+International+Airport&key=${encodeURIComponent(sec.api_key)}`;
   void cfg;
   // Google answers HTTP 200 even for a rejected key, so the JSON status is authoritative.
@@ -70,7 +80,7 @@ async function probeSms(
 ) {
   const apiUrl = String(cfg.api_url ?? "").replace(/\/$/, "");
   const missing = requireFields({ api_url: apiUrl, api_key: sec.api_key }, ["api_url", "api_key"]);
-  if (missing) return { ok: false, detail: "", error: missing };
+  if (missing) return notConfigured(missing);
 
   if (provider === "twilio") {
     const auth = Buffer.from(`${sec.api_key}:${sec.api_secret ?? ""}`).toString("base64");
@@ -121,7 +131,7 @@ async function probeWhatsApp(cfg: Record<string, unknown>, sec: Record<string, s
     { phone_number_id: cfg.phone_number_id, access_token: sec.access_token },
     ["phone_number_id", "access_token"],
   );
-  if (missing) return { ok: false, detail: "", error: missing };
+  if (missing) return notConfigured(missing);
   return httpProbe(
     `https://graph.facebook.com/v20.0/${encodeURIComponent(String(cfg.phone_number_id))}?fields=display_phone_number,verified_name`,
     { method: "GET", headers: { Authorization: `Bearer ${sec.access_token}` } },
