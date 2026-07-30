@@ -89,7 +89,7 @@ export async function recordHealthSample(input: {
   source?: string;
 }) {
   const sb = await admin();
-  await sb.from("api_health_checks").insert({
+  const { error } = await sb.from("api_health_checks").insert({
     api_key: input.apiKey,
     ok: input.ok,
     latency_ms: input.latencyMs ?? null,
@@ -97,6 +97,7 @@ export async function recordHealthSample(input: {
     error: (input.error ?? "").slice(0, 500),
     source: input.source ?? "probe",
   });
+  if (error) console.error("[health] sample insert failed", input.apiKey, error.message);
 }
 
 async function loadRows(): Promise<Row[]> {
