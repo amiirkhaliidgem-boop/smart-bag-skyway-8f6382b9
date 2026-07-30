@@ -18,7 +18,7 @@ import type { AuditEntry, ImportAuditEntry } from "./audit/log";
 import type { Role } from "./roles/roles";
 import type { LFStatus } from "./lost-found/statuses";
 import { type DeliveryStage, stageFromLegacy } from "./delivery/stages";
-import type { FailureReason } from "./delivery/stages";
+import type { ReturnReasonCode } from "./delivery/stages";
 import { loadOpsCore, loadOpsActivity, loadOpsSecondary, callOpsRpc } from "./ops.functions";
 import type { TimelineEntry } from "./ops.mapping";
 
@@ -979,52 +979,27 @@ export async function resendOtp(deliveryId: string, _opts: { actor?: string } = 
 
 export const generateOtp = resendOtp;
 
-export async function markDeliveryFailed(
+/**
+ * Return to Airport — a real Workflow Engine transition.
+ *
+ * `dm_mark_returned` records the reason, moves the delivery to
+ * "Returned to Airport", clears the Delivery Agent assignment, expires the
+ * one-time code, recomputes the agent's route (so the stop disappears from
+ * the Driver Portal) and re-queues the case at "Ready for Delivery" across
+ * every module. Timeline / Audit / Notifications are written by the engine.
+ */
+export async function returnToAirport(
   deliveryId: string,
-  reason: FailureReason,
-  opts: { actor?: string; role?: Role; note?: string } = {},
+  opts: { reasonCode: ReturnReasonCode; note?: string } = { reasonCode: "other" },
 ) {
   const id = deliveryUuid(deliveryId);
-  if (!id) return;
-  try {
-    await rpc("dm_mark_failed", {
-      p_delivery: id,
-      p_reason_code: String(reason),
-      p_note: opts.note ?? "",
-      p_expected_version: deliveryVersions[deliveryId] ?? null,
-    });
-  } catch (err) {
-    reportError(err);
-  }
-}
-
-export async function markReturnedToAirport(
-  deliveryId: string,
-  _opts: { actor?: string; role?: Role } = {},
-) {
-  const id = deliveryUuid(deliveryId);
-  if (!id) return;
-  try {
-    await rpc("dm_mark_returned", {
-      p_delivery: id,
-      p_expected_version: deliveryVersions[deliveryId] ?? null,
-    });
-  } catch (err) {
-    reportError(err);
-  }
-}
-
-export async function closeDelivery(
-  deliveryId: string,
-  _opts: { actor?: string; role?: Role } = {},
-) {
-  const id = deliveryUuid(deliveryId);
-  if (!id) return;
-  try {
-    await rpc("dm_close", { p_delivery: id });
-  } catch (err) {
-    reportError(err);
-  }
+  if (!id) throw new Error(`Unknown delivery ${deliveryId}`);
+  await rpc("dm_mark_returned", {
+    p_delivery: id,
+    p_reason_code: opts.reasonCode,
+    p_note: opts.note ?? "",
+    p_expected_version: deliveryVersions[deliveryId] ?? null,
+  });
 }
 
 export async function rescheduleDelivery(
@@ -1048,14 +1023,13 @@ export async function rescheduleDelivery(
 export async function setDeliveryStage(
   deliveryId: string,
   stage: DeliveryStage,
-  opts: { actor?: string; role?: Role; note?: string; failureReason?: FailureReason } = {},
+  opts: { actor?: string; role?: Role; note?: string; reasonCode?: ReturnReasonCode } = {},
 ) {
-  if (stage === "Delivery Failed") {
-    await markDeliveryFailed(deliveryId, (opts.failureReason ?? "OTHER") as FailureReason, opts);
-    return;
-  }
   if (stage === "Returned to Airport") {
-    await markReturnedToAirport(deliveryId, opts);
+    await returnToAirport(deliveryId, {
+      reasonCode: opts.reasonCode ?? "other",
+      note: opts.note,
+    });
     return;
   }
   const id = deliveryUuid(deliveryId);
