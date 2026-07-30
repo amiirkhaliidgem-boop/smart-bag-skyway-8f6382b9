@@ -2172,6 +2172,10 @@ export type Database = {
         Returns: undefined
       }
       qm_sweep_sla: { Args: never; Returns: number }
+      report_operational: {
+        Args: { p_from: string; p_grain?: string; p_to: string }
+        Returns: Json
+      }
       wf_actor: {
         Args: never
         Returns: {
