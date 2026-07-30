@@ -401,14 +401,12 @@ export async function runHealthSweep(actor: Actor | null) {
     // with no secret at all (Mobile Platform) are probed once every one of
     // their plain settings is filled in — otherwise they stay "not configured"
     // instead of being reported as Down for missing setup.
-    const hasSecretField = (def?.fields ?? []).some((f) => f.secret);
     const plainFields = (def?.fields ?? []).filter((f) => !f.secret && f.kind !== "boolean");
     const fullyConfigured =
       plainFields.length > 0 &&
       plainFields.every((f) => String(cfg[f.name] ?? "").trim() !== "");
     const configured =
-      def?.managed === true ||
-      (hasSecretField ? row.secrets_ciphertext !== null : fullyConfigured);
+      def?.managed === true || row.secrets_ciphertext !== null || fullyConfigured;
     if (!configured) continue;
     await testIntegration(actor, row.key, undefined, "test");
   }
