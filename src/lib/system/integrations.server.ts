@@ -397,7 +397,7 @@ export async function runHealthSweep(actor: Actor | null) {
     const def = definitionFor(row.key);
     // Probe when credentials are stored, when the slot needs no secret at all
     // (e.g. Mobile Platform), or when the platform manages it (cloud database).
-    const needsSecret = (def?.fields ?? []).some((f) => f.secret);
+    const needsSecret = (def?.fields ?? []).some((f) => f.secret && f.required);
     const configured =
       row.secrets_ciphertext !== null ||
       def?.managed === true ||
