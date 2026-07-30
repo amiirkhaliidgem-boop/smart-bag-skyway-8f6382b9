@@ -59,7 +59,7 @@ const navSections: {
     label: "Delivery Operations",
     items: [
       { to: "/delivery", label: "Delivery Management", icon: Truck },
-      { to: "/driver-portal", label: "Delivery Agent Portal", icon: UserCog },
+      { to: "/agent-monitoring", label: "Delivery Agent Monitoring", icon: Radar },
     ],
   },
   {
