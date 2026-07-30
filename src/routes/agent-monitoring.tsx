@@ -147,13 +147,13 @@ function AgentMonitoringPage() {
   }, []);
 
   const agentNames = useMemo(() => {
+    // Roster comes strictly from the Delivery Agent directory
+    // (`list_delivery_agents` → active users holding the delivery_agent role).
+    // Deliveries and GPS rows only enrich these agents — they never add names,
+    // so admins/officers/coordinators can't leak into this screen.
     const set = new Set<string>(names.filter(Boolean));
-    deliveries.forEach((d) => {
-      if (d.driver && d.driver !== "—") set.add(d.driver);
-    });
-    Object.keys(driverPositions).forEach((n) => set.add(n));
     return [...set].sort((a, b) => a.localeCompare(b));
-  }, [names, deliveries, driverPositions]);
+  }, [names]);
 
   const selected = driver && agentNames.includes(driver) ? [driver] : agentNames;
 
@@ -221,7 +221,7 @@ function AgentMonitoringPage() {
           </p>
         </div>
         <span className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted px-2.5 py-1 text-xs text-muted-foreground">
-          <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" /> Live · auto-refresh
+          <span className="h-2 w-2 rounded-full bg-emerald-500" /> Auto-refresh · every 15s
         </span>
       </header>
 
