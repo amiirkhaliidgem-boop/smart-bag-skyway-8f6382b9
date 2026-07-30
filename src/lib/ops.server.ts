@@ -143,6 +143,7 @@ export async function buildCoreSnapshot(supabase: SupabaseClient<any>): Promise<
     mapDelivery(
       d,
       caseById.get(d.case_id)?.case_no ?? "",
+      caseById.get(d.case_id)?.pir_number,
       d.assigned_agent_id ? userById.get(d.assigned_agent_id)?.full_name : undefined,
       latestOtp.get(d.id),
       notes as Row[],

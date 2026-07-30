@@ -201,10 +201,7 @@ function TrackScreen({
   const stage = getDeliveryStage(delivery);
   // OTP card stays hidden until the workflow reaches Out for Delivery, then
   // remains visible through completion.
-  const showOtpCard =
-    stage === "Out for Delivery" ||
-    stage === "Delivered" ||
-    stage === "Delivery Failed";
+  const showOtpCard = stage === "Out for Delivery" || stage === "Delivered";
 
   async function handleNoBribeChange(next: boolean) {
     setNoBribe(next);
