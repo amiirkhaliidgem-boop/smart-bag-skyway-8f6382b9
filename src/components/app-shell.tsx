@@ -11,7 +11,7 @@ import {
   QrCode,
   Headphones,
   Star,
-  UserCog,
+  Radar,
   Bell,
   Activity,
   ShieldCheck,
