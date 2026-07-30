@@ -160,6 +160,11 @@ async function buildApiHealth(rows: Row[]): Promise<ApiHealthView[]> {
       status = "not_configured";
     }
 
+    const noHeartbeat =
+      samples.length === 0 && status === "degraded"
+        ? "No heartbeat recorded yet — awaiting the first health sweep."
+        : "";
+
     return {
       key: api.key,
       name: api.name,
@@ -178,7 +183,7 @@ async function buildApiHealth(rows: Row[]): Promise<ApiHealthView[]> {
         ? Math.round((successes.length / samples.length) * 1000) / 10
         : null,
       samples: samples.length,
-      lastError: failures[0]?.error ?? "",
+      lastError: failures[0]?.error ?? noHeartbeat,
     };
   });
 }
@@ -305,7 +310,8 @@ export async function testIntegration(
       error: result.error,
     }),
     recordHealthSample({
-      apiKey: key,
+      // The managed database slot is monitored under the "database" API key.
+      apiKey: key === "cloud_database" ? "database" : key,
       ok: result.ok,
       latencyMs: latency,
       detail: result.detail,
@@ -388,7 +394,14 @@ export async function runHealthSweep(actor: Actor | null) {
   }
 
   for (const row of rows) {
-    const configured = row.secrets_ciphertext !== null || row.key === "cloud_database";
+    const def = definitionFor(row.key);
+    // Probe when credentials are stored, when the slot needs no secret at all
+    // (e.g. Mobile Platform), or when the platform manages it (cloud database).
+    const needsSecret = (def?.fields ?? []).some((f) => f.secret && f.required);
+    const configured =
+      row.secrets_ciphertext !== null ||
+      def?.managed === true ||
+      (!needsSecret && Object.keys(row.config_public ?? {}).length > 0);
     if (!configured) continue;
     await testIntegration(actor, row.key, undefined, "test");
   }
