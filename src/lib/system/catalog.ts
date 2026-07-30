@@ -218,6 +218,5 @@ export interface SystemCenterData {
     storage: boolean;
     backup: string;
     latencyMs: number | null;
-    健?: never;
   } | null;
 }
