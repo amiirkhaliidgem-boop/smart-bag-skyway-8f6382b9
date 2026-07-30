@@ -1155,51 +1155,95 @@ export type Database = {
       }
       quality_incidents: {
         Row: {
+          agent_id: string | null
+          airline: string
+          assigned_at: string | null
+          assigned_to: string | null
           case_id: string | null
           category: string
           created_at: string
+          dedupe_key: string | null
           delivery_id: string | null
           description: string
+          due_at: string | null
           id: string
+          incident_no: string | null
           reported_by: string
+          resolution_category: string
           resolution_note: string
           resolved_at: string | null
           severity: Database["public"]["Enums"]["incident_severity"]
+          source: string
           state: Database["public"]["Enums"]["incident_state"]
+          station_id: string | null
           updated_at: string
           version: number
         }
         Insert: {
+          agent_id?: string | null
+          airline?: string
+          assigned_at?: string | null
+          assigned_to?: string | null
           case_id?: string | null
           category: string
           created_at?: string
+          dedupe_key?: string | null
           delivery_id?: string | null
           description?: string
+          due_at?: string | null
           id?: string
+          incident_no?: string | null
           reported_by?: string
+          resolution_category?: string
           resolution_note?: string
           resolved_at?: string | null
           severity?: Database["public"]["Enums"]["incident_severity"]
+          source?: string
           state?: Database["public"]["Enums"]["incident_state"]
+          station_id?: string | null
           updated_at?: string
           version?: number
         }
         Update: {
+          agent_id?: string | null
+          airline?: string
+          assigned_at?: string | null
+          assigned_to?: string | null
           case_id?: string | null
           category?: string
           created_at?: string
+          dedupe_key?: string | null
           delivery_id?: string | null
           description?: string
+          due_at?: string | null
           id?: string
+          incident_no?: string | null
           reported_by?: string
+          resolution_category?: string
           resolution_note?: string
           resolved_at?: string | null
           severity?: Database["public"]["Enums"]["incident_severity"]
+          source?: string
           state?: Database["public"]["Enums"]["incident_state"]
+          station_id?: string | null
           updated_at?: string
           version?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "quality_incidents_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "app_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quality_incidents_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "app_users"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "quality_incidents_case_id_fkey"
             columns: ["case_id"]
@@ -1212,6 +1256,13 @@ export type Database = {
             columns: ["delivery_id"]
             isOneToOne: false
             referencedRelation: "deliveries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quality_incidents_station_id_fkey"
+            columns: ["station_id"]
+            isOneToOne: false
+            referencedRelation: "stations"
             referencedColumns: ["id"]
           },
         ]
@@ -2017,6 +2068,7 @@ export type Database = {
       }
       next_case_no: { Args: never; Returns: string }
       next_delivery_no: { Args: never; Returns: string }
+      next_incident_no: { Args: never; Returns: string }
       notif_claim_batch: {
         Args: { p_limit?: number }
         Returns: {
@@ -2072,6 +2124,54 @@ export type Database = {
         }
         Returns: boolean
       }
+      qm_assign_incident: {
+        Args: { p_incident: string; p_user: string }
+        Returns: undefined
+      }
+      qm_create_incident: {
+        Args: {
+          p_case?: string
+          p_category: string
+          p_delivery?: string
+          p_description: string
+          p_severity?: Database["public"]["Enums"]["incident_severity"]
+        }
+        Returns: string
+      }
+      qm_default_severity: {
+        Args: { p_category: string }
+        Returns: Database["public"]["Enums"]["incident_severity"]
+      }
+      qm_raise_incident: {
+        Args: {
+          p_case?: string
+          p_category: string
+          p_dedupe_key?: string
+          p_delivery?: string
+          p_description: string
+          p_reported_by?: string
+          p_severity?: Database["public"]["Enums"]["incident_severity"]
+          p_source: string
+        }
+        Returns: string
+      }
+      qm_resolve_incident: {
+        Args: {
+          p_incident: string
+          p_note?: string
+          p_resolution_category: string
+        }
+        Returns: undefined
+      }
+      qm_set_state: {
+        Args: {
+          p_incident: string
+          p_note?: string
+          p_state: Database["public"]["Enums"]["incident_state"]
+        }
+        Returns: undefined
+      }
+      qm_sweep_sla: { Args: never; Returns: number }
       wf_actor: {
         Args: never
         Returns: {
@@ -2259,7 +2359,12 @@ export type Database = {
         | "Delivery Failed"
         | "Returned to Airport"
       incident_severity: "High" | "Medium" | "Low"
-      incident_state: "Open" | "Under Review" | "Resolved"
+      incident_state:
+        | "Open"
+        | "Assigned"
+        | "Investigating"
+        | "Under Review"
+        | "Resolved"
       lf_status:
         | "Open"
         | "Tracing"
@@ -2448,7 +2553,13 @@ export const Constants = {
         "Returned to Airport",
       ],
       incident_severity: ["High", "Medium", "Low"],
-      incident_state: ["Open", "Under Review", "Resolved"],
+      incident_state: [
+        "Open",
+        "Assigned",
+        "Investigating",
+        "Under Review",
+        "Resolved",
+      ],
       lf_status: [
         "Open",
         "Tracing",
