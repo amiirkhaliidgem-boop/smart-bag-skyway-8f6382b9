@@ -147,13 +147,13 @@ function AgentMonitoringPage() {
   }, []);
 
   const agentNames = useMemo(() => {
+    // Roster comes strictly from the Delivery Agent directory
+    // (`list_delivery_agents` → active users holding the delivery_agent role).
+    // Deliveries and GPS rows only enrich these agents — they never add names,
+    // so admins/officers/coordinators can't leak into this screen.
     const set = new Set<string>(names.filter(Boolean));
-    deliveries.forEach((d) => {
-      if (d.driver && d.driver !== "—") set.add(d.driver);
-    });
-    Object.keys(driverPositions).forEach((n) => set.add(n));
     return [...set].sort((a, b) => a.localeCompare(b));
-  }, [names, deliveries, driverPositions]);
+  }, [names]);
 
   const selected = driver && agentNames.includes(driver) ? [driver] : agentNames;
 
@@ -217,11 +217,12 @@ function AgentMonitoringPage() {
             <Radar className="h-6 w-6 text-primary" /> Delivery Agent Monitoring
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Read-only operations view. Live agent status, routes and Workflow Engine activity.
+            Read-only operations view of registered Delivery Agents — status, routes, last known GPS
+            and Workflow Engine activity.
           </p>
         </div>
         <span className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted px-2.5 py-1 text-xs text-muted-foreground">
-          <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" /> Live · auto-refresh
+          <span className="h-2 w-2 rounded-full bg-emerald-500" /> Auto-refresh · every 15s
         </span>
       </header>
 
@@ -391,7 +392,7 @@ function AgentCard({ view }: { view: AgentView }) {
 
         <div className="rounded-md border border-border p-3">
           <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-1 flex items-center gap-1.5">
-            <MapPin className="h-3.5 w-3.5" /> Live GPS Position
+            <MapPin className="h-3.5 w-3.5" /> Last Known GPS Position
           </p>
           {view.position ? (
             <div className="text-xs text-muted-foreground space-y-0.5">
@@ -399,11 +400,15 @@ function AgentCard({ view }: { view: AgentView }) {
                 {view.position.lat.toFixed(5)}, {view.position.lng.toFixed(5)}
               </p>
               <p>
-                Last update {fmtDateTime(view.position.at)} ({ago(view.position.at)})
+                {Date.now() - new Date(view.position.at).getTime() < 2 * 60 * 1000
+                  ? `Live — updated ${ago(view.position.at)}`
+                  : `Last fix ${fmtDateTime(view.position.at)} · ${ago(view.position.at)} (Agent Portal not reporting)`}
               </p>
             </div>
           ) : (
-            <p className="text-xs text-muted-foreground">No position reported.</p>
+            <p className="text-xs text-muted-foreground">
+              No position reported from the Delivery Agent Portal.
+            </p>
           )}
         </div>
       </CardContent>
