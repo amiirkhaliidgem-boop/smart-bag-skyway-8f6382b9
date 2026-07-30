@@ -89,7 +89,7 @@ export async function recordHealthSample(input: {
   source?: string;
 }) {
   const sb = await admin();
-  await sb.from("api_health_checks").insert({
+  const { error } = await sb.from("api_health_checks").insert({
     api_key: input.apiKey,
     ok: input.ok,
     latency_ms: input.latencyMs ?? null,
@@ -97,6 +97,7 @@ export async function recordHealthSample(input: {
     error: (input.error ?? "").slice(0, 500),
     source: input.source ?? "probe",
   });
+  if (error) console.error("[health] sample insert failed", input.apiKey, error.message);
 }
 
 async function loadRows(): Promise<Row[]> {
@@ -397,11 +398,13 @@ export async function runHealthSweep(actor: Actor | null) {
     const def = definitionFor(row.key);
     // Probe when credentials are stored, when the slot needs no secret at all
     // (e.g. Mobile Platform), or when the platform manages it (cloud database).
-    const needsSecret = (def?.fields ?? []).some((f) => f.secret && f.required);
+    // Slots with required fields are only probed once credentials are stored;
+    // credential-free slots (Mobile Platform) are probed as soon as configured.
+    const needsCredentials = (def?.fields ?? []).some((f) => f.required);
     const configured =
       row.secrets_ciphertext !== null ||
       def?.managed === true ||
-      (!needsSecret && Object.keys(row.config_public ?? {}).length > 0);
+      (!needsCredentials && Object.keys(row.config_public ?? {}).length > 0);
     if (!configured) continue;
     await testIntegration(actor, row.key, undefined, "test");
   }
