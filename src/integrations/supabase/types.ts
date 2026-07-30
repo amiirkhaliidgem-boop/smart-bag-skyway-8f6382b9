@@ -1744,7 +1744,12 @@ export type Database = {
         }
       }
       dm_mark_returned: {
-        Args: { p_delivery: string; p_expected_version?: number }
+        Args: {
+          p_delivery: string
+          p_expected_version?: number
+          p_note?: string
+          p_reason_code?: string
+        }
         Returns: {
           accepted_at: string | null
           address: string
