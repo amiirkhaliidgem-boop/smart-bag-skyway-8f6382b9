@@ -16,7 +16,6 @@ export const DELIVERY_STAGES = [
   "Collected Bag",
   "Out for Delivery",
   "Delivered",
-  "Delivery Failed",
   "Returned to Airport",
 ] as const;
 
@@ -30,7 +29,6 @@ export const STAGE_LABELS: Record<DeliveryStage, string> = {
   "Collected Bag": "Collected Bag",
   "Out for Delivery": "Out for Delivery",
   Delivered: "Delivered",
-  "Delivery Failed": "Delivery Failed",
   "Returned to Airport": "Returned to Airport",
 };
 
@@ -55,10 +53,8 @@ export function stageToWorkflow(stage: DeliveryStage): WorkflowStatus {
       return "OUT_FOR_DELIVERY";
     case "Delivered":
       return "DELIVERED";
-    case "Delivery Failed":
-      return "OUT_FOR_DELIVERY";
     case "Returned to Airport":
-      return "DELIVERY_APPROVED";
+      return "READY_FOR_COLLECTION";
   }
 }
 
@@ -87,15 +83,14 @@ export function stageToLegacyStatus(stage: DeliveryStage): DeliveryStatus {
   switch (stage) {
     case "Ready for Delivery":
     case "Scheduled":
+    case "Returned to Airport":
       return "Pending";
     case "Assigned":
     case "Driver Accepted":
-    case "Returned to Airport":
       return "Assigned";
     case "Collected Bag":
       return "Picked Up";
     case "Out for Delivery":
-    case "Delivery Failed":
       return "Out For Delivery";
     case "Delivered":
       return "Delivered";
@@ -115,7 +110,6 @@ export function stageToLfStatus(stage: DeliveryStage): LFStatus {
     case "Collected Bag":
       return "Assigned Driver";
     case "Out for Delivery":
-    case "Delivery Failed":
       return "Out for Delivery";
     case "Delivered":
       return "Delivered";
@@ -132,54 +126,43 @@ export const STAGE_STYLES: Record<DeliveryStage, string> = {
   "Collected Bag": "bg-teal-100 text-teal-700 border-teal-200",
   "Out for Delivery": "bg-cyan-100 text-cyan-700 border-cyan-200",
   Delivered: "bg-emerald-100 text-emerald-700 border-emerald-200",
-  "Delivery Failed": "bg-rose-100 text-rose-700 border-rose-200",
   "Returned to Airport": "bg-amber-100 text-amber-700 border-amber-200",
 };
 
-// Predefined failure reasons — free-text is not allowed for operational
-// consistency and downstream reporting.
-export const FAILURE_REASONS = [
-  "Passenger Not Available",
-  "Passenger Requested Reschedule",
-  "Wrong Address",
-  "Phone Not Reachable",
-  "Passenger Refused",
-  "Security Issue",
-  "Delivery Agent Issue",
-  "Weather",
-  "Other",
+// Predefined reasons a delivery is returned to the airport. Free-text is not
+// allowed so downstream reporting stays consistent. Codes match
+// `public.failure_reasons.code` in the database.
+export const RETURN_REASONS = [
+  { code: "passenger_not_available", label: "Passenger Not Available" },
+  { code: "passenger_requested_reschedule", label: "Passenger Requested Reschedule" },
+  { code: "wrong_address", label: "Wrong Address" },
+  { code: "phone_not_reachable", label: "Phone Not Reachable" },
+  { code: "passenger_refused", label: "Passenger Refused" },
+  { code: "security_issue", label: "Security Issue" },
+  { code: "agent_issue", label: "Delivery Agent Issue" },
+  { code: "weather", label: "Weather" },
+  { code: "other", label: "Other" },
 ] as const;
 
-export type FailureReason = (typeof FAILURE_REASONS)[number];
-
-// Operational queues shown as tabs in the Dispatch Center. Each queue maps
-// to one or more stages. Only stages that appear in the live operational
-// workflow surface here — Scheduled / Failed / Returned exist internally
-// for future expansion but are intentionally hidden from the Dispatch UI.
-export const DELIVERY_QUEUES = [
-  { id: "all", label: "All", stages: [...DELIVERY_STAGES] as DeliveryStage[] },
-  { id: "ready", label: "Ready for Delivery", stages: ["Ready for Delivery"] },
-  { id: "assigned", label: "Assigned", stages: ["Assigned", "Driver Accepted"] },
-  { id: "out", label: "Out for Delivery", stages: ["Collected Bag", "Out for Delivery"] },
-  { id: "completed", label: "Completed", stages: ["Delivered"] },
-] as const satisfies ReadonlyArray<{ id: string; label: string; stages: DeliveryStage[] }>;
-
-export type DeliveryQueueId = (typeof DELIVERY_QUEUES)[number]["id"];
+export type ReturnReasonCode = (typeof RETURN_REASONS)[number]["code"];
 
 // Which coordinator actions apply at a given stage. Buttons for actions
 // that are not valid at the current stage must be hidden — never disabled.
 export function actionsForStage(stage: DeliveryStage) {
   const s = stage;
   return {
-    assign: s === "Ready for Delivery" || s === "Scheduled" || s === "Returned to Airport",
+    assign: s === "Ready for Delivery" || s === "Scheduled",
     reassign: s === "Assigned" || s === "Driver Accepted",
-    schedule: s === "Ready for Delivery" || s === "Returned to Airport" || s === "Delivery Failed",
+    schedule: s === "Ready for Delivery",
     generateOtp: s === "Driver Accepted" || s === "Collected Bag" || s === "Out for Delivery",
     resendOtp: s === "Driver Accepted" || s === "Collected Bag" || s === "Out for Delivery",
-    markFailed: s === "Out for Delivery" || s === "Collected Bag" || s === "Driver Accepted",
-    markReturned: s === "Delivery Failed",
-    reschedule: s === "Delivery Failed" || s === "Returned to Airport",
-    close: s === "Delivered" || s === "Returned to Airport",
+    // Returning to the airport unwinds an in-flight delivery back to the
+    // Ready for Delivery queue. Handled entirely by the Workflow Engine.
+    markReturned:
+      s === "Assigned" ||
+      s === "Driver Accepted" ||
+      s === "Collected Bag" ||
+      s === "Out for Delivery",
     // Driver-side actions (surfaced in the coordinator UI for testing/manual override).
     driverAccept: s === "Assigned",
     driverReject: s === "Assigned",
