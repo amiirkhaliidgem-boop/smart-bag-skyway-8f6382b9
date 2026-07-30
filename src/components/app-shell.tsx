@@ -89,7 +89,8 @@ const navSections: {
     label: "Reporting",
     items: [
       { to: "/reports", label: "Reports", icon: BarChart3 },
-      { to: "/data-io", label: "Import / Export", icon: ArrowRightLeft },
+      // HIDDEN until the Import / Export phase: route, RBAC and backend are preserved.
+      // { to: "/data-io", label: "Import / Export", icon: ArrowRightLeft },
     ],
   },
   {
