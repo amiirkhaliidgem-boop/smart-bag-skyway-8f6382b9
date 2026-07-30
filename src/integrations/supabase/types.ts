@@ -1658,6 +1658,12 @@ export type Database = {
           module: string
         }[]
       }
+      dash_delta: { Args: { cur: number; prev: number }; Returns: number }
+      dash_delta_num: { Args: { cur: number; prev: number }; Returns: number }
+      dashboard_executive: {
+        Args: { p_from: string; p_grain?: string; p_to: string }
+        Returns: Json
+      }
       dm_add_note: {
         Args: { p_body: string; p_delivery: string }
         Returns: string
