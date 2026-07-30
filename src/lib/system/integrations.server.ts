@@ -327,14 +327,40 @@ export async function testIntegration(
 ) {
   const row = await loadRow(key);
   const secrets = decryptSecrets(row.secrets_ciphertext);
+  const cfg = (row.config_public ?? {}) as Record<string, unknown>;
+  if (!isConfigured(key, cfg, Object.keys(secrets))) {
+    const def = definitionFor(key);
+    const missing = (def?.fields ?? [])
+      .filter((f) => f.required)
+      .filter((f) => (f.secret ? !secrets[f.name] : !String(cfg[f.name] ?? "").trim()))
+      .map((f) => f.label);
+    // Not set up: never record a sample or flip the slot into "error".
+    return {
+      ok: false,
+      detail: "",
+      error: `Not configured — required: ${missing.join(", ")}`,
+      latencyMs: null as number | null,
+      notConfigured: true,
+    };
+  }
   const started = Date.now();
   let result;
   try {
-    result = await probeIntegration(key, row.provider, row.config_public ?? {}, secrets, testInput);
+    result = await probeIntegration(key, row.provider, cfg, secrets, testInput);
   } catch (e) {
     result = { ok: false, detail: "", error: e instanceof Error ? e.message : String(e) };
   }
   const latency = Date.now() - started;
+
+  if ((result as { notProbeable?: boolean }).notProbeable) {
+    return {
+      ok: false,
+      detail: "",
+      error: result.error,
+      latencyMs: null as number | null,
+      notConfigured: true,
+    };
+  }
 
   const sb = await admin();
   await sb
@@ -371,11 +397,25 @@ export async function testIntegration(
     }),
   ]);
 
-  return { ok: result.ok, detail: result.detail, error: result.error, latencyMs: latency };
+  return {
+    ok: result.ok,
+    detail: result.detail,
+    error: result.error,
+    latencyMs: latency as number | null,
+    notConfigured: false,
+  };
 }
 
 export async function setIntegrationEnabled(actor: Actor, key: string, enabled: boolean) {
   const row = await loadRow(key);
+  if (enabled) {
+    const secrets = decryptSecrets(row.secrets_ciphertext);
+    if (!isConfigured(key, (row.config_public ?? {}) as Record<string, unknown>, Object.keys(secrets))) {
+      throw new Error(
+        `${row.name} cannot be enabled until every required field and credential has been saved.`,
+      );
+    }
+  }
   const sb = await admin();
   const { error } = await sb
     .from("integrations")
