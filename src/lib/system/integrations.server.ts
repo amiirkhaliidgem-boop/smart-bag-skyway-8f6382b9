@@ -241,6 +241,18 @@ export async function getSystemCenter(): Promise<SystemCenterData> {
   const { error: pingError } = await sb.from("stations").select("id", { head: true, count: "exact" });
   const latency = Date.now() - started;
 
+  // Real platform facts — nothing here is a stored flag or a literal string.
+  const [factsRes, bucketsRes] = await Promise.all([
+    sb.rpc("system_db_facts" as never).then(
+      (r) => (r.data ?? null) as { realtime_tables?: number; server_version?: string } | null,
+      () => null,
+    ),
+    sb.storage.listBuckets().then(
+      (r) => (r.error ? null : r.data),
+      () => null,
+    ),
+  ]);
+
   return {
     integrations: rows.map((r) => toView(r, decryptSecrets(r.secrets_ciphertext))),
     events: (events ?? []) as unknown as IntegrationEventView[],
@@ -249,10 +261,13 @@ export async function getSystemCenter(): Promise<SystemCenterData> {
       provider: dbRow?.provider || "Supabase (PostgreSQL)",
       environment: dbRow?.environment || "production",
       database: process.env.SUPABASE_PROJECT_ID || "managed",
-      realtime: Boolean((dbRow?.config_public as { realtime?: boolean })?.realtime),
-      storage: Boolean((dbRow?.config_public as { storage?: boolean })?.storage),
-      backup: pingError ? "Unknown" : "Managed daily backups (platform)",
+      realtime: (factsRes?.realtime_tables ?? 0) > 0,
+      storage: Array.isArray(bucketsRes) && bucketsRes.length > 0,
+      version: factsRes?.server_version ? `PostgreSQL ${factsRes.server_version}` : "—",
+      realtimeTables: factsRes?.realtime_tables ?? null,
+      buckets: Array.isArray(bucketsRes) ? bucketsRes.length : null,
       latencyMs: pingError ? null : latency,
+      reachable: !pingError,
     },
   };
 }
