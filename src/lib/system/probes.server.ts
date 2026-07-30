@@ -139,30 +139,114 @@ async function probeWhatsApp(cfg: Record<string, unknown>, sec: Record<string, s
   );
 }
 
-async function probeEmail(cfg: Record<string, unknown>, sec: Record<string, string>) {
+/**
+ * Real SMTP conversation: greeting → EHLO → optional STARTTLS → AUTH LOGIN.
+ * A server that accepts the TCP connection but rejects the credentials is
+ * reported as an error, never as "connected".
+ */
+async function probeEmail(cfg: Record<string, unknown>, sec: Record<string, string>): Promise<ProbeResult> {
   const host = String(cfg.host ?? "").trim();
   const port = Number(cfg.port ?? 0);
-  if (!host || !port) return { ok: false, detail: "", error: "Missing configuration: host, port" };
-  void sec;
+  const username = String(cfg.username ?? "").trim();
+  const password = String(sec.password ?? "").trim();
+  if (!host || !port) return notConfigured("Missing configuration: host, port");
+  if (!username || !password) {
+    return notConfigured("Missing configuration: username, password");
+  }
+
   const net = await import("node:net");
+  const tls = await import("node:tls");
+  const implicitTls = port === 465;
+
   return new Promise<ProbeResult>((resolve) => {
-    const socket = net.connect({ host, port });
-    const done = (r: ProbeResult) => {
+    let socket: import("node:net").Socket = implicitTls
+      ? (tls.connect({ host, port, servername: host }) as unknown as import("node:net").Socket)
+      : net.connect({ host, port });
+    let buffer = "";
+    let settled = false;
+    let awaiting: ((line: string) => void) | null = null;
+
+    const finish = (r: ProbeResult) => {
+      if (settled) return;
+      settled = true;
+      try {
+        socket.write("QUIT\r\n");
+      } catch {
+        /* ignore */
+      }
       socket.removeAllListeners();
       socket.destroy();
       resolve(r);
     };
-    socket.setTimeout(TIMEOUT_MS);
-    socket.on("data", (chunk: Buffer) => {
-      const banner = chunk.toString("utf8").trim().slice(0, 200);
-      done(
-        banner.startsWith("220")
-          ? { ok: true, detail: `SMTP server responded: ${banner}`, error: "" }
-          : { ok: false, detail: "", error: `Unexpected SMTP greeting: ${banner}` },
-      );
-    });
-    socket.on("timeout", () => done({ ok: false, detail: "", error: "SMTP connection timed out" }));
-    socket.on("error", (err: Error) => done({ ok: false, detail: "", error: err.message }));
+
+    const attach = (s: import("node:net").Socket) => {
+      s.setTimeout(TIMEOUT_MS);
+      s.on("data", (chunk: Buffer) => {
+        buffer += chunk.toString("utf8");
+        // A complete SMTP reply ends with "<code><space>text\r\n".
+        const match = buffer.match(/^(?:\d{3}-[^\n]*\n)*(\d{3} [^\n]*)\r?\n$/);
+        if (!match) return;
+        const reply = buffer.trim();
+        buffer = "";
+        const cb = awaiting;
+        awaiting = null;
+        cb?.(reply);
+      });
+      s.on("timeout", () => finish({ ok: false, detail: "", error: "SMTP connection timed out" }));
+      s.on("error", (err: Error) => finish({ ok: false, detail: "", error: err.message }));
+    };
+
+    const send = (line: string) =>
+      new Promise<string>((res) => {
+        awaiting = res;
+        socket.write(`${line}\r\n`);
+      });
+
+    const expect = (reply: string, codes: string[], label: string) => {
+      if (codes.some((c) => reply.startsWith(c))) return true;
+      finish({ ok: false, detail: "", error: `${label} failed — server replied: ${reply.slice(0, 200)}` });
+      return false;
+    };
+
+    attach(socket);
+
+    const run = async () => {
+      const greeting = await new Promise<string>((res) => {
+        awaiting = res;
+      });
+      if (!expect(greeting, ["220"], "SMTP greeting")) return;
+
+      let ehlo = await send(`EHLO iab-baggage`);
+      if (!expect(ehlo, ["250"], "EHLO")) return;
+
+      if (!implicitTls && /STARTTLS/i.test(ehlo)) {
+        const starttls = await send("STARTTLS");
+        if (!expect(starttls, ["220"], "STARTTLS")) return;
+        const plain = socket;
+        plain.removeAllListeners();
+        socket = tls.connect({ socket: plain, servername: host }) as unknown as import("node:net").Socket;
+        attach(socket);
+        ehlo = await send(`EHLO iab-baggage`);
+        if (!expect(ehlo, ["250"], "EHLO (TLS)")) return;
+      }
+
+      const auth = await send("AUTH LOGIN");
+      if (!expect(auth, ["334"], "AUTH LOGIN")) return;
+      const userReply = await send(Buffer.from(username, "utf8").toString("base64"));
+      if (!expect(userReply, ["334"], "SMTP username")) return;
+      const passReply = await send(Buffer.from(password, "utf8").toString("base64"));
+      if (!expect(passReply, ["235"], "SMTP authentication")) return;
+
+      finish({
+        ok: true,
+        detail: `SMTP authenticated as ${username} on ${host}:${port}`,
+        error: "",
+      });
+    };
+
+    run().catch((e: unknown) =>
+      finish({ ok: false, detail: "", error: e instanceof Error ? e.message : String(e) }),
+    );
   });
 }
 
@@ -172,7 +256,7 @@ async function probeOdoo(cfg: Record<string, unknown>, sec: Record<string, strin
     { base_url: base, database: cfg.database, username: cfg.username, api_key: sec.api_key },
     ["base_url", "database", "username", "api_key"],
   );
-  if (missing) return { ok: false, detail: "", error: missing };
+  if (missing) return notConfigured(missing);
   const res = await httpProbe(
     `${base}/web/session/authenticate`,
     {
@@ -205,14 +289,69 @@ async function probeOdoo(cfg: Record<string, unknown>, sec: Record<string, strin
   }
 }
 
-function probeMobilePlatform(cfg: Record<string, unknown>) {
-  const missing = requireFields(cfg, ["ios_bundle_id", "android_package", "min_supported_version"]);
-  if (missing) return { ok: false, detail: "", error: missing };
-  return {
-    ok: true,
-    detail: `Mobile ecosystem configured (min ${String(cfg.min_supported_version)})`,
-    error: "",
-  };
+/**
+ * Verifies the mobile push credential against the real provider. Without a
+ * push credential there is nothing to connect to, so the slot reports
+ * "not configured" rather than a fabricated success.
+ */
+async function probeMobilePlatform(
+  cfg: Record<string, unknown>,
+  sec: Record<string, string>,
+): Promise<ProbeResult> {
+  const missing = requireFields(
+    {
+      ios_bundle_id: cfg.ios_bundle_id,
+      android_package: cfg.android_package,
+      min_supported_version: cfg.min_supported_version,
+      push_provider: cfg.push_provider,
+      push_server_key: sec.push_server_key,
+    },
+    ["ios_bundle_id", "android_package", "min_supported_version", "push_provider", "push_server_key"],
+  );
+  if (missing) return notConfigured(missing);
+
+  const provider = String(cfg.push_provider).trim().toLowerCase();
+  if (provider !== "fcm") {
+    return {
+      ok: false,
+      detail: "",
+      error: `No connection test available for push provider "${cfg.push_provider}" (only FCM is supported).`,
+    };
+  }
+
+  // FCM legacy endpoint: 401 = rejected key, 400 = key accepted, payload rejected.
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  try {
+    const res = await fetch("https://fcm.googleapis.com/fcm/send", {
+      method: "POST",
+      headers: {
+        Authorization: `key=${sec.push_server_key}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ registration_ids: [] }),
+      signal: controller.signal,
+    });
+    const body = (await res.text()).slice(0, 300);
+    if (res.status === 401 || res.status === 403) {
+      return { ok: false, detail: "", error: `FCM rejected the push server key (HTTP ${res.status})` };
+    }
+    return {
+      ok: true,
+      detail: `FCM accepted the push server key · min supported ${String(cfg.min_supported_version)}`,
+      error: "",
+      body,
+    };
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    return {
+      ok: false,
+      detail: "",
+      error: message === "The operation was aborted." ? "Connection timed out" : message,
+    };
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 async function probeDatabase(): Promise<ProbeResult> {
