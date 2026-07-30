@@ -11,7 +11,10 @@ export const Route = createFileRoute("/storage")({
       { title: "Storage Control — Smart Baggage Ecosystem" },
       { name: "description", content: "Storage Control module — coming in a future release." },
       { property: "og:title", content: "Storage Control — Smart Baggage Ecosystem" },
-      { property: "og:description", content: "Storage Control module — coming in a future release." },
+      {
+        property: "og:description",
+        content: "Storage Control module — coming in a future release.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],

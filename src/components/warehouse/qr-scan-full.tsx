@@ -2,7 +2,13 @@
 // Full QR Scan & Lookup implementation, temporarily unmounted from /qr-scan.
 // Re-enable by rendering <QrScanFull /> from src/routes/qr-scan.tsx.
 import { useState } from "react";
-import { useStore, updateCase, assignStorage, type BaggageCase, type CaseStatus } from "@/lib/store";
+import {
+  useStore,
+  updateCase,
+  assignStorage,
+  type BaggageCase,
+  type CaseStatus,
+} from "@/lib/store";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -80,7 +86,9 @@ export function QrScanFull() {
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="BAG-100231 or PIR…"
               />
-              <Button type="submit" size="icon"><Search className="h-4 w-4" /></Button>
+              <Button type="submit" size="icon">
+                <Search className="h-4 w-4" />
+              </Button>
             </form>
           </CardContent>
         </Card>
@@ -104,13 +112,7 @@ export function QrScanFull() {
   );
 }
 
-function RecordEditor({
-  c,
-  onChange,
-}: {
-  c: BaggageCase;
-  onChange: (c: BaggageCase) => void;
-}) {
+function RecordEditor({ c, onChange }: { c: BaggageCase; onChange: (c: BaggageCase) => void }) {
   const [zone, setZone] = useState(c.storage?.zone ?? "");
   const [shelf, setShelf] = useState(c.storage?.shelf ?? "");
   const [position, setPosition] = useState(c.storage?.position ?? "");
@@ -147,7 +149,11 @@ function RecordEditor({
                 toast.success(`Status → ${status}`);
               }}
             >
-              {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+              {STATUSES.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
             </select>
           </div>
           <div className="space-y-1.5">
@@ -163,7 +169,11 @@ function RecordEditor({
           <div className="grid grid-cols-3 gap-2">
             <Input placeholder="Zone" value={zone} onChange={(e) => setZone(e.target.value)} />
             <Input placeholder="Shelf" value={shelf} onChange={(e) => setShelf(e.target.value)} />
-            <Input placeholder="Position" value={position} onChange={(e) => setPosition(e.target.value)} />
+            <Input
+              placeholder="Position"
+              value={position}
+              onChange={(e) => setPosition(e.target.value)}
+            />
           </div>
           <Button
             size="sm"

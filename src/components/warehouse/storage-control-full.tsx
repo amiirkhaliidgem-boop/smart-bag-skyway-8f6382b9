@@ -35,7 +35,13 @@ export function StorageControlFull() {
   // Progressive loading: render the page shell with placeholders while this
   // screen's data tier is still in flight, instead of showing empty values.
   if (loading.core && cases.length === 0)
-    return <PageLoading title={"Storage Control"} subtitle={"Warehouse zone, shelf and position assignment for all located baggage."} kpis={4} />;
+    return (
+      <PageLoading
+        title={"Storage Control"}
+        subtitle={"Warehouse zone, shelf and position assignment for all located baggage."}
+        kpis={4}
+      />
+    );
 
   return (
     <div className="space-y-6">
@@ -82,10 +88,14 @@ export function StorageControlFull() {
                 <tbody className="divide-y divide-border">
                   {unassigned.map((c) => (
                     <tr key={c.bagId} className="hover:bg-muted/40">
-                      <td className="px-4 py-3 font-mono text-xs font-semibold text-primary">{c.bagId}</td>
+                      <td className="px-4 py-3 font-mono text-xs font-semibold text-primary">
+                        {c.bagId}
+                      </td>
                       <td className="px-4 py-3">{c.passengerName}</td>
                       <td className="px-4 py-3 font-medium">{c.flightNumber}</td>
-                      <td className="px-4 py-3"><StatusBadge status={c.status} /></td>
+                      <td className="px-4 py-3">
+                        <StatusBadge status={c.status} />
+                      </td>
                       <td className="px-4 py-3 text-right">
                         <Button size="sm" variant="outline" onClick={() => setEditing(c.bagId)}>
                           Assign Location
@@ -121,7 +131,9 @@ export function StorageControlFull() {
               <tbody className="divide-y divide-border">
                 {stored.map((c) => (
                   <tr key={c.bagId} className="hover:bg-muted/40">
-                    <td className="px-4 py-3 font-mono text-xs font-semibold text-primary">{c.bagId}</td>
+                    <td className="px-4 py-3 font-mono text-xs font-semibold text-primary">
+                      {c.bagId}
+                    </td>
                     <td className="px-4 py-3">{c.passengerName}</td>
                     <td className="px-4 py-3">
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-primary/10 text-primary text-xs font-semibold">
@@ -130,7 +142,9 @@ export function StorageControlFull() {
                     </td>
                     <td className="px-4 py-3 font-mono text-xs">{c.storage!.shelf}</td>
                     <td className="px-4 py-3 font-mono text-xs">{c.storage!.position}</td>
-                    <td className="px-4 py-3"><StatusBadge status={c.status} /></td>
+                    <td className="px-4 py-3">
+                      <StatusBadge status={c.status} />
+                    </td>
                     <td className="px-4 py-3 text-right">
                       <Button size="sm" variant="ghost" onClick={() => setEditing(c.bagId)}>
                         Edit
@@ -182,21 +196,35 @@ function AssignDialog({ bagId, onClose }: { bagId: string; onClose: () => void }
               onChange={(e) => setZone(e.target.value)}
             >
               {["A", "B", "C", "D"].map((z) => (
-                <option key={z} value={z}>{z}</option>
+                <option key={z} value={z}>
+                  {z}
+                </option>
               ))}
             </select>
           </div>
           <div className="space-y-1.5">
             <Label>Shelf</Label>
-            <Input value={shelf} onChange={(e) => setShelf(e.target.value)} placeholder="03" required />
+            <Input
+              value={shelf}
+              onChange={(e) => setShelf(e.target.value)}
+              placeholder="03"
+              required
+            />
           </div>
           <div className="space-y-1.5">
             <Label>Position</Label>
-            <Input value={position} onChange={(e) => setPosition(e.target.value)} placeholder="12" required />
+            <Input
+              value={position}
+              onChange={(e) => setPosition(e.target.value)}
+              placeholder="12"
+              required
+            />
           </div>
         </div>
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+          <Button type="button" variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
           <Button type="submit">Save Location</Button>
         </DialogFooter>
       </form>
