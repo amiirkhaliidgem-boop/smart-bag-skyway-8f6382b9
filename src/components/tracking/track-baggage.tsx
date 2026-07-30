@@ -35,7 +35,6 @@ const PROGRESS_STAGES: DeliveryStage[] = [
 const OTP_VISIBLE_STAGES = new Set<DeliveryStage>([
   "Out for Delivery",
   "Delivered",
-  "Delivery Failed",
 ]);
 
 export function TrackBaggage({ showHeading = true }: { showHeading?: boolean }) {
