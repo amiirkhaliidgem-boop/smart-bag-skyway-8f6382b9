@@ -95,6 +95,9 @@ function ApiStatusPage() {
             {a.lastError && (
               <p className="mt-3 text-[11px] text-rose-600 line-clamp-2">{a.lastError}</p>
             )}
+            {!a.lastError && a.note && (
+              <p className="mt-3 text-[11px] text-muted-foreground line-clamp-3">{a.note}</p>
+            )}
           </CardContent>
         </Card>
       ))}
@@ -161,9 +164,27 @@ function ApiStatusPage() {
           <CardContent className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4 text-xs">
             <Cell label="Provider" value={db.provider} />
             <Cell label="Environment" value={db.environment} />
-            <Cell label="Realtime" value={db.realtime ? "Enabled" : "Disabled"} />
-            <Cell label="Storage" value={db.storage ? "Enabled" : "Disabled"} />
-            <Cell label="Backups" value={db.backup} />
+            <Cell label="Engine" value={db.version} />
+            <Cell
+              label="Realtime"
+              value={
+                db.realtimeTables == null
+                  ? "—"
+                  : db.realtimeTables > 0
+                    ? `${db.realtimeTables} table${db.realtimeTables === 1 ? "" : "s"} published`
+                    : "No published tables"
+              }
+            />
+            <Cell
+              label="Storage"
+              value={
+                db.buckets == null
+                  ? "—"
+                  : db.buckets > 0
+                    ? `${db.buckets} bucket${db.buckets === 1 ? "" : "s"}`
+                    : "No buckets"
+              }
+            />
             <Cell label="Latency" value={db.latencyMs != null ? `${db.latencyMs} ms` : "—"} />
           </CardContent>
         </Card>
