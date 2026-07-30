@@ -47,7 +47,7 @@ function toView(row: Row, secrets: Record<string, string>): IntegrationView {
     version: row.version,
     enabled: row.enabled,
     status: row.status as IntegrationView["status"],
-    config: row.config_public ?? {},
+    config: (row.config_public ?? {}) as IntegrationView["config"],
     secretsSet: Object.keys(secrets).filter((k) => String(secrets[k] ?? "").trim() !== ""),
     lastSuccessAt: row.last_success_at,
     lastFailureAt: row.last_failure_at,
