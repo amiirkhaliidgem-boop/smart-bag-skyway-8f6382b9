@@ -1,47 +1,47 @@
-## What I verified first
+## Verified root cause (PIR)
 
-- `timeline_events` exists in the database and `wf_journal()` already writes to it on every L&F status change, delivery transition, notes, OTP and feedback action — but **no code reads it**. `src/routes/timeline.tsx` synthesizes events client-side from projections, which is why several L&F transitions never appear.
-- Assign Officer sends `internal.assignedOfficer`, but `casePatchPayload()` in `src/lib/store.ts` silently drops it and `lf_update_case()` has no `assigned_officer_id` branch → the write is a no-op (no error, no timeline, no audit).
-- `baggage_cases.assigned_officer_id` (uuid → `app_users`) already exists and is unused.
-- The import template prepends a "Template Version" column; phone fields are only warnings, but the row that fails Egyptian numbers needs checking end-to-end against the actual parse path.
-- PIR is required in the wizard (step validation + field) and in the import schema; `baggage_cases.pir_number` is already nullable and `next_case_no()` already produces sequential `BAG-00000X` ids.
-- `LF_STATUSES` (with `Closed`) drives the status filter; `Last Updated` and the Columns toggle live in `ALL_COLUMNS` / the Columns dropdown.
+`deliveries` has **no** `pir_number` column, but `mapDelivery()` reads `d.pir_number` (src/lib/ops.mapping.ts:199) → always `""`. The PIR lives on `baggage_cases` (confirmed: all 7 deliveries have a valid PIR on their case, e.g. DEL-000001 → CAIE542987). So it's a mapping bug, not missing data.
 
-## 1. Timeline becomes the system-wide event log
+## 1. PIR display (Dispatch grid + Details)
 
-- Add `timeline_events` to the activity snapshot tier (`src/lib/ops.server.ts`, `ops.mapping.ts`, `ops.functions.ts` tier 2), mapped into a new `timeline` array on the store.
-- Rewrite `src/routes/timeline.tsx` to render that DB feed as the primary source (module, title, detail, actor, case/delivery reference, status), keeping the existing visual design, filters and grouping. Client-side synthesis is removed so no module "writes" timeline entries in the UI layer.
-- Migration: extend `wf_journal()` coverage so the modules that currently bypass it also journal — officer assignment, quality incidents, storage assignment, and import/export runs (a small `wf_journal_simple()` helper for non-transition events). Feedback, notifications, delivery and driver actions already journal and stay unchanged.
+- `buildCoreSnapshot` already loads the case row; pass `pir_number` (and `case_no`) into `mapDelivery` and set `pirNumber` from the case.
+- UI binding: show `pirNumber` when present, otherwise the Case ID (`BAG-xxxxx`) — same fallback L&F uses. Applied in the grid PIR column and the Delivery Details header/Overview tab.
+- No temporary/synthetic values anywhere.
 
-## 2. Assign Officer works and synchronizes
+## 2. Remove Close action
 
-- Migration: add an `assigned_officer_id` branch to `lf_update_case()` (resolve by `app_users.id`), journaling through `wf_journal()` so Timeline + Audit both record it.
-- Add `list_staff_officers()` (security definer, mirrors `list_delivery_agents()`) returning active non-driver staff.
-- Frontend: `casePatchPayload()` maps `internal.assignedOfficer`; the Assign Officer dialogs in `lost-found.index.tsx` and `lost-found.$bagId.tsx` become a **dropdown of real staff** instead of free text. Case details and the registry column update immediately after the RPC refresh.
+- Drop the `Close` row button and `closeDelivery` usage from the Dispatch grid and Details page; remove `close` from `actionsForStage`. The `dm_close` RPC stays in the DB but is no longer reachable from the UI (single operational path via the Workflow Engine).
 
-## 3. Import template usability
+## 3–4. Merge "Delivery Failed" into "Returned to Airport"
 
-- Drop the "Template Version" column from generated templates (`src/lib/io/template.ts`) while `import-service.ts` keeps tolerating it in older files.
-- Phone handling: accept local Egyptian formats (`010/011/012/015` + 8 digits) alongside international `+20…`, with normalization at parse time; keep non-matching values as warnings, never rejections.
-- Make PIR non-required in the L&F import schema (see item 4).
-- Test after implementation with a generated template containing local-format numbers and confirm rows import as "Imported Successfully".
+Database migration (Workflow Engine owns the behaviour):
 
-## 4. PIR Number optional
+- `wf_stage_allowed`: remove all `Delivery Failed` paths; allow `Assigned`, `Driver Accepted`, `Collected Bag`, `Out for Delivery` → `Returned to Airport`, and `Returned to Airport` → `Ready for Delivery`.
+- `wf_stage_lf` / `wf_stage_workflow`: `Returned to Airport` maps back to `Ready for Delivery` / `READY_FOR_COLLECTION`.
+- Rewrite `dm_mark_returned(p_delivery, p_reason_code, p_note, p_expected_version)` to, in one transaction:
+  1. record the reason/note on the delivery,
+  2. `wf_transition(... 'Returned to Airport')` — journals Timeline + Audit + queues notifications + refreshes the passenger view,
+  3. clear `assigned_agent_id` / `assigned_at`, expire any pending OTP,
+  4. `wf_transition(... 'Ready for Delivery')` so the case genuinely re-enters the Ready queue system-wide,
+  5. `wf_recompute_route(old_agent)` so the stop disappears from the Driver Portal route immediately.
+- `dm_mark_failed` is retired (kept as a thin alias that calls `dm_mark_returned`, so no caller breaks).
 
-- Wizard: remove the required marker and the step-4 validation; blank PIR passes.
-- Store/RPC: send `null` for empty PIR; `lf_create_case()` already assigns the sequential `BAG-0000XX` case number.
-- UI fallbacks: registry, case details, PIR report and exports show the Case ID when PIR is empty.
-- Import: PIR optional; duplicate detection only applies when a PIR is present.
+Frontend: remove `"Delivery Failed"` from `DELIVERY_STAGES`, labels, styles, and every mapping in `src/lib/delivery/stages.ts`; update the handful of references in `store.ts`, `passenger.index.tsx`, `track-baggage.tsx`, `templates.ts`, `workflow-monitor.tsx`.
 
-## 5. L&F UI cleanup
+## 5. Return to Airport action placement
 
-- Status filter and any selector use `LF_OWNED_STATUSES` plus the read-only downstream ones, with `Closed` removed from user-facing lists (kept in the engine enum and mapping).
-- Remove the `Last Updated` column and the Columns toggle; ship one fixed layout: PIR/Case, Passenger, Flight, Bag Tag, Current Status, Assigned Officer, Priority, Created Date, Actions.
+- **Delivery Details**: new button next to View Passenger Portal / Open Navigation, visible for stages Assigned → Out for Delivery. Opens a small dialog to pick a reason (existing `failure_reasons` list) + optional note.
+- **Bulk Actions toolbar**: "Return to Airport" — one reason dialog, then the Workflow Engine processes each selected delivery sequentially; summary toast reports successes/failures.
 
-## 6. End-to-end validation
+## 6. Standardize filters
 
-Run a scripted UAT case through L&F → Ready for Delivery → assign agent → accept → collect → out for delivery → 6-digit OTP → Delivered, plus officer assignment and a bulk import, then query `timeline_events`, `audit_events`, `notification_events`, `workflow_events` and the projections to confirm each step is recorded. Deliver a written report covering Timeline, Audit, Notifications, Passenger Portal, Dashboard and Reports, and confirming no schema or Workflow Engine regressions.
+- Remove the queue chip row (All / Ready / Assigned / Out / Completed) from the Dispatch Center and the `DELIVERY_QUEUES` state, leaving Search + Stage select + Date range + Reset — identical to Lost & Found.
 
-## Technical notes
+## 7. Validation
 
-Two migrations (timeline journaling helper + `lf_update_case` officer branch and `list_staff_officers`). Frontend edits: `ops.server.ts`, `ops.mapping.ts`, `ops.functions.ts`, `store.ts`, `timeline.tsx`, `lost-found.index.tsx`, `lost-found.$bagId.tsx`, `pir-wizard.tsx`, `io/template.ts`, `io/registry.ts`, `io/validation.ts`. No changes to the delivery lifecycle, RLS model or passenger portal design.
+- SQL checks: run a return-to-airport on a test delivery and confirm stage → Ready for Delivery, `assigned_agent_id` null, OTP expired, `workflow_events` / `timeline_events` / `audit_events` / notification rows written, `agent_route_stops` no longer contains the delivery.
+- UI checks via headless browser: PIR visible in grid and details, no Close button, no queue chips, bulk + single Return actions work, Driver Portal no longer lists the returned delivery.
+- Typecheck + build.
+
+### Technical notes
+Files touched: `src/lib/ops.mapping.ts`, `src/lib/ops.server.ts`, `src/lib/delivery/stages.ts`, `src/lib/store.ts`, `src/routes/delivery.index.tsx`, `src/routes/delivery.$deliveryId.tsx`, plus small stage-reference edits in passenger/tracking/workflow-monitor/templates. One Supabase migration for the workflow functions.
