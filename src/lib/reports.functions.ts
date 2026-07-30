@@ -6,7 +6,8 @@ export const loadOperationalReport = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { from: string; to: string; grain: "day" | "week" | "month" }) => {
     if (!input?.from || !input?.to) throw new Error("A reporting date range is required");
-    const grain = input.grain === "week" || input.grain === "month" ? input.grain : "day";
+    const grain: "day" | "week" | "month" =
+      input.grain === "week" || input.grain === "month" ? input.grain : "day";
     return { from: input.from, to: input.to, grain };
   })
   .handler(async ({ data, context }) => {
