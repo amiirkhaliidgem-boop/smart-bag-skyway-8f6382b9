@@ -8,6 +8,8 @@ import {
   ensurePassengerToken,
   getDeliveryStage,
   addDeliveryNote,
+  returnToAirport,
+  refreshOps,
   type Delivery,
   type BaggageCase,
 } from "@/lib/store";
@@ -37,10 +39,12 @@ import {
   Navigation,
   StickyNote,
   ExternalLink,
+  RotateCcw,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { PodPrintHost, podPrintBus } from "@/components/delivery/pod-print-host";
+import { ReturnToAirportDialog } from "@/components/delivery/return-to-airport-dialog";
 
 export const Route = createFileRoute("/delivery/$deliveryId")({
   head: ({ params }) => ({
@@ -82,6 +86,7 @@ function DeliveryDetails() {
 
   const [tab, setTab] = useState<Tab>("overview");
   const [assignOpen, setAssignOpen] = useState(false);
+  const [returnOpen, setReturnOpen] = useState(false);
 
   if (!delivery) throw notFound();
   const stage = getDeliveryStage(delivery);
@@ -110,7 +115,8 @@ function DeliveryDetails() {
                 </span>
               </div>
               <p className="text-sm text-muted-foreground">
-                {delivery.passengerName} · PIR <span className="font-mono">{delivery.pirNumber}</span>
+                {delivery.passengerName} · PIR{" "}
+                <span className="font-mono">{delivery.pirNumber || delivery.bagId}</span>
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -156,6 +162,16 @@ function DeliveryDetails() {
               >
                 <Navigation className="h-3.5 w-3.5" /> Open Navigation
               </a>
+              {acts.markReturned && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-1.5"
+                  onClick={() => setReturnOpen(true)}
+                >
+                  <RotateCcw className="h-3.5 w-3.5" /> Return to Airport
+                </Button>
+              )}
               <Button size="sm" variant="outline" className="gap-1.5" onClick={() => podPrintBus.print([deliveryId])}>
                 <Printer className="h-3.5 w-3.5" /> Print
               </Button>
@@ -195,6 +211,20 @@ function DeliveryDetails() {
       {tab === "notifications" && <NotificationsTab notifications={notifications} />}
 
       <AssignDialog open={assignOpen} onOpenChange={setAssignOpen} delivery={delivery} />
+      <ReturnToAirportDialog
+        open={returnOpen}
+        onOpenChange={setReturnOpen}
+        count={1}
+        onConfirm={async (reasonCode, note) => {
+          try {
+            await returnToAirport(deliveryId, { reasonCode, note });
+            await refreshOps();
+            toast.success("Returned to airport — back in the Ready for Delivery queue");
+          } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Could not return this delivery");
+          }
+        }}
+      />
       <PodPrintHost />
     </div>
   );
@@ -236,7 +266,7 @@ function OverviewTab({ d, kase }: { d: Delivery; kase?: BaggageCase }) {
       <Card>
         <CardHeader><CardTitle className="text-sm">Baggage</CardTitle></CardHeader>
         <CardContent className="text-sm space-y-1 pt-0">
-          <Row label="PIR" value={<span className="font-mono">{d.pirNumber}</span>} />
+          <Row label="PIR" value={<span className="font-mono">{d.pirNumber || d.bagId}</span>} />
           <Row label="Bag ID" value={<span className="font-mono">{d.bagId}</span>} />
           <Row label="Bag Tag" value={<span className="font-mono">{bagTag}</span>} />
           <Row label="Airline" value={airline} />
