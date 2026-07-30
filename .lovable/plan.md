@@ -1,47 +1,51 @@
-## Verified root cause (PIR)
+## Goal
 
-`deliveries` has **no** `pir_number` column, but `mapDelivery()` reads `d.pir_number` (src/lib/ops.mapping.ts:199) → always `""`. The PIR lives on `baggage_cases` (confirmed: all 7 deliveries have a valid PIR on their case, e.g. DEL-000001 → CAIE542987). So it's a mapping bug, not missing data.
+Remove **Delivery Agent Portal** from the admin navigation and put a new read-only **Delivery Agent Monitoring** screen in its place, under Delivery Operations. The Driver Portal route, backend, workflow, and database stay untouched — drivers keep signing in through `/auth` and landing on `/driver-portal`.
 
-## 1. PIR display (Dispatch grid + Details)
+## 1. Navigation
 
-- `buildCoreSnapshot` already loads the case row; pass `pir_number` (and `case_no`) into `mapDelivery` and set `pirNumber` from the case.
-- UI binding: show `pirNumber` when present, otherwise the Case ID (`BAG-xxxxx`) — same fallback L&F uses. Applied in the grid PIR column and the Delivery Details header/Overview tab.
-- No temporary/synthetic values anywhere.
+In `src/components/app-shell.tsx`, the "Delivery Operations" section item `/driver-portal` "Delivery Agent Portal" is replaced by `/agent-monitoring` "Delivery Agent Monitoring" (Radar/Activity icon). No other nav entry changes. `/driver-portal` remains fully routable and reachable by direct URL and by driver sign-in redirect.
 
-## 2. Remove Close action
+## 2. Access
 
-- Drop the `Close` row button and `closeDelivery` usage from the Dispatch grid and Details page; remove `close` from `actionsForStage`. The `dm_close` RPC stays in the DB but is no longer reachable from the UI (single operational path via the Workflow Engine).
+No new permissions and no RBAC redesign. The new path is mapped to the **existing** "Delivery Management" module so anyone who currently sees Delivery Management sees monitoring:
 
-## 3–4. Merge "Delivery Failed" into "Returned to Airport"
+- `src/lib/admin/modules.ts` → add `{ prefix: "/agent-monitoring", module: "Delivery Management" }`.
+- `src/lib/rbac.ts` (legacy fallback matrix) → add `{ prefix: "/agent-monitoring", roles: ["admin", "coordinator"] }`, matching `/delivery`.
+- Driver-role behavior is unchanged: drivers are still confined to `/driver-portal` by the existing root guard.
 
-Database migration (Workflow Engine owns the behaviour):
+## 3. New route: `src/routes/agent-monitoring.tsx`
 
-- `wf_stage_allowed`: remove all `Delivery Failed` paths; allow `Assigned`, `Driver Accepted`, `Collected Bag`, `Out for Delivery` → `Returned to Airport`, and `Returned to Airport` → `Ready for Delivery`.
-- `wf_stage_lf` / `wf_stage_workflow`: `Returned to Airport` maps back to `Ready for Delivery` / `READY_FOR_COLLECTION`.
-- Rewrite `dm_mark_returned(p_delivery, p_reason_code, p_note, p_expected_version)` to, in one transaction:
-  1. record the reason/note on the delivery,
-  2. `wf_transition(... 'Returned to Airport')` — journals Timeline + Audit + queues notifications + refreshes the passenger view,
-  3. clear `assigned_agent_id` / `assigned_at`, expire any pending OTP,
-  4. `wf_transition(... 'Ready for Delivery')` so the case genuinely re-enters the Ready queue system-wide,
-  5. `wf_recompute_route(old_agent)` so the stop disappears from the Driver Portal route immediately.
-- `dm_mark_failed` is retired (kept as a thin alias that calls `dm_mark_returned`, so no caller breaks).
+Read-only screen, no mutating calls, no action buttons at all. It consumes only data already produced by the existing snapshot tiers — no new tables, RPCs, or engines.
 
-Frontend: remove `"Delivery Failed"` from `DELIVERY_STAGES`, labels, styles, and every mapping in `src/lib/delivery/stages.ts`; update the handful of references in `store.ts`, `passenger.index.tsx`, `track-baggage.tsx`, `templates.ts`, `workflow-monitor.tsx`.
+Layout:
 
-## 5. Return to Airport action placement
+- **Filter bar**: a driver selector (All Drivers / one driver) plus a text search. URL search param `driver` so the view is shareable. No other controls.
+- **Driver cards / rows**, one per selected driver, each showing:
+  - Driver name and employee ID (from `snapshot.agents`)
+  - Derived status chip: **Busy** (has an active in-flight delivery), **Online** (position reported recently, e.g. within 10 min), **Offline** (no recent position) — derived in the component from existing `driverPositions` and delivery stages; nothing is written back.
+  - Current delivery (delivery no, passenger, PIR/Bag ID) and its current workflow stage
+  - Current route summary from `driverRoutes` (ordered stops) and **Remaining stops** count
+  - **Completed deliveries today** count, computed from delivered deliveries with today's completion timestamp
+  - **Live GPS position** (lat/lng) and **Last location update** timestamp with relative age
+- **Activity timeline panel**: reads the canonical engine-written `timeline` list from the activity snapshot (`public.timeline_events`), filtered to the selected driver's deliveries (and to all monitored drivers when "All" is selected). No separate driver history is created. Shows Assigned / Accepted / Collected / Out for Delivery / OTP Verified / Delivered / Returned to Airport as the engine recorded them.
+- Skeletons from `src/components/ops-skeleton.tsx` while the core/activity/secondary tiers load, so the shell paints immediately.
 
-- **Delivery Details**: new button next to View Passenger Portal / Open Navigation, visible for stages Assigned → Out for Delivery. Opens a small dialog to pick a reason (existing `failure_reasons` list) + optional note.
-- **Bulk Actions toolbar**: "Return to Airport" — one reason dialog, then the Workflow Engine processes each selected delivery sequentially; summary toast reports successes/failures.
+## 4. Live updates
 
-## 6. Standardize filters
+No manual refresh button. The page uses the store's existing hydration/refresh path: it subscribes to the store and triggers the same background snapshot refresh the rest of the app uses, on the existing realtime channel where available, with a lightweight interval (~15s) for the secondary tier that carries GPS positions and routes. Timeline data refreshes with the activity tier.
 
-- Remove the queue chip row (All / Ready / Assigned / Out / Completed) from the Dispatch Center and the `DELIVERY_QUEUES` state, leaving Search + Stage select + Date range + Reset — identical to Lost & Found.
+## 5. Technical notes
 
-## 7. Validation
+- Data sources, all already present: `agents`, `deliveries` (stage, timestamps, agent assignment), `driverPositions`, `driverRoutes` from `buildCoreSnapshot`/`buildSecondarySnapshot`, and `timeline` from `buildActivitySnapshot`.
+- No changes to `src/routes/driver-portal.tsx`, `src/lib/store.ts` mutations, workflow RPCs, notifications, route engine, or any migration.
+- Route gets its own `head()` metadata (title/description/og) per project convention.
 
-- SQL checks: run a return-to-airport on a test delivery and confirm stage → Ready for Delivery, `assigned_agent_id` null, OTP expired, `workflow_events` / `timeline_events` / `audit_events` / notification rows written, `agent_route_stops` no longer contains the delivery.
-- UI checks via headless browser: PIR visible in grid and details, no Close button, no queue chips, bulk + single Return actions work, Driver Portal no longer lists the returned delivery.
-- Typecheck + build.
+## 6. Validation before hand-off
 
-### Technical notes
-Files touched: `src/lib/ops.mapping.ts`, `src/lib/ops.server.ts`, `src/lib/delivery/stages.ts`, `src/lib/store.ts`, `src/routes/delivery.index.tsx`, `src/routes/delivery.$deliveryId.tsx`, plus small stage-reference edits in passenger/tracking/workflow-monitor/templates. One Supabase migration for the workflow functions.
+- TypeScript check clean, no broken imports.
+- Verify nav shows Monitoring and no longer shows Agent Portal, for both a coordinator-style and admin-style permission set.
+- Verify `/driver-portal` still loads directly and driver sign-in still redirects there.
+- Load the monitoring page and confirm driver filtering, GPS/last-update rendering, remaining stops, completed-today counts, and that timeline entries match the Activity Timeline page for the same deliveries.
+- Confirm zero mutating calls originate from the page and no console errors.
+- Spot-check Delivery Management, Lost & Found, Passenger Portal, Warehouse, Notifications, Timeline, and Reports for regressions.
