@@ -1,73 +1,56 @@
-## Goal
+## Diagnostic report
 
-Turn the System module (Integrations + API Status) into one backend-driven subsystem: administrators configure real credentials in the UI, connections are tested against the real providers, and API Status shows live health recorded from those checks and from actual runtime calls. No demo cards, no hardcoded statuses.
+I queried the database directly before drawing any conclusion.
 
-## 1. Database (new tables, admin-only)
+**Evidence**
 
-**`integrations`** — one row per provider slot, seeded by migration (no UI-created cards):
-- `key` (google_maps, sms_gateway, whatsapp, email, odoo, mobile_platform, cloud_database)
-- `name`, `provider` (selected provider, e.g. Twilio/Infobip/SMTP), `environment` (development/testing/production), `version`
-- `enabled`, `status` (not_configured / connected / error / disabled)
-- `config_public` jsonb (non-secret settings: endpoints, sender ID, feature toggles, phone number IDs)
-- `secrets_ciphertext` text (AES-256-GCM encrypted blob of API keys/tokens/passwords)
-- `last_success_at`, `last_failure_at`, `last_error`, `last_sync_at`, `updated_by`, timestamps, `version`
+1. `select ... from api_health_checks group by api_key` returns **zero rows**. No health sample has ever been recorded for any API.
+2. All seven probe target tables exist (`workflow_events`, `notification_events`, `passenger_view`, `agent_routes`, `quality_incidents`, `timeline_events`, `deliveries`) — the probes themselves are valid.
+3. `cron.job` contains **only** `drain-notification-outbox` (every 2 min). There is **no scheduled job** calling `/api/public/system/health-sweep`, so the sweep endpoint that exists in code has never been invoked.
+4. `integrations` rows: all six external slots have `secrets_ciphertext = NULL`, `status = 'disabled'`; `cloud_database` is `connected`.
 
-**`integration_events`** — append-only log of every configure / test / enable / disable / rotate / sync, with actor, outcome, latency, error text. Powers "synchronization logs".
+**Why the seven internal APIs show "Degraded"**
 
-**`api_health_checks`** — rolling health samples per API key (`workflow`, `notification`, `passenger`, `driver`, `database`, `google_maps`, `sms`, `whatsapp`, `email`, `odoo`), with `ok`, `latency_ms`, `error`, `checked_at`. Aggregated for uptime / error count / success rate.
+The status rule in `buildApiHealth` is:
 
-RLS: no anon/authenticated access to `integrations` (secrets never leave the server). Reads/writes go only through server functions using the service-role client after an admin check. `integration_events` and `api_health_checks` readable by staff with Administration access.
+```text
+samples in last 24h == 0  →  internal  → "degraded"
+                             external unconfigured → "not_configured"
+```
 
-## 2. Secret handling
+So "Degraded" here does **not** mean anything failed. It is the display of *"considered configured, but zero heartbeats in the last 24 hours"*. This matches the screenshot exactly: Latency —, Uptime —, Errors 0, Last heartbeat —.
 
-- Secrets are encrypted server-side with AES-256-GCM before insert; the key is a generated project secret (`INTEGRATION_CONFIG_SECRET`).
-- Server functions return only masked previews (`sk_live_••••4821`) plus which fields are set — never plaintext.
-- "Rotate credentials" replaces the ciphertext and logs the event; old values are never displayed.
+| API | Current | Root cause | Category | Expected | Required to become Operational | Fix type |
+|---|---|---|---|---|---|---|
+| Workflow API | Degraded | No sample ever recorded | Missing heartbeat (no scheduler) | Operational | Run a sweep + schedule it | Config + small code |
+| Notification API | Degraded | Same | Missing heartbeat | Operational | Same | Config + small code |
+| Passenger API | Degraded | Same | Missing heartbeat | Operational | Same | Config + small code |
+| Delivery Agent API | Degraded | Same | Missing heartbeat | Operational | Same | Config + small code |
+| Quality Management API | Degraded | Same | Missing heartbeat | Operational | Same | Config + small code |
+| Reporting API | Degraded | Same | Missing heartbeat | Operational | Same | Config + small code |
+| Database API | Degraded | Same (probe is valid, never run) | Missing heartbeat | Operational | Same | Config + small code |
+| Google Maps / SMS / WhatsApp / Email / Odoo | Not configured | No credentials stored | Missing credentials | Not configured until credentials entered | Admin enters credentials in Integration Center | Configuration only |
+| Mobile Platform | Not configured | No credentials, **and** the sweep skips any integration whose `secrets_ciphertext` is NULL — Mobile Platform has no required secret, so it can never be probed even once configured | Code defect | Operational once bundle IDs are set | Change the sweep's "configured" test | Code change |
 
-## 3. Server layer
+**Two additional real defects found**
 
-`src/lib/integrations/*.server.ts` + `integrations.functions.ts`, all guarded by the existing `assertAdmin` (Administration → Manage):
-- `listIntegrations` — masked config + status + last success/failure/error + environment/version/provider.
-- `saveIntegration` — validates with Zod per provider schema, encrypts secrets, records an event.
-- `testIntegration` — performs a **real** provider call and stores the outcome:
-  - Google Maps → Geocoding/Distance Matrix ping with the stored key
-  - SMS → provider-specific auth/balance endpoint (Twilio, Infobip, Vodafone/Orange/Etisalat/Custom REST via configured URL); optional real test SMS to a supplied number
-  - WhatsApp Cloud API → `GET /{phone_number_id}` with the access token
-  - Email → SMTP verification via the configured host/port/credentials (falls back to API-provider auth check)
-  - Odoo → `/web/session/authenticate` (or JSON-RPC `version`) against base URL + db + user + key
-  - Cloud Database → Supabase round-trip (query latency, realtime, storage, last backup info where exposed)
-- `setIntegrationEnabled`, `disconnectIntegration` (clears ciphertext, sets `not_configured`), `rotateIntegrationSecret`, `syncIntegrationNow`, `listIntegrationEvents`.
-- `getApiHealth` — aggregates `api_health_checks` into status/latency/uptime/error count/success rate/last heartbeat per API.
-- Runtime calls (notification dispatch, maps, OTP-free workflow paths) record a health sample on every real send, so status reflects production traffic, not only manual tests.
-- Notification registry reads live SMS/WhatsApp/Email config from the DB instead of hardcoded simulated adapters, so entering production credentials switches transport with no code change.
+- `cloud_database` writes its samples under the key `cloud_database`, but the monitored key is `database`. Those samples are orphaned and never displayed.
+- No cron job exists for the health sweep, so even after one manual run the page would go Degraded again after 24 h.
 
-## 4. Integrations page (`/integrations`)
+Nothing is being hidden or forced anywhere; the page is honestly reporting "no heartbeat".
 
-Rewrite as the Integration Management Center. Each card shows real status chip, provider name, environment, version, last successful connection, last failed connection and error message. Actions: **Configure**, **Test Connection**, **Enable/Disable**, **Sync now**, **Disconnect**, **View logs**.
+## Fixes to implement
 
-Configure opens a per-integration dialog with the real fields:
-- **Google Maps** — API key + toggles for Directions, Distance Matrix, Geocoding, Places
-- **SMS Gateway** — provider selector (Twilio, Infobip, Vodafone Business, Orange Business, Etisalat Business, Custom REST API), API URL, API key/secret, Sender ID, Send test SMS
-- **WhatsApp Business** — Cloud API phone number ID, business account ID, access token, webhook URL (read-only, generated), Verify Connection
-- **Email** — SMTP host/port/security/user/password/from address, send test email
-- **Odoo ERP** — base URL, database, username, API key, Test
-- **Mobile Platform** (renames "Delivery Agent Mobile App") — app package/bundle IDs, minimum supported version, push credentials, force-update flag
-- **Cloud Database** — read-only panel: connected, provider, environment, database, realtime, storage, backup status, connection health, performance, View details
+1. **Schedule the sweep** — add a `pg_cron` job (every 5 minutes) posting to `/api/public/system/health-sweep` with the project apikey, mirroring the existing notification drainer job. This is what makes internal APIs genuinely Operational and keeps them honest: if a probe starts failing, the page turns Down/Degraded on its own.
+2. **Fix the sweep's "configured" test** in `runHealthSweep` (`src/lib/system/integrations.server.ts`): probe an integration when it has secrets **or** when its definition declares no required secret fields (Mobile Platform), instead of the current NULL-ciphertext-only check.
+3. **Fix the orphaned database samples** — map the `cloud_database` integration probe onto the monitored `database` key so its latency/uptime is actually shown rather than discarded.
+4. **Distinguish "never probed" from "degraded"** in `buildApiHealth`: an internal API with zero samples is `degraded` with an explicit `lastError` of "No heartbeat recorded yet — awaiting first health sweep", so the card explains itself instead of showing a bare badge. Status logic otherwise unchanged; degraded still means >20% failures in 24 h, down still means the latest probe failed.
+5. **Run one sweep immediately** after the changes and verify each internal API reports Operational with a real latency and heartbeat, reading back `api_health_checks` from the database to confirm.
 
-**OTP Provider card is removed** (OTP is internal to the Workflow Engine).
+External providers stay `Not configured` until credentials are entered — no change to that behaviour.
 
-Every dialog: Save + Test with inline validation and clear provider error messages.
+## Technical notes
 
-## 5. API Status page (`/api-status`)
-
-Monitoring only — no configuration actions. Live cards for Workflow, Notification, Passenger, Driver, Database, Google Maps, SMS, WhatsApp, Email and Odoo APIs, each showing status, version, latency, last heartbeat, last successful call, last failed call, uptime %, error count and success rate — all from `api_health_checks`. Auto-refresh via polling plus a "Run health check now" (admin-only) that executes the checks server-side.
-
-A `/api/public/health/sweep` server route (secret-protected) lets a scheduler run periodic heartbeats after deployment.
-
-## 6. RBAC
-
-Configure / Test / Enable / Disable / Disconnect / Rotate / Sync are all gated by `assertAdmin` on the server **and** hidden in the UI for non-admins. Both routes stay admin-only in `src/lib/rbac.ts`; API Status stays read-only for admins who can view it.
-
-## 7. Validation
-
-Verify with SQL that saved config round-trips encrypted, that test results write `last_success_at` / `last_failure_at` / `last_error`, that a non-admin session is rejected by every mutation, and that no secret value appears in any client payload. Run typecheck and a production build.
+- Files touched: `src/lib/system/integrations.server.ts` (sweep gating, key mapping, no-heartbeat message), plus one migration creating the cron job.
+- No change to `probes.server.ts` probe logic — the probes are correct.
+- No UI restructuring; the API Status card may gain the explanatory "awaiting first sweep" line it already has a slot for (`lastError`).
