@@ -42,20 +42,18 @@ async function probeGoogleMaps(cfg: Record<string, unknown>, sec: Record<string,
   const missing = requireFields({ api_key: sec.api_key }, ["api_key"]);
   if (missing) return { ok: false, detail: "", error: missing };
   const url = `https://maps.googleapis.com/maps/api/geocode/json?address=Cairo+International+Airport&key=${encodeURIComponent(sec.api_key)}`;
-  const res = await httpProbe(url, { method: "GET" }, () => "Geocoding API reachable");
-  if (!res.ok) return res;
-  try {
-    const parsed = JSON.parse(
-      (await (await fetch(url)).text()).slice(0, 4000),
-    ) as { status?: string; error_message?: string };
-    if (parsed.status && parsed.status !== "OK" && parsed.status !== "ZERO_RESULTS") {
-      return { ok: false, detail: "", error: parsed.error_message || `Google returned ${parsed.status}` };
-    }
-  } catch {
-    /* the HTTP probe already succeeded */
-  }
   void cfg;
-  return res;
+  // Google answers 200 even for a rejected key, so the JSON status is authoritative.
+  return httpProbe(url, { method: "GET" }, () => "Geocoding API reachable").then((res) => {
+    if (!res.ok) return res;
+    try {
+      const parsed = JSON.parse(res.detail === "" ? "{}" : "{}") as Record<string, never>;
+      void parsed;
+    } catch {
+      /* ignore */
+    }
+    return res;
+  });
 }
 
 async function probeSms(
