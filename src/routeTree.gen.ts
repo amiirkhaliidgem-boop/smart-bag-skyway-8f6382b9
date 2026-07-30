@@ -29,6 +29,7 @@ import { Route as DataIoRouteImport } from './routes/data-io'
 import { Route as ContactCenterRouteImport } from './routes/contact-center'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ApiStatusRouteImport } from './routes/api-status'
+import { Route as AgentMonitoringRouteImport } from './routes/agent-monitoring'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PassengerIndexRouteImport } from './routes/passenger.index'
@@ -139,6 +140,11 @@ const ApiStatusRoute = ApiStatusRouteImport.update({
   path: '/api-status',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AgentMonitoringRoute = AgentMonitoringRouteImport.update({
+  id: '/agent-monitoring',
+  path: '/agent-monitoring',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminRoute = AdminRouteImport.update({
   id: '/admin',
   path: '/admin',
@@ -189,6 +195,7 @@ const ApiPublicNotificationsDrainRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/agent-monitoring': typeof AgentMonitoringRoute
   '/api-status': typeof ApiStatusRoute
   '/auth': typeof AuthRoute
   '/contact-center': typeof ContactCenterRoute
@@ -220,6 +227,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/agent-monitoring': typeof AgentMonitoringRoute
   '/api-status': typeof ApiStatusRoute
   '/auth': typeof AuthRoute
   '/contact-center': typeof ContactCenterRoute
@@ -249,6 +257,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/agent-monitoring': typeof AgentMonitoringRoute
   '/api-status': typeof ApiStatusRoute
   '/auth': typeof AuthRoute
   '/contact-center': typeof ContactCenterRoute
@@ -282,6 +291,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/admin'
+    | '/agent-monitoring'
     | '/api-status'
     | '/auth'
     | '/contact-center'
@@ -313,6 +323,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/admin'
+    | '/agent-monitoring'
     | '/api-status'
     | '/auth'
     | '/contact-center'
@@ -341,6 +352,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/admin'
+    | '/agent-monitoring'
     | '/api-status'
     | '/auth'
     | '/contact-center'
@@ -373,6 +385,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
+  AgentMonitoringRoute: typeof AgentMonitoringRoute
   ApiStatusRoute: typeof ApiStatusRoute
   AuthRoute: typeof AuthRoute
   ContactCenterRoute: typeof ContactCenterRoute
@@ -538,6 +551,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiStatusRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/agent-monitoring': {
+      id: '/agent-monitoring'
+      path: '/agent-monitoring'
+      fullPath: '/agent-monitoring'
+      preLoaderRoute: typeof AgentMonitoringRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin': {
       id: '/admin'
       path: '/admin'
@@ -649,6 +669,7 @@ const PassengerRouteWithChildren = PassengerRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
+  AgentMonitoringRoute: AgentMonitoringRoute,
   ApiStatusRoute: ApiStatusRoute,
   AuthRoute: AuthRoute,
   ContactCenterRoute: ContactCenterRoute,

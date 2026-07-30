@@ -20,6 +20,8 @@ const RULES: { prefix: string; exact?: boolean; roles: AppRole[] }[] = [
   { prefix: "/reports", roles: ["admin", "agent"] },
   { prefix: "/data-io", roles: ["admin", "agent"] },
   { prefix: "/delivery", roles: ["admin", "coordinator"] },
+  // Read-only monitoring surface: same audience as Delivery Management.
+  { prefix: "/agent-monitoring", roles: ["admin", "coordinator"] },
   { prefix: "/driver-portal", roles: ["admin", "driver"] },
   // Shared operational surface: opened from Baggage Operations and Contact Center.
   { prefix: "/tracking", roles: ["admin", "agent", "coordinator"] },

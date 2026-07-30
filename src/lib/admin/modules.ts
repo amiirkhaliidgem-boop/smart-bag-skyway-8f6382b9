@@ -43,6 +43,7 @@ export const ROUTE_MODULES: { prefix: string; exact?: boolean; module: RbacModul
   { prefix: "/contact-center", module: "Customer Feedback" },
   { prefix: "/delivery", module: "Delivery Management" },
   { prefix: "/route-tracking", module: "Delivery Management" },
+  { prefix: "/agent-monitoring", module: "Delivery Management" },
   { prefix: "/passenger", module: "Delivery Management" },
   { prefix: "/driver-portal", module: "Driver Portal" },
   { prefix: "/storage", module: "Warehouse" },
