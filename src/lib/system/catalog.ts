@@ -99,8 +99,8 @@ export const INTEGRATION_DEFINITIONS: IntegrationDefinition[] = [
       { name: "host", label: "SMTP Host", kind: "text", required: true, placeholder: "smtp.provider.com" },
       { name: "port", label: "SMTP Port", kind: "number", required: true, placeholder: "587" },
       { name: "secure", label: "Use TLS", kind: "boolean" },
-      { name: "username", label: "Username", kind: "text" },
-      { name: "password", label: "Password", kind: "password", secret: true },
+      { name: "username", label: "Username", kind: "text", required: true },
+      { name: "password", label: "Password", kind: "password", secret: true, required: true },
       { name: "from_address", label: "From Address", kind: "text", placeholder: "baggage@iab.com" },
       { name: "from_name", label: "From Name", kind: "text" },
     ],
@@ -121,12 +121,12 @@ export const INTEGRATION_DEFINITIONS: IntegrationDefinition[] = [
     name: "Mobile Platform",
     description: "Delivery Agent and passenger mobile ecosystem: builds, versions and push.",
     fields: [
-      { name: "ios_bundle_id", label: "iOS Bundle ID", kind: "text", placeholder: "com.iab.baggage" },
-      { name: "android_package", label: "Android Package", kind: "text", placeholder: "com.iab.baggage" },
-      { name: "min_supported_version", label: "Minimum Supported Version", kind: "text", placeholder: "1.0.0" },
+      { name: "ios_bundle_id", label: "iOS Bundle ID", kind: "text", required: true, placeholder: "com.iab.baggage" },
+      { name: "android_package", label: "Android Package", kind: "text", required: true, placeholder: "com.iab.baggage" },
+      { name: "min_supported_version", label: "Minimum Supported Version", kind: "text", required: true, placeholder: "1.0.0" },
       { name: "force_update", label: "Force Update", kind: "boolean" },
-      { name: "push_provider", label: "Push Provider", kind: "text", placeholder: "FCM" },
-      { name: "push_server_key", label: "Push Server Key", kind: "password", secret: true },
+      { name: "push_provider", label: "Push Provider", kind: "text", required: true, placeholder: "FCM", help: "Only FCM currently supports a live connection test." },
+      { name: "push_server_key", label: "Push Server Key", kind: "password", secret: true, required: true },
     ],
   },
   {
@@ -140,6 +140,26 @@ export const INTEGRATION_DEFINITIONS: IntegrationDefinition[] = [
 
 export function definitionFor(key: string): IntegrationDefinition | undefined {
   return INTEGRATION_DEFINITIONS.find((d) => d.key === key);
+}
+
+/**
+ * A slot counts as configured only when every required field is present —
+ * plain settings from `config`, secrets from the list of stored secret names.
+ * Managed platform slots are always configured.
+ */
+export function isConfigured(
+  key: string,
+  config: Record<string, unknown>,
+  storedSecrets: string[],
+): boolean {
+  const def = definitionFor(key);
+  if (!def) return false;
+  if (def.managed) return true;
+  const required = def.fields.filter((f) => f.required);
+  if (required.length === 0) return false;
+  return required.every((f) =>
+    f.secret ? storedSecrets.includes(f.name) : String(config[f.name] ?? "").trim() !== "",
+  );
 }
 
 export const MONITORED_APIS: { key: string; name: string; kind: "internal" | "external" }[] = [
@@ -169,6 +189,8 @@ export interface IntegrationView {
   version: string;
   enabled: boolean;
   status: IntegrationStatus;
+  /** True only when every required field (including secrets) is present. */
+  configured: boolean;
   config: Record<string, ConfigValue>;
   secretsSet: string[];
   lastSuccessAt: string | null;
@@ -206,6 +228,8 @@ export interface ApiHealthView {
   successRate: number | null;
   samples: number;
   lastError: string;
+  /** Non-error explanatory line (e.g. awaiting first sweep, no live transport). */
+  note: string;
 }
 
 export interface SystemCenterData {
