@@ -244,7 +244,7 @@ export async function saveIntegration(
     .update({
       provider: input.provider ?? row.provider,
       environment: input.environment ?? row.environment,
-      config_public: { ...(row.config_public ?? {}), ...input.config },
+      config_public: { ...(row.config_public ?? {}), ...input.config } as never,
       secrets_ciphertext: Object.keys(merged).length ? encryptSecrets(merged) : null,
       secret_fields: def.fields.filter((f) => f.secret).map((f) => f.name),
       updated_by: actor.userId,
