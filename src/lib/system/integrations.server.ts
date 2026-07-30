@@ -468,6 +468,7 @@ export async function disconnectIntegration(actor: Actor, key: string) {
 export async function runHealthSweep(actor: Actor | null) {
   const rows = await loadRows();
   const internal = MONITORED_APIS.filter((a) => a.kind === "internal");
+  let probed = 0;
 
   for (const api of internal) {
     const started = Date.now();
