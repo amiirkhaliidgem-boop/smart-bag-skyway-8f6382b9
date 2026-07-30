@@ -241,6 +241,18 @@ export async function getSystemCenter(): Promise<SystemCenterData> {
   const { error: pingError } = await sb.from("stations").select("id", { head: true, count: "exact" });
   const latency = Date.now() - started;
 
+  // Real platform facts — nothing here is a stored flag or a literal string.
+  const [factsRes, bucketsRes] = await Promise.all([
+    sb.rpc("system_db_facts" as never).then(
+      (r) => (r.data ?? null) as { realtime_tables?: number; server_version?: string } | null,
+      () => null,
+    ),
+    sb.storage.listBuckets().then(
+      (r) => (r.error ? null : r.data),
+      () => null,
+    ),
+  ]);
+
   return {
     integrations: rows.map((r) => toView(r, decryptSecrets(r.secrets_ciphertext))),
     events: (events ?? []) as unknown as IntegrationEventView[],
@@ -249,10 +261,13 @@ export async function getSystemCenter(): Promise<SystemCenterData> {
       provider: dbRow?.provider || "Supabase (PostgreSQL)",
       environment: dbRow?.environment || "production",
       database: process.env.SUPABASE_PROJECT_ID || "managed",
-      realtime: Boolean((dbRow?.config_public as { realtime?: boolean })?.realtime),
-      storage: Boolean((dbRow?.config_public as { storage?: boolean })?.storage),
-      backup: pingError ? "Unknown" : "Managed daily backups (platform)",
+      realtime: (factsRes?.realtime_tables ?? 0) > 0,
+      storage: Array.isArray(bucketsRes) && bucketsRes.length > 0,
+      version: factsRes?.server_version ? `PostgreSQL ${factsRes.server_version}` : "—",
+      realtimeTables: factsRes?.realtime_tables ?? null,
+      buckets: Array.isArray(bucketsRes) ? bucketsRes.length : null,
       latencyMs: pingError ? null : latency,
+      reachable: !pingError,
     },
   };
 }
@@ -312,14 +327,40 @@ export async function testIntegration(
 ) {
   const row = await loadRow(key);
   const secrets = decryptSecrets(row.secrets_ciphertext);
+  const cfg = (row.config_public ?? {}) as Record<string, unknown>;
+  if (!isConfigured(key, cfg, Object.keys(secrets))) {
+    const def = definitionFor(key);
+    const missing = (def?.fields ?? [])
+      .filter((f) => f.required)
+      .filter((f) => (f.secret ? !secrets[f.name] : !String(cfg[f.name] ?? "").trim()))
+      .map((f) => f.label);
+    // Not set up: never record a sample or flip the slot into "error".
+    return {
+      ok: false,
+      detail: "",
+      error: `Not configured — required: ${missing.join(", ")}`,
+      latencyMs: null as number | null,
+      notConfigured: true,
+    };
+  }
   const started = Date.now();
   let result;
   try {
-    result = await probeIntegration(key, row.provider, row.config_public ?? {}, secrets, testInput);
+    result = await probeIntegration(key, row.provider, cfg, secrets, testInput);
   } catch (e) {
     result = { ok: false, detail: "", error: e instanceof Error ? e.message : String(e) };
   }
   const latency = Date.now() - started;
+
+  if ((result as { notProbeable?: boolean }).notProbeable) {
+    return {
+      ok: false,
+      detail: "",
+      error: result.error,
+      latencyMs: null as number | null,
+      notConfigured: true,
+    };
+  }
 
   const sb = await admin();
   await sb
@@ -356,11 +397,25 @@ export async function testIntegration(
     }),
   ]);
 
-  return { ok: result.ok, detail: result.detail, error: result.error, latencyMs: latency };
+  return {
+    ok: result.ok,
+    detail: result.detail,
+    error: result.error,
+    latencyMs: latency as number | null,
+    notConfigured: false,
+  };
 }
 
 export async function setIntegrationEnabled(actor: Actor, key: string, enabled: boolean) {
   const row = await loadRow(key);
+  if (enabled) {
+    const secrets = decryptSecrets(row.secrets_ciphertext);
+    if (!isConfigured(key, (row.config_public ?? {}) as Record<string, unknown>, Object.keys(secrets))) {
+      throw new Error(
+        `${row.name} cannot be enabled until every required field and credential has been saved.`,
+      );
+    }
+  }
   const sb = await admin();
   const { error } = await sb
     .from("integrations")
@@ -392,6 +447,9 @@ export async function disconnectIntegration(actor: Actor, key: string) {
       enabled: false,
       status: "not_configured",
       last_error: "",
+      last_success_at: null,
+      last_failure_at: null,
+      last_latency_ms: null,
       updated_by: actor.userId,
     })
     .eq("key", key);
@@ -410,6 +468,7 @@ export async function disconnectIntegration(actor: Actor, key: string) {
 export async function runHealthSweep(actor: Actor | null) {
   const rows = await loadRows();
   const internal = MONITORED_APIS.filter((a) => a.kind === "internal");
+  let probed = 0;
 
   for (const api of internal) {
     const started = Date.now();
@@ -430,21 +489,17 @@ export async function runHealthSweep(actor: Actor | null) {
   }
 
   for (const row of rows) {
-    const def = definitionFor(row.key);
-    const cfg = (row.config_public ?? {}) as Record<string, unknown>;
-    // Slots that store credentials are probed once credentials exist. Slots
-    // with no secret at all (Mobile Platform) are probed once every one of
-    // their plain settings is filled in — otherwise they stay "not configured"
-    // instead of being reported as Down for missing setup.
-    const plainFields = (def?.fields ?? []).filter((f) => !f.secret && f.kind !== "boolean");
-    const fullyConfigured =
-      plainFields.length > 0 &&
-      plainFields.every((f) => String(cfg[f.name] ?? "").trim() !== "");
-    const configured =
-      def?.managed === true || row.secrets_ciphertext !== null || fullyConfigured;
+    // Only genuinely configured slots are probed. Everything else stays
+    // "Not configured" — no sample, no fabricated status.
+    const configured = isConfigured(
+      row.key,
+      (row.config_public ?? {}) as Record<string, unknown>,
+      Object.keys(decryptSecrets(row.secrets_ciphertext)),
+    );
     if (!configured) continue;
+    probed += 1;
     await testIntegration(actor, row.key, undefined, "test");
   }
 
-  return { ok: true, checked: internal.length + rows.length };
+  return { ok: true, checked: internal.length + probed };
 }

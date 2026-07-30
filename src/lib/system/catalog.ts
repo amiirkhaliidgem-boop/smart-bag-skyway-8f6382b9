@@ -242,7 +242,10 @@ export interface SystemCenterData {
     database: string;
     realtime: boolean;
     storage: boolean;
-    backup: string;
+    version: string;
+    realtimeTables: number | null;
+    buckets: number | null;
     latencyMs: number | null;
+    reachable: boolean;
   } | null;
 }

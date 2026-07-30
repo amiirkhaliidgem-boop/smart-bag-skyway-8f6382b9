@@ -113,6 +113,7 @@ function IntegrationsPage() {
     onSuccess: (res, vars) => {
       const name = definitionFor(vars.key)?.name ?? vars.key;
       if (res.ok) toast.success(`${name} connected`, { description: res.detail || `${res.latencyMs} ms` });
+      else if (res.notConfigured) toast.warning(`${name} is not configured`, { description: res.error });
       else toast.error(`${name} test failed`, { description: res.error });
       invalidate();
     },
@@ -141,6 +142,7 @@ function IntegrationsPage() {
   const events = data?.events ?? [];
   const connected = integrations.filter((i) => i.status === "connected").length;
   const errored = integrations.filter((i) => i.status === "error").length;
+  const withCredentials = integrations.filter((i) => i.secretsSet.length > 0).length;
 
   return (
     <div className="space-y-6">
@@ -167,9 +169,8 @@ function IntegrationsPage() {
         <StatCard label="Connected" value={connected} tone="text-emerald-600" />
         <StatCard label="In error" value={errored} tone="text-rose-600" />
         <StatCard
-          label="Secrets encryption"
-          value="AES-256-GCM"
-          small
+          label="Slots holding credentials"
+          value={withCredentials}
           tone="text-primary"
         />
       </div>
@@ -209,9 +210,10 @@ function IntegrationsPage() {
                     {!def?.managed && (
                       <Switch
                         checked={i.enabled}
-                        disabled={busy}
+                        disabled={busy || !i.configured}
                         onCheckedChange={(v) => toggle.mutate({ key: i.key, enabled: v })}
                         aria-label={`Enable ${i.name}`}
+                        title={i.configured ? undefined : "Configure credentials first"}
                       />
                     )}
                   </div>
@@ -233,6 +235,11 @@ function IntegrationsPage() {
                   {i.status === "error" && i.lastError && (
                     <p className="mt-3 text-[11px] text-rose-600 line-clamp-3">{i.lastError}</p>
                   )}
+                  {!i.configured && !def?.managed && (
+                    <p className="mt-3 text-[11px] text-muted-foreground">
+                      Not configured — enter the required credentials to enable live health checks.
+                    </p>
+                  )}
 
                   <div className="flex items-center gap-2 mt-4 pt-4 border-t border-border">
                     {def?.managed ? (
@@ -247,7 +254,8 @@ function IntegrationsPage() {
                     <Button
                       size="sm"
                       variant="outline"
-                      disabled={busy}
+                      disabled={busy || !i.configured}
+                      title={i.configured ? undefined : "Configure credentials first"}
                       onClick={() => test.mutate({ key: i.key })}
                     >
                       {busy ? (
@@ -433,6 +441,7 @@ function ConfigureDialog({
       }),
     onSuccess: (res) => {
       if (res.ok) toast.success("Connection successful", { description: res.detail || `${res.latencyMs} ms` });
+      else if (res.notConfigured) toast.warning("Not configured", { description: res.error });
       else toast.error("Connection failed", { description: res.error });
       onSaved();
     },

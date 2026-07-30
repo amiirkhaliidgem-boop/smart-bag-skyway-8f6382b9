@@ -2329,6 +2329,7 @@ export type Database = {
         Args: { p_from: string; p_grain?: string; p_to: string }
         Returns: Json
       }
+      system_db_facts: { Args: never; Returns: Json }
       wf_actor: {
         Args: never
         Returns: {
