@@ -3,7 +3,7 @@
 // provider call and never returned to the caller.
 import { decryptSecrets, encryptSecrets } from "./crypto.server";
 import { probeIntegration, probeInternalApi } from "./probes.server";
-import { MONITORED_APIS, definitionFor } from "./catalog";
+import { MONITORED_APIS, definitionFor, isConfigured } from "./catalog";
 import type {
   ApiHealthView,
   IntegrationEventView,
@@ -38,6 +38,8 @@ async function admin() {
 }
 
 function toView(row: Row, secrets: Record<string, string>): IntegrationView {
+  const storedSecrets = Object.keys(secrets).filter((k) => String(secrets[k] ?? "").trim() !== "");
+  const configured = isConfigured(row.key, (row.config_public ?? {}) as Record<string, unknown>, storedSecrets);
   return {
     key: row.key,
     name: row.name,
@@ -46,14 +48,16 @@ function toView(row: Row, secrets: Record<string, string>): IntegrationView {
     environment: row.environment,
     version: row.version,
     enabled: row.enabled,
-    status: row.status as IntegrationView["status"],
+    // An unconfigured slot is never "disabled" or "error" — it is simply not set up.
+    status: configured ? (row.status as IntegrationView["status"]) : "not_configured",
+    configured,
     config: (row.config_public ?? {}) as IntegrationView["config"],
-    secretsSet: Object.keys(secrets).filter((k) => String(secrets[k] ?? "").trim() !== ""),
-    lastSuccessAt: row.last_success_at,
-    lastFailureAt: row.last_failure_at,
-    lastError: row.last_error ?? "",
-    lastSyncAt: row.last_sync_at,
-    lastLatencyMs: row.last_latency_ms,
+    secretsSet: storedSecrets,
+    lastSuccessAt: configured ? row.last_success_at : null,
+    lastFailureAt: configured ? row.last_failure_at : null,
+    lastError: configured ? (row.last_error ?? "") : "",
+    lastSyncAt: configured ? row.last_sync_at : null,
+    lastLatencyMs: configured ? row.last_latency_ms : null,
     updatedAt: row.updated_at,
   };
 }
