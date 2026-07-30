@@ -1,56 +1,50 @@
-## Diagnostic report
+## What I verified first
 
-I queried the database directly before drawing any conclusion.
+Read `catalog.ts`, `probes.server.ts`, `integrations.server.ts`, `system.functions.ts`, `integrations.tsx`, `api-status.tsx`, `notifications/registry.ts`, and queried the live `integrations` and `api_health_checks` tables.
 
-**Evidence**
+Confirmed current state:
+- All 7 internal APIs have real heartbeat samples (`ok = true`, source `sweep`), `database` has real samples from the managed probe. These are genuine.
+- All 6 external slots have `secrets_ciphertext = NULL`, `status = 'disabled'`.
+- `odoo` has `enabled = true` while completely unconfigured — an enable switch can turn on a slot with no credentials.
+- `email` and `mobile_platform` carry `last_error = "Missing configuration: ..."` while displaying as *Disabled*, not *Not configured*.
 
-1. `select ... from api_health_checks group by api_key` returns **zero rows**. No health sample has ever been recorded for any API.
-2. All seven probe target tables exist (`workflow_events`, `notification_events`, `passenger_view`, `agent_routes`, `quality_incidents`, `timeline_events`, `deliveries`) — the probes themselves are valid.
-3. `cron.job` contains **only** `drain-notification-outbox` (every 2 min). There is **no scheduled job** calling `/api/public/system/health-sweep`, so the sweep endpoint that exists in code has never been invoked.
-4. `integrations` rows: all six external slots have `secrets_ciphertext = NULL`, `status = 'disabled'`; `cloud_database` is `connected`.
+## Real placeholder behavior still present
 
-**Why the seven internal APIs show "Degraded"**
+1. **Mobile Platform "probe" is not a probe.** `probeMobilePlatform()` in `probes.server.ts` returns `ok: true` purely because three text fields are non-empty. No network call, no provider. It can report *Operational* with zero real connection.
+2. **Email probe never authenticates.** It opens a TCP socket and accepts any `220` banner — it ignores username/password/TLS entirely. A wrong password still reports *Connected*.
+3. **Sweep marks slots "configured" from plain text fields.** `runHealthSweep()` treats a slot as probeable when its non-secret fields are filled, which is what lets Mobile Platform be probed and pass.
+4. **Hardcoded database facts.** `getSystemCenter()` returns `backup: "Managed daily backups (platform)"` as a literal string, and `realtime`/`storage` read from `config_public` flags that nobody sets from real platform state.
+5. **Hardcoded version fallback.** API Status shows `v1` for any internal API with no version row.
+6. **Enable-without-credentials.** `setIntegrationEnabled` allows enabling an unconfigured slot (why `odoo` is currently enabled), and `status` mapping produces *Disabled* rather than *Not configured* for slots that were never configured.
+7. **Notification transport is still simulated.** `notifications/registry.ts` registers `simulatedAdapters` for sms/whatsapp; the configured adapter is only used when credentials exist. The Notification API therefore reports healthy while nothing real is sent.
 
-The status rule in `buildApiHealth` is:
+## Fixes
 
-```text
-samples in last 24h == 0  →  internal  → "degraded"
-                             external unconfigured → "not_configured"
-```
+**Probes (`probes.server.ts`)**
+- Replace `probeMobilePlatform` with a real check: require a push provider + push server key and validate the credential against FCM (`https://fcm.googleapis.com/...` auth check). With no push credential, return a non-probeable result so the slot stays *Not configured* rather than pretending success.
+- Upgrade `probeEmail` to a real SMTP handshake: `EHLO`, optional `STARTTLS`, then `AUTH LOGIN` with the stored username/password, reporting the server's actual response code. Missing credentials → not configured, wrong credentials → error.
+- Add a `notProbeable` outcome to `ProbeResult` so "not set up" is distinct from "failed".
 
-So "Degraded" here does **not** mean anything failed. It is the display of *"considered configured, but zero heartbeats in the last 24 hours"*. This matches the screenshot exactly: Latency —, Uptime —, Errors 0, Last heartbeat —.
+**Service layer (`integrations.server.ts`)**
+- Gate sweeps and status on genuine configuration: a slot is probeable only when every `required` field (including secrets) is present. Drop the "all plain fields filled" shortcut.
+- Never write a health sample or `error` status for a non-probeable slot; leave it `not_configured`.
+- `setIntegrationEnabled`: refuse to enable a slot whose required fields are incomplete, with a clear message.
+- Status mapping: slots with no stored credentials read `not_configured` (not `disabled`), and clear their stale `last_error` on disconnect.
+- Database card: derive `realtime` from `pg_publication_tables` for `supabase_realtime`, `storage` from an actual storage-bucket probe, and replace the literal backup string with "Managed by platform" only when the ping succeeds — otherwise "Unknown". No invented values.
+- Version: return the real `integrations.version` value; when absent, `—` instead of `v1`.
 
-| API | Current | Root cause | Category | Expected | Required to become Operational | Fix type |
-|---|---|---|---|---|---|---|
-| Workflow API | Degraded | No sample ever recorded | Missing heartbeat (no scheduler) | Operational | Run a sweep + schedule it | Config + small code |
-| Notification API | Degraded | Same | Missing heartbeat | Operational | Same | Config + small code |
-| Passenger API | Degraded | Same | Missing heartbeat | Operational | Same | Config + small code |
-| Delivery Agent API | Degraded | Same | Missing heartbeat | Operational | Same | Config + small code |
-| Quality Management API | Degraded | Same | Missing heartbeat | Operational | Same | Config + small code |
-| Reporting API | Degraded | Same | Missing heartbeat | Operational | Same | Config + small code |
-| Database API | Degraded | Same (probe is valid, never run) | Missing heartbeat | Operational | Same | Config + small code |
-| Google Maps / SMS / WhatsApp / Email / Odoo | Not configured | No credentials stored | Missing credentials | Not configured until credentials entered | Admin enters credentials in Integration Center | Configuration only |
-| Mobile Platform | Not configured | No credentials, **and** the sweep skips any integration whose `secrets_ciphertext` is NULL — Mobile Platform has no required secret, so it can never be probed even once configured | Code defect | Operational once bundle IDs are set | Change the sweep's "configured" test | Code change |
+**UI (`integrations.tsx`, `api-status.tsx`)**
+- Unconfigured slots: show *Not configured*, hide the Test button (or disable it with "Configure credentials first"), show `Latency —`, `Last success —`.
+- API Status: external APIs with no genuine configuration render *Not configured* with dashes, never Degraded/Down.
+- Remove the "AES-256-GCM" hardcoded stat card claim in favour of a factual count of slots holding encrypted credentials.
 
-**Two additional real defects found**
+**Notification honesty (minimal, health-only)**
+- The Notification API card gains a real qualifier: when no SMS/WhatsApp provider is configured, its health detail states "internal queue healthy — no live transport configured". No change to the notification engine or Notification Center UI in this task.
 
-- `cloud_database` writes its samples under the key `cloud_database`, but the monitored key is `database`. Those samples are orphaned and never displayed.
-- No cron job exists for the health sweep, so even after one manual run the page would go Degraded again after 24 h.
+## Verification
 
-Nothing is being hidden or forced anywhere; the page is honestly reporting "no heartbeat".
-
-## Fixes to implement
-
-1. **Schedule the sweep** — add a `pg_cron` job (every 5 minutes) posting to `/api/public/system/health-sweep` with the project apikey, mirroring the existing notification drainer job. This is what makes internal APIs genuinely Operational and keeps them honest: if a probe starts failing, the page turns Down/Degraded on its own.
-2. **Fix the sweep's "configured" test** in `runHealthSweep` (`src/lib/system/integrations.server.ts`): probe an integration when it has secrets **or** when its definition declares no required secret fields (Mobile Platform), instead of the current NULL-ciphertext-only check.
-3. **Fix the orphaned database samples** — map the `cloud_database` integration probe onto the monitored `database` key so its latency/uptime is actually shown rather than discarded.
-4. **Distinguish "never probed" from "degraded"** in `buildApiHealth`: an internal API with zero samples is `degraded` with an explicit `lastError` of "No heartbeat recorded yet — awaiting first health sweep", so the card explains itself instead of showing a bare badge. Status logic otherwise unchanged; degraded still means >20% failures in 24 h, down still means the latest probe failed.
-5. **Run one sweep immediately** after the changes and verify each internal API reports Operational with a real latency and heartbeat, reading back `api_health_checks` from the database to confirm.
-
-External providers stay `Not configured` until credentials are entered — no change to that behaviour.
+After the changes I'll run a sweep and read `api_health_checks` + `integrations` back from the database, confirming: 7 internal APIs Operational with real latencies, all 6 external slots *Not configured* with no samples, `odoo` no longer enabled, and no row carrying a fabricated success.
 
 ## Technical notes
 
-- Files touched: `src/lib/system/integrations.server.ts` (sweep gating, key mapping, no-heartbeat message), plus one migration creating the cron job.
-- No change to `probes.server.ts` probe logic — the probes are correct.
-- No UI restructuring; the API Status card may gain the explanatory "awaiting first sweep" line it already has a slot for (`lastError`).
+Files touched: `src/lib/system/probes.server.ts`, `src/lib/system/integrations.server.ts`, `src/lib/system/catalog.ts` (add push-provider requirement flags), `src/routes/integrations.tsx`, `src/routes/api-status.tsx`, plus one small migration to reset `odoo.enabled` and clear stale `last_error` on unconfigured slots. No schema changes.
