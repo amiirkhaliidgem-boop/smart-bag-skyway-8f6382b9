@@ -38,6 +38,7 @@ import { Route as DeliveryIndexRouteImport } from './routes/delivery.index'
 import { Route as PassengerTokenRouteImport } from './routes/passenger.$token'
 import { Route as LostFoundBagIdRouteImport } from './routes/lost-found.$bagId'
 import { Route as DeliveryDeliveryIdRouteImport } from './routes/delivery.$deliveryId'
+import { Route as ApiPublicSystemHealthSweepRouteImport } from './routes/api/public/system/health-sweep'
 import { Route as ApiPublicNotificationsDrainRouteImport } from './routes/api/public/notifications/drain'
 
 const WorkflowMonitorRoute = WorkflowMonitorRouteImport.update({
@@ -185,6 +186,12 @@ const DeliveryDeliveryIdRoute = DeliveryDeliveryIdRouteImport.update({
   path: '/$deliveryId',
   getParentRoute: () => DeliveryRoute,
 } as any)
+const ApiPublicSystemHealthSweepRoute =
+  ApiPublicSystemHealthSweepRouteImport.update({
+    id: '/api/public/system/health-sweep',
+    path: '/api/public/system/health-sweep',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicNotificationsDrainRoute =
   ApiPublicNotificationsDrainRouteImport.update({
     id: '/api/public/notifications/drain',
@@ -223,6 +230,7 @@ export interface FileRoutesByFullPath {
   '/lost-found/': typeof LostFoundIndexRoute
   '/passenger/': typeof PassengerIndexRoute
   '/api/public/notifications/drain': typeof ApiPublicNotificationsDrainRoute
+  '/api/public/system/health-sweep': typeof ApiPublicSystemHealthSweepRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -252,6 +260,7 @@ export interface FileRoutesByTo {
   '/lost-found': typeof LostFoundIndexRoute
   '/passenger': typeof PassengerIndexRoute
   '/api/public/notifications/drain': typeof ApiPublicNotificationsDrainRoute
+  '/api/public/system/health-sweep': typeof ApiPublicSystemHealthSweepRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -285,6 +294,7 @@ export interface FileRoutesById {
   '/lost-found/': typeof LostFoundIndexRoute
   '/passenger/': typeof PassengerIndexRoute
   '/api/public/notifications/drain': typeof ApiPublicNotificationsDrainRoute
+  '/api/public/system/health-sweep': typeof ApiPublicSystemHealthSweepRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -319,6 +329,7 @@ export interface FileRouteTypes {
     | '/lost-found/'
     | '/passenger/'
     | '/api/public/notifications/drain'
+    | '/api/public/system/health-sweep'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -348,6 +359,7 @@ export interface FileRouteTypes {
     | '/lost-found'
     | '/passenger'
     | '/api/public/notifications/drain'
+    | '/api/public/system/health-sweep'
   id:
     | '__root__'
     | '/'
@@ -380,6 +392,7 @@ export interface FileRouteTypes {
     | '/lost-found/'
     | '/passenger/'
     | '/api/public/notifications/drain'
+    | '/api/public/system/health-sweep'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -407,6 +420,7 @@ export interface RootRouteChildren {
   TrackingRoute: typeof TrackingRoute
   WorkflowMonitorRoute: typeof WorkflowMonitorRoute
   ApiPublicNotificationsDrainRoute: typeof ApiPublicNotificationsDrainRoute
+  ApiPublicSystemHealthSweepRoute: typeof ApiPublicSystemHealthSweepRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -614,6 +628,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DeliveryDeliveryIdRouteImport
       parentRoute: typeof DeliveryRoute
     }
+    '/api/public/system/health-sweep': {
+      id: '/api/public/system/health-sweep'
+      path: '/api/public/system/health-sweep'
+      fullPath: '/api/public/system/health-sweep'
+      preLoaderRoute: typeof ApiPublicSystemHealthSweepRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/notifications/drain': {
       id: '/api/public/notifications/drain'
       path: '/api/public/notifications/drain'
@@ -691,6 +712,7 @@ const rootRouteChildren: RootRouteChildren = {
   TrackingRoute: TrackingRoute,
   WorkflowMonitorRoute: WorkflowMonitorRoute,
   ApiPublicNotificationsDrainRoute: ApiPublicNotificationsDrainRoute,
+  ApiPublicSystemHealthSweepRoute: ApiPublicSystemHealthSweepRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

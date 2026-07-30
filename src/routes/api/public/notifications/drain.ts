@@ -14,11 +14,17 @@ const BATCH_SIZE = 20;
 type Row = Record<string, any>;
 
 async function adapterFor(channel: string): Promise<NotificationChannelAdapter | null> {
+  if (channel !== "sms" && channel !== "whatsapp") return null;
+  // 1. Integration Center configuration wins when the channel is connected.
+  const { configuredAdapter } = await import("@/lib/notifications/adapters/configured.server");
+  const live = await configuredAdapter(channel).catch(() => null);
+  if (live) return live;
+  // 2. Legacy environment-based Twilio credentials.
   const { twilioAdapters, twilioConfigured } = await import(
     "@/lib/notifications/adapters/twilio.server"
   );
-  if (channel !== "sms" && channel !== "whatsapp") return null;
   if (twilioConfigured()) return twilioAdapters[channel];
+  // 3. Simulated transport (non-production).
   const { simulatedAdapters } = await import("@/lib/notifications/adapters/simulated");
   return simulatedAdapters[channel];
 }
@@ -126,6 +132,16 @@ export const Route = createFileRoute("/api/public/notifications/drain")({
           if (result.ok) sent += 1;
           else failed += 1;
         }
+
+        // Real traffic feeds the API Status monitor.
+        const { recordHealthSample } = await import("@/lib/system/integrations.server");
+        await recordHealthSample({
+          apiKey: "notification",
+          ok: failed === 0,
+          detail: `Drained ${batch.length} · sent ${sent} · failed ${failed}`,
+          error: failed > 0 ? `${failed} notification(s) failed to send` : "",
+          source: "traffic",
+        });
 
         return new Response(JSON.stringify({ claimed: batch.length, sent, failed }), {
           headers: { "Content-Type": "application/json" },

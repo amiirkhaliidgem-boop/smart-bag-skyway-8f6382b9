@@ -177,6 +177,39 @@ export type Database = {
           },
         ]
       }
+      api_health_checks: {
+        Row: {
+          api_key: string
+          checked_at: string
+          detail: string
+          error: string
+          id: number
+          latency_ms: number | null
+          ok: boolean
+          source: string
+        }
+        Insert: {
+          api_key: string
+          checked_at?: string
+          detail?: string
+          error?: string
+          id?: number
+          latency_ms?: number | null
+          ok: boolean
+          source?: string
+        }
+        Update: {
+          api_key?: string
+          checked_at?: string
+          detail?: string
+          error?: string
+          id?: number
+          latency_ms?: number | null
+          ok?: boolean
+          source?: string
+        }
+        Relationships: []
+      }
       app_roles: {
         Row: {
           created_at: string
@@ -782,6 +815,120 @@ export type Database = {
           sort_order?: number
           updated_at?: string
           version?: number
+        }
+        Relationships: []
+      }
+      integration_events: {
+        Row: {
+          action: string
+          actor_name: string
+          actor_user_id: string | null
+          detail: string
+          error: string
+          id: number
+          integration_key: string
+          latency_ms: number | null
+          occurred_at: string
+          outcome: string
+        }
+        Insert: {
+          action: string
+          actor_name?: string
+          actor_user_id?: string | null
+          detail?: string
+          error?: string
+          id?: number
+          integration_key: string
+          latency_ms?: number | null
+          occurred_at?: string
+          outcome: string
+        }
+        Update: {
+          action?: string
+          actor_name?: string
+          actor_user_id?: string | null
+          detail?: string
+          error?: string
+          id?: number
+          integration_key?: string
+          latency_ms?: number | null
+          occurred_at?: string
+          outcome?: string
+        }
+        Relationships: []
+      }
+      integrations: {
+        Row: {
+          category: string
+          config_public: Json
+          created_at: string
+          enabled: boolean
+          environment: string
+          id: string
+          key: string
+          last_error: string
+          last_failure_at: string | null
+          last_latency_ms: number | null
+          last_success_at: string | null
+          last_sync_at: string | null
+          name: string
+          provider: string
+          secret_fields: string[]
+          secrets_ciphertext: string | null
+          sort_order: number
+          status: string
+          updated_at: string
+          updated_by: string | null
+          version: string
+          version_no: number
+        }
+        Insert: {
+          category?: string
+          config_public?: Json
+          created_at?: string
+          enabled?: boolean
+          environment?: string
+          id?: string
+          key: string
+          last_error?: string
+          last_failure_at?: string | null
+          last_latency_ms?: number | null
+          last_success_at?: string | null
+          last_sync_at?: string | null
+          name: string
+          provider?: string
+          secret_fields?: string[]
+          secrets_ciphertext?: string | null
+          sort_order?: number
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          version?: string
+          version_no?: number
+        }
+        Update: {
+          category?: string
+          config_public?: Json
+          created_at?: string
+          enabled?: boolean
+          environment?: string
+          id?: string
+          key?: string
+          last_error?: string
+          last_failure_at?: string | null
+          last_latency_ms?: number | null
+          last_success_at?: string | null
+          last_sync_at?: string | null
+          name?: string
+          provider?: string
+          secret_fields?: string[]
+          secrets_ciphertext?: string | null
+          sort_order?: number
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          version?: string
+          version_no?: number
         }
         Relationships: []
       }
