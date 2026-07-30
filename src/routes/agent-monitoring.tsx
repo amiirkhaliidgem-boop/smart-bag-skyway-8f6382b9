@@ -206,7 +206,7 @@ function AgentMonitoringPage() {
   );
 
   if (loading.core && deliveries.length === 0) {
-    return <PageLoading />;
+    return <PageLoading title="Delivery Agent Monitoring" subtitle="Loading live agent operations…" />;
   }
 
   return (
