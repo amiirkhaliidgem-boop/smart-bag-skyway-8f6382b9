@@ -1,67 +1,51 @@
-# Reports Module + Quality Management — Production Build
+# Executive Dashboard — Production Ready
 
-## Current state (verified)
+## Problem (verified)
 
-- `public.quality_incidents` exists but is **empty**; its only writer is the Passenger Portal `passenger_report_misconduct` RPC (always `Possible Misconduct` / `High` / `Open`).
-- No incident lifecycle actions, no assignment, no audit or workflow journaling, no notifications.
-- `src/lib/quality/categories.ts` has a category→severity matrix that nothing uses.
-- Reports computes 5 KPIs and 2 charts client-side; airline analytics use `flightNumber.slice(0,2)` instead of the real `airline` column, so they are wrong today.
-- `sla_policies` table exists and is unused by Reports; Workflow Monitor hardcodes SLA minutes in the page file.
+- `src/routes/index.tsx` computes every KPI and chart in the browser from the client-side ops store (cases/deliveries/workflow arrays), which is capped at 500 rows per collection.
+- KPI trend badges (`+12%`, `-4%`, `+8%`…) are hardcoded literals.
+- The Cases by Carrier chart derives the carrier by stripping digits from `flightNumber` (`c.flightNumber.replace(/\d+$/g,"")`), producing `E` and `G`. The database already stores real codes: `baggage_cases.airline` = `E5` (4 cases) and `G9` (4 cases).
+- A database reporting function already exists (`public.report_operational`) and is the pattern the Reports module uses.
 
-## Part 1 — Quality Management (database)
+## Scope
 
-Extend `quality_incidents` with: `incident_no` (QI-000001 sequence), `source` (passenger / sla / return / otp / csat / manual), `assigned_to`, `assigned_at`, `agent_id`, `airline`, `station_id`, `due_at`, `resolution_category`, and a `dedupe_key` unique index so automation cannot raise the same incident twice.
+Operational KPIs and charts only. No module/system health panel — Timeline, Audit, Notifications and Portal status belong to the System module, not here.
 
-Add `Assigned` and `Investigating` to `incident_state` so the lifecycle is Open → Assigned → Investigating → Resolved.
+## Approach
 
-New RPCs, all journaling through the existing `wf_journal_event` so every action lands in Timeline and Audit:
+One new aggregated SQL function, one server function, one rewritten route. No frontend math.
 
-- `qm_raise_incident(...)` — internal, idempotent on `dedupe_key`, severity from the category matrix.
-- `qm_create_incident(...)` — staff manual raise.
-- `qm_assign_incident(id, app_user_id)`, `qm_set_state(id, state, note)`, `qm_resolve_incident(id, resolution_category, note)`.
+### 1. Database: `public.dashboard_executive(p_from, p_to, p_grain)`
 
-Automatic generation (the four sources you selected), wired into the Workflow Engine itself, not the UI:
+A single `SECURITY DEFINER` function (mirroring `report_operational`, granted to `authenticated`, revoked from `anon`/`PUBLIC`) returning one `jsonb` payload:
 
-| Trigger | Where | Category | Severity |
-|---|---|---|---|
-| Stage exceeds its `sla_policies` target | `wf_transition` + a lightweight sweep on snapshot read | Late Delivery | Medium |
-| `dm_mark_returned` | Return to Airport | uses the recorded failure reason | High |
-| OTP attempts hit `max_attempts` | `agent_complete_delivery` | Failed Verification | High |
-| Feedback rating ≤ 2 | `passenger_submit_feedback` | Service Quality | Medium |
+- **kpis** (current operational state): total cases, open cases, located bags, ready for delivery, delivered bags, avg resolution hours, CSAT, delivery success %, open quality incidents — plus, for each, a real period-over-period `delta_pct` comparing the selected window against the immediately preceding window of equal length. This replaces the hardcoded trend badges.
+- **byStatus** — case counts grouped by `lf_status`.
+- **byCarrier** — counts grouped by the actual `baggage_cases.airline` column, ordered by volume, no string slicing. New airlines appear automatically.
+- **funnel** — counts grouped by `workflow_status` across the canonical workflow order.
+- **trends** — bucketed by day/week/month: cases opened, cases resolved, delivered, quality incidents, CSAT, delivery success %.
 
-Incidents link to case, delivery, agent, and (denormalised at raise time) airline and station, so every report dimension is queryable.
+All aggregation happens in SQL over the Workflow Engine tables; the browser receives a small payload, never thousands of rows.
 
-## Part 2 — Reports as a server-side reporting layer
+### 2. Server layer
 
-Add `src/lib/reports.functions.ts` + `reports.server.ts`: one authenticated server function `getOperationalReport({ from, to })` that runs **SQL aggregates against the engine tables** (`baggage_cases`, `deliveries`, `workflow_events`, `passenger_feedback`, `quality_incidents`, `notification_events`, `sla_policies`). Nothing is recomputed in the browser; the store snapshot is not used for Reports.
+Add `loadExecutiveDashboard` to a `*.functions.ts` module with `requireSupabaseAuth` (same shape as `loadOperationalReport`), delegating to a `.server.ts` helper that calls the RPC and types the payload.
 
-Returned sections, all date-filtered:
+### 3. Route rewrite — `src/routes/index.tsx`
 
-- **Executive** — total cases, delivered, delivery success %, SLA compliance %, CSAT, open incidents, avg case-to-delivery hours.
-- **Delivery** — volume by stage, first-attempt success, returns and reasons, avg minutes per stage transition, on-time vs breached.
-- **Lost & Found** — intake, by L&F status, incomplete-record rate, avg time to Ready for Delivery, VIP share.
-- **Passenger experience** — CSAT from real `passenger_feedback` (avg rating, 1–5 distribution, response rate = feedback ÷ delivered, resolved %), portal link view rate, notification delivery success by channel.
-- **Quality** — incidents by category, severity, source, state; open vs resolved; avg time to resolve; repeat-offender agents.
-- **Performance** — per delivery agent (delivered, returned, on-time %, avg CSAT, incidents), per L&F officer (cases owned, avg time to ready), per airline (cases, delivered, incidents, CSAT) using the real `airline` column.
-- **Trends** — daily / weekly / monthly series for volume, success, SLA, CSAT, incidents.
+- Fetch through TanStack Query with the existing skeletons in `src/components/ops-skeleton.tsx`, so the shell paints immediately.
+- Render KPIs, status distribution, carrier chart (real `E5` / `G9` labels), workflow funnel, and trend charts (opened vs resolved, quality incidents, CSAT, delivery success) purely from the returned payload.
+- Reuse the exact Date Range component already used by Reports (`src/components/filters/date-range-filter.tsx`) plus the same grain selector, for consistent UI.
+- Auto-refresh: subscribe to the existing realtime ops channel and invalidate the dashboard query on any workflow/delivery/case/incident/feedback change, so a Workflow Engine transition reflects with no manual refresh.
 
-## Part 3 — Reports page
+### 4. Validation
 
-Rewrite `src/routes/reports.tsx` as a single sectioned page with a global date-range selector (Today / 7d / 30d / MTD / custom, reusing `date-range-filter`) and a granularity toggle. Sections in order: Executive KPIs → SLA & Delivery → Lost & Found → Passenger Experience & CSAT → Quality Management → Performance league tables → Trends. Loads via TanStack Query with skeletons matching the existing `ops-skeleton` style. Export uses the existing xlsx helper.
+- Cross-check each KPI and chart series against direct SQL queries on the live database.
+- Confirm the carrier chart shows `E5` and `G9`.
+- Drive a workflow transition and confirm the dashboard updates without reload.
+- Run typecheck and the production build.
 
-A **Quality Incidents** section becomes actionable for staff with quality permission: filter by state/severity/source, open a drawer, assign, move state, resolve with a resolution category. Read-only for everyone else.
+## Notes
 
-## Part 4 — Hide Import / Export
-
-Same treatment as Storage Control and QR Scan: remove the `/data-io` sidebar entry, point `src/routes/data-io.tsx` at `ModuleComingSoon` with the real implementation preserved in `src/components/io/data-io-full.tsx` and a commented one-line restore. Routes, RBAC entries, registry, and all backend code stay untouched.
-
-## Part 5 — Validation
-
-- Cross-check every KPI against a direct SQL query on the same window; they must match exactly.
-- End-to-end run of one delivery: assign → accept → collect → out → OTP lockout (verify incident raised) → deliver → 2-star feedback (verify CSAT incident) → confirm the incident appears in Reports, Workflow Monitor, Timeline and Audit.
-- Force one SLA breach and one Return to Airport and confirm exactly one incident each, no duplicates on repeat reads.
-- Supabase linter run and a typecheck; report anything that cannot be verified rather than claiming it passed.
-
-## Technical notes
-
-All aggregation is SQL in server functions under `requireSupabaseAuth`; Reports stays a read-only projection of the engine. Incident automation lives inside the existing workflow RPCs so no module can raise state independently. No changes to the Passenger Portal design, Driver Portal, or delivery lifecycle rules.
+- No changes to the Workflow Engine, Reports, Delivery, L&F, or Passenger Portal behaviour.
+- `report_operational` stays as-is; the dashboard gets its own function so its current-state KPIs aren't forced into a reporting date window.
