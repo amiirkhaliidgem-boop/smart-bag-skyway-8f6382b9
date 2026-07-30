@@ -136,7 +136,7 @@ export const Route = createFileRoute("/api/public/notifications/drain")({
         // Real traffic feeds the API Status monitor.
         const { recordHealthSample } = await import("@/lib/system/integrations.server");
         await recordHealthSample({
-          apiKey: "notification_api",
+          apiKey: "notification",
           ok: failed === 0,
           detail: `Drained ${batch.length} · sent ${sent} · failed ${failed}`,
           error: failed > 0 ? `${failed} notification(s) failed to send` : "",
