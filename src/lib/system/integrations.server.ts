@@ -447,6 +447,9 @@ export async function disconnectIntegration(actor: Actor, key: string) {
       enabled: false,
       status: "not_configured",
       last_error: "",
+      last_success_at: null,
+      last_failure_at: null,
+      last_latency_ms: null,
       updated_by: actor.userId,
     })
     .eq("key", key);
@@ -485,21 +488,17 @@ export async function runHealthSweep(actor: Actor | null) {
   }
 
   for (const row of rows) {
-    const def = definitionFor(row.key);
-    const cfg = (row.config_public ?? {}) as Record<string, unknown>;
-    // Slots that store credentials are probed once credentials exist. Slots
-    // with no secret at all (Mobile Platform) are probed once every one of
-    // their plain settings is filled in — otherwise they stay "not configured"
-    // instead of being reported as Down for missing setup.
-    const plainFields = (def?.fields ?? []).filter((f) => !f.secret && f.kind !== "boolean");
-    const fullyConfigured =
-      plainFields.length > 0 &&
-      plainFields.every((f) => String(cfg[f.name] ?? "").trim() !== "");
-    const configured =
-      def?.managed === true || row.secrets_ciphertext !== null || fullyConfigured;
+    // Only genuinely configured slots are probed. Everything else stays
+    // "Not configured" — no sample, no fabricated status.
+    const configured = isConfigured(
+      row.key,
+      (row.config_public ?? {}) as Record<string, unknown>,
+      Object.keys(decryptSecrets(row.secrets_ciphertext)),
+    );
     if (!configured) continue;
+    probed += 1;
     await testIntegration(actor, row.key, undefined, "test");
   }
 
-  return { ok: true, checked: internal.length + rows.length };
+  return { ok: true, checked: internal.length + probed };
 }
