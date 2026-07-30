@@ -228,6 +228,8 @@ export interface ApiHealthView {
   successRate: number | null;
   samples: number;
   lastError: string;
+  /** Non-error explanatory line (e.g. awaiting first sweep, no live transport). */
+  note: string;
 }
 
 export interface SystemCenterData {
