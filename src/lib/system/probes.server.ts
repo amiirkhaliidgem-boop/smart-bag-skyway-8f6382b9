@@ -6,6 +6,7 @@ export interface ProbeResult {
   ok: boolean;
   detail: string;
   error: string;
+  body?: string;
 }
 
 const TIMEOUT_MS = 12_000;
@@ -21,7 +22,7 @@ async function httpProbe(
     const res = await fetch(url, { ...init, signal: controller.signal });
     const body = (await res.text()).slice(0, 600);
     if (!res.ok) return { ok: false, detail: "", error: `HTTP ${res.status}: ${body}` };
-    return { ok: true, detail: okDetail(body), error: "" };
+    return { ok: true, detail: okDetail(body), error: "", body };
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     return { ok: false, detail: "", error: message === "The operation was aborted." ? "Connection timed out" : message };
@@ -43,17 +44,22 @@ async function probeGoogleMaps(cfg: Record<string, unknown>, sec: Record<string,
   if (missing) return { ok: false, detail: "", error: missing };
   const url = `https://maps.googleapis.com/maps/api/geocode/json?address=Cairo+International+Airport&key=${encodeURIComponent(sec.api_key)}`;
   void cfg;
-  // Google answers 200 even for a rejected key, so the JSON status is authoritative.
-  return httpProbe(url, { method: "GET" }, () => "Geocoding API reachable").then((res) => {
-    if (!res.ok) return res;
-    try {
-      const parsed = JSON.parse(res.detail === "" ? "{}" : "{}") as Record<string, never>;
-      void parsed;
-    } catch {
-      /* ignore */
+  // Google answers HTTP 200 even for a rejected key, so the JSON status is authoritative.
+  const res = await httpProbe(url, { method: "GET" }, () => "Geocoding API reachable");
+  if (!res.ok) return res;
+  try {
+    const parsed = JSON.parse(res.body ?? "{}") as { status?: string; error_message?: string };
+    if (parsed.status && parsed.status !== "OK" && parsed.status !== "ZERO_RESULTS") {
+      return {
+        ok: false,
+        detail: "",
+        error: parsed.error_message || `Google Maps returned ${parsed.status}`,
+      };
     }
+    return { ok: true, detail: `Geocoding API responded ${parsed.status ?? "OK"}`, error: "" };
+  } catch {
     return res;
-  });
+  }
 }
 
 async function probeSms(
@@ -171,7 +177,22 @@ async function probeOdoo(cfg: Record<string, unknown>, sec: Record<string, strin
     () => "Odoo session authenticated",
   );
   if (!res.ok) return res;
-  return res;
+  // Odoo reports authentication failures inside a 200 JSON-RPC error envelope.
+  try {
+    const parsed = JSON.parse(res.body ?? "{}") as {
+      error?: { data?: { message?: string }; message?: string };
+      result?: { uid?: number | false };
+    };
+    if (parsed.error) {
+      return { ok: false, detail: "", error: parsed.error.data?.message || parsed.error.message || "Odoo rejected the credentials" };
+    }
+    if (parsed.result && !parsed.result.uid) {
+      return { ok: false, detail: "", error: "Odoo rejected the credentials (no session)" };
+    }
+    return { ok: true, detail: `Odoo session established (uid ${parsed.result?.uid})`, error: "" };
+  } catch {
+    return res;
+  }
 }
 
 function probeMobilePlatform(cfg: Record<string, unknown>) {
