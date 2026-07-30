@@ -145,50 +145,81 @@ async function buildApiHealth(rows: Row[]): Promise<ApiHealthView[]> {
 
   const rowByKey = new Map(rows.map((r) => [r.key, r]));
 
+  // A live SMS/WhatsApp transport is required before notifications leave the
+  // building; without one the queue is healthy but nothing is actually sent.
+  const liveTransport = ["sms_gateway", "whatsapp"].some((k) => {
+    const r = rowByKey.get(k);
+    if (!r) return false;
+    return (
+      r.enabled &&
+      isConfigured(
+        k,
+        (r.config_public ?? {}) as Record<string, unknown>,
+        Object.keys(decryptSecrets(r.secrets_ciphertext)),
+      )
+    );
+  });
+
   return MONITORED_APIS.map((api) => {
     const samples = byKey.get(api.key) ?? [];
     const integration = rowByKey.get(api.key);
     const successes = samples.filter((s) => s.ok);
     const failures = samples.filter((s) => !s.ok);
     const latencies = successes.map((s) => s.latency_ms ?? 0).filter((n) => n > 0);
-    const configured = api.kind === "internal" || (integration?.status === "connected" || integration?.status === "error");
+    const configured =
+      api.kind === "internal" ||
+      (integration
+        ? isConfigured(
+            api.key,
+            (integration.config_public ?? {}) as Record<string, unknown>,
+            Object.keys(decryptSecrets(integration.secrets_ciphertext)),
+          )
+        : false);
 
     let status: ApiHealthView["status"] = "not_configured";
-    if (samples.length === 0) {
+    if (!configured) {
+      // Nothing has been set up: never Degraded, never Down.
+      status = "not_configured";
+    } else if (samples.length === 0) {
       status = configured ? "degraded" : "not_configured";
     } else if (samples[0].ok) {
       status = failures.length / samples.length > 0.2 ? "degraded" : "operational";
     } else {
       status = "down";
     }
-    if (api.kind === "external" && integration && !integration.enabled && samples.length === 0) {
-      status = "not_configured";
-    }
 
-    const noHeartbeat =
-      samples.length === 0 && status === "degraded"
-        ? "No heartbeat recorded yet — awaiting the first health sweep."
-        : "";
+    let note = "";
+    if (!configured) {
+      note =
+        api.kind === "external"
+          ? "No credentials stored — configure this provider in the Integration Center."
+          : "";
+    } else if (samples.length === 0) {
+      note = "No heartbeat recorded yet — awaiting the first health sweep.";
+    } else if (api.key === "notification" && !liveTransport) {
+      note = "Internal queue healthy — no live SMS/WhatsApp transport configured.";
+    }
 
     return {
       key: api.key,
       name: api.name,
       kind: api.kind,
       status,
-      version: integration?.version || (api.kind === "internal" ? "v1" : "—"),
-      latencyMs: latencies.length
+      version: integration?.version || "—",
+      latencyMs: configured && latencies.length
         ? Math.round(latencies.reduce((a, b) => a + b, 0) / latencies.length)
         : null,
-      lastHeartbeat: samples[0]?.checked_at ?? null,
-      lastSuccessAt: successes[0]?.checked_at ?? null,
-      lastFailureAt: failures[0]?.checked_at ?? null,
-      uptimePct: samples.length ? Math.round((successes.length / samples.length) * 1000) / 10 : null,
-      errorCount: failures.length,
-      successRate: samples.length
+      lastHeartbeat: configured ? (samples[0]?.checked_at ?? null) : null,
+      lastSuccessAt: configured ? (successes[0]?.checked_at ?? null) : null,
+      lastFailureAt: configured ? (failures[0]?.checked_at ?? null) : null,
+      uptimePct: configured && samples.length ? Math.round((successes.length / samples.length) * 1000) / 10 : null,
+      errorCount: configured ? failures.length : 0,
+      successRate: configured && samples.length
         ? Math.round((successes.length / samples.length) * 1000) / 10
         : null,
-      samples: samples.length,
-      lastError: failures[0]?.error ?? noHeartbeat,
+      samples: configured ? samples.length : 0,
+      lastError: configured ? (failures[0]?.error ?? "") : "",
+      note,
     };
   });
 }
