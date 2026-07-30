@@ -1,51 +1,73 @@
-# Executive Dashboard — Production Ready
+## Goal
 
-## Problem (verified)
+Turn the System module (Integrations + API Status) into one backend-driven subsystem: administrators configure real credentials in the UI, connections are tested against the real providers, and API Status shows live health recorded from those checks and from actual runtime calls. No demo cards, no hardcoded statuses.
 
-- `src/routes/index.tsx` computes every KPI and chart in the browser from the client-side ops store (cases/deliveries/workflow arrays), which is capped at 500 rows per collection.
-- KPI trend badges (`+12%`, `-4%`, `+8%`…) are hardcoded literals.
-- The Cases by Carrier chart derives the carrier by stripping digits from `flightNumber` (`c.flightNumber.replace(/\d+$/g,"")`), producing `E` and `G`. The database already stores real codes: `baggage_cases.airline` = `E5` (4 cases) and `G9` (4 cases).
-- A database reporting function already exists (`public.report_operational`) and is the pattern the Reports module uses.
+## 1. Database (new tables, admin-only)
 
-## Scope
+**`integrations`** — one row per provider slot, seeded by migration (no UI-created cards):
+- `key` (google_maps, sms_gateway, whatsapp, email, odoo, mobile_platform, cloud_database)
+- `name`, `provider` (selected provider, e.g. Twilio/Infobip/SMTP), `environment` (development/testing/production), `version`
+- `enabled`, `status` (not_configured / connected / error / disabled)
+- `config_public` jsonb (non-secret settings: endpoints, sender ID, feature toggles, phone number IDs)
+- `secrets_ciphertext` text (AES-256-GCM encrypted blob of API keys/tokens/passwords)
+- `last_success_at`, `last_failure_at`, `last_error`, `last_sync_at`, `updated_by`, timestamps, `version`
 
-Operational KPIs and charts only. No module/system health panel — Timeline, Audit, Notifications and Portal status belong to the System module, not here.
+**`integration_events`** — append-only log of every configure / test / enable / disable / rotate / sync, with actor, outcome, latency, error text. Powers "synchronization logs".
 
-## Approach
+**`api_health_checks`** — rolling health samples per API key (`workflow`, `notification`, `passenger`, `driver`, `database`, `google_maps`, `sms`, `whatsapp`, `email`, `odoo`), with `ok`, `latency_ms`, `error`, `checked_at`. Aggregated for uptime / error count / success rate.
 
-One new aggregated SQL function, one server function, one rewritten route. No frontend math.
+RLS: no anon/authenticated access to `integrations` (secrets never leave the server). Reads/writes go only through server functions using the service-role client after an admin check. `integration_events` and `api_health_checks` readable by staff with Administration access.
 
-### 1. Database: `public.dashboard_executive(p_from, p_to, p_grain)`
+## 2. Secret handling
 
-A single `SECURITY DEFINER` function (mirroring `report_operational`, granted to `authenticated`, revoked from `anon`/`PUBLIC`) returning one `jsonb` payload:
+- Secrets are encrypted server-side with AES-256-GCM before insert; the key is a generated project secret (`INTEGRATION_CONFIG_SECRET`).
+- Server functions return only masked previews (`sk_live_••••4821`) plus which fields are set — never plaintext.
+- "Rotate credentials" replaces the ciphertext and logs the event; old values are never displayed.
 
-- **kpis** (current operational state): total cases, open cases, located bags, ready for delivery, delivered bags, avg resolution hours, CSAT, delivery success %, open quality incidents — plus, for each, a real period-over-period `delta_pct` comparing the selected window against the immediately preceding window of equal length. This replaces the hardcoded trend badges.
-- **byStatus** — case counts grouped by `lf_status`.
-- **byCarrier** — counts grouped by the actual `baggage_cases.airline` column, ordered by volume, no string slicing. New airlines appear automatically.
-- **funnel** — counts grouped by `workflow_status` across the canonical workflow order.
-- **trends** — bucketed by day/week/month: cases opened, cases resolved, delivered, quality incidents, CSAT, delivery success %.
+## 3. Server layer
 
-All aggregation happens in SQL over the Workflow Engine tables; the browser receives a small payload, never thousands of rows.
+`src/lib/integrations/*.server.ts` + `integrations.functions.ts`, all guarded by the existing `assertAdmin` (Administration → Manage):
+- `listIntegrations` — masked config + status + last success/failure/error + environment/version/provider.
+- `saveIntegration` — validates with Zod per provider schema, encrypts secrets, records an event.
+- `testIntegration` — performs a **real** provider call and stores the outcome:
+  - Google Maps → Geocoding/Distance Matrix ping with the stored key
+  - SMS → provider-specific auth/balance endpoint (Twilio, Infobip, Vodafone/Orange/Etisalat/Custom REST via configured URL); optional real test SMS to a supplied number
+  - WhatsApp Cloud API → `GET /{phone_number_id}` with the access token
+  - Email → SMTP verification via the configured host/port/credentials (falls back to API-provider auth check)
+  - Odoo → `/web/session/authenticate` (or JSON-RPC `version`) against base URL + db + user + key
+  - Cloud Database → Supabase round-trip (query latency, realtime, storage, last backup info where exposed)
+- `setIntegrationEnabled`, `disconnectIntegration` (clears ciphertext, sets `not_configured`), `rotateIntegrationSecret`, `syncIntegrationNow`, `listIntegrationEvents`.
+- `getApiHealth` — aggregates `api_health_checks` into status/latency/uptime/error count/success rate/last heartbeat per API.
+- Runtime calls (notification dispatch, maps, OTP-free workflow paths) record a health sample on every real send, so status reflects production traffic, not only manual tests.
+- Notification registry reads live SMS/WhatsApp/Email config from the DB instead of hardcoded simulated adapters, so entering production credentials switches transport with no code change.
 
-### 2. Server layer
+## 4. Integrations page (`/integrations`)
 
-Add `loadExecutiveDashboard` to a `*.functions.ts` module with `requireSupabaseAuth` (same shape as `loadOperationalReport`), delegating to a `.server.ts` helper that calls the RPC and types the payload.
+Rewrite as the Integration Management Center. Each card shows real status chip, provider name, environment, version, last successful connection, last failed connection and error message. Actions: **Configure**, **Test Connection**, **Enable/Disable**, **Sync now**, **Disconnect**, **View logs**.
 
-### 3. Route rewrite — `src/routes/index.tsx`
+Configure opens a per-integration dialog with the real fields:
+- **Google Maps** — API key + toggles for Directions, Distance Matrix, Geocoding, Places
+- **SMS Gateway** — provider selector (Twilio, Infobip, Vodafone Business, Orange Business, Etisalat Business, Custom REST API), API URL, API key/secret, Sender ID, Send test SMS
+- **WhatsApp Business** — Cloud API phone number ID, business account ID, access token, webhook URL (read-only, generated), Verify Connection
+- **Email** — SMTP host/port/security/user/password/from address, send test email
+- **Odoo ERP** — base URL, database, username, API key, Test
+- **Mobile Platform** (renames "Delivery Agent Mobile App") — app package/bundle IDs, minimum supported version, push credentials, force-update flag
+- **Cloud Database** — read-only panel: connected, provider, environment, database, realtime, storage, backup status, connection health, performance, View details
 
-- Fetch through TanStack Query with the existing skeletons in `src/components/ops-skeleton.tsx`, so the shell paints immediately.
-- Render KPIs, status distribution, carrier chart (real `E5` / `G9` labels), workflow funnel, and trend charts (opened vs resolved, quality incidents, CSAT, delivery success) purely from the returned payload.
-- Reuse the exact Date Range component already used by Reports (`src/components/filters/date-range-filter.tsx`) plus the same grain selector, for consistent UI.
-- Auto-refresh: subscribe to the existing realtime ops channel and invalidate the dashboard query on any workflow/delivery/case/incident/feedback change, so a Workflow Engine transition reflects with no manual refresh.
+**OTP Provider card is removed** (OTP is internal to the Workflow Engine).
 
-### 4. Validation
+Every dialog: Save + Test with inline validation and clear provider error messages.
 
-- Cross-check each KPI and chart series against direct SQL queries on the live database.
-- Confirm the carrier chart shows `E5` and `G9`.
-- Drive a workflow transition and confirm the dashboard updates without reload.
-- Run typecheck and the production build.
+## 5. API Status page (`/api-status`)
 
-## Notes
+Monitoring only — no configuration actions. Live cards for Workflow, Notification, Passenger, Driver, Database, Google Maps, SMS, WhatsApp, Email and Odoo APIs, each showing status, version, latency, last heartbeat, last successful call, last failed call, uptime %, error count and success rate — all from `api_health_checks`. Auto-refresh via polling plus a "Run health check now" (admin-only) that executes the checks server-side.
 
-- No changes to the Workflow Engine, Reports, Delivery, L&F, or Passenger Portal behaviour.
-- `report_operational` stays as-is; the dashboard gets its own function so its current-state KPIs aren't forced into a reporting date window.
+A `/api/public/health/sweep` server route (secret-protected) lets a scheduler run periodic heartbeats after deployment.
+
+## 6. RBAC
+
+Configure / Test / Enable / Disable / Disconnect / Rotate / Sync are all gated by `assertAdmin` on the server **and** hidden in the UI for non-admins. Both routes stay admin-only in `src/lib/rbac.ts`; API Status stays read-only for admins who can view it.
+
+## 7. Validation
+
+Verify with SQL that saved config round-trips encrypted, that test results write `last_success_at` / `last_failure_at` / `last_error`, that a non-admin session is rejected by every mutation, and that no secret value appears in any client payload. Run typecheck and a production build.
