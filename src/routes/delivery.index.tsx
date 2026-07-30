@@ -9,11 +9,7 @@ import {
   getDeliveryStage,
   type Delivery,
 } from "@/lib/store";
-import {
-  closeDelivery,
-  resendOtp,
-  ensurePassengerToken,
-} from "@/lib/store";
+import { resendOtp, returnToAirport, refreshOps } from "@/lib/store";
 import { renderTemplate, type NotificationChannel } from "@/lib/notifications/templates";
 import type { WorkflowStatus } from "@/lib/workflow/statuses";
 import { Textarea } from "@/components/ui/textarea";
@@ -22,9 +18,7 @@ import {
   DELIVERY_STAGES,
   STAGE_LABELS,
   STAGE_STYLES,
-  DELIVERY_QUEUES,
   actionsForStage,
-  type DeliveryQueueId,
   type DeliveryStage,
 } from "@/lib/delivery/stages";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -56,10 +50,12 @@ import {
   Repeat,
   X,
   Printer,
+  RotateCcw,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { PodPrintHost, podPrintBus } from "@/components/delivery/pod-print-host";
+import { ReturnToAirportDialog } from "@/components/delivery/return-to-airport-dialog";
 import { DateRangeFilter } from "@/components/filters/date-range-filter";
 import { PageLoading } from "@/components/ops-skeleton";
 
@@ -86,14 +82,10 @@ function DispatchCenter() {
   const [stageF, setStageF] = useState<DeliveryStage | "all">("all");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
-  const [queue, setQueue] = useState<DeliveryQueueId>("all");
 
   const filtered = useMemo(() => {
-    const activeQueue = DELIVERY_QUEUES.find((qq) => qq.id === queue) ?? DELIVERY_QUEUES[0];
-    const queueStages = new Set<DeliveryStage>(activeQueue.stages);
     return deliveries.filter((d) => {
       const stage = getDeliveryStage(d);
-      if (queue !== "all" && !queueStages.has(stage)) return false;
       const hay = `${d.deliveryId} ${d.pirNumber} ${d.passengerName} ${d.mobile} ${d.address} ${d.driver}`.toLowerCase();
       if (q && !hay.includes(q.toLowerCase())) return false;
       if (stageF !== "all" && stage !== stageF) return false;
@@ -102,16 +94,7 @@ function DispatchCenter() {
       if (to && day > to) return false;
       return true;
     });
-  }, [deliveries, queue, q, stageF, from, to]);
-
-  const queueCounts = useMemo(() => {
-    const m: Record<string, number> = {};
-    for (const qq of DELIVERY_QUEUES) {
-      const set = new Set<DeliveryStage>(qq.stages);
-      m[qq.id] = qq.id === "all" ? deliveries.length : deliveries.filter((d) => set.has(getDeliveryStage(d))).length;
-    }
-    return m;
-  }, [deliveries]);
+  }, [deliveries, q, stageF, from, to]);
 
   // ---- KPIs
   const stageCounts = useMemo(() => {
@@ -149,6 +132,7 @@ function DispatchCenter() {
   // ---- Selection (bulk actions)
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkAssignOpen, setBulkAssignOpen] = useState(false);
+  const [bulkReturnOpen, setBulkReturnOpen] = useState(false);
   const [assignFor, setAssignFor] = useState<string | null>(null);
   const toggleAll = () => {
     if (selected.size === filtered.length) setSelected(new Set());
@@ -213,6 +197,13 @@ function DispatchCenter() {
               },
             },
             {
+              key: "return",
+              label: "Return to Airport",
+              icon: RotateCcw,
+              variant: "outline",
+              onClick: () => setBulkReturnOpen(true),
+            },
+            {
               key: "print",
               label: "Print POD",
               icon: Printer,
@@ -232,31 +223,9 @@ function DispatchCenter() {
         <Kpi label="Active" value={active} tone="violet" />
       </div>
 
-      {/* Queue tabs + simplified filter bar — matches Lost & Found */}
+      {/* Standard filter bar — identical to Lost & Found */}
       <Card>
         <CardHeader className="pb-3 space-y-3">
-          <div className="flex flex-wrap items-center gap-1">
-            {DELIVERY_QUEUES.map((qq) => (
-              <button
-                key={qq.id}
-                onClick={() => setQueue(qq.id)}
-                className={cn(
-                  "px-3 py-1.5 rounded-md text-xs font-medium border transition inline-flex items-center gap-1.5",
-                  queue === qq.id
-                    ? "bg-primary text-primary-foreground border-primary"
-                    : "bg-background border-border text-muted-foreground hover:text-foreground hover:bg-muted",
-                )}
-              >
-                {qq.label}
-                <span className={cn(
-                  "inline-flex items-center justify-center min-w-[1.25rem] h-4 px-1 rounded text-[10px] font-semibold",
-                  queue === qq.id ? "bg-primary-foreground/20" : "bg-muted",
-                )}>
-                  {queueCounts[qq.id] ?? 0}
-                </span>
-              </button>
-            ))}
-          </div>
           <div className="flex flex-wrap items-center gap-2">
             <div className="relative w-full sm:w-auto sm:flex-1 sm:max-w-md">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -335,8 +304,6 @@ function DispatchCenter() {
                     <td colSpan={11} className="px-4 py-16 text-center text-sm text-muted-foreground">
                       {deliveries.length === 0
                         ? "No deliveries yet. Cases enter this module when Lost & Found marks them Ready for Delivery."
-                        : queue === "ready"
-                        ? "No deliveries ready to schedule."
                         : "No deliveries match the current filters."}
                     </td>
                   </tr>
@@ -352,6 +319,28 @@ function DispatchCenter() {
         onOpenChange={setBulkAssignOpen}
         deliveries={deliveries.filter((d) => selected.has(d.deliveryId))}
         onDone={() => setSelected(new Set())}
+      />
+      <ReturnToAirportDialog
+        open={bulkReturnOpen}
+        onOpenChange={setBulkReturnOpen}
+        count={selected.size}
+        onConfirm={async (reasonCode, note) => {
+          let ok = 0;
+          const failures: string[] = [];
+          for (const id of Array.from(selected)) {
+            try {
+              await returnToAirport(id, { reasonCode, note });
+              ok++;
+            } catch (err) {
+              failures.push(id);
+            }
+          }
+          await refreshOps();
+          if (ok) toast.success(`${ok} delivery${ok === 1 ? "" : "ies"} returned to airport`);
+          if (failures.length)
+            toast.error(`Could not return ${failures.length}: ${failures.join(", ")}`);
+          setSelected(new Set());
+        }}
       />
       <SingleAssignDialog
         deliveryId={assignFor}
@@ -390,7 +379,7 @@ function Row({
       <td className="px-3 py-3">
         <span className="font-mono text-xs font-semibold text-primary">{d.deliveryId}</span>
       </td>
-      <td className="px-3 py-3 font-mono text-xs">{d.pirNumber}</td>
+      <td className="px-3 py-3 font-mono text-xs">{d.pirNumber || d.bagId}</td>
       <td className="px-3 py-3">
         <div className="flex items-center gap-1.5">
           {d.priority === "VIP" && (
@@ -458,17 +447,6 @@ function RowActions({
           }}
         >
           <Repeat className="h-3 w-3" /> Resend OTP
-        </button>
-      )}
-      {acts.close && (
-        <button
-          className={btn}
-          onClick={() => {
-            closeDelivery(id, { actor: "Delivery Coordinator", role: "DeliveryCoordinator" });
-            toast.success("Closed");
-          }}
-        >
-          <XCircle className="h-3 w-3" /> Close
         </button>
       )}
     </>
