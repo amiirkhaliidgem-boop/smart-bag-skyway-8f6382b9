@@ -113,6 +113,7 @@ function IntegrationsPage() {
     onSuccess: (res, vars) => {
       const name = definitionFor(vars.key)?.name ?? vars.key;
       if (res.ok) toast.success(`${name} connected`, { description: res.detail || `${res.latencyMs} ms` });
+      else if (res.notConfigured) toast.warning(`${name} is not configured`, { description: res.error });
       else toast.error(`${name} test failed`, { description: res.error });
       invalidate();
     },
@@ -440,6 +441,7 @@ function ConfigureDialog({
       }),
     onSuccess: (res) => {
       if (res.ok) toast.success("Connection successful", { description: res.detail || `${res.latencyMs} ms` });
+      else if (res.notConfigured) toast.warning("Not configured", { description: res.error });
       else toast.error("Connection failed", { description: res.error });
       onSaved();
     },
