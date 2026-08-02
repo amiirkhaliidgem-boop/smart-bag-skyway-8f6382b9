@@ -1,50 +1,41 @@
-## What I verified first
+# System Settings — Production Configuration Center
 
-Read `catalog.ts`, `probes.server.ts`, `integrations.server.ts`, `system.functions.ts`, `integrations.tsx`, `api-status.tsx`, `notifications/registry.ts`, and queried the live `integrations` and `api_health_checks` tables.
+Turn `/settings` from a static form into the live control panel for the ecosystem. Every value moves into PostgreSQL, and the Workflow, Notification and Passenger engines read it from there.
 
-Confirmed current state:
-- All 7 internal APIs have real heartbeat samples (`ok = true`, source `sweep`), `database` has real samples from the managed probe. These are genuine.
-- All 6 external slots have `secrets_ciphertext = NULL`, `status = 'disabled'`.
-- `odoo` has `enabled = true` while completely unconfigured — an enable switch can turn on a slot with no credentials.
-- `email` and `mobile_platform` carry `last_error = "Missing configuration: ..."` while displaying as *Disabled*, not *Not configured*.
+## 1. General
 
-## Real placeholder behavior still present
+Real, persisted fields: System Name, Company Name, Company Logo (upload), Time Zone, Date Format, Default Language, Distance Unit. Saved values drive the app shell title/logo and all date rendering.
 
-1. **Mobile Platform "probe" is not a probe.** `probeMobilePlatform()` in `probes.server.ts` returns `ok: true` purely because three text fields are non-empty. No network call, no provider. It can report *Operational* with zero real connection.
-2. **Email probe never authenticates.** It opens a TCP socket and accepts any `220` banner — it ignores username/password/TLS entirely. A wrong password still reports *Connected*.
-3. **Sweep marks slots "configured" from plain text fields.** `runHealthSweep()` treats a slot as probeable when its non-secret fields are filled, which is what lets Mobile Platform be probed and pass.
-4. **Hardcoded database facts.** `getSystemCenter()` returns `backup: "Managed daily backups (platform)"` as a literal string, and `realtime`/`storage` read from `config_public` flags that nobody sets from real platform state.
-5. **Hardcoded version fallback.** API Status shows `v1` for any internal API with no version row.
-6. **Enable-without-credentials.** `setIntegrationEnabled` allows enabling an unconfigured slot (why `odoo` is currently enabled), and `status` mapping produces *Disabled* rather than *Not configured* for slots that were never configured.
-7. **Notification transport is still simulated.** `notifications/registry.ts` registers `simulatedAdapters` for sms/whatsapp; the configured adapter is only used when credentials exist. The Notification API therefore reports healthy while nothing real is sent.
+## 2. SLA Management
 
-## Fixes
+Two editable areas replace today's fixed workflow timings:
 
-**Probes (`probes.server.ts`)**
-- Replace `probeMobilePlatform` with a real check: require a push provider + push server key and validate the credential against FCM (`https://fcm.googleapis.com/...` auth check). With no push credential, return a non-probeable result so the slot stays *Not configured* rather than pretending success.
-- Upgrade `probeEmail` to a real SMTP handshake: `EHLO`, optional `STARTTLS`, then `AUTH LOGIN` with the stored username/password, reporting the server's actual response code. Missing credentials → not configured, wrong credentials → error.
-- Add a `notProbeable` outcome to `ProbeResult` so "not set up" is distinct from "failed".
+- **Lost & Found SLA** — one number, in hours, measured from "Arrived at Airport" to "Ready for Delivery".
+- **Home Delivery SLA** — a table of regions the administrator creates and edits (region name + SLA hours). No fixed region list beyond a first-run set the admin can rename or delete.
 
-**Service layer (`integrations.server.ts`)**
-- Gate sweeps and status on genuine configuration: a slot is probeable only when every `required` field (including secrets) is present. Drop the "all plain fields filled" shortcut.
-- Never write a health sample or `error` status for a non-probeable slot; leave it `not_configured`.
-- `setIntegrationEnabled`: refuse to enable a slot whose required fields are incomplete, with a clear message.
-- Status mapping: slots with no stored credentials read `not_configured` (not `disabled`), and clear their stale `last_error` on disconnect.
-- Database card: derive `realtime` from `pg_publication_tables` for `supabase_realtime`, `storage` from an actual storage-bucket probe, and replace the literal backup string with "Managed by platform" only when the ping succeeds — otherwise "Unknown". No invented values.
-- Version: return the real `integrations.version` value; when absent, `—` instead of `v1`.
+Because a delivery must know its region, a **Delivery Region** selector is added to the PIR Wizard and the Schedule dialog, fed from the SLA regions table. Cases without a region fall back to the region marked default.
 
-**UI (`integrations.tsx`, `api-status.tsx`)**
-- Unconfigured slots: show *Not configured*, hide the Test button (or disable it with "Configure credentials first"), show `Latency —`, `Last success —`.
-- API Status: external APIs with no genuine configuration render *Not configured* with dashes, never Degraded/Down.
-- Remove the "AES-256-GCM" hardcoded stat card claim in favour of a factual count of slots holding encrypted credentials.
+The SLA breach sweep is rewritten to read these values (today it reads per-stage minute rows in `sla_policies`, and the Workflow Monitor keeps its own `SLA_MINUTES` map in code — both go away). On breach it does, in one transaction: raise the SLA breach incident, mark the workflow row breached, write a timeline event, write an audit event, and surface in Quality Management. Dashboard, Workflow Monitor and Reports all read the same stored values.
 
-**Notification honesty (minimal, health-only)**
-- The Notification API card gains a real qualifier: when no SMS/WhatsApp provider is configured, its health detail states "internal queue healthy — no live transport configured". No change to the notification engine or Notification Center UI in this task.
+## 3. Notification Templates
 
-## Verification
+A Template Manager for SMS, WhatsApp and Email covering the passenger-facing triggers (delivery approved, agent assigned, out for delivery, delivered, failed, returned to airport). Each entry has an English and Arabic body (plus subject for email), a variable reference, and a live preview with sample data.
 
-After the changes I'll run a sweep and read `api_health_checks` + `integrations` back from the database, confirming: 7 internal APIs Operational with real latencies, all 6 external slots *Not configured* with no samples, `odoo` no longer enabled, and no row carrying a fabricated success.
+Message bodies are composed in the database at queue time, so saving a template takes effect on the very next notification — no restart, no cached copy. The TypeScript template file is demoted to a fallback used only when a template row is missing.
+
+## 4. Passenger Portal Contacts
+
+Call Us, WhatsApp and Email become editable settings. The Passenger Portal contact card reads them through the public token RPC, replacing the hardcoded `+20 2 2696 0000` / `support@iab.aero` values.
+
+## 5. Security & Realtime
+
+Only Airport Administrators can write settings (Administration → Manage); other staff read only. The settings tables join the realtime publication and the app subscribes once, so a change propagates to open dashboards, monitors and portals with no manual refresh.
 
 ## Technical notes
 
-Files touched: `src/lib/system/probes.server.ts`, `src/lib/system/integrations.server.ts`, `src/lib/system/catalog.ts` (add push-provider requirement flags), `src/routes/integrations.tsx`, `src/routes/api-status.tsx`, plus one small migration to reset `odoo.enabled` and clear stale `last_error` on unconfigured slots. No schema changes.
+- New tables: `system_settings` (group key + JSONB payload), `sla_regions`, `notification_templates`; `sla_policies` retired in favour of the two new SLA sources.
+- New nullable column `region_id` on `baggage_cases`, FK to `sla_regions`.
+- New RPCs: `settings_get_public()` (anon-safe subset for the portal), `settings_get_all()`, `settings_save(group, payload)`, `sla_region_upsert` / `sla_region_delete`, `notif_template_upsert` — every write gated by `has_permission('Administration','Manage')`.
+- `qm_sweep_sla()` rewritten around the L&F and region SLAs; `wf_queue_notification()` renders bodies from `notification_templates` with fallback.
+- Server layer: `src/lib/settings.functions.ts` extended with authenticated read/write functions; `src/routes/settings.tsx` rebuilt as tabs General / SLA / Templates / Contacts (Languages, OTP and Branding folded into General; demo tabs removed).
+- Finish with a typecheck, a database round-trip check that the engines read back exactly what was saved, and a realtime propagation check.
