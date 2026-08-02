@@ -317,8 +317,9 @@ export function PirWizard({
       },
       delivery: {
         method: form.method,
-        fullAddress: form.fullAddress.trim(),
-        regionId: form.regionId || undefined,
+        // Airport Pickup carries no address or delivery region.
+        fullAddress: form.method === "Airport Pickup" ? "" : form.fullAddress.trim(),
+        regionId: form.method === "Airport Pickup" ? undefined : form.regionId || undefined,
       },
       internal: {
         station: form.station,
