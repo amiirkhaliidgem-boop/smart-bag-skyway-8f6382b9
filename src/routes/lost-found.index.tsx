@@ -224,6 +224,11 @@ function LostFoundPage() {
       const c = cases.find((x) => x.bagId === id);
       if (!c) { skipped++; continue; }
       const current = c.lfStatus ?? deriveLfFromCase(c);
+      // Airport Pickup cases never enter the Home Delivery path.
+      if (next === "Ready for Delivery" && c.delivery?.method === "Airport Pickup") {
+        skipped++;
+        continue;
+      }
       if (current === next || !canTransitionLf(current, next)) {
         skipped++;
         continue;
