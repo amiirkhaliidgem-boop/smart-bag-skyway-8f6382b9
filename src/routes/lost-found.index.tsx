@@ -107,8 +107,9 @@ const VISIBLE_COLUMNS = Object.fromEntries(
   ALL_COLUMNS.map((c) => [c.key, true]),
 ) as Record<ColKey, boolean>;
 
-/** Statuses selectable in the registry filter. "Closed" duplicates
- *  "Delivered" operationally and is intentionally hidden. */
+/** Statuses selectable in the registry filter. "Closed" is a retired legacy
+ *  value — the operational lifecycle ends at Delivered (Home Delivery) or
+ *  Passenger Picked Up (Airport Pickup). */
 const FILTER_STATUSES = LF_STATUSES.filter((s) => s !== "Closed");
 
 function LostFoundPage() {
@@ -194,8 +195,9 @@ function LostFoundPage() {
       const s = deriveLfFromCase(c);
       if (s === "Open") open++;
       if (s === "Tracing") tracing++;
-      if (s === "Ready for Delivery" || s === "Assigned Driver") readyDelivery++;
-      if (s === "Delivered" || s === "Closed") delivered++;
+      if (s === "Ready for Delivery" || s === "Ready for Airport Pickup" || s === "Assigned Driver")
+        readyDelivery++;
+      if (s === "Delivered" || s === "Passenger Picked Up" || s === "Closed") delivered++;
       if (c.baggage?.vipPassenger || c.priority === "VIP") vip++;
     }
     return { total, open, tracing, readyDelivery, delivered, vip };
@@ -304,7 +306,7 @@ function LostFoundPage() {
         <Kpi label="Open" value={kpis.open} tone="rose" />
         <Kpi label="Tracing" value={kpis.tracing} tone="amber" />
         <Kpi label="Ready / Assigned" value={kpis.readyDelivery} tone="violet" />
-        <Kpi label="Delivered / Closed" value={kpis.delivered} tone="emerald" />
+        <Kpi label="Completed" value={kpis.delivered} tone="emerald" />
       </div>
 
       <SnapshotTruncationNotice collection="cases" noun="cases" />
@@ -633,6 +635,9 @@ function ChangeStatusDialog({
   onSubmit: (s: LFStatus) => void;
 }) {
   const [s, setS] = useState<LFStatus>("Open");
+  // Bulk status changes only offer statuses shared by both operational paths;
+  // path-specific terminal states are set from the case itself.
+  const options = LF_OWNED_STATUSES;
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
@@ -647,7 +652,7 @@ function ChangeStatusDialog({
           <Select value={s} onValueChange={(v) => setS(v as LFStatus)}>
             <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
             <SelectContent>
-              {LF_OWNED_STATUSES.map((x) => (
+              {options.map((x) => (
                 <SelectItem key={x} value={x}>{x}</SelectItem>
               ))}
             </SelectContent>
