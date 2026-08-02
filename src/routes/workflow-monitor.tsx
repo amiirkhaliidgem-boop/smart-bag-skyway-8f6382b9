@@ -52,20 +52,11 @@ export const Route = createFileRoute("/workflow-monitor")({
   component: WorkflowMonitorPage,
 });
 
-const SLA_MINUTES: Record<WorkflowStatus, number> = {
-  PIR_CREATED: 60,
-  HOME_DELIVERY_REQUESTED: 30,
-  DELIVERY_APPROVED: 30,
-  DRIVER_ASSIGNED: 20,
-  READY_FOR_COLLECTION: 30,
-  CLAIMED_ON_HAND: 15,
-  OUT_FOR_DELIVERY: 120,
-  DRIVER_ARRIVED: 10,
-  OTP_VERIFIED: 5,
-  DELIVERED: 0,
-  FEEDBACK_SUBMITTED: 0,
-  CLOSED: 0,
-};
+const TERMINAL_STATUSES: WorkflowStatus[] = [
+  "DELIVERED",
+  "FEEDBACK_SUBMITTED",
+  "CLOSED",
+];
 
 const LF_STATUS_KEY = (s: LFStatus) => `lf:${s}`;
 const STAGE_KEY = (s: DeliveryStage) => `stage:${s}`;
@@ -110,6 +101,8 @@ function WorkflowMonitorPage() {
   const feedback = useStore((s) => s.feedback);
   const incidents = useStore((s) => s.qualityIncidents);
   const loading = useOpsLoading();
+  // SLA thresholds are configured by administrators in System Settings.
+  const { settings } = useSystemSettings();
 
   const [driver, setDriver] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
