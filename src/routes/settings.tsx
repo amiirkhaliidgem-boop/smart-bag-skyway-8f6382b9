@@ -73,7 +73,7 @@ function SettingsPage() {
   const { settings, loading, refresh } = useSystemSettings();
   const canManage = settings.canManage;
 
-  if (loading) return <PageLoading />;
+  if (loading) return <PageLoading title="System Settings" subtitle="Loading configuration…" />;
 
   return (
     <div className="space-y-6">
