@@ -873,11 +873,15 @@ export async function bulkAssignDelivery(
       continue;
     }
     const current = c.lfStatus ?? "Open";
+    if (c.delivery?.method === "Airport Pickup") {
+      skipped++;
+      continue;
+    }
     if (current === "Ready for Delivery" || state.deliveries.some((d) => d.bagId === bagId)) {
       alreadyHandedOver++;
       continue;
     }
-    if (current === "Delivered" || current === "Closed") {
+    if (current === "Delivered" || current === "Passenger Picked Up" || current === "Closed") {
       skipped++;
       continue;
     }
