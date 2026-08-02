@@ -11,6 +11,7 @@ import type {
   DeliveryStatus,
 } from "@/lib/store";
 import type { DeliveryStage } from "@/lib/delivery/stages";
+import type { LFStatus } from "@/lib/lost-found/statuses";
 import { DELIVERY_STAGES, stageToLegacyStatus } from "@/lib/delivery/stages";
 import iabLogo from "@/assets/iab-logo.jpeg.asset.json";
 import { PassengerPortal } from "./passenger.index";
