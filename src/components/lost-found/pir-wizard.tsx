@@ -24,6 +24,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import { useSystemSettings } from "@/lib/settings/use-settings";
 import {
   User,
   Plane,
@@ -61,6 +62,7 @@ type F = {
   priority: Priority;
   method: DeliveryMethod;
   fullAddress: string;
+  regionId: string;
   station: string;
   department: string;
   internalNotes: string;
@@ -80,6 +82,7 @@ function empty(): F {
     priority: "Normal",
     method: "Home Delivery",
     fullAddress: "",
+    regionId: "",
     station: "CAI - Cairo International Airport",
     department: "Lost & Found", internalNotes: "", casePriority: "Normal",
     createdBy: "Ops Console",
@@ -133,6 +136,7 @@ function fromCase(c: BaggageCase): F {
     priority,
     method: d.method ?? "Home Delivery",
     fullAddress: d.fullAddress ?? legacyAddress,
+    regionId: d.regionId ?? "",
     station: i.station ?? "CAI - Cairo International Airport",
     department: i.department ?? "Lost & Found",
     internalNotes: i.internalNotes ?? "",
@@ -291,6 +295,7 @@ export function PirWizard({
       delivery: {
         method: form.method,
         fullAddress: form.fullAddress.trim(),
+        regionId: form.regionId || undefined,
       },
       internal: {
         station: form.station,
@@ -459,6 +464,7 @@ export function PirWizard({
                 </SelectContent>
               </Select>
             </Fld>
+            <RegionField value={form.regionId} onChange={(v) => set("regionId", v)} />
             <div className="space-y-1.5">
               <Label className="font-semibold">
                 Full Delivery Address <span className="text-rose-500">*</span>
@@ -502,6 +508,7 @@ export function PirWizard({
             </ReviewGroup>
             <ReviewGroup title="Delivery" onEdit={() => setStep(3)}>
               <ReviewKV k="Method" v={form.method} />
+              <ReviewKV k="Delivery Region" v={regionLabel(form.regionId)} />
               <ReviewKV k="Full Address" v={form.fullAddress} />
             </ReviewGroup>
             {!canSubmit && (
