@@ -318,6 +318,7 @@ export async function buildSecondarySnapshot(
   const feedback = (feedbackRows as Row[]).map((f) => ({
     id: f.id,
     bagId: caseById.get(f.case_id)?.case_no ?? "",
+    deliveryId: deliveryById.get(f.delivery_id)?.delivery_no ?? "",
     passengerName: deliveryById.get(f.delivery_id)?.passenger_name ?? "",
     resolved: !!f.resolved,
     rating: f.rating ?? 0,
