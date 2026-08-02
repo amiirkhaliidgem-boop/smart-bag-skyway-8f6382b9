@@ -57,11 +57,14 @@ export function PassengerPortal({
   token,
   resolvedDelivery,
   resolvedCase,
+  journey = "delivery",
 }: {
   deliveryIdOverride?: string;
   token?: string;
   resolvedDelivery?: Delivery;
   resolvedCase?: BaggageCase;
+  /** Airport Pickup links have no agent, no route and no OTP handover. */
+  journey?: "delivery" | "pickup";
 } = {}) {
   const deliveries = useStore((s) => s.deliveries);
   const cases = useStore((s) => s.cases);
@@ -128,6 +131,7 @@ export function PassengerPortal({
             delivery={delivery}
             kase={kase}
             token={token}
+            journey={journey}
             contacts={publicSettings?.contacts}
             onConfirmed={() => setScreen("celebrating")}
           />
@@ -187,12 +191,14 @@ function TrackScreen({
   delivery,
   kase,
   token,
+  journey = "delivery",
   contacts,
   onConfirmed,
 }: {
   delivery: Delivery;
   kase: BaggageCase;
   token?: string;
+  journey?: "delivery" | "pickup";
   contacts?: ContactSettings;
   onConfirmed: () => void;
 }) {
@@ -205,9 +211,11 @@ function TrackScreen({
 
   const allChecked = tags && sealed && otpAfter && noBribe;
   const stage = getDeliveryStage(delivery);
+  const pickup = journey === "pickup";
   // OTP card stays hidden until the workflow reaches Out for Delivery, then
-  // remains visible through completion.
-  const showOtpCard = stage === "Out for Delivery" || stage === "Delivered";
+  // remains visible through completion. Airport Pickup never uses OTP —
+  // identity is verified in person at the Lost & Found counter.
+  const showOtpCard = !pickup && (stage === "Out for Delivery" || stage === "Delivered");
 
   async function handleNoBribeChange(next: boolean) {
     setNoBribe(next);
@@ -243,11 +251,16 @@ function TrackScreen({
         <WelcomeCard delivery={delivery} kase={kase} />
       </MotionSection>
       <MotionSection>
-        <StatusHero delivery={delivery} kase={kase} />
+        <StatusHero delivery={delivery} kase={kase} journey={journey} />
       </MotionSection>
       <MotionSection>
-        <SimpleTimeline delivery={delivery} kase={kase} />
+        <SimpleTimeline delivery={delivery} kase={kase} journey={journey} />
       </MotionSection>
+      {pickup && (
+        <MotionSection>
+          <PickupInstructionsCard />
+        </MotionSection>
+      )}
       {showOtpCard && (
         <MotionSection>
           <OtpHeroCard
@@ -448,9 +461,18 @@ function MetaCell({ label, value }: { label: string; value: string }) {
 // Status hero — navy gradient card with 3D floating suitcase.
 // ---------------------------------------------------------------------------
 
-function StatusHero({ delivery, kase }: { delivery: Delivery; kase: BaggageCase }) {
+function StatusHero({
+  delivery,
+  kase,
+  journey = "delivery",
+}: {
+  delivery: Delivery;
+  kase: BaggageCase;
+  journey?: "delivery" | "pickup";
+}) {
   const stage = getDeliveryStage(delivery);
-  const heroCopy = heroCopyForStage(stage);
+  const heroCopy =
+    journey === "pickup" ? pickupHeroCopy(kase) : heroCopyForStage(stage);
   const reduce = useReducedMotion();
   void kase;
   const delivered = stage === "Delivered";
@@ -613,6 +635,19 @@ function StatusHero({ delivery, kase }: { delivery: Delivery; kase: BaggageCase 
   );
 }
 
+/** Airport Pickup hero copy is driven by the L&F case status, not a stage. */
+function pickupHeroCopy(kase: BaggageCase): { en: string; ar: string } {
+  const lf = kase.lfStatus ?? "Open";
+  if (lf === "Passenger Picked Up") return { en: "Collected", ar: "تم الاستلام" };
+  if (lf === "Ready for Airport Pickup")
+    return { en: "Ready for Airport Pickup", ar: "جاهزة للاستلام من المطار" };
+  if (lf === "Waiting Customs Clearance")
+    return { en: "Customs Clearance", ar: "التخليص الجمركي" };
+  if (lf === "Located" || lf === "Arrived at Airport")
+    return { en: "Bag Located", ar: "تم العثور على الأمتعة" };
+  return { en: "Locating Your Baggage", ar: "جارٍ تحديد موقع أمتعتك" };
+}
+
 function heroCopyForStage(stage: ReturnType<typeof getDeliveryStage>): {
   en: string;
   ar: string;
@@ -638,9 +673,17 @@ function heroCopyForStage(stage: ReturnType<typeof getDeliveryStage>): {
 // Simple 5-step timeline — derived from Workflow Engine, not new state.
 // ---------------------------------------------------------------------------
 
-function SimpleTimeline({ delivery, kase }: { delivery: Delivery; kase: BaggageCase }) {
+function SimpleTimeline({
+  delivery,
+  kase,
+  journey = "delivery",
+}: {
+  delivery: Delivery;
+  kase: BaggageCase;
+  journey?: "delivery" | "pickup";
+}) {
   const steps: { en: string; ar: string; reached: boolean; current: boolean }[] =
-    passengerSteps(delivery, kase);
+    journey === "pickup" ? pickupSteps(kase) : passengerSteps(delivery, kase);
   const reduce = useReducedMotion();
   const delivered = steps[steps.length - 1]?.reached;
   return (
@@ -745,6 +788,55 @@ function passengerSteps(delivery: Delivery, kase: BaggageCase) {
     reached: i < reached,
     current: i === reached - 1 && stage !== "Delivered",
   }));
+}
+
+// Airport Pickup timeline — Lost & Found owns every step; there is no
+// delivery agent, route or handover.
+function pickupSteps(kase: BaggageCase) {
+  const lf = kase.lfStatus ?? "Open";
+  const definitions = [
+    { en: "Bag Located", ar: "تم العثور على الأمتعة" },
+    { en: "Customs Cleared", ar: "تم التخليص الجمركي" },
+    { en: "Ready for Airport Pickup", ar: "جاهزة للاستلام من المطار" },
+    { en: "Collected by Passenger", ar: "تم الاستلام" },
+  ];
+  let reached = 0;
+  if (lf === "Located" || lf === "Arrived at Airport") reached = 1;
+  if (lf === "Waiting Customs Clearance") reached = 2;
+  if (lf === "Ready for Airport Pickup") reached = 3;
+  if (lf === "Passenger Picked Up") reached = 4;
+  return definitions.map((d, i) => ({
+    ...d,
+    reached: i < reached,
+    current: i === reached - 1 && lf !== "Passenger Picked Up",
+  }));
+}
+
+// Collection instructions shown only on the Airport Pickup path.
+function PickupInstructionsCard() {
+  return (
+    <div className="iab-white-glass rounded-[28px] px-7 py-6 sm:px-9 sm:py-7 space-y-3">
+      <p
+        className="text-[color:var(--iab-navy)]"
+        style={{ fontFamily: "var(--font-heading)", fontSize: "1.05rem", fontWeight: 600 }}
+      >
+        Collecting your baggage
+      </p>
+      <ul className="space-y-1.5 text-[0.92rem] text-[color:var(--iab-navy)]/80">
+        <li>Visit the airport Lost &amp; Found office in the arrivals hall.</li>
+        <li>Bring a valid photo ID and your PIR reference number.</li>
+        <li>Our staff verify your identity in person — no security code is needed.</li>
+      </ul>
+      <p
+        className="text-[0.92rem] text-[color:var(--iab-navy)]/80"
+        dir="rtl"
+        lang="ar"
+        style={{ fontFamily: "var(--font-arabic-display)" }}
+      >
+        يرجى التوجه إلى مكتب المفقودات بصالة الوصول ومعك هوية سارية ورقم التقرير.
+      </p>
+    </div>
+  );
 }
 
 // ---------------------------------------------------------------------------

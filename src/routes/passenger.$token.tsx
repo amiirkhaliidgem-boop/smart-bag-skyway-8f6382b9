@@ -11,6 +11,7 @@ import type {
   DeliveryStatus,
 } from "@/lib/store";
 import type { DeliveryStage } from "@/lib/delivery/stages";
+import type { LFStatus } from "@/lib/lost-found/statuses";
 import { DELIVERY_STAGES, stageToLegacyStatus } from "@/lib/delivery/stages";
 import iabLogo from "@/assets/iab-logo.jpeg.asset.json";
 import { PassengerPortal } from "./passenger.index";
@@ -52,6 +53,7 @@ function TokenPortal() {
   return (
     <PassengerPortal
       token={token}
+      journey={view.journey}
       resolvedDelivery={delivery}
       resolvedCase={kase}
     />
@@ -68,6 +70,7 @@ function synthesizeFromView(view: PassengerView): {
 } {
   const stage = normaliseStage(view);
   const status = stageToLegacyStatus(stage);
+  const pickup = view.journey === "pickup";
   const delivery: Delivery = {
     deliveryId: "",
     bagId: "",
@@ -75,13 +78,13 @@ function synthesizeFromView(view: PassengerView): {
     passengerName: view.passengerName,
     mobile: "",
     address: "",
-    method: "Home Delivery",
+    method: pickup ? "Airport Pickup" : "Home Delivery",
     driver: "—",
     priority: "Normal",
     stage,
     status,
-    otpCode: view.otpCode ?? "",
-    otpStatus: view.otpCode ? "Sent" : "Pending",
+    otpCode: pickup ? "" : (view.otpCode ?? ""),
+    otpStatus: !pickup && view.otpCode ? "Sent" : "Pending",
   } as unknown as Delivery;
   const kase: BaggageCase = {
     bagId: "",
@@ -94,6 +97,7 @@ function synthesizeFromView(view: PassengerView): {
     description: "",
     priority: "Normal",
     status: statusToCaseStatus(stage),
+    lfStatus: pickup ? pickupLfStatus(view.status) : undefined,
     bagTagNumber: view.bagTag ?? "",
     storage: null,
     createdAt: new Date().toISOString(),
@@ -121,6 +125,17 @@ const WORKFLOW_TO_STAGE: Record<string, DeliveryStage> = {
   FEEDBACK_SUBMITTED: "Delivered",
   CLOSED: "Delivered",
 };
+
+// Airport Pickup links carry the L&F status in `stage`; map the workflow
+// enum as a fallback so the pickup timeline never regresses.
+function pickupLfStatus(status: string | undefined): LFStatus {
+  const s = (status ?? "").trim();
+  if (s === "PASSENGER_PICKED_UP") return "Passenger Picked Up";
+  if (s === "READY_FOR_AIRPORT_PICKUP") return "Ready for Airport Pickup";
+  if (s === "DELIVERY_APPROVED") return "Arrived at Airport";
+  if (s === "HOME_DELIVERY_REQUESTED") return "Located";
+  return "Open";
+}
 
 function normaliseStage(view: PassengerView): DeliveryStage {
   const stage = (view.stage ?? "").trim();

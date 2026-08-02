@@ -1,6 +1,11 @@
 import { Check, Circle, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { LF_OWNED_STATUSES, LF_STATUS_ORDER, type LFStatus } from "@/lib/lost-found/statuses";
+import {
+  LF_STATUS_ORDER,
+  isPickup,
+  lfPathLifecycle,
+  type LFStatus,
+} from "@/lib/lost-found/statuses";
 
 // Enterprise workflow stepper. Reads canonical LF_STATUSES from
 // src/lib/lost-found/statuses.ts. Completed = check, current = filled,
@@ -8,20 +13,25 @@ import { LF_OWNED_STATUSES, LF_STATUS_ORDER, type LFStatus } from "@/lib/lost-fo
 // display-only.
 export function LfStatusStepper({
   current,
+  method,
   onSelect,
   className,
 }: {
   current: LFStatus;
+  /** Delivery method — selects the Home Delivery or Airport Pickup lifecycle. */
+  method?: string;
   onSelect?: (s: LFStatus) => void;
   className?: string;
 }) {
-  // The stepper only renders L&F-owned statuses (up to Ready for Delivery).
-  // Anything beyond that belongs to Delivery Management and is displayed
-  // there — not here.
-  const steps = LF_OWNED_STATUSES;
+  // Home Delivery: the stepper renders L&F-owned statuses up to "Ready for
+  // Delivery"; everything after that belongs to Delivery Management and is
+  // displayed there. Airport Pickup: L&F owns the whole path, so the stepper
+  // runs all the way to "Passenger Picked Up".
+  const steps = lfPathLifecycle(method);
   const stepIndex = steps.findIndex((s) => s === current);
   const globalCurrent = LF_STATUS_ORDER[current];
-  const readyIdx = LF_STATUS_ORDER["Ready for Delivery"];
+  const readyIdx =
+    LF_STATUS_ORDER[isPickup(method) ? "Ready for Airport Pickup" : "Ready for Delivery"];
   // Once past Ready for Delivery, force the last step to render as complete.
   const currentIndex = stepIndex >= 0 ? stepIndex : globalCurrent > readyIdx ? steps.length : 0;
   return (

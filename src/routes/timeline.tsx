@@ -229,6 +229,12 @@ const STATUS_META: Record<
     module: "Storage",
     description: "Baggage staged and ready for delivery agent pickup at storage.",
   },
+  READY_FOR_AIRPORT_PICKUP: {
+    title: "Ready for Airport Pickup",
+    icon: Package,
+    module: "LostFound",
+    description: "Baggage cleared and waiting for the passenger at the airport office.",
+  },
   CLAIMED_ON_HAND: {
     title: "Baggage Claimed On Hand",
     icon: Package,
@@ -258,6 +264,12 @@ const STATUS_META: Record<
     icon: CheckCircle2,
     module: "Passenger",
     description: "Baggage successfully delivered and received.",
+  },
+  PASSENGER_PICKED_UP: {
+    title: "Passenger Collected Baggage",
+    icon: CheckCircle2,
+    module: "Passenger",
+    description: "Passenger collected the baggage at the airport office.",
   },
   FEEDBACK_SUBMITTED: {
     title: "Passenger Submitted Feedback",

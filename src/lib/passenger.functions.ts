@@ -16,6 +16,11 @@ export interface PassengerView {
   passengerName: string;
   status: string;
   stage: string;
+  /**
+   * Operational path this link belongs to. "pickup" links have no delivery
+   * record, no agent and no OTP; the passenger collects at the airport.
+   */
+  journey: "delivery" | "pickup";
   bagTag: string | null;
   airline: string | null;
   flightNo: string | null;
@@ -48,6 +53,7 @@ const EMPTY_VIEW: PassengerView = {
   passengerName: "",
   status: "",
   stage: "",
+  journey: "delivery",
   bagTag: null,
   airline: null,
   flightNo: null,
@@ -72,6 +78,7 @@ export const getPassengerViewByToken = createServerFn({ method: "GET" })
       passenger_name: string | null;
       status: string | null;
       stage: string | null;
+      journey: string | null;
       bag_tag: string | null;
       airline: string | null;
       flight_no: string | null;
@@ -84,6 +91,7 @@ export const getPassengerViewByToken = createServerFn({ method: "GET" })
       passengerName: row.passenger_name ?? "",
       status: row.status ?? "",
       stage: row.stage ?? "",
+      journey: row.journey === "pickup" ? "pickup" : "delivery",
       bagTag: row.bag_tag,
       airline: row.airline,
       flightNo: row.flight_no,
@@ -97,6 +105,7 @@ const TERMINAL_STAGES = new Set([
   "Delivered",
   "Failed",
   "Returned to Airport",
+  "Passenger Picked Up",
 ]);
 
 export function isTerminalPassengerStage(stage: string | undefined | null): boolean {

@@ -201,7 +201,8 @@ export function PirWizard({
       form.flightNumber.trim() &&
       form.mobile.trim() &&
       form.airline.trim() &&
-      form.fullAddress.trim(),
+      // Airport Pickup has no delivery address, region, agent or route.
+      (form.method === "Airport Pickup" || form.fullAddress.trim()),
     [form],
   );
 
@@ -222,7 +223,8 @@ export function PirWizard({
       if (form.bagTags.some((t) => !t.trim())) return "Every bag tag is required.";
     }
     if (i === 3) {
-      if (!form.fullAddress.trim()) return "Full delivery address is required.";
+      if (form.method !== "Airport Pickup" && !form.fullAddress.trim())
+        return "Full delivery address is required.";
     }
     return null;
   }
@@ -315,8 +317,9 @@ export function PirWizard({
       },
       delivery: {
         method: form.method,
-        fullAddress: form.fullAddress.trim(),
-        regionId: form.regionId || undefined,
+        // Airport Pickup carries no address or delivery region.
+        fullAddress: form.method === "Airport Pickup" ? "" : form.fullAddress.trim(),
+        regionId: form.method === "Airport Pickup" ? undefined : form.regionId || undefined,
       },
       internal: {
         station: form.station,
@@ -485,25 +488,38 @@ export function PirWizard({
                 </SelectContent>
               </Select>
             </Fld>
-            <RegionField value={form.regionId} onChange={(v) => set("regionId", v)} />
-            <div className="space-y-1.5">
-              <Label className="font-semibold">
-                Full Delivery Address <span className="text-rose-500">*</span>
-              </Label>
-              <Textarea
-                rows={6}
-                value={form.fullAddress}
-                onChange={(e) => set("fullAddress", e.target.value)}
-                placeholder={
-                  "Country, governorate, city, district, street, building, floor, apartment, landmark…\n" +
-                  "Include any details the driver needs to locate the passenger."
-                }
-              />
-              <p className="text-xs text-muted-foreground">
-                This address is passed to Delivery Management once the case reaches
-                Ready for Delivery.
-              </p>
-            </div>
+            {form.method === "Airport Pickup" ? (
+              <div className="rounded-md border border-sky-200 bg-sky-50 p-3 text-xs text-sky-800 space-y-1">
+                <p className="font-semibold">Airport Pickup — no delivery details required</p>
+                <p>
+                  The passenger collects the baggage at the airport Lost &amp; Found office.
+                  No delivery region, address, delivery agent or route applies. The case
+                  stays with Lost &amp; Found and completes at “Passenger Picked Up”.
+                </p>
+              </div>
+            ) : (
+              <>
+                <RegionField value={form.regionId} onChange={(v) => set("regionId", v)} />
+                <div className="space-y-1.5">
+                  <Label className="font-semibold">
+                    Full Delivery Address <span className="text-rose-500">*</span>
+                  </Label>
+                  <Textarea
+                    rows={6}
+                    value={form.fullAddress}
+                    onChange={(e) => set("fullAddress", e.target.value)}
+                    placeholder={
+                      "Country, governorate, city, district, street, building, floor, apartment, landmark…\n" +
+                      "Include any details the driver needs to locate the passenger."
+                    }
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    This address is passed to Delivery Management once the case reaches
+                    Ready for Delivery.
+                  </p>
+                </div>
+              </>
+            )}
           </div>
         )}
 
@@ -529,8 +545,14 @@ export function PirWizard({
             </ReviewGroup>
             <ReviewGroup title="Delivery" onEdit={() => setStep(3)}>
               <ReviewKV k="Method" v={form.method} />
-              <ReviewKV k="Delivery Region" v={regionLabel(form.regionId)} />
-              <ReviewKV k="Full Address" v={form.fullAddress} />
+              {form.method === "Airport Pickup" ? (
+                <ReviewKV k="Collection Point" v="Airport Lost & Found office" />
+              ) : (
+                <>
+                  <ReviewKV k="Delivery Region" v={regionLabel(form.regionId)} />
+                  <ReviewKV k="Full Address" v={form.fullAddress} />
+                </>
+              )}
             </ReviewGroup>
             {!canSubmit && (
               <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">

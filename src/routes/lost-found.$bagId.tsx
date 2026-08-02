@@ -8,11 +8,12 @@ import {
   type NotificationEvent,
 } from "@/lib/store";
 import {
-  LF_OWNED_STATUSES,
   deriveLfFromCase,
   nextLfStatus,
   canTransitionLf,
   LF_STATUS_ORDER,
+  isPickup,
+  lfPathStatuses,
   type LFStatus,
 } from "@/lib/lost-found/statuses";
 import { LfStatusBadge } from "@/components/lf-status-badge";
@@ -84,15 +85,19 @@ function CaseDetailsPage() {
   const lfs = deriveLfFromCase(c);
   const priority = c.priority ?? c.internal?.casePriority ?? "Normal";
   const vip = priority === "VIP";
+  const pickup = isPickup(c.delivery?.method);
   const linkedDelivery = deliveries.find((d) => d.bagId === c.bagId);
   const wf = linkedDelivery
     ? workflow.find((w) => w.deliveryId === linkedDelivery.deliveryId)
     : undefined;
   // Ownership hand-off: once the case reaches Ready for Delivery, Delivery
   // Management owns the case and L&F can only view it. Status controls
-  // become read-only here.
+  // become read-only here. Airport Pickup never hands over — Lost & Found
+  // owns that path all the way to "Passenger Picked Up".
   const deliveryOwned =
-    LF_STATUS_ORDER[lfs] >= LF_STATUS_ORDER["Ready for Delivery"];
+    !pickup && LF_STATUS_ORDER[lfs] >= LF_STATUS_ORDER["Ready for Delivery"];
+  const pickupComplete = pickup && lfs === "Passenger Picked Up";
+  const locked = deliveryOwned || pickupComplete;
 
   const relatedNotifications = notifications.filter(
     (n) => n.pirNumber === c.pirNumber || n.deliveryId === linkedDelivery?.deliveryId,
@@ -109,7 +114,7 @@ function CaseDetailsPage() {
       toast.info("This case is owned by Delivery Management. Update status there.");
       return;
     }
-    const next = nextLfStatus(lfs);
+    const next = nextLfStatus(lfs, c!.delivery?.method);
     if (!next) {
       toast.info("Case is already at the final status.");
       return;
@@ -123,7 +128,7 @@ function CaseDetailsPage() {
       setChangeOpen(false);
       return;
     }
-    if (deliveryOwned && !force) {
+    if (locked && !force) {
       toast.info("This case is owned by Delivery Management. Update status there.");
       setChangeOpen(false);
       return;
@@ -219,7 +224,7 @@ function CaseDetailsPage() {
                 variant="outline"
                 onClick={() => setChangeOpen(true)}
                 className="gap-1.5"
-                disabled={deliveryOwned}
+                disabled={locked}
                 title={deliveryOwned ? "Owned by Delivery Management" : undefined}
               >
                 Change Status
@@ -227,7 +232,7 @@ function CaseDetailsPage() {
               <Button
                 onClick={advance}
                 className="gap-1.5"
-                disabled={deliveryOwned || !nextLfStatus(lfs)}
+                disabled={locked || !nextLfStatus(lfs, c.delivery?.method)}
                 title={deliveryOwned ? "Owned by Delivery Management" : undefined}
               >
                 Advance <ChevronRight className="h-4 w-4" />
@@ -263,7 +268,8 @@ function CaseDetailsPage() {
             </p>
             <LfStatusStepper
               current={lfs}
-              onSelect={deliveryOwned ? undefined : (s) => changeStatus(s)}
+              method={c.delivery?.method}
+              onSelect={locked ? undefined : (s) => changeStatus(s)}
             />
             {deliveryOwned && (
               <div className="mt-3 rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-800 flex items-center gap-2">
@@ -278,6 +284,19 @@ function CaseDetailsPage() {
                     Open Delivery <ExternalLink className="h-3 w-3" />
                   </Link>
                 )}
+              </div>
+            )}
+            {pickupComplete && (
+              <div className="mt-3 rounded-md border border-teal-200 bg-teal-50 px-3 py-2 text-xs text-teal-800 flex items-center gap-2">
+                <Truck className="h-3.5 w-3.5" />
+                Airport Pickup completed — the passenger collected the baggage at the
+                airport office. This case is closed to further status changes.
+              </div>
+            )}
+            {pickup && !pickupComplete && (
+              <div className="mt-3 rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-800">
+                Airport Pickup case — no delivery order, region, agent or route applies.
+                Lost &amp; Found owns this case until the passenger collects the baggage.
               </div>
             )}
           </div>
@@ -435,6 +454,7 @@ function CaseDetailsPage() {
       <Dialog open={changeOpen} onOpenChange={setChangeOpen}>
         <ChangeStatusDialog
           current={lfs}
+          method={c.delivery?.method}
           onConfirm={(target, force, note) => changeStatus(target, force, note)}
           onClose={() => setChangeOpen(false)}
         />
@@ -462,13 +482,15 @@ function CaseDetailsPage() {
 
 // ---------- Change Status dialog ----------
 function ChangeStatusDialog({
-  current, onConfirm, onClose,
+  current, method, onConfirm, onClose,
 }: {
   current: LFStatus;
+  method?: string;
   onConfirm: (target: LFStatus, force: boolean, note?: string) => void;
   onClose: () => void;
 }) {
-  const [target, setTarget] = useState<LFStatus>(nextLfStatus(current) ?? current);
+  const options = lfPathStatuses(method);
+  const [target, setTarget] = useState<LFStatus>(nextLfStatus(current, method) ?? current);
   const [note, setNote] = useState("");
   const [force, setForce] = useState(false);
   const backward = !force && !canTransitionLf(current, target) && target !== current;
@@ -491,7 +513,7 @@ function ChangeStatusDialog({
           <Select value={target} onValueChange={(v) => setTarget(v as LFStatus)}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
-              {LF_OWNED_STATUSES.map((s) => (
+              {options.map((s) => (
                 <SelectItem key={s} value={s}>{s}</SelectItem>
               ))}
             </SelectContent>

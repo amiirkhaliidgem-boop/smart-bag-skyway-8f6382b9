@@ -13,13 +13,28 @@ export const LF_STATUSES = [
   "Arrived at Airport",
   "Waiting Customs Clearance",
   "Ready for Delivery",
+  "Ready for Airport Pickup",
   "Assigned Driver",
   "Out for Delivery",
   "Delivered",
+  "Passenger Picked Up",
   "Closed",
 ] as const;
 
 export type LFStatus = (typeof LF_STATUSES)[number];
+
+export type LFDeliveryMethod = "Home Delivery" | "Airport Pickup";
+
+/**
+ * Statuses that never appear in the operational UI. "Closed" is a legacy
+ * archival value: nothing in the Workflow Engine writes it any more.
+ */
+export const LF_HIDDEN_STATUSES: ReadonlyArray<LFStatus> = ["Closed"];
+
+/** Statuses visible anywhere in the product (filters, exports, charts). */
+export const LF_VISIBLE_STATUSES = LF_STATUSES.filter(
+  (s) => !LF_HIDDEN_STATUSES.includes(s),
+) as ReadonlyArray<LFStatus>;
 
 // Statuses that Lost & Found actively OWNS. Ownership hands over to
 // Delivery Management the moment the case reaches "Ready for Delivery" —
@@ -36,6 +51,53 @@ export const LF_OWNED_STATUSES = [
   "Ready for Delivery",
 ] as const satisfies ReadonlyArray<LFStatus>;
 
+/**
+ * Airport Pickup is a completely separate operational path: Lost & Found owns
+ * it end-to-end, there is no delivery order, agent or route, and it finishes
+ * at "Passenger Picked Up".
+ */
+export const LF_PICKUP_STATUSES = [
+  "Open",
+  "Tracing",
+  "Located",
+  "Arrived at Airport",
+  "Waiting Customs Clearance",
+  "Ready for Airport Pickup",
+  "Passenger Picked Up",
+] as const satisfies ReadonlyArray<LFStatus>;
+
+export function isPickup(method?: string | null): boolean {
+  return method === "Airport Pickup";
+}
+
+/** The statuses a case may be moved to, by operational path. */
+export function lfPathStatuses(method?: string | null): ReadonlyArray<LFStatus> {
+  return isPickup(method) ? LF_PICKUP_STATUSES : LF_OWNED_STATUSES;
+}
+
+/** Full lifecycle rendered by the stepper, by operational path. */
+export function lfPathLifecycle(method?: string | null): ReadonlyArray<LFStatus> {
+  return isPickup(method)
+    ? LF_PICKUP_STATUSES
+    : ([
+        "Open",
+        "Tracing",
+        "Located",
+        "Arrived at Airport",
+        "Waiting Customs Clearance",
+        "Ready for Delivery",
+      ] as ReadonlyArray<LFStatus>);
+}
+
+/** Terminal (successful) statuses per path. */
+export function isLfCompleted(status: LFStatus): boolean {
+  return status === "Delivered" || status === "Passenger Picked Up" || status === "Closed";
+}
+
+export function isLfReady(status: LFStatus): boolean {
+  return status === "Ready for Delivery" || status === "Ready for Airport Pickup";
+}
+
 export const LF_STATUS_ORDER: Record<LFStatus, number> = LF_STATUSES.reduce(
   (acc, s, i) => ((acc[s] = i), acc),
   {} as Record<LFStatus, number>,
@@ -48,9 +110,11 @@ export const LF_STATUS_COLOR: Record<LFStatus, string> = {
   "Arrived at Airport": "bg-blue-100 text-blue-700 border-blue-200",
   "Waiting Customs Clearance": "bg-indigo-100 text-indigo-700 border-indigo-200",
   "Ready for Delivery": "bg-violet-100 text-violet-700 border-violet-200",
+  "Ready for Airport Pickup": "bg-sky-100 text-sky-700 border-sky-200",
   "Assigned Driver": "bg-purple-100 text-purple-700 border-purple-200",
   "Out for Delivery": "bg-cyan-100 text-cyan-700 border-cyan-200",
   Delivered: "bg-emerald-100 text-emerald-700 border-emerald-200",
+  "Passenger Picked Up": "bg-teal-100 text-teal-700 border-teal-200",
   Closed: "bg-slate-200 text-slate-700 border-slate-300",
 };
 
@@ -63,9 +127,11 @@ export const LF_STATUS_LABEL: Record<LFStatus, string> = {
   "Arrived at Airport": "Arrived at Airport",
   "Waiting Customs Clearance": "Waiting Customs Clearance",
   "Ready for Delivery": "Ready for Delivery",
+  "Ready for Airport Pickup": "Ready for Airport Pickup",
   "Assigned Driver": "Assigned Delivery Agent",
   "Out for Delivery": "Out for Delivery",
   Delivered: "Delivered",
+  "Passenger Picked Up": "Passenger Picked Up",
   Closed: "Closed",
 };
 
@@ -83,16 +149,20 @@ export const LF_TO_WORKFLOW: Record<LFStatus, WorkflowStatus> = {
   "Arrived at Airport": "DELIVERY_APPROVED",
   "Waiting Customs Clearance": "DELIVERY_APPROVED",
   "Ready for Delivery": "READY_FOR_COLLECTION",
+  "Ready for Airport Pickup": "READY_FOR_AIRPORT_PICKUP",
   "Assigned Driver": "DRIVER_ASSIGNED",
   "Out for Delivery": "OUT_FOR_DELIVERY",
   Delivered: "DELIVERED",
+  "Passenger Picked Up": "PASSENGER_PICKED_UP",
   Closed: "CLOSED",
 };
 
-export function nextLfStatus(current: LFStatus): LFStatus | null {
-  const i = LF_STATUS_ORDER[current];
-  if (i === undefined || i >= LF_STATUSES.length - 1) return null;
-  return LF_STATUSES[i + 1];
+/** Next status on the case's own operational path, or null when finished. */
+export function nextLfStatus(current: LFStatus, method?: string | null): LFStatus | null {
+  const path = lfPathStatuses(method);
+  const i = path.indexOf(current);
+  if (i < 0 || i >= path.length - 1) return null;
+  return path[i + 1] ?? null;
 }
 
 export function canTransitionLf(from: LFStatus, to: LFStatus): boolean {
