@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { getDeliveryStage, useStore, useOpsLoading, type BaggageCase, type Delivery, type WorkflowRecord } from "@/lib/store";
 import { useSystemSettings } from "@/lib/settings/use-settings";
+import type { SlaRegion } from "@/lib/settings/types";
 import {
   DELIVERY_STAGES,
   STAGE_LABELS,
