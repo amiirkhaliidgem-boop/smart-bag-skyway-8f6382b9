@@ -167,6 +167,27 @@ export function PirWizard({
     mode === "edit" && caseData ? fromCase(caseData) : empty(),
   );
 
+  // Delivery regions come from System Settings and drive the Home Delivery SLA.
+  const regions = useSystemSettings().settings.regions.filter((r) => r.active);
+  const regionLabel = (id: string) => regions.find((r) => r.id === id)?.name ?? "—";
+
+  function RegionField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+    return (
+      <Fld label="Delivery Region (SLA)">
+        <Select value={value} onValueChange={onChange}>
+          <SelectTrigger><SelectValue placeholder="Select region" /></SelectTrigger>
+          <SelectContent>
+            {regions.map((r) => (
+              <SelectItem key={r.id} value={r.id}>
+                {r.name} · {r.sla_hours}h
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </Fld>
+    );
+  }
+
   function set<K extends keyof F>(k: K, v: F[K]) {
     setForm((f) => ({ ...f, [k]: v }));
   }
