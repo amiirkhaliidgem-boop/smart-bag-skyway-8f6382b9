@@ -39,6 +39,7 @@ export const callOpsRpc = createServerFn({ method: "POST" })
       "lf_create_case",
       "lf_update_case",
       "lf_set_status",
+      "lf_set_region",
       "lf_bulk_set_status",
       "dm_schedule",
       "dm_assign_agent",
