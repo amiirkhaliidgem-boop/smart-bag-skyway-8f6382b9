@@ -199,7 +199,7 @@ function WorkflowMonitorPage() {
     }
 
     return rows.sort((a, b) => new Date(b.lastAt ?? 0).getTime() - new Date(a.lastAt ?? 0).getTime());
-  }, [cases, deliveries, workflow, feedback, tick]);
+  }, [cases, deliveries, workflow, feedback, tick, regions, lfSlaHours]);
 
   const rows = useMemo(() => {
     return allRows.filter((r) => {
