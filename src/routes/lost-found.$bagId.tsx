@@ -454,6 +454,7 @@ function CaseDetailsPage() {
       <Dialog open={changeOpen} onOpenChange={setChangeOpen}>
         <ChangeStatusDialog
           current={lfs}
+          method={c.delivery?.method}
           onConfirm={(target, force, note) => changeStatus(target, force, note)}
           onClose={() => setChangeOpen(false)}
         />
