@@ -412,6 +412,7 @@ export type Database = {
           pnr: string | null
           preferred_delivery_time: string | null
           priority: Database["public"]["Enums"]["case_priority"]
+          region_id: string | null
           resolved_at: string | null
           rush_delivery: boolean
           station_id: string
@@ -470,6 +471,7 @@ export type Database = {
           pnr?: string | null
           preferred_delivery_time?: string | null
           priority?: Database["public"]["Enums"]["case_priority"]
+          region_id?: string | null
           resolved_at?: string | null
           rush_delivery?: boolean
           station_id: string
@@ -528,6 +530,7 @@ export type Database = {
           pnr?: string | null
           preferred_delivery_time?: string | null
           priority?: Database["public"]["Enums"]["case_priority"]
+          region_id?: string | null
           resolved_at?: string | null
           rush_delivery?: boolean
           station_id?: string
@@ -554,6 +557,13 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "app_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "baggage_cases_region_id_fkey"
+            columns: ["region_id"]
+            isOneToOne: false
+            referencedRelation: "sla_regions"
             referencedColumns: ["id"]
           },
           {
@@ -992,6 +1002,7 @@ export type Database = {
           sent_at: string | null
           state: Database["public"]["Enums"]["notification_state"]
           subject: string
+          trigger_key: string
           trigger_status: Database["public"]["Enums"]["workflow_status"]
           updated_at: string
           version: number
@@ -1014,6 +1025,7 @@ export type Database = {
           sent_at?: string | null
           state?: Database["public"]["Enums"]["notification_state"]
           subject?: string
+          trigger_key?: string
           trigger_status: Database["public"]["Enums"]["workflow_status"]
           updated_at?: string
           version?: number
@@ -1036,6 +1048,7 @@ export type Database = {
           sent_at?: string | null
           state?: Database["public"]["Enums"]["notification_state"]
           subject?: string
+          trigger_key?: string
           trigger_status?: Database["public"]["Enums"]["workflow_status"]
           updated_at?: string
           version?: number
@@ -1056,6 +1069,54 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      notification_templates: {
+        Row: {
+          active: boolean
+          body_ar: string
+          body_en: string
+          channel: Database["public"]["Enums"]["notification_channel"]
+          created_at: string
+          id: string
+          sort_order: number
+          subject_ar: string
+          subject_en: string
+          trigger_key: string
+          updated_at: string
+          updated_by: string | null
+          version: number
+        }
+        Insert: {
+          active?: boolean
+          body_ar?: string
+          body_en?: string
+          channel: Database["public"]["Enums"]["notification_channel"]
+          created_at?: string
+          id?: string
+          sort_order?: number
+          subject_ar?: string
+          subject_en?: string
+          trigger_key: string
+          updated_at?: string
+          updated_by?: string | null
+          version?: number
+        }
+        Update: {
+          active?: boolean
+          body_ar?: string
+          body_en?: string
+          channel?: Database["public"]["Enums"]["notification_channel"]
+          created_at?: string
+          id?: string
+          sort_order?: number
+          subject_ar?: string
+          subject_en?: string
+          trigger_key?: string
+          updated_at?: string
+          updated_by?: string | null
+          version?: number
+        }
+        Relationships: []
       }
       otp_challenges: {
         Row: {
@@ -1449,36 +1510,42 @@ export type Database = {
           },
         ]
       }
-      sla_policies: {
+      sla_regions: {
         Row: {
           active: boolean
           created_at: string
           id: string
-          stage: Database["public"]["Enums"]["delivery_stage"]
-          target_minutes: number
+          is_default: boolean
+          name: string
+          name_ar: string
+          sla_hours: number
+          sort_order: number
           updated_at: string
           version: number
-          warn_at_pct: number
         }
         Insert: {
           active?: boolean
           created_at?: string
           id?: string
-          stage: Database["public"]["Enums"]["delivery_stage"]
-          target_minutes: number
+          is_default?: boolean
+          name: string
+          name_ar?: string
+          sla_hours?: number
+          sort_order?: number
           updated_at?: string
           version?: number
-          warn_at_pct?: number
         }
         Update: {
           active?: boolean
           created_at?: string
           id?: string
-          stage?: Database["public"]["Enums"]["delivery_stage"]
-          target_minutes?: number
+          is_default?: boolean
+          name?: string
+          name_ar?: string
+          sla_hours?: number
+          sort_order?: number
           updated_at?: string
           version?: number
-          warn_at_pct?: number
         }
         Relationships: []
       }
@@ -1517,6 +1584,33 @@ export type Database = {
           name?: string
           timezone?: string
           updated_at?: string
+          version?: number
+        }
+        Relationships: []
+      }
+      system_settings: {
+        Row: {
+          created_at: string
+          group_key: string
+          payload: Json
+          updated_at: string
+          updated_by: string | null
+          version: number
+        }
+        Insert: {
+          created_at?: string
+          group_key: string
+          payload?: Json
+          updated_at?: string
+          updated_by?: string | null
+          version?: number
+        }
+        Update: {
+          created_at?: string
+          group_key?: string
+          payload?: Json
+          updated_at?: string
+          updated_by?: string | null
           version?: number
         }
         Relationships: []
@@ -2110,6 +2204,7 @@ export type Database = {
           pnr: string | null
           preferred_delivery_time: string | null
           priority: Database["public"]["Enums"]["case_priority"]
+          region_id: string | null
           resolved_at: string | null
           rush_delivery: boolean
           station_id: string
@@ -2177,6 +2272,7 @@ export type Database = {
           pnr: string | null
           preferred_delivery_time: string | null
           priority: Database["public"]["Enums"]["case_priority"]
+          region_id: string | null
           resolved_at: string | null
           rush_delivery: boolean
           station_id: string
@@ -2242,6 +2338,7 @@ export type Database = {
           sent_at: string | null
           state: Database["public"]["Enums"]["notification_state"]
           subject: string
+          trigger_key: string
           trigger_status: Database["public"]["Enums"]["workflow_status"]
           updated_at: string
           version: number
@@ -2263,6 +2360,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      notif_template_upsert: { Args: { p_payload: Json }; Returns: string }
       passenger_get_view: { Args: { p_token: string }; Returns: Json }
       passenger_report_misconduct: {
         Args: { p_details?: string; p_token: string }
@@ -2329,6 +2427,17 @@ export type Database = {
         Args: { p_from: string; p_grain?: string; p_to: string }
         Returns: Json
       }
+      settings_get_all: { Args: never; Returns: Json }
+      settings_get_public: { Args: never; Returns: Json }
+      settings_group: { Args: { p_group: string }; Returns: Json }
+      settings_is_admin: { Args: never; Returns: boolean }
+      settings_save: {
+        Args: { p_group: string; p_payload: Json }
+        Returns: Json
+      }
+      sla_delivery_hours: { Args: { p_case: string }; Returns: number }
+      sla_region_delete: { Args: { p_id: string }; Returns: undefined }
+      sla_region_upsert: { Args: { p_payload: Json }; Returns: string }
       system_db_facts: { Args: never; Returns: Json }
       wf_actor: {
         Args: never
@@ -2344,6 +2453,10 @@ export type Database = {
       }
       wf_ensure_passenger_link: {
         Args: { p_delivery: string }
+        Returns: string
+      }
+      wf_fill_template: {
+        Args: { p_ctx: Json; p_text: string }
         Returns: string
       }
       wf_journal: {
@@ -2425,6 +2538,10 @@ export type Database = {
           p_delivery: string
           p_trigger: Database["public"]["Enums"]["workflow_status"]
         }
+        Returns: undefined
+      }
+      wf_queue_notification_key: {
+        Args: { p_delivery: string; p_trigger_key: string }
         Returns: undefined
       }
       wf_recompute_route: { Args: { p_agent: string }; Returns: undefined }
