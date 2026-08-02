@@ -716,6 +716,7 @@ export async function addCase(
     full_address: input.delivery?.fullAddress ?? "",
     preferred_delivery_time: input.delivery?.preferredDeliveryTime,
     google_maps_link: input.delivery?.googleMapsLink,
+    region_id: input.delivery?.regionId ?? null,
     department: input.internal?.department ?? "",
     internal_notes: input.internal?.internalNotes ?? "",
     incomplete: input.incomplete ?? false,
@@ -814,6 +815,11 @@ export async function updateCase(bagId: string, patch: Partial<BaggageCase>) {
       p_payload: casePatchPayload(patch),
       p_expected_version: caseVersions[bagId] ?? null,
     });
+    // The delivery region drives the Home Delivery SLA configured in
+    // System Settings; it is stored on the case itself.
+    if (patch.delivery?.regionId !== undefined) {
+      await rpc("lf_set_region", { p_case: id, p_region: patch.delivery.regionId || null });
+    }
   } catch (err) {
     reportError(err);
   }
