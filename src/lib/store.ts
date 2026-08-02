@@ -157,6 +157,7 @@ export interface WhatsAppMessage {
 export interface Feedback {
   id: string;
   bagId: string;
+  deliveryId: string;
   passengerName: string;
   resolved: boolean;
   rating: number; // 1-5
