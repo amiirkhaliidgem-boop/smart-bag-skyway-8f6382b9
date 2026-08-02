@@ -211,9 +211,11 @@ function TrackScreen({
 
   const allChecked = tags && sealed && otpAfter && noBribe;
   const stage = getDeliveryStage(delivery);
+  const pickup = journey === "pickup";
   // OTP card stays hidden until the workflow reaches Out for Delivery, then
-  // remains visible through completion.
-  const showOtpCard = stage === "Out for Delivery" || stage === "Delivered";
+  // remains visible through completion. Airport Pickup never uses OTP —
+  // identity is verified in person at the Lost & Found counter.
+  const showOtpCard = !pickup && (stage === "Out for Delivery" || stage === "Delivered");
 
   async function handleNoBribeChange(next: boolean) {
     setNoBribe(next);
@@ -249,11 +251,16 @@ function TrackScreen({
         <WelcomeCard delivery={delivery} kase={kase} />
       </MotionSection>
       <MotionSection>
-        <StatusHero delivery={delivery} kase={kase} />
+        <StatusHero delivery={delivery} kase={kase} journey={journey} />
       </MotionSection>
       <MotionSection>
-        <SimpleTimeline delivery={delivery} kase={kase} />
+        <SimpleTimeline delivery={delivery} kase={kase} journey={journey} />
       </MotionSection>
+      {pickup && (
+        <MotionSection>
+          <PickupInstructionsCard />
+        </MotionSection>
+      )}
       {showOtpCard && (
         <MotionSection>
           <OtpHeroCard
