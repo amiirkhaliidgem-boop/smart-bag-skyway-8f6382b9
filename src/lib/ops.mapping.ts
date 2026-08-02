@@ -248,17 +248,35 @@ export function mapWorkflow(d: Row, caseNo: string, token: string | undefined, e
   };
 }
 
-export function mapNotification(n: Row, deliveryNo: string | undefined): NotificationEvent {
+export function mapNotification(
+  n: Row,
+  deliveryNo: string | undefined,
+  passengerName: string | undefined,
+  pirNumber: string | undefined,
+): NotificationEvent {
   return {
     id: n.id,
     deliveryId: deliveryNo ?? "",
     status: n.trigger_status as NotificationTrigger,
+    triggerKey: n.trigger_key || n.trigger_status,
     channel: n.channel as NotificationChannel,
     locale: (n.locale === "ar" ? "ar" : "en") as "en" | "ar",
     to: n.recipient ?? "",
     message: { subject: n.subject || undefined, body: n.body ?? "" },
+    messageEn: n.body_en
+      ? { subject: n.subject_en || undefined, body: n.body_en }
+      : n.locale === "en"
+        ? { subject: n.subject || undefined, body: n.body ?? "" }
+        : undefined,
+    messageAr: n.body_ar
+      ? { subject: n.subject_ar || undefined, body: n.body_ar }
+      : n.locale === "ar"
+        ? { subject: n.subject || undefined, body: n.body ?? "" }
+        : undefined,
     createdAt: n.created_at,
     status_: (n.state === "cancelled" ? "failed" : n.state) as NotificationEvent["status_"],
+    passengerName,
+    pirNumber,
     operator: "Workflow Engine",
     sentAt: n.sent_at ?? undefined,
     provider: n.provider ?? undefined,

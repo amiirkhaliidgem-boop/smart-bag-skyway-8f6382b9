@@ -194,10 +194,13 @@ export interface NotificationEvent {
   id: string;
   deliveryId: string;
   status: NotificationTrigger;
+  triggerKey: string;
   channel: NotificationChannel;
   locale: "en" | "ar";
   to: string;
   message: RenderedMessage;
+  messageEn?: RenderedMessage;
+  messageAr?: RenderedMessage;
   createdAt: string;
   status_: "queued" | "sending" | "sent" | "failed";
   passengerName?: string;
@@ -472,8 +475,8 @@ function setLoading(tier: keyof OpsLoading, value: boolean) {
 async function hasSession(): Promise<boolean> {
   // Protected snapshot: skip entirely when signed out (public routes such as
   // /auth, /passenger/* render without a session and would otherwise 401).
-  const { data } = await supabase.auth.getSession();
-  return !!data.session;
+  const { data, error } = await supabase.auth.getUser();
+  return !error && Boolean(data.user);
 }
 
 function runTier(tier: keyof OpsLoading, load: () => Promise<void>): Promise<void> {

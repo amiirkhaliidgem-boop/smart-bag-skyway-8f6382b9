@@ -16,7 +16,9 @@ export const systemSettingsQuery = queryOptions({
 export const publicSettingsQuery = queryOptions({
   queryKey: PUBLIC_SETTINGS_QUERY_KEY,
   queryFn: () => getPublicSettings(),
-  staleTime: 60_000,
+  staleTime: 0,
+  refetchInterval: 5_000,
+  refetchOnWindowFocus: true,
 });
 
 const EMPTY: SystemSettingsBundle = {
@@ -39,9 +41,10 @@ export function useSystemSettings() {
   useEffect(() => {
     const channel = supabase
       .channel("system-settings-live")
-      .on("postgres_changes", { event: "*", schema: "public", table: "system_settings" }, () =>
-        qc.invalidateQueries({ queryKey: SETTINGS_QUERY_KEY }),
-      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "system_settings" }, () => {
+        void qc.invalidateQueries({ queryKey: SETTINGS_QUERY_KEY });
+        void qc.invalidateQueries({ queryKey: PUBLIC_SETTINGS_QUERY_KEY });
+      })
       .on("postgres_changes", { event: "*", schema: "public", table: "sla_regions" }, () =>
         qc.invalidateQueries({ queryKey: SETTINGS_QUERY_KEY }),
       )
@@ -60,7 +63,11 @@ export function useSystemSettings() {
     settings: query.data ?? EMPTY,
     loading: query.isLoading,
     error: query.error as Error | null,
-    refresh: () => qc.invalidateQueries({ queryKey: SETTINGS_QUERY_KEY }),
+    refresh: () =>
+      Promise.all([
+        qc.invalidateQueries({ queryKey: SETTINGS_QUERY_KEY }),
+        qc.invalidateQueries({ queryKey: PUBLIC_SETTINGS_QUERY_KEY }),
+      ]),
   };
 }
 

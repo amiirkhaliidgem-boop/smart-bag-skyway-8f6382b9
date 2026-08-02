@@ -92,6 +92,7 @@ export const TEMPLATE_TRIGGERS: { key: string; label: string; description: strin
 export const TEMPLATE_VARIABLES = [
   "{{PassengerName}}",
   "{{PIR}}",
+  "{{DeliveryID}}",
   "{{TrackingLink}}",
   "{{AgentName}}",
   "{{BagTag}}",
@@ -100,6 +101,7 @@ export const TEMPLATE_VARIABLES = [
 const SAMPLE: Record<string, string> = {
   "{{PassengerName}}": "Ahmed Hassan",
   "{{PIR}}": "CAI-BA-24019",
+  "{{DeliveryID}}": "DEL-000019",
   "{{TrackingLink}}": "/passenger/9f3c2a7e51d4",
   "{{AgentName}}": "Mostafa Adel",
   "{{BagTag}}": "BA0084213",
