@@ -1252,7 +1252,7 @@ export type Database = {
           case_id: string
           channel: string
           created_at: string
-          delivery_id: string
+          delivery_id: string | null
           expires_at: string | null
           id: string
           issued_at: string
@@ -1267,7 +1267,7 @@ export type Database = {
           case_id: string
           channel?: string
           created_at?: string
-          delivery_id: string
+          delivery_id?: string | null
           expires_at?: string | null
           id?: string
           issued_at?: string
@@ -1282,7 +1282,7 @@ export type Database = {
           case_id?: string
           channel?: string
           created_at?: string
-          delivery_id?: string
+          delivery_id?: string | null
           expires_at?: string | null
           id?: string
           issued_at?: string
@@ -1969,47 +1969,6 @@ export type Database = {
           isSetofReturn: false
         }
       }
-      dm_close: {
-        Args: { p_delivery: string }
-        Returns: {
-          accepted_at: string | null
-          address: string
-          assigned_agent_id: string | null
-          assigned_at: string | null
-          attempt_no: number
-          case_id: string
-          closed_at: string | null
-          collected_at: string | null
-          created_at: string
-          created_by: string | null
-          delivered_at: string | null
-          delivery_no: string
-          delivery_type: Database["public"]["Enums"]["delivery_method"]
-          dest_lat: number | null
-          dest_lng: number | null
-          failed_at: string | null
-          failure_note: string
-          failure_reason_id: string | null
-          id: string
-          mobile: string
-          passenger_name: string
-          priority: Database["public"]["Enums"]["case_priority"]
-          returned_at: string | null
-          scheduled_for: string | null
-          stage: Database["public"]["Enums"]["delivery_stage"]
-          started_at: string | null
-          station_id: string
-          updated_at: string
-          version: number
-          workflow_status: Database["public"]["Enums"]["workflow_status"]
-        }
-        SetofOptions: {
-          from: "*"
-          to: "deliveries"
-          isOneToOne: true
-          isSetofReturn: false
-        }
-      }
       dm_mark_failed: {
         Args: {
           p_delivery: string
@@ -2160,6 +2119,10 @@ export type Database = {
         Returns: boolean
       }
       is_ops_staff: { Args: { _user_id: string }; Returns: boolean }
+      lf_allowed_statuses: {
+        Args: { p_method: Database["public"]["Enums"]["delivery_method"] }
+        Returns: Database["public"]["Enums"]["lf_status"][]
+      }
       lf_apply_region: {
         Args: { p_case: string; p_payload: Json }
         Returns: undefined
@@ -2479,6 +2442,7 @@ export type Database = {
         Args: { p_delivery: string; p_expected_version: number }
         Returns: undefined
       }
+      wf_ensure_case_link: { Args: { p_case: string }; Returns: string }
       wf_ensure_passenger_link: {
         Args: { p_delivery: string }
         Returns: string
@@ -2560,6 +2524,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      wf_queue_case_notification: {
+        Args: { p_case: string; p_trigger_key: string }
+        Returns: undefined
       }
       wf_queue_notification: {
         Args: {
