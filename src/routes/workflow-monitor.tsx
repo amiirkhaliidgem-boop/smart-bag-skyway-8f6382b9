@@ -1,6 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { getDeliveryStage, useStore, useOpsLoading, type BaggageCase, type Delivery, type WorkflowRecord } from "@/lib/store";
+import { useSystemSettings } from "@/lib/settings/use-settings";
+import type { SlaRegion } from "@/lib/settings/types";
 import {
   DELIVERY_STAGES,
   STAGE_LABELS,
@@ -52,20 +54,11 @@ export const Route = createFileRoute("/workflow-monitor")({
   component: WorkflowMonitorPage,
 });
 
-const SLA_MINUTES: Record<WorkflowStatus, number> = {
-  PIR_CREATED: 60,
-  HOME_DELIVERY_REQUESTED: 30,
-  DELIVERY_APPROVED: 30,
-  DRIVER_ASSIGNED: 20,
-  READY_FOR_COLLECTION: 30,
-  CLAIMED_ON_HAND: 15,
-  OUT_FOR_DELIVERY: 120,
-  DRIVER_ARRIVED: 10,
-  OTP_VERIFIED: 5,
-  DELIVERED: 0,
-  FEEDBACK_SUBMITTED: 0,
-  CLOSED: 0,
-};
+const TERMINAL_STATUSES: WorkflowStatus[] = [
+  "DELIVERED",
+  "FEEDBACK_SUBMITTED",
+  "CLOSED",
+];
 
 const LF_STATUS_KEY = (s: LFStatus) => `lf:${s}`;
 const STAGE_KEY = (s: DeliveryStage) => `stage:${s}`;
@@ -110,6 +103,10 @@ function WorkflowMonitorPage() {
   const feedback = useStore((s) => s.feedback);
   const incidents = useStore((s) => s.qualityIncidents);
   const loading = useOpsLoading();
+  // SLA thresholds are configured by administrators in System Settings.
+  const { settings } = useSystemSettings();
+  const regions: SlaRegion[] = settings.regions;
+  const lfSlaHours: number = settings.sla.lf_sla_hours;
 
   const [driver, setDriver] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -147,7 +144,12 @@ function WorkflowMonitorPage() {
 
       const lastAt = lastTimestamp(kase, del, wf);
       const elapsedMin = lastAt ? Math.max(0, Math.floor((now - new Date(lastAt).getTime()) / 60000)) : 0;
-      const sla = SLA_MINUTES[workflowStatus] ?? 0;
+      const regionHours = del
+        ? (regions.find((r) => r.id === kase?.delivery?.regionId)?.sla_hours ??
+           regions.find((r) => r.is_default)?.sla_hours ??
+           24)
+        : lfSlaHours;
+      const sla = TERMINAL_STATUSES.includes(workflowStatus) ? 0 : regionHours * 60;
 
       let nextStep = "—";
       if (stage) {
@@ -197,7 +199,7 @@ function WorkflowMonitorPage() {
     }
 
     return rows.sort((a, b) => new Date(b.lastAt ?? 0).getTime() - new Date(a.lastAt ?? 0).getTime());
-  }, [cases, deliveries, workflow, feedback, tick]);
+  }, [cases, deliveries, workflow, feedback, tick, regions, lfSlaHours]);
 
   const rows = useMemo(() => {
     return allRows.filter((r) => {

@@ -2145,6 +2145,10 @@ export type Database = {
         Returns: boolean
       }
       is_ops_staff: { Args: { _user_id: string }; Returns: boolean }
+      lf_apply_region: {
+        Args: { p_case: string; p_payload: Json }
+        Returns: undefined
+      }
       lf_bulk_set_status: {
         Args: {
           p_cases: string[]
@@ -2153,6 +2157,10 @@ export type Database = {
         Returns: number
       }
       lf_create_case: { Args: { p_payload: Json }; Returns: string }
+      lf_set_region: {
+        Args: { p_case: string; p_region: string }
+        Returns: undefined
+      }
       lf_set_status: {
         Args: {
           p_case: string
