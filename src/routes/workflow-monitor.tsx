@@ -142,10 +142,10 @@ function WorkflowMonitorPage() {
       const lastAt = lastTimestamp(kase, del, wf);
       const elapsedMin = lastAt ? Math.max(0, Math.floor((now - new Date(lastAt).getTime()) / 60000)) : 0;
       const regionHours = del
-        ? (settings.regions.find((r) => r.id === kase?.delivery?.regionId)?.sla_hours ??
-           settings.regions.find((r) => r.is_default)?.sla_hours ??
+        ? (regions.find((r) => r.id === kase?.delivery?.regionId)?.sla_hours ??
+           regions.find((r) => r.is_default)?.sla_hours ??
            24)
-        : settings.sla.lf_sla_hours;
+        : lfSlaHours;
       const sla = TERMINAL_STATUSES.includes(workflowStatus) ? 0 : regionHours * 60;
 
       let nextStep = "—";
