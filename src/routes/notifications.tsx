@@ -23,7 +23,11 @@ import {
   Lock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { triggerLabel, type NotificationChannel } from "@/lib/notifications/templates";
+import {
+  triggerLabel,
+  type NotificationChannel,
+  type NotificationTrigger,
+} from "@/lib/notifications/templates";
 import { PageLoading } from "@/components/ops-skeleton";
 
 export const Route = createFileRoute("/notifications")({
@@ -75,32 +79,6 @@ function NotificationCenter() {
     filtered[0] ??
     notifications[0] ??
     null;
-
-  // Group English / Arabic pair by (deliveryId, channel, status, createdAt window) for preview.
-  const previewPair = useMemo(() => {
-    if (!selected) return null;
-    const en =
-      selected.locale === "en"
-        ? selected
-        : notifications.find(
-            (n) =>
-              n.deliveryId === selected.deliveryId &&
-              n.channel === selected.channel &&
-              n.status === selected.status &&
-              n.locale === "en",
-          );
-    const ar =
-      selected.locale === "ar"
-        ? selected
-        : notifications.find(
-            (n) =>
-              n.deliveryId === selected.deliveryId &&
-              n.channel === selected.channel &&
-              n.status === selected.status &&
-              n.locale === "ar",
-          );
-    return { en, ar };
-  }, [selected, notifications]);
 
   const counts = useMemo(() => {
     return {
@@ -248,7 +226,9 @@ function NotificationCenter() {
                           </span>
                           <div className="text-[11px] text-muted-foreground uppercase">{n.locale}</div>
                         </td>
-                        <td className="px-3 py-2 text-xs">{triggerLabel(n.status)}</td>
+                        <td className="px-3 py-2 text-xs">
+                          {triggerLabel(n.triggerKey as NotificationTrigger)}
+                        </td>
                         <td className="px-3 py-2">
                           <StatusPill status={n.status_} />
                         </td>
@@ -288,7 +268,11 @@ function NotificationCenter() {
                   <Row k="PIR Number" v={selected.pirNumber ?? "—"} mono />
                   <Row k="Delivery ID" v={selected.deliveryId} mono />
                   <Row k="Channel" v={CHANNEL_META[selected.channel].label} />
-                  <Row k="Trigger" v={triggerLabel(selected.status)} />
+                   <Row
+                     k="Trigger"
+                     v={triggerLabel(selected.triggerKey as NotificationTrigger)}
+                   />
+                   <Row k="Language" v={selected.locale === "ar" ? "Arabic" : "English"} />
                   <Row k="Operator" v={selected.operator ?? "system"} />
                   <Row
                     k="Time"
@@ -307,10 +291,10 @@ function NotificationCenter() {
                     <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">
                       English
                     </p>
-                    {previewPair?.en && <StatusPill status={previewPair.en.status_} />}
+                     {selected.messageEn && <StatusPill status={selected.status_} />}
                   </div>
                   <div className="rounded-md border border-border p-3 text-sm bg-card whitespace-pre-wrap">
-                    {previewPair?.en?.message.body ?? "— No English template —"}
+                     {selected.messageEn?.body ?? "Unavailable for this legacy event"}
                   </div>
                 </div>
 
@@ -319,14 +303,14 @@ function NotificationCenter() {
                     <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">
                       العربية
                     </p>
-                    {previewPair?.ar && <StatusPill status={previewPair.ar.status_} />}
+                     {selected.messageAr && <StatusPill status={selected.status_} />}
                   </div>
                   <div
                     dir="rtl"
                     lang="ar"
                     className="rounded-md border border-border p-3 text-sm bg-card whitespace-pre-wrap"
                   >
-                    {previewPair?.ar?.message.body ?? "— لا يوجد قالب عربي —"}
+                     {selected.messageAr?.body ?? "غير متاح لهذا السجل القديم"}
                   </div>
                 </div>
               </>
