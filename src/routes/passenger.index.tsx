@@ -57,11 +57,14 @@ export function PassengerPortal({
   token,
   resolvedDelivery,
   resolvedCase,
+  journey = "delivery",
 }: {
   deliveryIdOverride?: string;
   token?: string;
   resolvedDelivery?: Delivery;
   resolvedCase?: BaggageCase;
+  /** Airport Pickup links have no agent, no route and no OTP handover. */
+  journey?: "delivery" | "pickup";
 } = {}) {
   const deliveries = useStore((s) => s.deliveries);
   const cases = useStore((s) => s.cases);
@@ -128,6 +131,7 @@ export function PassengerPortal({
             delivery={delivery}
             kase={kase}
             token={token}
+            journey={journey}
             contacts={publicSettings?.contacts}
             onConfirmed={() => setScreen("celebrating")}
           />
@@ -187,12 +191,14 @@ function TrackScreen({
   delivery,
   kase,
   token,
+  journey = "delivery",
   contacts,
   onConfirmed,
 }: {
   delivery: Delivery;
   kase: BaggageCase;
   token?: string;
+  journey?: "delivery" | "pickup";
   contacts?: ContactSettings;
   onConfirmed: () => void;
 }) {
