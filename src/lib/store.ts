@@ -116,7 +116,6 @@ export interface CaseDelivery {
 }
 
 export interface CaseInternal {
-  // (see below)
   assignedOfficer?: string;
   /** app_users.id of the assigned Lost & Found officer. */
   assignedOfficerId?: string;
