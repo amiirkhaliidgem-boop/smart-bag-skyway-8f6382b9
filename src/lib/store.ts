@@ -113,6 +113,8 @@ export interface CaseDelivery {
   // bootstrap Delivery Management. Legacy structured fields remain for
   // backward compatibility.
   fullAddress?: string;
+  /** sla_regions.id — drives the Home Delivery SLA from System Settings. */
+  regionId?: string;
 }
 
 export interface CaseInternal {
