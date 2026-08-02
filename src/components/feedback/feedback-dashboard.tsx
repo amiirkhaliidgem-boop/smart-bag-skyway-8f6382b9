@@ -1,7 +1,5 @@
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { useStore, useOpsLoading } from "@/lib/store";
-import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -33,22 +31,6 @@ export function FeedbackDashboard() {
   const [agent, setAgent] = useState("all");
   const [selected, setSelected] = useState<string[]>([]);
 
-  // Feedback rows that only exist in the public passenger_feedback table
-  // (submitted from the portal before app state was synced). Read-only.
-  const { data: remote } = useQuery({
-    queryKey: ["passenger-feedback-remote"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("passenger_feedback")
-        .select("id, delivery_id, rating, resolved, comments, submitted_at")
-        .order("submitted_at", { ascending: false })
-        .limit(1000);
-      if (error) return [];
-      return data ?? [];
-    },
-    staleTime: 60_000,
-  });
-
   const rows = useMemo<FeedbackRow[]>(() => {
     const caseByBag = new Map(cases.map((c) => [c.bagId, c]));
     const deliveryByBag = new Map(deliveries.map((d) => [d.bagId, d]));
@@ -75,42 +57,32 @@ export function FeedbackDashboard() {
       };
     };
 
-    const local = feedback.map((f) =>
-      build(
-        {
-          id: f.id,
-          passengerName: f.passengerName,
-          bagId: f.bagId,
-          rating: f.rating,
-          resolved: f.resolved,
-          comments: f.comments,
-          at: f.at,
-        },
-        f.bagId,
-      ),
-    );
-
-    const knownDeliveryIds = new Set(local.map((r) => r.deliveryId).filter(Boolean));
-    const extra = (remote ?? [])
-      .filter((r) => r.delivery_id && !knownDeliveryIds.has(r.delivery_id))
-      .map((r) =>
+    // One row per feedback record. The operational snapshot is the single
+    // source of truth; de-duping by record id guarantees a delivery can never
+    // be counted twice even if a record arrives from two code paths.
+    const byId = new Map<string, FeedbackRow>();
+    for (const f of feedback) {
+      if (byId.has(f.id)) continue;
+      byId.set(
+        f.id,
         build(
           {
-            id: r.id,
-            passengerName: "",
-            bagId: deliveryById.get(r.delivery_id)?.bagId ?? "",
-            rating: r.rating,
-            resolved: r.resolved,
-            comments: r.comments ?? "",
-            at: r.submitted_at,
+            id: f.id,
+            passengerName: f.passengerName,
+            bagId: f.bagId,
+            rating: f.rating,
+            resolved: f.resolved,
+            comments: f.comments,
+            at: f.at,
           },
-          deliveryById.get(r.delivery_id)?.bagId ?? "",
-          r.delivery_id,
+          f.bagId,
+          f.deliveryId,
         ),
       );
+    }
 
-    return [...local, ...extra].sort((a, b) => b.at.localeCompare(a.at));
-  }, [feedback, cases, deliveries, remote]);
+    return [...byId.values()].sort((a, b) => b.at.localeCompare(a.at));
+  }, [feedback, cases, deliveries]);
 
   const airlines = useMemo(
     () => Array.from(new Set(rows.map((r) => r.airline).filter(Boolean))).sort(),
