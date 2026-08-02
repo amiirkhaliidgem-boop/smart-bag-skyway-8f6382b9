@@ -104,6 +104,8 @@ function WorkflowMonitorPage() {
   const loading = useOpsLoading();
   // SLA thresholds are configured by administrators in System Settings.
   const { settings } = useSystemSettings();
+  const regions: SlaRegion[] = settings.regions;
+  const lfSlaHours: number = settings.sla.lf_sla_hours;
 
   const [driver, setDriver] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
