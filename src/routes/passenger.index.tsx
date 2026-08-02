@@ -9,6 +9,8 @@ import {
   type BaggageCase,
 } from "@/lib/store";
 import { mutatePassengerView } from "@/lib/passenger.functions";
+import { usePublicSettings } from "@/lib/settings/use-settings";
+import type { ContactSettings } from "@/lib/settings/types";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
@@ -63,6 +65,7 @@ export function PassengerPortal({
 } = {}) {
   const deliveries = useStore((s) => s.deliveries);
   const cases = useStore((s) => s.cases);
+  const publicSettings = usePublicSettings();
 
   const active = useMemo(
     () =>
@@ -125,6 +128,7 @@ export function PassengerPortal({
             delivery={delivery}
             kase={kase}
             token={token}
+            contacts={publicSettings?.contacts}
             onConfirmed={() => setScreen("celebrating")}
           />
         )}
@@ -183,11 +187,13 @@ function TrackScreen({
   delivery,
   kase,
   token,
+  contacts,
   onConfirmed,
 }: {
   delivery: Delivery;
   kase: BaggageCase;
   token?: string;
+  contacts?: ContactSettings;
   onConfirmed: () => void;
 }) {
   const [tags, setTags] = useState(false);
@@ -261,7 +267,7 @@ function TrackScreen({
         </MotionSection>
       )}
       <MotionSection>
-        <ContactCard delivery={delivery} />
+        <ContactCard delivery={delivery} contacts={contacts} />
       </MotionSection>
     </motion.div>
   );
@@ -1003,36 +1009,42 @@ function BilingualCheck({
 // Contact card — three premium action tiles (Call · WhatsApp · Email)
 // ---------------------------------------------------------------------------
 
-function ContactCard({ delivery }: { delivery: Delivery }) {
+function ContactCard({ delivery, contacts }: { delivery: Delivery; contacts?: ContactSettings }) {
   const waMessage = encodeURIComponent(
     `Hello IAB Support, I need assistance with delivery ${delivery.deliveryId} (PIR ${delivery.pirNumber}).`,
   );
   const mailSubject = encodeURIComponent(
     `PIR ${delivery.pirNumber} — Support request`,
   );
+  const callNumber = contacts?.call_number.trim() ?? "";
+  const whatsappNumber = contacts?.whatsapp_number.trim() ?? "";
+  const email = contacts?.email.trim() ?? "";
   const tiles = [
     {
       icon: PhoneCall,
       en: "Call Us",
       ar: "اتصل بنا",
-      href: "tel:+20226960000",
-      value: "+20 2 2696 0000",
+      href: callNumber ? `tel:${callNumber.replace(/[^\d+]/g, "")}` : "",
+      value: callNumber,
     },
     {
       icon: MessageCircle,
       en: "WhatsApp",
       ar: "واتساب",
-      href: `https://wa.me/201000001234?text=${waMessage}`,
-      value: "+20 100 000 1234",
+      href: whatsappNumber
+        ? `https://wa.me/${whatsappNumber.replace(/\D/g, "")}?text=${waMessage}`
+        : "",
+      value: whatsappNumber,
     },
     {
       icon: Mail,
       en: "Email",
       ar: "البريد",
-      href: `mailto:support@iab.aero?subject=${mailSubject}`,
-      value: "support@iab.aero",
+      href: email ? `mailto:${email}?subject=${mailSubject}` : "",
+      value: email,
     },
-  ];
+  ].filter((tile) => tile.value && tile.href);
+  if (tiles.length === 0) return null;
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
@@ -1041,7 +1053,12 @@ function ContactCard({ delivery }: { delivery: Delivery }) {
       transition={{ duration: 0.5, ease: [0.2, 0.7, 0.2, 1] }}
       className="space-y-3"
     >
-      <div className="grid grid-cols-3 gap-2 sm:gap-3">
+      <div
+        className={cn(
+          "grid gap-2 sm:gap-3",
+          tiles.length === 1 ? "grid-cols-1" : tiles.length === 2 ? "grid-cols-2" : "grid-cols-3",
+        )}
+      >
         {tiles.map((t, i) => (
           <motion.a
             key={t.en}

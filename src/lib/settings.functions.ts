@@ -175,8 +175,9 @@ export interface PublicSettings {
 /** Anon-safe subset consumed by the public Passenger Portal. */
 export const getPublicSettings = createServerFn({ method: "GET" }).handler(
   async (): Promise<PublicSettings> => {
-    const url = process.env["SUPABASE_URL"]!;
-    const key = process.env["SUPABASE_PUBLISHABLE_KEY"]!;
+    const url = process.env["SUPABASE_URL"];
+    const key = process.env["SUPABASE_PUBLISHABLE_KEY"];
+    if (!url || !key) throw new Error("Public settings service is not configured");
     const sb = createClient<Database>(url, key, {
       auth: { storage: undefined, persistSession: false, autoRefreshToken: false },
       global: {
@@ -191,13 +192,20 @@ export const getPublicSettings = createServerFn({ method: "GET" }).handler(
       },
     });
     const { data, error } = await (sb as any).rpc("settings_get_public");
-    const raw = (error ? {} : ((data ?? {}) as Record<string, any>)) as Record<string, any>;
+    if (error) throw new Error(`Could not load public settings: ${error.message}`);
+    if (!data || typeof data !== "object") throw new Error("Public settings are unavailable");
+    const raw = data as Record<string, any>;
+    const contacts = (raw.contacts ?? {}) as Record<string, unknown>;
     return {
-      companyName: raw.company_name || DEFAULT_GENERAL.company_name,
-      systemName: raw.system_name || DEFAULT_GENERAL.system_name,
-      logoUrl: raw.logo_url || "",
+      companyName: String(raw.company_name ?? ""),
+      systemName: String(raw.system_name ?? ""),
+      logoUrl: String(raw.logo_url ?? ""),
       defaultLanguage: raw.default_language === "ar" ? "ar" : "en",
-      contacts: { ...DEFAULT_CONTACTS, ...(raw.contacts ?? {}) },
+      contacts: {
+        call_number: String(contacts.call_number ?? ""),
+        whatsapp_number: String(contacts.whatsapp_number ?? ""),
+        email: String(contacts.email ?? ""),
+      },
     };
   },
 );

@@ -24,9 +24,7 @@ async function adapterFor(channel: string): Promise<NotificationChannelAdapter |
     "@/lib/notifications/adapters/twilio.server"
   );
   if (twilioConfigured()) return twilioAdapters[channel];
-  // 3. Simulated transport (non-production).
-  const { simulatedAdapters } = await import("@/lib/notifications/adapters/simulated");
-  return simulatedAdapters[channel];
+  return null;
 }
 
 export const Route = createFileRoute("/api/public/notifications/drain")({

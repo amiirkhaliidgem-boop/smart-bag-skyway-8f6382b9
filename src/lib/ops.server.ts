@@ -249,7 +249,18 @@ export async function buildActivitySnapshot(
   });
 
   const notifications = (notifRows as Row[]).map((n) =>
-    mapNotification(n, n.delivery_id ? refs.deliveryById.get(n.delivery_id)?.delivery_no : undefined),
+    mapNotification(
+      n,
+      n.delivery_id ? refs.deliveryById.get(n.delivery_id)?.delivery_no : undefined,
+      n.delivery_id
+        ? refs.deliveryById.get(n.delivery_id)?.passenger_name
+        : n.case_id
+          ? refs.caseById.get(n.case_id)?.passenger_name
+          : undefined,
+      n.case_id
+        ? refs.caseById.get(n.case_id)?.pir_number || refs.caseById.get(n.case_id)?.case_no
+        : undefined,
+    ),
   );
 
   const audit = (auditRows as Row[]).map((a) =>
