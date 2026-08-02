@@ -987,6 +987,8 @@ export type Database = {
         Row: {
           attempt_count: number
           body: string
+          body_ar: string | null
+          body_en: string | null
           case_id: string | null
           channel: Database["public"]["Enums"]["notification_channel"]
           created_at: string
@@ -999,9 +1001,12 @@ export type Database = {
           provider: string | null
           provider_message_id: string | null
           recipient: string
+          runtime_context: Json
           sent_at: string | null
           state: Database["public"]["Enums"]["notification_state"]
           subject: string
+          subject_ar: string | null
+          subject_en: string | null
           trigger_key: string
           trigger_status: Database["public"]["Enums"]["workflow_status"]
           updated_at: string
@@ -1010,6 +1015,8 @@ export type Database = {
         Insert: {
           attempt_count?: number
           body?: string
+          body_ar?: string | null
+          body_en?: string | null
           case_id?: string | null
           channel: Database["public"]["Enums"]["notification_channel"]
           created_at?: string
@@ -1022,9 +1029,12 @@ export type Database = {
           provider?: string | null
           provider_message_id?: string | null
           recipient?: string
+          runtime_context?: Json
           sent_at?: string | null
           state?: Database["public"]["Enums"]["notification_state"]
           subject?: string
+          subject_ar?: string | null
+          subject_en?: string | null
           trigger_key?: string
           trigger_status: Database["public"]["Enums"]["workflow_status"]
           updated_at?: string
@@ -1033,6 +1043,8 @@ export type Database = {
         Update: {
           attempt_count?: number
           body?: string
+          body_ar?: string | null
+          body_en?: string | null
           case_id?: string | null
           channel?: Database["public"]["Enums"]["notification_channel"]
           created_at?: string
@@ -1045,9 +1057,12 @@ export type Database = {
           provider?: string | null
           provider_message_id?: string | null
           recipient?: string
+          runtime_context?: Json
           sent_at?: string | null
           state?: Database["public"]["Enums"]["notification_state"]
           subject?: string
+          subject_ar?: string | null
+          subject_en?: string | null
           trigger_key?: string
           trigger_status?: Database["public"]["Enums"]["workflow_status"]
           updated_at?: string
@@ -2331,6 +2346,8 @@ export type Database = {
         Returns: {
           attempt_count: number
           body: string
+          body_ar: string | null
+          body_en: string | null
           case_id: string | null
           channel: Database["public"]["Enums"]["notification_channel"]
           created_at: string
@@ -2343,9 +2360,12 @@ export type Database = {
           provider: string | null
           provider_message_id: string | null
           recipient: string
+          runtime_context: Json
           sent_at: string | null
           state: Database["public"]["Enums"]["notification_state"]
           subject: string
+          subject_ar: string | null
+          subject_en: string | null
           trigger_key: string
           trigger_status: Database["public"]["Enums"]["workflow_status"]
           updated_at: string
