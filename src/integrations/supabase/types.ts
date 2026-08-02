@@ -2675,9 +2675,11 @@ export type Database = {
         | "Arrived at Airport"
         | "Waiting Customs Clearance"
         | "Ready for Delivery"
+        | "Ready for Airport Pickup"
         | "Assigned Driver"
         | "Out for Delivery"
         | "Delivered"
+        | "Passenger Picked Up"
         | "Closed"
       notification_channel: "sms" | "whatsapp" | "email" | "push"
       notification_state: "queued" | "sending" | "sent" | "failed" | "cancelled"
@@ -2700,11 +2702,13 @@ export type Database = {
         | "DELIVERY_APPROVED"
         | "DRIVER_ASSIGNED"
         | "READY_FOR_COLLECTION"
+        | "READY_FOR_AIRPORT_PICKUP"
         | "CLAIMED_ON_HAND"
         | "OUT_FOR_DELIVERY"
         | "DRIVER_ARRIVED"
         | "OTP_VERIFIED"
         | "DELIVERED"
+        | "PASSENGER_PICKED_UP"
         | "FEEDBACK_SUBMITTED"
         | "CLOSED"
     }
@@ -2870,9 +2874,11 @@ export const Constants = {
         "Arrived at Airport",
         "Waiting Customs Clearance",
         "Ready for Delivery",
+        "Ready for Airport Pickup",
         "Assigned Driver",
         "Out for Delivery",
         "Delivered",
+        "Passenger Picked Up",
         "Closed",
       ],
       notification_channel: ["sms", "whatsapp", "email", "push"],
@@ -2897,11 +2903,13 @@ export const Constants = {
         "DELIVERY_APPROVED",
         "DRIVER_ASSIGNED",
         "READY_FOR_COLLECTION",
+        "READY_FOR_AIRPORT_PICKUP",
         "CLAIMED_ON_HAND",
         "OUT_FOR_DELIVERY",
         "DRIVER_ARRIVED",
         "OTP_VERIFIED",
         "DELIVERED",
+        "PASSENGER_PICKED_UP",
         "FEEDBACK_SUBMITTED",
         "CLOSED",
       ],
