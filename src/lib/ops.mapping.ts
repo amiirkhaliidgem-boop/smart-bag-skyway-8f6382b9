@@ -157,6 +157,7 @@ export function mapCase(
       fullAddress: c.full_address ?? undefined,
       googleMapsLink: c.google_maps_link ?? undefined,
       preferredDeliveryTime: c.preferred_delivery_time ?? undefined,
+      regionId: c.region_id ?? undefined,
     },
     internal: {
       department: c.department ?? undefined,
