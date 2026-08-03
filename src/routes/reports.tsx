@@ -221,12 +221,13 @@ function ReportsPage() {
   const [from, setFrom] = useState(init.from);
   const [to, setTo] = useState(init.to);
   const [grain, setGrain] = useState<"day" | "week" | "month">("day");
+  const [journey, setJourney] = useState<string>("all");
 
   const fetchReport = useServerFn(loadOperationalReport);
   const queryClient = useQueryClient();
 
   const { data, isLoading, isError, error } = useQuery({
-    queryKey: ["operational-report", from, to, grain],
+    queryKey: ["operational-report", from, to, grain, journey],
     queryFn: () =>
       fetchReport({
         data: {
@@ -234,6 +235,7 @@ function ReportsPage() {
           // exclusive upper bound: include the whole "to" day
           to: new Date(new Date(`${to}T00:00:00.000Z`).getTime() + 86_400_000).toISOString(),
           grain,
+          journey,
         },
       }) as Promise<OperationalReport>,
     staleTime: 30_000,
@@ -297,6 +299,16 @@ function ReportsPage() {
             30 days
           </Button>
           <DateRangeFilter from={from} to={to} onFromChange={setFrom} onToChange={setTo} />
+          <Select value={journey} onValueChange={setJourney}>
+            <SelectTrigger className="h-9 w-[170px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All journeys</SelectItem>
+              <SelectItem value="Home Delivery">Home Delivery</SelectItem>
+              <SelectItem value="Airport Pickup">Airport Pickup</SelectItem>
+            </SelectContent>
+          </Select>
           <Select value={grain} onValueChange={(v) => setGrain(v as typeof grain)}>
             <SelectTrigger className="h-9 w-[120px]">
               <SelectValue />
