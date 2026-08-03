@@ -127,6 +127,16 @@ export async function buildCoreSnapshot(supabase: SupabaseClient<any>): Promise<
   for (const l of links as Row[])
     if (!tokenByDelivery.has(l.delivery_id)) tokenByDelivery.set(l.delivery_id, l.token);
 
+  // Case-level passenger links: Airport Pickup cases never get a delivery row,
+  // so their tracking token only exists here. Newest non-revoked link wins so
+  // the app always shows the same token the Notification Engine sent out.
+  const linkByCase = new Map<string, Row>();
+  for (const l of links as Row[]) {
+    if (!l.case_id) continue;
+    const current = linkByCase.get(l.case_id);
+    if (!current || String(l.issued_at) > String(current.issued_at)) linkByCase.set(l.case_id, l);
+  }
+
   const mappedCases = (cases as Row[]).map((c) =>
     mapCase(
       {
@@ -180,6 +190,12 @@ export async function buildCoreSnapshot(supabase: SupabaseClient<any>): Promise<
     agents.push({ id: u.id, name: u.full_name, employeeId: u.employee_id });
   }
 
+  const caseTokens: Record<string, string> = {};
+  for (const c of cases as Row[]) {
+    const link = linkByCase.get(c.id);
+    if (link?.token) caseTokens[c.case_no] = link.token;
+  }
+
   return {
     cases: mappedCases,
     deliveries: mappedDeliveries,
@@ -191,6 +207,7 @@ export async function buildCoreSnapshot(supabase: SupabaseClient<any>): Promise<
     caseVersions,
     deliveryVersions,
     agents,
+    caseTokens,
     truncated: {
       cases: (cases as Row[]).length >= SNAPSHOT_LIMITS.cases,
       deliveries: (deliveries as Row[]).length >= SNAPSHOT_LIMITS.deliveries,
