@@ -441,7 +441,7 @@ function Index() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Cases Opened vs Resolved</CardTitle>
+            <CardTitle className="text-base">Cases Opened vs Completed Journeys</CardTitle>
           </CardHeader>
           <CardContent>
             {isLoading ? (
@@ -465,10 +465,20 @@ function Index() {
                     />
                     <Area
                       type="monotone"
-                      dataKey="resolved"
-                      name="Resolved"
+                      dataKey="delivered"
+                      name="Delivered"
+                      stackId="done"
                       stroke="#10b981"
                       fill="#10b981"
+                      fillOpacity={0.15}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="pickedUp"
+                      name="Passenger Picked Up"
+                      stackId="done"
+                      stroke="#0d9488"
+                      fill="#0d9488"
                       fillOpacity={0.15}
                     />
                   </AreaChart>
@@ -557,7 +567,7 @@ function Index() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Delivery Workflow Funnel</CardTitle>
+            <CardTitle className="text-base">Unified Operational Pipeline</CardTitle>
           </CardHeader>
           <CardContent>
             {isLoading ? (
