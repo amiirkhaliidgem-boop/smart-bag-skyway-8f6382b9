@@ -16,6 +16,7 @@ export const DELIVERY_STAGES = [
   "Collected Bag",
   "Out for Delivery",
   "Delivered",
+  "Delivery Failed",
   "Returned to Airport",
 ] as const;
 
@@ -29,6 +30,7 @@ export const STAGE_LABELS: Record<DeliveryStage, string> = {
   "Collected Bag": "Collected Bag",
   "Out for Delivery": "Out for Delivery",
   Delivered: "Delivered",
+  "Delivery Failed": "Delivery Failed",
   "Returned to Airport": "Returned to Airport",
 };
 
@@ -53,6 +55,8 @@ export function stageToWorkflow(stage: DeliveryStage): WorkflowStatus {
       return "OUT_FOR_DELIVERY";
     case "Delivered":
       return "DELIVERED";
+    case "Delivery Failed":
+      return "OUT_FOR_DELIVERY";
     case "Returned to Airport":
       return "READY_FOR_COLLECTION";
   }
@@ -92,6 +96,8 @@ export function stageToLegacyStatus(stage: DeliveryStage): DeliveryStatus {
       return "Picked Up";
     case "Out for Delivery":
       return "Out For Delivery";
+    case "Delivery Failed":
+      return "Out For Delivery";
     case "Delivered":
       return "Delivered";
   }
@@ -111,6 +117,8 @@ export function stageToLfStatus(stage: DeliveryStage): LFStatus {
       return "Assigned Driver";
     case "Out for Delivery":
       return "Out for Delivery";
+    case "Delivery Failed":
+      return "Out for Delivery";
     case "Delivered":
       return "Delivered";
     case "Returned to Airport":
@@ -126,6 +134,7 @@ export const STAGE_STYLES: Record<DeliveryStage, string> = {
   "Collected Bag": "bg-teal-100 text-teal-700 border-teal-200",
   "Out for Delivery": "bg-cyan-100 text-cyan-700 border-cyan-200",
   Delivered: "bg-emerald-100 text-emerald-700 border-emerald-200",
+  "Delivery Failed": "bg-rose-100 text-rose-700 border-rose-200",
   "Returned to Airport": "bg-amber-100 text-amber-700 border-amber-200",
 };
 
@@ -156,18 +165,25 @@ export function actionsForStage(stage: DeliveryStage) {
     schedule: s === "Ready for Delivery",
     generateOtp: s === "Driver Accepted" || s === "Collected Bag" || s === "Out for Delivery",
     resendOtp: s === "Driver Accepted" || s === "Collected Bag" || s === "Out for Delivery",
+    // A failed attempt is recorded against the delivery and leaves the case
+    // parked at "Delivery Failed" until the coordinator reschedules it or
+    // sends the bag back to the airport.
+    markFailed: s === "Out for Delivery",
     // Returning to the airport unwinds an in-flight delivery back to the
     // Ready for Delivery queue. Handled entirely by the Workflow Engine.
     markReturned:
       s === "Assigned" ||
       s === "Driver Accepted" ||
       s === "Collected Bag" ||
-      s === "Out for Delivery",
+      s === "Out for Delivery" ||
+      s === "Delivery Failed",
     // Driver-side actions (surfaced in the coordinator UI for testing/manual override).
     driverAccept: s === "Assigned",
     driverReject: s === "Assigned",
     collect: s === "Driver Accepted",
     startTrip: s === "Collected Bag",
     markDelivered: s === "Out for Delivery",
+    // A failed attempt can be re-queued for another try.
+    reschedule: s === "Delivery Failed",
   };
 }

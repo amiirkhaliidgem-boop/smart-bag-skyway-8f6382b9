@@ -1047,6 +1047,28 @@ export async function rescheduleDelivery(
   }
 }
 
+/**
+ * Failed delivery attempt — a real Workflow Engine transition.
+ *
+ * `dm_mark_failed` records the reason, counts the attempt, expires the
+ * one-time code, raises a quality incident and queues the passenger
+ * notification. The delivery parks at "Delivery Failed" until a coordinator
+ * reschedules it or returns the bag to the airport.
+ */
+export async function markDeliveryFailed(
+  deliveryId: string,
+  opts: { reasonCode: ReturnReasonCode; note?: string } = { reasonCode: "other" },
+) {
+  const id = deliveryUuid(deliveryId);
+  if (!id) throw new Error(`Unknown delivery ${deliveryId}`);
+  await rpc("dm_mark_failed", {
+    p_delivery: id,
+    p_reason_code: opts.reasonCode,
+    p_note: opts.note ?? "",
+    p_expected_version: deliveryVersions[deliveryId] ?? null,
+  });
+}
+
 /** Generic stage move. Routed to the Workflow Engine, which validates it. */
 export async function setDeliveryStage(
   deliveryId: string,

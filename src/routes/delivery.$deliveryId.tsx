@@ -9,6 +9,8 @@ import {
   getDeliveryStage,
   addDeliveryNote,
   returnToAirport,
+  markDeliveryFailed,
+  rescheduleDelivery,
   refreshOps,
   type Delivery,
   type BaggageCase,
@@ -40,6 +42,8 @@ import {
   StickyNote,
   ExternalLink,
   RotateCcw,
+  XCircle,
+  CalendarClock,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -87,6 +91,7 @@ function DeliveryDetails() {
   const [tab, setTab] = useState<Tab>("overview");
   const [assignOpen, setAssignOpen] = useState(false);
   const [returnOpen, setReturnOpen] = useState(false);
+  const [failedOpen, setFailedOpen] = useState(false);
 
   if (!delivery) throw notFound();
   const stage = getDeliveryStage(delivery);
@@ -172,6 +177,30 @@ function DeliveryDetails() {
                   <RotateCcw className="h-3.5 w-3.5" /> Return to Airport
                 </Button>
               )}
+              {acts.markFailed && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-1.5 text-destructive hover:text-destructive"
+                  onClick={() => setFailedOpen(true)}
+                >
+                  <XCircle className="h-3.5 w-3.5" /> Mark Failed
+                </Button>
+              )}
+              {acts.reschedule && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-1.5"
+                  onClick={async () => {
+                    await rescheduleDelivery(deliveryId, { actor: "Delivery Coordinator" });
+                    await refreshOps();
+                    toast.success("Delivery re-queued for another attempt");
+                  }}
+                >
+                  <CalendarClock className="h-3.5 w-3.5" /> Reschedule
+                </Button>
+              )}
               <Button size="sm" variant="outline" className="gap-1.5" onClick={() => podPrintBus.print([deliveryId])}>
                 <Printer className="h-3.5 w-3.5" /> Print
               </Button>
@@ -222,6 +251,21 @@ function DeliveryDetails() {
             toast.success("Returned to airport — back in the Ready for Delivery queue");
           } catch (err) {
             toast.error(err instanceof Error ? err.message : "Could not return this delivery");
+          }
+        }}
+      />
+      <ReturnToAirportDialog
+        open={failedOpen}
+        onOpenChange={setFailedOpen}
+        count={1}
+        variant="failed"
+        onConfirm={async (reasonCode, note) => {
+          try {
+            await markDeliveryFailed(deliveryId, { reasonCode, note });
+            await refreshOps();
+            toast.success("Delivery attempt recorded as failed");
+          } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Could not mark this delivery failed");
           }
         }}
       />
