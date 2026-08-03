@@ -4,21 +4,9 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
   Luggage,
-  AlertCircle,
-  MapPin,
-  PackageCheck,
-  CheckCircle2,
-  Clock,
   TrendingUp,
   TrendingDown,
-  Star,
-  ShieldAlert,
   RefreshCw,
-  Plane,
-  FileCheck2,
-  Truck,
-  RotateCcw,
-  Handshake,
 } from "lucide-react";
 import {
   BarChart,
@@ -52,6 +40,12 @@ import { KpiSkeletonGrid, ChartSkeleton, ListSkeleton } from "@/components/ops-s
 import { supabase } from "@/integrations/supabase/client";
 import { loadExecutiveDashboard } from "@/lib/dashboard.functions";
 import type { ExecutiveDashboard, KpiValue } from "@/lib/dashboard.server";
+import { PageHeader, ErrorState } from "@/components/layout";
+import {
+  resolveDashboardKpis,
+  formatKpiValue,
+  type DashboardKpiDescriptor,
+} from "@/lib/dashboard/kpis";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -107,7 +101,7 @@ function Delta({ delta }: { delta: number | null }) {
   return (
     <span
       className={`text-xs font-medium inline-flex items-center gap-0.5 ${
-        up ? "text-emerald-600" : "text-rose-600"
+        up ? "text-[var(--success)]" : "text-destructive"
       }`}
     >
       {up ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
@@ -131,17 +125,17 @@ function KpiCard({
 }) {
   return (
     <Card className="overflow-hidden">
-      <CardContent className="p-5">
+      <CardContent className="p-4 sm:p-5">
         <div className="flex items-start justify-between">
           <div className={`h-9 w-9 rounded-lg bg-muted grid place-items-center ${color}`}>
             <Icon className="h-4 w-4" />
           </div>
           <Delta delta={kpi?.delta ?? null} />
         </div>
-        <p className="mt-4 text-2xl font-bold tabular-nums">
+        <p className="mt-4 text-2xl font-semibold tabular-nums tracking-tight">
           {format ? format(Number(kpi?.value ?? 0)) : Number(kpi?.value ?? 0)}
         </p>
-        <p className="text-xs text-muted-foreground mt-1">{label}</p>
+        <p className="mt-1 text-xs text-muted-foreground">{label}</p>
       </CardContent>
     </Card>
   );
@@ -201,6 +195,13 @@ function Index() {
   };
 
   const k = data?.kpis;
+  // Registry-driven KPI cards: descriptors are merged with the keys the
+  // backend actually returned, so new Workflow Engine statuses appear here
+  // without any layout work.
+  const kpiCards: DashboardKpiDescriptor[] = useMemo(
+    () => resolveDashboardKpis(k as unknown as Record<string, unknown> | undefined),
+    [k],
+  );
   const statusData = (data?.byStatus ?? []).map((s) => ({ ...s, fill: colorFor(s.status) }));
   const carrierData = data?.byCarrier ?? [];
   // One unified operational pipeline across Lost & Found, Delivery and
@@ -211,14 +212,11 @@ function Index() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-3">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Executive Dashboard</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Live baggage operations overview — computed by the Workflow Engine.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
+      <PageHeader
+        title="Executive Dashboard"
+        description="Live baggage operations overview — computed by the Workflow Engine."
+        actions={
+          <>
           <DateRangeFilter from={from} to={to} onFromChange={setFrom} onToChange={setTo} />
           <Select value={grain} onValueChange={(v) => setGrain(v as typeof grain)}>
             <SelectTrigger className="h-9 w-[120px]">
@@ -240,110 +238,36 @@ function Index() {
             variant="outline"
             size="sm"
             className="h-9"
+            aria-label="Refresh dashboard"
             onClick={() => queryClient.invalidateQueries({ queryKey: ["executive-dashboard"] })}
           >
             <RefreshCw className={`h-3.5 w-3.5 ${isFetching ? "animate-spin" : ""}`} />
           </Button>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       {isError ? (
-        <Card>
-          <CardContent className="p-6 text-sm text-rose-600">
-            {(error as Error)?.message ?? "The dashboard could not be loaded."}
-          </CardContent>
-        </Card>
+        <ErrorState
+          title="The dashboard could not be loaded"
+          description={(error as Error)?.message}
+        />
       ) : null}
 
       {isLoading || !k ? (
-        <KpiSkeletonGrid count={14} />
+        <KpiSkeletonGrid count={16} />
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
-          <KpiCard label="Total Bags" kpi={k.totalCases} icon={Luggage} color="text-primary" />
-          <KpiCard label="Open Cases" kpi={k.openCases} icon={AlertCircle} color="text-amber-600" />
-          <KpiCard label="Located Bags" kpi={k.locatedBags} icon={MapPin} color="text-sky-600" />
-          <KpiCard
-            label="Arrived at Airport"
-            kpi={k.arrivedAtAirport}
-            icon={Plane}
-            color="text-blue-600"
-          />
-          <KpiCard
-            label="Waiting Customs Clearance"
-            kpi={k.waitingCustoms}
-            icon={FileCheck2}
-            color="text-indigo-600"
-          />
-          <KpiCard
-            label="Ready for Delivery"
-            kpi={k.readyForDelivery}
-            icon={PackageCheck}
-            color="text-violet-600"
-          />
-          <KpiCard
-            label="Out for Delivery"
-            kpi={k.outForDelivery}
-            icon={Truck}
-            color="text-cyan-600"
-          />
-          <KpiCard
-            label="Returned to Airport"
-            kpi={k.returnedToAirport}
-            icon={RotateCcw}
-            color="text-rose-600"
-          />
-          <KpiCard
-            label="Ready for Airport Pickup"
-            kpi={k.readyForPickup}
-            icon={Handshake}
-            color="text-teal-600"
-          />
-          <KpiCard
-            label="Passenger Picked Up"
-            kpi={k.passengerPickedUp}
-            icon={CheckCircle2}
-            color="text-teal-700"
-          />
-          <KpiCard
-            label="Delivered"
-            kpi={k.deliveredBags}
-            icon={CheckCircle2}
-            color="text-emerald-600"
-          />
-          <KpiCard
-            label="Delivery Success %"
-            kpi={k.deliverySuccess}
-            icon={PackageCheck}
-            color="text-emerald-600"
-            format={(v) => `${v}%`}
-          />
-          <KpiCard
-            label="Airport Pickup Success %"
-            kpi={k.pickupSuccess}
-            icon={Handshake}
-            color="text-teal-600"
-            format={(v) => `${v}%`}
-          />
-          <KpiCard
-            label="Open Incidents"
-            kpi={k.openIncidents}
-            icon={ShieldAlert}
-            color="text-rose-600"
-          />
-          <KpiCard
-            label="Avg. Resolution"
-            kpi={k.avgResolution}
-            icon={Clock}
-            color="text-indigo-600"
-            format={(v) => `${v.toFixed(1)}h`}
-          />
-          <KpiCard
-            label="CSAT"
-            kpi={k.csat}
-            icon={Star}
-            color="text-rose-600"
-            format={(v) => `${v.toFixed(1)}/5`}
-          />
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+          {kpiCards.map((d) => (
+            <KpiCard
+              key={d.key}
+              label={d.label}
+              kpi={(k as unknown as Record<string, KpiValue>)[d.key]}
+              icon={d.icon}
+              color={d.tone}
+              format={(v) => formatKpiValue(v, d.format)}
+            />
+          ))}
         </div>
       )}
 

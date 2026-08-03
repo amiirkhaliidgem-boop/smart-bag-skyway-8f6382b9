@@ -21,7 +21,7 @@ export function DriverShell({
   const { t } = useDriverLang();
 
   return (
-    <div className="flex min-h-screen w-full flex-col bg-background text-foreground">
+    <div className="flex min-h-dvh w-full flex-col bg-background text-foreground">
       <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border bg-card px-4 sm:px-6">
         <span className="absolute inset-x-0 bottom-0 h-[2px] bg-gradient-to-r from-primary via-accent to-primary" />
         <div className="flex min-w-0 items-center gap-2">
