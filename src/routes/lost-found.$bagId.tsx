@@ -4,6 +4,7 @@ import {
   useStore,
   editCase,
   updateLfStatus,
+  getCaseToken,
   type BaggageCase,
   type NotificationEvent,
 } from "@/lib/store";
@@ -43,6 +44,11 @@ import {
   UserCog, Printer,
   AlertTriangle,
 } from "lucide-react";
+
+/** Opens the real public Passenger Portal in a new tab. Staff-only entry point. */
+function openPassengerPortal(token: string) {
+  window.open(`/passenger/${token}`, "_blank", "noopener,noreferrer");
+}
 
 export const Route = createFileRoute("/lost-found/$bagId")({
   head: ({ params }) => ({
