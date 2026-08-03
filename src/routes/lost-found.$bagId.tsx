@@ -263,6 +263,18 @@ function CaseDetailsPage() {
                     <UserCog className="h-4 w-4 mr-2" /> Assign Officer
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    disabled={!passengerToken}
+                    onClick={() => passengerToken && openPassengerPortal(passengerToken)}
+                    title={
+                      passengerToken
+                        ? "Open the passenger's live tracking page"
+                        : "Tracking link is issued when the passenger is notified"
+                    }
+                  >
+                    <ExternalLink className="h-4 w-4 mr-2" /> View Passenger Portal
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={printPir}>
                     <Printer className="h-4 w-4 mr-2" /> Print PIR
                   </DropdownMenuItem>
