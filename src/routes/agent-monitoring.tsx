@@ -216,10 +216,6 @@ function AgentMonitoringPage() {
           <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
             <Radar className="h-6 w-6 text-primary" /> Delivery Agent Monitoring
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Read-only operations view of registered Delivery Agents — status, routes, last known GPS
-            and Workflow Engine activity.
-          </p>
         </div>
         <span className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted px-2.5 py-1 text-xs text-muted-foreground">
           <span className="h-2 w-2 rounded-full bg-emerald-500" /> Auto-refresh · every 15s

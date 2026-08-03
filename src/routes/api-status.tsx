@@ -113,9 +113,6 @@ function ApiStatusPage() {
           </div>
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">API Status</h1>
-            <p className="text-sm text-muted-foreground">
-              Live health, latency and uptime for every internal engine and external provider.
-            </p>
           </div>
         </div>
         <Button size="sm" onClick={() => sweep.mutate()} disabled={sweep.isPending}>

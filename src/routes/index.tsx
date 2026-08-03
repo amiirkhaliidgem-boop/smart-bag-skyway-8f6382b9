@@ -28,13 +28,6 @@ import {
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { DateRangeFilter } from "@/components/filters/date-range-filter";
 import { KpiSkeletonGrid, ChartSkeleton, ListSkeleton } from "@/components/ops-skeleton";
 import { supabase } from "@/integrations/supabase/client";
@@ -206,12 +199,6 @@ function Index() {
     };
   }, [queryClient]);
 
-  const preset = (days: number) => {
-    const end = new Date();
-    setTo(iso(end));
-    setFrom(iso(new Date(end.getTime() - (days - 1) * 86_400_000)));
-  };
-
   const k = data?.kpis;
   // Registry-driven KPI cards: descriptors are merged with the keys the
   // backend actually returned, so new Workflow Engine statuses appear here
@@ -232,26 +219,16 @@ function Index() {
     <div className="space-y-6">
       <PageHeader
         title="Executive Dashboard"
-        description="Live baggage operations overview — computed by the Workflow Engine."
         actions={
           <>
-          <DateRangeFilter from={from} to={to} onFromChange={setFrom} onToChange={setTo} />
-          <Select value={grain} onValueChange={(v) => setGrain(v as typeof grain)}>
-            <SelectTrigger className="h-9 w-[120px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="day">Daily</SelectItem>
-              <SelectItem value="week">Weekly</SelectItem>
-              <SelectItem value="month">Monthly</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button variant="outline" size="sm" className="h-9" onClick={() => preset(7)}>
-            7d
-          </Button>
-          <Button variant="outline" size="sm" className="h-9" onClick={() => preset(30)}>
-            30d
-          </Button>
+          <DateRangeFilter
+            from={from}
+            to={to}
+            onFromChange={setFrom}
+            onToChange={setTo}
+            grain={grain}
+            onGrainChange={setGrain}
+          />
           <Button
             variant="outline"
             size="sm"

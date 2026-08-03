@@ -145,30 +145,34 @@ export function AppShell() {
     <SidebarProvider open={open} onOpenChange={handleOpenChange}>
       <AppSidebar />
       <SidebarInset className="min-w-0 bg-background text-foreground">
-        <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-3 border-b border-border bg-card px-3 sm:px-4">
-          <span className="pointer-events-none absolute inset-x-0 bottom-0 h-[2px] bg-gradient-to-r from-primary via-accent to-primary" />
-          <SidebarTrigger className="min-h-10 min-w-10" />
-          <div className="flex min-w-0 items-center gap-2">
-            <img
-              src={iabLogo.url}
-              alt=""
-              className="hidden h-8 w-8 rounded-md bg-card object-contain p-0.5 ring-1 ring-border sm:block"
-            />
-            <p className="truncate text-sm font-semibold">Smart Baggage Ecosystem</p>
-          </div>
-          <div className="ml-auto flex items-center gap-3">
-            <div className="hidden items-center gap-2 text-xs text-muted-foreground md:flex">
-              <span className="h-2 w-2 rounded-full bg-[var(--success)]" aria-hidden />
-              System Online
-            </div>
-            <UserMenu />
-          </div>
-        </header>
+        <AppHeader />
         <main className="mx-auto w-full max-w-[1600px] flex-1 p-4 sm:p-6 lg:p-8">
           <Outlet />
         </main>
       </SidebarInset>
     </SidebarProvider>
+  );
+}
+
+/**
+ * The single application header. Every authenticated page renders this via
+ * the AppShell — no module defines its own topbar.
+ */
+function AppHeader() {
+  return (
+    <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-3 border-b border-border bg-card px-3 sm:px-4">
+      <span className="pointer-events-none absolute inset-x-0 bottom-0 h-[2px] bg-gradient-to-r from-primary via-accent to-primary" />
+      {/* Desktop toggling happens on the sidebar logo; this trigger is the
+          mobile/tablet way back to the navigation drawer. */}
+      <SidebarTrigger className="min-h-10 min-w-10 lg:hidden" />
+      <div className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
+        <span className="h-2 w-2 shrink-0 rounded-full bg-[var(--success)]" aria-hidden />
+        <span className="truncate">System Online</span>
+      </div>
+      <div className="ml-auto flex items-center gap-3">
+        <UserMenu />
+      </div>
+    </header>
   );
 }
 
@@ -179,7 +183,7 @@ function AppSidebar() {
   });
   const { role } = useRole();
   const perms = usePermissions();
-  const { isMobile, setOpenMobile } = useSidebar();
+  const { isMobile, setOpenMobile, toggleSidebar } = useSidebar();
 
   // Auto-close the overlay drawer whenever the route changes.
   useEffect(() => {
@@ -213,17 +217,22 @@ function AppSidebar() {
   return (
     <Sidebar collapsible="icon" className="border-sidebar-border">
       <SidebarHeader className="border-b border-sidebar-border">
-        <div className="flex items-center gap-3 px-1 py-1.5">
-          <div className="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-lg bg-card shadow ring-1 ring-sidebar-border">
+        <button
+          type="button"
+          onClick={toggleSidebar}
+          aria-label="Toggle navigation"
+          className="flex w-full items-center gap-3 rounded-md px-1 py-1.5 text-left outline-none transition-[opacity,transform] duration-200 hover:opacity-90 focus-visible:ring-2 focus-visible:ring-sidebar-ring active:scale-[0.98]"
+        >
+          <span className="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-lg bg-card shadow ring-1 ring-sidebar-border">
             <img src={iabLogo.url} alt="IAB" className="h-8 w-8 object-contain" />
-          </div>
-          <div className="min-w-0 group-data-[collapsible=icon]:hidden">
-            <p className="text-sm font-bold leading-none tracking-tight">IAB</p>
-            <p className="mt-1 truncate text-[11px] text-sidebar-foreground/60">
+          </span>
+          <span className="min-w-0 group-data-[collapsible=icon]:hidden">
+            <span className="block text-sm font-bold leading-none tracking-tight">IAB</span>
+            <span className="mt-1 block truncate text-[11px] text-sidebar-foreground/60">
               Smart Baggage Ecosystem
-            </p>
-          </div>
-        </div>
+            </span>
+          </span>
+        </button>
       </SidebarHeader>
       <SidebarContent>
         {visibleSections.map((section) => (
@@ -242,11 +251,18 @@ function AppSidebar() {
                         isActive={active}
                         tooltip={item.label}
                         className={cn(
+                          "transition-[background-color,color,opacity] duration-200 focus-visible:ring-2 focus-visible:ring-sidebar-ring aria-disabled:pointer-events-none aria-disabled:opacity-50",
                           active &&
                             "bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary hover:text-sidebar-primary-foreground",
                         )}
                       >
-                        <Link to={item.to} search={item.search as never}>
+                        <Link
+                          to={item.to}
+                          search={item.search as never}
+                          onClick={() => {
+                            if (isMobile) setOpenMobile(false);
+                          }}
+                        >
                           <item.icon />
                           <span className="truncate">{item.label}</span>
                         </Link>

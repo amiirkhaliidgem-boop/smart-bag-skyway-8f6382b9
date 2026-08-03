@@ -243,12 +243,6 @@ function ReportsPage() {
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: ["operational-report"] });
 
-  const preset = (days: number) => {
-    const end = new Date();
-    setTo(iso(end));
-    setFrom(iso(new Date(end.getTime() - (days - 1) * 86_400_000)));
-  };
-
   if (isLoading && !data)
     return (
       <PageLoading
@@ -283,23 +277,17 @@ function ReportsPage() {
           </div>
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Operational Reports</h1>
-            <p className="text-sm text-muted-foreground">
-              Every figure is calculated by the Workflow Engine in the database — no local statistics.
-            </p>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => preset(1)}>
-            Today
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => preset(7)}>
-            7 days
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => preset(30)}>
-            30 days
-          </Button>
-          <DateRangeFilter from={from} to={to} onFromChange={setFrom} onToChange={setTo} />
+        <DateRangeFilter
+          from={from}
+          to={to}
+          onFromChange={setFrom}
+          onToChange={setTo}
+          grain={grain}
+          onGrainChange={setGrain}
+        >
           <Select value={journey} onValueChange={setJourney}>
             <SelectTrigger className="h-9 w-[170px]">
               <SelectValue />
@@ -310,17 +298,7 @@ function ReportsPage() {
               <SelectItem value="Airport Pickup">Airport Pickup</SelectItem>
             </SelectContent>
           </Select>
-          <Select value={grain} onValueChange={(v) => setGrain(v as typeof grain)}>
-            <SelectTrigger className="h-9 w-[120px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="day">Daily</SelectItem>
-              <SelectItem value="week">Weekly</SelectItem>
-              <SelectItem value="month">Monthly</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        </DateRangeFilter>
       </div>
 
       {/* ------------------------------------------------------- executive */}

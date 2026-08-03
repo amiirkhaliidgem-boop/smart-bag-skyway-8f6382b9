@@ -283,9 +283,6 @@ function WorkflowMonitorPage() {
         </div>
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Workflow Monitor</h1>
-          <p className="text-sm text-muted-foreground">
-            Real-time operational board across the full delivery lifecycle.
-          </p>
         </div>
       </div>
 

@@ -153,10 +153,6 @@ function IntegrationsPage() {
           </div>
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Integration Center</h1>
-            <p className="text-sm text-muted-foreground">
-              Enterprise configuration for every external service. Credentials are encrypted at rest
-              and never returned to the browser.
-            </p>
           </div>
         </div>
         <Button variant="outline" size="sm" onClick={() => invalidate()}>

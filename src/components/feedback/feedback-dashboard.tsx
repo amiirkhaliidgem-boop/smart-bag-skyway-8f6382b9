@@ -150,9 +150,6 @@ export function FeedbackDashboard() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Customer Feedback</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          &nbsp;
-        </p>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
