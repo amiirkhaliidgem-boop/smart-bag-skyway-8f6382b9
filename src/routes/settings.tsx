@@ -30,7 +30,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useSystemSettings } from "@/lib/settings/use-settings";
 import {
   DATE_FORMATS,
-  TEMPLATE_TRIGGERS,
+  buildTemplateTriggers,
   TEMPLATE_VARIABLES,
   TIME_ZONES,
   previewTemplate,
@@ -596,7 +596,8 @@ function TemplatesCard({
   canManage: boolean;
   onSaved: () => void;
 }) {
-  const [trigger, setTrigger] = useState(TEMPLATE_TRIGGERS[0].key);
+  const triggers = useMemo(() => buildTemplateTriggers(templates), [templates]);
+  const [trigger, setTrigger] = useState(triggers[0]?.key ?? "DELIVERY_APPROVED");
   const [channel, setChannel] = useState<TemplateChannel>("sms");
 
   const current = useMemo(
@@ -619,7 +620,7 @@ function TemplatesCard({
             label="Event"
             value={trigger}
             onChange={setTrigger}
-            options={TEMPLATE_TRIGGERS.map((t) => ({ value: t.key, label: t.label }))}
+            options={triggers.map((t) => ({ value: t.key, label: t.label }))}
           />
           <LabeledSelect
             label="Channel"
