@@ -44,6 +44,8 @@ export interface OpsCoreSnapshot {
   caseVersions: Record<string, number>;
   deliveryVersions: Record<string, number>;
   agents: { id: string; name: string; employeeId: string }[];
+  /** case_no → live passenger tracking token (delivery or case level). */
+  caseTokens: Record<string, string>;
   /** True when the collection hit its read cap and older rows are not loaded. */
   truncated: { cases: boolean; deliveries: boolean };
   /** The cap that was applied, so the UI can say "most recent N". */
