@@ -161,7 +161,7 @@ function WorkflowMonitorPage() {
       } else {
         // Follow the case's own operational path: an Airport Pickup case is
         // owned by Lost & Found end to end and never hands over to Delivery.
-        const path = lfPathStatuses(kase?.deliveryMethod);
+        const path = lfPathStatuses(kase?.delivery?.method);
         const pickup = path !== (LF_OWNED_STATUSES as ReadonlyArray<LFStatus>);
         const idx = path.indexOf(lfStatus);
         const next = idx >= 0 ? path[idx + 1] : undefined;
