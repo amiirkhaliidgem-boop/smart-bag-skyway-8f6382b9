@@ -29,3 +29,15 @@ Delete the description line under every page title (Lost & Found, Executive Dash
 - `src/components/filters/date-range-filter.tsx`: rewritten to own presets + grain + range label; typed props `{ from, to, grain?, onFromChange, onToChange, onGrainChange?, showGrain? }`.
 - `src/components/layout/page-header.tsx`: `description` prop dropped from all call sites (prop itself can remain for internal states such as error/empty).
 - No backend, workflow, RPC or data-layer changes.
+
+## 4. Shared shell, header and filter (additional requirements)
+
+- **Shared Header**: extract the topbar into one component used app-wide — consistent layout, spacing, actions, notifications and user/profile placement. After the logo is removed, the header is rebalanced (sidebar toggle + page/system context on the left, status + actions + user menu right-aligned) so no empty gap remains.
+- **Configurable Date Range**: presets and grain selector toggle through props (`showPresets`, `showGrain`) while the layout, control heights and spacing stay byte-identical across modules. Modules may pass extra selects (e.g. Journey) as children so they share the same rhythm.
+- **Collapsed desktop sidebar**: fixed collapsed width, icon tooltips, visible active state, no layout shift.
+- **Motion**: all animations limited to transform + opacity, 200–250ms.
+- **Navigation states**: standardized Active / Hover / Focus / Disabled treatments across the whole app.
+- **Subtitles removed everywhere**: Dashboard, Lost & Found, Delivery Management, Workflow Monitor, Baggage Tracking, Agent Monitoring, Notification Center, Activity Timeline, Reports, Feedback, Quality, Integrations, Settings, API Status, Administration — main title only.
+- **Responsive validation rerun** across 390px, 430px, iPhone Pro Max, iPad Mini/Pro, Surface, Laptop, Full HD and 2K after the shell change.
+
+Presentation layer only — no workflow, backend, database or business-logic changes.
