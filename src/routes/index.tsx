@@ -14,6 +14,11 @@ import {
   Star,
   ShieldAlert,
   RefreshCw,
+  Plane,
+  FileCheck2,
+  Truck,
+  RotateCcw,
+  Handshake,
 } from "lucide-react";
 import {
   BarChart,
@@ -44,7 +49,6 @@ import {
 } from "@/components/ui/select";
 import { DateRangeFilter } from "@/components/filters/date-range-filter";
 import { KpiSkeletonGrid, ChartSkeleton, ListSkeleton } from "@/components/ops-skeleton";
-import { WORKFLOW_LABELS, type WorkflowStatus } from "@/lib/workflow/statuses";
 import { supabase } from "@/integrations/supabase/client";
 import { loadExecutiveDashboard } from "@/lib/dashboard.functions";
 import type { ExecutiveDashboard, KpiValue } from "@/lib/dashboard.server";
@@ -87,10 +91,11 @@ const STATUS_COLORS: Record<string, string> = {
   "Arrived at Airport": "#3b82f6",
   "Waiting Customs Clearance": "#6366f1",
   "Ready for Delivery": "#8b5cf6",
-  "Assigned Driver": "#0ea5e9",
   "Out for Delivery": "#06b6d4",
   Delivered: "#10b981",
-  Closed: "#64748b",
+  "Returned to Airport": "#f43f5e",
+  "Ready for Airport Pickup": "#14b8a6",
+  "Passenger Picked Up": "#0d9488",
 };
 
 const colorFor = (status: string) => STATUS_COLORS[status] ?? "#94a3b8";
