@@ -4,15 +4,30 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 /** Whole-ecosystem operational report, aggregated in PostgreSQL. */
 export const loadOperationalReport = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { from: string; to: string; grain: "day" | "week" | "month" }) => {
+  .inputValidator((input: {
+    from: string;
+    to: string;
+    grain: "day" | "week" | "month";
+    journey?: string;
+  }) => {
     if (!input?.from || !input?.to) throw new Error("A reporting date range is required");
     const grain: "day" | "week" | "month" =
       input.grain === "week" || input.grain === "month" ? input.grain : "day";
-    return { from: input.from, to: input.to, grain };
+    const journey =
+      input.journey === "Home Delivery" || input.journey === "Airport Pickup"
+        ? input.journey
+        : "all";
+    return { from: input.from, to: input.to, grain, journey };
   })
   .handler(async ({ data, context }) => {
     const { fetchOperationalReport } = await import("./reports.server");
-    return fetchOperationalReport(context.supabase as any, data.from, data.to, data.grain);
+    return fetchOperationalReport(
+      context.supabase as any,
+      data.from,
+      data.to,
+      data.grain,
+      data.journey,
+    );
   });
 
 /** Quality Management actions — Workflow Engine RPCs, journaled to Timeline & Audit. */
