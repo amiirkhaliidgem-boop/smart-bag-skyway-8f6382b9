@@ -96,6 +96,10 @@ function CaseDetailsPage() {
   const wf = linkedDelivery
     ? workflow.find((w) => w.deliveryId === linkedDelivery.deliveryId)
     : undefined;
+  // The one tracking token for this case: the delivery link when a delivery
+  // exists, otherwise the case-level link (Airport Pickup). Identical to the
+  // token sent by SMS / WhatsApp / Email and shown in Notification Center.
+  const passengerToken = wf?.token || getCaseToken(c.bagId) || "";
   // Ownership hand-off: once the case reaches Ready for Delivery, Delivery
   // Management owns the case and L&F can only view it. Status controls
   // become read-only here. Airport Pickup never hands over — Lost & Found
