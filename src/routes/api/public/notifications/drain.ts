@@ -97,7 +97,14 @@ export const Route = createFileRoute("/api/public/notifications/drain")({
                   error: err instanceof Error ? err.message : String(err),
                   retryable: true,
                 }))
-            : { ok: false, error: `No transport for channel ${event.channel}`, retryable: false };
+            : {
+                ok: false,
+                error: `No transport configured for channel ${event.channel}`,
+                // Missing configuration is an operator action, not a permanent
+                // delivery failure: keep the event retryable so it sends as
+                // soon as the channel is connected in the Integration Center.
+                retryable: true,
+              };
 
           const provider = adapter?.name ?? "none";
 

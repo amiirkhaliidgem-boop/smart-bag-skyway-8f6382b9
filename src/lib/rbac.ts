@@ -36,8 +36,6 @@ const RULES: { prefix: string; exact?: boolean; roles: AppRole[] }[] = [
   { prefix: "/integrations", roles: ["admin"] },
   { prefix: "/api-status", roles: ["admin"] },
   { prefix: "/settings", roles: ["admin"] },
-  { prefix: "/export-center", roles: ["admin"] },
-  { prefix: "/route-tracking", roles: ["admin", "coordinator"] },
   { prefix: "/passenger", roles: ["admin"] }, // /passenger/$token is public and handled separately
 ];
 

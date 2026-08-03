@@ -1,9 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { QrCode } from "lucide-react";
 import { ModuleComingSoon } from "@/components/module-coming-soon";
-// PRESERVED: full implementation lives in the component below. To re-enable the
-// Warehouse phase, render <QrScanFull /> instead of <ModuleComingSoon />.
-// import { QrScanFull } from "@/components/warehouse/qr-scan-full";
+// QR Scan is a planned module. The screen intentionally has no backend wiring
+// until the Warehouse phase is specified.
 
 export const Route = createFileRoute("/qr-scan")({
   head: () => ({

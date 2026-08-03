@@ -1,9 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { ArrowRightLeft } from "lucide-react";
 import { ModuleComingSoon } from "@/components/module-coming-soon";
-// PRESERVED: the full implementation lives in the component below. To re-enable
-// the Import / Export phase, render <DataIoFull /> instead of <ModuleComingSoon />.
-// import { DataIoFull } from "@/components/io/data-io-full";
+// Import / Export is a planned module. Lost & Found keeps its own import and
+// export tools; this screen has no backend wiring yet.
 
 export const Route = createFileRoute("/data-io")({
   head: () => ({

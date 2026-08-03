@@ -1,9 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Warehouse } from "lucide-react";
 import { ModuleComingSoon } from "@/components/module-coming-soon";
-// PRESERVED: full implementation lives in the component below. To re-enable the
-// Warehouse phase, render <StorageControlFull /> instead of <ModuleComingSoon />.
-// import { StorageControlFull } from "@/components/warehouse/storage-control-full";
+// Storage Control is a planned module. The screen intentionally has no backend
+// wiring until the Warehouse phase is specified.
 
 export const Route = createFileRoute("/storage")({
   head: () => ({
