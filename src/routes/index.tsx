@@ -152,6 +152,23 @@ function Index() {
   const fetchDashboard = useServerFn(loadExecutiveDashboard);
   const queryClient = useQueryClient();
 
+  // The dashboard server fn requires a bearer token. During SSR and before the
+  // Supabase session is restored there is none, so the query stays disabled.
+  const [hasSession, setHasSession] = useState(false);
+  useEffect(() => {
+    let mounted = true;
+    void supabase.auth.getSession().then(({ data }) => {
+      if (mounted) setHasSession(!!data.session);
+    });
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => {
+      setHasSession(!!s);
+    });
+    return () => {
+      mounted = false;
+      sub.subscription.unsubscribe();
+    };
+  }, []);
+
   const { data, isLoading, isError, error, isFetching } = useQuery({
     queryKey: ["executive-dashboard", from, to, grain],
     queryFn: () =>
@@ -164,6 +181,7 @@ function Index() {
         },
       }) as Promise<ExecutiveDashboard>,
     staleTime: 30_000,
+    enabled: hasSession,
   });
 
   // The Workflow Engine writes to these tables on every transition; any change
