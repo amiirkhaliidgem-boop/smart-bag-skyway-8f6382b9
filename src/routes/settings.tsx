@@ -280,10 +280,23 @@ function GeneralCard({
           />
         </div>
 
+        <div className="rounded-lg border border-border p-4">
+          <p className="font-medium text-sm">Public Portal Address</p>
+          <p className="text-xs text-muted-foreground mb-2">
+            Absolute https:// origin used to build the passenger tracking link inside every SMS,
+            WhatsApp and Email message. Leave empty to use the project&apos;s default public address.
+          </p>
+          <Input
+            value={form.portal_base_url ?? ""}
+            placeholder="https://portal.example.com"
+            disabled={!canManage}
+            onChange={(e) => setForm((f) => ({ ...f, portal_base_url: e.target.value }))}
+          />
+        </div>
+
         <div className="flex items-center gap-4 rounded-lg border border-border p-4">
           <img
             src={form.logo_url || iabLogo.url}
-            data-slot="logo"
             alt={`${form.company_name} logo`}
             className="h-16 w-16 rounded-lg bg-white ring-1 ring-border p-1 object-contain"
           />
