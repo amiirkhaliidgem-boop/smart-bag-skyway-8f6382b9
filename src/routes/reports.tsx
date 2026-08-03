@@ -671,12 +671,14 @@ function QualitySection({
   const [severityFilter, setSeverityFilter] = useState("all");
   const [sourceFilter, setSourceFilter] = useState("all");
   const [active, setActive] = useState<OperationalReport["quality"]["incidents"][number] | null>(null);
+  const [raiseOpen, setRaiseOpen] = useState(false);
 
   const mutate = useMutation({
     mutationFn: (v: { fn: string; args: Record<string, unknown> }) => callRpc({ data: v }),
     onSuccess: () => {
       onChanged();
       setActive(null);
+      setRaiseOpen(false);
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -742,7 +744,14 @@ function QualitySection({
 
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">Incident Register</CardTitle>
+          <div className="flex items-center justify-between gap-3">
+            <CardTitle className="text-base">Incident Register</CardTitle>
+            {canManage && (
+              <Button size="sm" variant="outline" onClick={() => setRaiseOpen(true)}>
+                Report Incident
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -853,7 +862,117 @@ function QualitySection({
         onClose={() => setActive(null)}
         onAction={(fn, args) => mutate.mutate({ fn, args })}
       />
+      <RaiseIncidentDialog
+        open={raiseOpen}
+        busy={mutate.isPending}
+        onOpenChange={setRaiseOpen}
+        onSubmit={(args) => mutate.mutate({ fn: "qm_create_incident", args })}
+      />
     </Section>
+  );
+}
+
+// Categories staff can raise by hand. Everything else is raised automatically
+// by the Workflow Engine (SLA breach, return to airport, failed delivery,
+// one-time-code lockout, low passenger rating).
+const MANUAL_CATEGORIES = [
+  "Damaged Baggage",
+  "Missing Item",
+  "Passenger Complaint",
+  "Delivery Agent Conduct",
+  "Wrong Address",
+  "Process Deviation",
+  "Other",
+] as const;
+
+function RaiseIncidentDialog({
+  open,
+  busy,
+  onOpenChange,
+  onSubmit,
+}: {
+  open: boolean;
+  busy: boolean;
+  onOpenChange: (v: boolean) => void;
+  onSubmit: (args: Record<string, unknown>) => void;
+}) {
+  const [category, setCategory] = useState<string>(MANUAL_CATEGORIES[0]);
+  const [severity, setSeverity] = useState("Medium");
+  const [description, setDescription] = useState("");
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => !busy && onOpenChange(v)}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Report Incident</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Raised through the Workflow Engine, so it appears in the register, the Timeline and
+            the Audit Log immediately.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label>Category</Label>
+              <Select value={category} onValueChange={setCategory}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {MANUAL_CATEGORIES.map((c) => (
+                    <SelectItem key={c} value={c}>
+                      {c}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Severity</Label>
+              <Select value={severity} onValueChange={setSeverity}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="High">High</SelectItem>
+                  <SelectItem value="Medium">Medium</SelectItem>
+                  <SelectItem value="Low">Low</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label>What happened?</Label>
+            <Textarea
+              rows={4}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Describe the incident, including the case or delivery reference…"
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>
+            Cancel
+          </Button>
+          <Button
+            disabled={busy || description.trim().length < 5}
+            onClick={() => {
+              onSubmit({
+                p_category: category,
+                p_description: description.trim(),
+                p_case: null,
+                p_delivery: null,
+                p_severity: severity,
+              });
+              setDescription("");
+            }}
+          >
+            {busy ? "Saving…" : "Report Incident"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
