@@ -91,6 +91,7 @@ function DeliveryDetails() {
   const [tab, setTab] = useState<Tab>("overview");
   const [assignOpen, setAssignOpen] = useState(false);
   const [returnOpen, setReturnOpen] = useState(false);
+  const [failedOpen, setFailedOpen] = useState(false);
 
   if (!delivery) throw notFound();
   const stage = getDeliveryStage(delivery);
