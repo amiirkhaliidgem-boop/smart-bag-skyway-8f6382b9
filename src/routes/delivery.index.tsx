@@ -9,7 +9,7 @@ import {
   getDeliveryStage,
   type Delivery,
 } from "@/lib/store";
-import { resendOtp, returnToAirport, refreshOps } from "@/lib/store";
+import { resendOtp, returnToAirport, markDeliveryFailed, refreshOps } from "@/lib/store";
 import { Textarea } from "@/components/ui/textarea";
 import { BulkToolbar as SharedBulkToolbar } from "@/components/bulk/bulk-toolbar";
 import {
@@ -128,6 +128,7 @@ function DispatchCenter() {
   const [bulkAssignOpen, setBulkAssignOpen] = useState(false);
   const [bulkReturnOpen, setBulkReturnOpen] = useState(false);
   const [assignFor, setAssignFor] = useState<string | null>(null);
+  const [failFor, setFailFor] = useState<string | null>(null);
   const toggleAll = () => {
     if (selected.size === filtered.length) setSelected(new Set());
     else setSelected(new Set(filtered.map((d) => d.deliveryId)));
@@ -291,6 +292,7 @@ function DispatchCenter() {
                     checked={selected.has(d.deliveryId)}
                     onToggle={() => toggleOne(d.deliveryId)}
                     onAssign={() => setAssignFor(d.deliveryId)}
+                    onMarkFailed={() => setFailFor(d.deliveryId)}
                   />
                 ))}
                 {filtered.length === 0 && (
@@ -340,6 +342,24 @@ function DispatchCenter() {
         deliveryId={assignFor}
         onClose={() => setAssignFor(null)}
       />
+      <ReturnToAirportDialog
+        open={failFor !== null}
+        onOpenChange={(v) => !v && setFailFor(null)}
+        count={1}
+        variant="failed"
+        onConfirm={async (reasonCode, note) => {
+          if (!failFor) return;
+          try {
+            await markDeliveryFailed(failFor, { reasonCode, note });
+            await refreshOps();
+            toast.success("Delivery attempt recorded as failed");
+          } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Could not mark this delivery failed");
+          } finally {
+            setFailFor(null);
+          }
+        }}
+      />
       <PodPrintHost />
     </div>
   );
@@ -350,11 +370,13 @@ function Row({
   checked,
   onToggle,
   onAssign,
+  onMarkFailed,
 }: {
   d: Delivery;
   checked: boolean;
   onToggle: () => void;
   onAssign: () => void;
+  onMarkFailed: () => void;
 }) {
   const navigate = useNavigate();
   const stage = getDeliveryStage(d);
@@ -400,7 +422,7 @@ function Row({
       </td>
       <td className="px-3 py-3 text-right" onClick={stop as never}>
         <div className="inline-flex items-center gap-1 flex-wrap justify-end">
-          <RowActions d={d} acts={acts} onAssign={onAssign} />
+          <RowActions d={d} acts={acts} onAssign={onAssign} onMarkFailed={onMarkFailed} />
           <Link
             to="/delivery/$deliveryId"
             params={{ deliveryId: d.deliveryId }}
@@ -418,10 +440,12 @@ function RowActions({
   d,
   acts,
   onAssign,
+  onMarkFailed,
 }: {
   d: Delivery;
   acts: ReturnType<typeof actionsForStage>;
   onAssign: () => void;
+  onMarkFailed: () => void;
 }) {
   const id = d.deliveryId;
   const btn = "inline-flex items-center gap-1 h-7 px-2 rounded-md border border-input bg-background text-[11px] font-medium hover:bg-muted whitespace-nowrap";
@@ -441,6 +465,11 @@ function RowActions({
           }}
         >
           <Repeat className="h-3 w-3" /> Resend OTP
+        </button>
+      )}
+      {acts.markFailed && (
+        <button className={cn(btn, "text-destructive")} onClick={onMarkFailed}>
+          <XCircle className="h-3 w-3" /> Mark Failed
         </button>
       )}
     </>
