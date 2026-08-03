@@ -15,6 +15,7 @@ import {
   LF_STATUS_COLOR,
   LF_STATUS_LABEL,
   LF_TO_WORKFLOW,
+  lfPathStatuses,
   type LFStatus,
 } from "@/lib/lost-found/statuses";
 import type { WorkflowStatus } from "@/lib/workflow/statuses";
@@ -56,6 +57,7 @@ export const Route = createFileRoute("/workflow-monitor")({
 
 const TERMINAL_STATUSES: WorkflowStatus[] = [
   "DELIVERED",
+  "PASSENGER_PICKED_UP",
   "FEEDBACK_SUBMITTED",
   "CLOSED",
 ];
@@ -157,9 +159,17 @@ function WorkflowMonitorPage() {
         const terminal = stage === "Delivered" || stage === "Returned to Airport";
         nextStep = terminal ? "—" : (STAGE_LABELS[DELIVERY_STAGES[idx + 1]] ?? "—");
       } else {
-        const idx = LF_OWNED_STATUSES.indexOf(lfStatus as (typeof LF_OWNED_STATUSES)[number]);
-        const next = idx >= 0 ? LF_OWNED_STATUSES[idx + 1] : undefined;
-        nextStep = next ? (LF_STATUS_LABEL[next] ?? next) : "Hand over to Delivery";
+        // Follow the case's own operational path: an Airport Pickup case is
+        // owned by Lost & Found end to end and never hands over to Delivery.
+        const path = lfPathStatuses(kase?.deliveryMethod);
+        const pickup = path !== (LF_OWNED_STATUSES as ReadonlyArray<LFStatus>);
+        const idx = path.indexOf(lfStatus);
+        const next = idx >= 0 ? path[idx + 1] : undefined;
+        nextStep = next
+          ? (LF_STATUS_LABEL[next] ?? next)
+          : pickup
+            ? "—"
+            : "Hand over to Delivery";
       }
 
       const bagId = kase?.bagId ?? del?.bagId ?? "—";
