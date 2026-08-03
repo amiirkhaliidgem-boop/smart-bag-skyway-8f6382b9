@@ -82,15 +82,85 @@ export const TIME_ZONES = [
 
 export const DATE_FORMATS = ["dd/MM/yyyy", "MM/dd/yyyy", "yyyy-MM-dd", "dd MMM yyyy"] as const;
 
-/** Passenger-facing lifecycle events an administrator can word. */
-export const TEMPLATE_TRIGGERS: { key: string; label: string; description: string }[] = [
-  { key: "DELIVERY_APPROVED", label: "Delivery Approved", description: "Home delivery request accepted" },
-  { key: "DRIVER_ASSIGNED", label: "Delivery Agent Assigned", description: "Agent assigned and tracking link issued" },
-  { key: "OUT_FOR_DELIVERY", label: "Out for Delivery", description: "Agent has started the trip" },
-  { key: "DELIVERED", label: "Delivered", description: "Baggage handed over to the passenger" },
-  { key: "DELIVERY_FAILED", label: "Delivery Unsuccessful", description: "Attempt could not be completed" },
-  { key: "RETURNED_TO_AIRPORT", label: "Returned to Airport", description: "Baggage brought back for re-dispatch" },
-];
+/**
+ * Passenger-facing lifecycle events an administrator can word.
+ *
+ * The catalog is never hardcoded: it is discovered at runtime from the
+ * Workflow Engine status registry plus whatever trigger keys already exist in
+ * `notification_templates`. A new workflow event therefore shows up in the
+ * Notification Templates screen with no code change.
+ */
+export interface TemplateTrigger {
+  key: string;
+  label: string;
+  labelAr: string;
+  description: string;
+}
+
+/** Statuses the engine never sends a passenger message for. */
+const NON_NOTIFYING_STATUSES = new Set<string>([
+  "PIR_CREATED",
+  "HOME_DELIVERY_REQUESTED",
+  "READY_FOR_COLLECTION",
+  "CLAIMED_ON_HAND",
+  "OTP_VERIFIED",
+  "FEEDBACK_SUBMITTED",
+  "CLOSED",
+]);
+
+/** Labels for operational trigger keys that are not workflow statuses. */
+const EXTRA_TRIGGER_LABELS: Record<string, { en: string; ar: string; description: string }> = {
+  DELIVERY_FAILED: {
+    en: "Delivery Unsuccessful",
+    ar: "تعذر التوصيل",
+    description: "Attempt could not be completed",
+  },
+  RETURNED_TO_AIRPORT: {
+    en: "Returned to Airport",
+    ar: "أُعيدت إلى المطار",
+    description: "Baggage brought back for re-dispatch",
+  },
+};
+
+function humanize(key: string): string {
+  return key
+    .toLowerCase()
+    .split("_")
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
+}
+
+/**
+ * Merge the workflow registry with the trigger keys already stored in the
+ * database, de-duplicated and ordered by the canonical lifecycle.
+ */
+export function buildTemplateTriggers(
+  templates: Pick<NotificationTemplateRow, "trigger_key">[] = [],
+): TemplateTrigger[] {
+  const keys: string[] = [];
+  const seen = new Set<string>();
+  const push = (k: string) => {
+    if (!k || seen.has(k)) return;
+    seen.add(k);
+    keys.push(k);
+  };
+
+  for (const s of WORKFLOW_STATUSES) {
+    if (!NON_NOTIFYING_STATUSES.has(s)) push(s);
+  }
+  for (const t of templates) push(t.trigger_key);
+
+  return keys.map((key) => {
+    const wf = (WORKFLOW_LABELS as Record<string, { en: string; ar: string } | undefined>)[key];
+    const extra = EXTRA_TRIGGER_LABELS[key];
+    return {
+      key,
+      label: wf?.en ?? extra?.en ?? humanize(key),
+      labelAr: wf?.ar ?? extra?.ar ?? humanize(key),
+      description: extra?.description ?? `Workflow event ${key}`,
+    };
+  });
+}
 
 export const TEMPLATE_VARIABLES = [
   "{{PassengerName}}",
