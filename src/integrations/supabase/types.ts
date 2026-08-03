@@ -2414,6 +2414,15 @@ export type Database = {
         Returns: undefined
       }
       qm_sweep_sla: { Args: never; Returns: number }
+      report_lifecycle: {
+        Args: {
+          p_from: string
+          p_grain?: string
+          p_journey?: string
+          p_to: string
+        }
+        Returns: Json
+      }
       report_operational: {
         Args: { p_from: string; p_grain?: string; p_to: string }
         Returns: Json
@@ -2441,6 +2450,16 @@ export type Database = {
       wf_assert_version: {
         Args: { p_delivery: string; p_expected_version: number }
         Returns: undefined
+      }
+      wf_case_status: {
+        Args: never
+        Returns: {
+          case_id: string
+          completed_at: string
+          created_at: string
+          journey: string
+          status: string
+        }[]
       }
       wf_ensure_case_link: { Args: { p_case: string }; Returns: string }
       wf_ensure_passenger_link: {
@@ -2561,6 +2580,13 @@ export type Database = {
       wf_stage_workflow: {
         Args: { p: Database["public"]["Enums"]["delivery_stage"] }
         Returns: Database["public"]["Enums"]["workflow_status"]
+      }
+      wf_status_ladder: {
+        Args: never
+        Returns: {
+          ord: number
+          status: string
+        }[]
       }
       wf_transition: {
         Args: {
