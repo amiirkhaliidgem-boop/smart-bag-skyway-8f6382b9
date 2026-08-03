@@ -47,13 +47,10 @@ export const callOpsRpc = createServerFn({ method: "POST" })
       "dm_add_note",
       "dm_mark_failed",
       "dm_mark_returned",
-      "dm_close",
       "agent_advance",
       "agent_complete_delivery",
       "agent_report_position",
       "wf_transition",
-      "notif_claim_batch",
-      "notif_record_result",
     ]);
     if (!allowed.has(input.fn)) throw new Error(`Unknown operation: ${input.fn}`);
     return input;
