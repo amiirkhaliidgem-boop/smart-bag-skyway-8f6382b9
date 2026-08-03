@@ -773,10 +773,6 @@ function TimelinePage() {
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Activity Timeline</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Single source of truth — every workflow, notification, driver, passenger, quality, and
-            audit event across the ecosystem.
-          </p>
         </div>
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />

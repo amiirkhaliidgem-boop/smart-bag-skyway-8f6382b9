@@ -83,10 +83,6 @@ function SettingsPage() {
         </div>
         <div className="flex-1 min-w-[220px]">
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">System Settings</h1>
-          <p className="text-sm text-muted-foreground">
-            Live configuration for the Smart Baggage Ecosystem. Saved values take effect immediately
-            across the workflow, notification and passenger engines.
-          </p>
         </div>
         {!canManage && (
           <Badge variant="outline" className="gap-1.5">

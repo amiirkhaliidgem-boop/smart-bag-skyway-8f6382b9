@@ -336,7 +336,6 @@ function LostFoundPage() {
       <PirPrintHost />
       <PageHeader
         title="Lost & Found Management"
-        description="AHL / PIR registry — tracing, customs, delivery and pickup hand-off."
         actions={
           <>
           <Button variant="outline" className="gap-2" onClick={() => setImportOpen(true)}>
