@@ -216,9 +216,14 @@ function GeneralCard({
       toast.error("System name and company name are required.");
       return;
     }
+    const base = (form.portal_base_url ?? "").trim().replace(/\/+$/, "");
+    if (base && !/^https:\/\/[^\s/]+\.[^\s/]+$/.test(base)) {
+      toast.error("Public portal address must be an absolute https:// origin, e.g. https://portal.example.com");
+      return;
+    }
     setBusy(true);
     try {
-      await save({ data: { group: "general", payload: { ...form } } });
+      await save({ data: { group: "general", payload: { ...form, portal_base_url: base } } });
       toast.success("General settings saved", {
         description: "Applied across every portal in real time.",
       });
