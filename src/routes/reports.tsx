@@ -472,7 +472,7 @@ function ReportsPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-base">Current Pipeline by Stage</CardTitle>
+              <CardTitle className="text-base">Home Delivery Stages</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="h-64">
@@ -535,12 +535,12 @@ function ReportsPage() {
         </div>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-base">Cases by Lost &amp; Found Status</CardTitle>
+            <CardTitle className="text-base">Cases by Lifecycle Status</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
             <SimpleTable
               head={["Status", "Cases"]}
-              rows={r.lostFound.byStatus.map((x) => [x.status, x.count])}
+              rows={life.pipeline.map((x) => [x.status, x.count])}
               empty="No cases registered."
             />
           </CardContent>
