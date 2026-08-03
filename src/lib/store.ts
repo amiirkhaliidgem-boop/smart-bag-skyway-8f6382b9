@@ -1069,23 +1069,6 @@ export async function markDeliveryFailed(
   });
 }
 
-async function rescheduleDeliveryLegacy(
-  deliveryId: string,
-  _opts: { actor?: string; role?: Role } = {},
-) {
-  const id = deliveryUuid(deliveryId);
-  if (!id) return;
-  try {
-    await rpc("dm_schedule", {
-      p_delivery: id,
-      p_scheduled_for: new Date().toISOString(),
-      p_expected_version: deliveryVersions[deliveryId] ?? null,
-    });
-  } catch (err) {
-    reportError(err);
-  }
-}
-
 /** Generic stage move. Routed to the Workflow Engine, which validates it. */
 export async function setDeliveryStage(
   deliveryId: string,
