@@ -2525,6 +2525,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      wf_portal_base_url: { Args: never; Returns: string }
       wf_queue_case_notification: {
         Args: { p_case: string; p_trigger_key: string }
         Returns: undefined
