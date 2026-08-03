@@ -405,8 +405,18 @@ function ReportsPage() {
                     type="monotone"
                     dataKey="delivered"
                     name="Delivered"
+                    stackId="done"
                     stroke="#10b981"
                     fill="url(#d)"
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="pickedUp"
+                    name="Passenger Picked Up"
+                    stackId="done"
+                    stroke="#0d9488"
+                    fill="#0d9488"
+                    fillOpacity={0.25}
                   />
                   <Line type="monotone" dataKey="incidents" name="Incidents" stroke="#e11d48" dot={false} />
                 </ComposedChart>
@@ -416,8 +426,43 @@ function ReportsPage() {
         </Card>
       </Section>
 
+      {/* ------------------------------------------------ unified pipeline */}
+      <Section
+        title="Operational Pipeline"
+        description="One pipeline across Lost & Found, Delivery Management and Airport Pickup."
+      >
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Current Pipeline by Status</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={life.pipeline}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(0 0% 90%)" />
+                  <XAxis
+                    dataKey="status"
+                    tick={{ fontSize: 10 }}
+                    interval={0}
+                    angle={-20}
+                    height={70}
+                    textAnchor="end"
+                  />
+                  <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
+                  <Tooltip />
+                  <Bar dataKey="count" name="Cases" fill="#1e40af" radius={[6, 6, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+      </Section>
+
       {/* ------------------------------------------------------- delivery */}
-      <Section title="Delivery Operations" description="Dispatch throughput and stage timing.">
+      <Section
+        title="Home Delivery Operations"
+        description="Dispatch throughput and stage timing for the Home Delivery journey."
+      >
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <Kpi label="On Time" value={r.delivery.onTime} icon={CheckCircle2} tone="emerald" />
           <Kpi label="SLA Breaches" value={r.delivery.breached} icon={AlertTriangle} tone="rose" />
