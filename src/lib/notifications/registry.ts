@@ -26,12 +26,14 @@ function config(adapter: NotificationChannelAdapter, enabled: boolean): Provider
   return { channel: adapter.channel, adapter, enabled, simulate: adapter.simulated };
 }
 
+// Simulated transports exist for local development only. In production a
+// channel without a configured provider is DISABLED — the engine must never
+// mark a message "sent" that was not actually transmitted.
+const DEV_ONLY = import.meta.env?.DEV === true;
+
 const registry: Record<NotificationChannel, ProviderConfig> = {
-  // SMS + WhatsApp are the live passenger channels today.
-  sms: config(simulatedAdapters.sms, true),
-  whatsapp: config(simulatedAdapters.whatsapp, true),
-  // Email + Push have no templates and no recipient source yet; they are
-  // registered so a provider can be dropped in without an engine change.
+  sms: config(simulatedAdapters.sms, DEV_ONLY),
+  whatsapp: config(simulatedAdapters.whatsapp, DEV_ONLY),
   email: config(simulatedAdapters.email, false),
   push: config(simulatedAdapters.push, false),
 };

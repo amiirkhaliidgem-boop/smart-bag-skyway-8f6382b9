@@ -8,6 +8,8 @@ export interface GeneralSettings {
   date_format: string;
   default_language: "en" | "ar";
   distance_unit: "km" | "mi";
+  /** Absolute public origin used to build passenger tracking links. */
+  portal_base_url: string;
 }
 
 export interface ContactSettings {
@@ -60,6 +62,7 @@ export const DEFAULT_GENERAL: GeneralSettings = {
   date_format: "dd/MM/yyyy",
   default_language: "en",
   distance_unit: "km",
+  portal_base_url: "",
 };
 
 export const DEFAULT_CONTACTS: ContactSettings = {

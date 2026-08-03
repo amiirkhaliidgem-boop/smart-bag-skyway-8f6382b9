@@ -216,9 +216,14 @@ function GeneralCard({
       toast.error("System name and company name are required.");
       return;
     }
+    const base = (form.portal_base_url ?? "").trim().replace(/\/+$/, "");
+    if (base && !/^https:\/\/[^\s/]+\.[^\s/]+$/.test(base)) {
+      toast.error("Public portal address must be an absolute https:// origin, e.g. https://portal.example.com");
+      return;
+    }
     setBusy(true);
     try {
-      await save({ data: { group: "general", payload: { ...form } } });
+      await save({ data: { group: "general", payload: { ...form, portal_base_url: base } } });
       toast.success("General settings saved", {
         description: "Applied across every portal in real time.",
       });
@@ -272,6 +277,20 @@ function GeneralCard({
               { value: "km", label: "Kilometres (km)" },
               { value: "mi", label: "Miles (mi)" },
             ]}
+          />
+        </div>
+
+        <div className="rounded-lg border border-border p-4">
+          <p className="font-medium text-sm">Public Portal Address</p>
+          <p className="text-xs text-muted-foreground mb-2">
+            Absolute https:// origin used to build the passenger tracking link inside every SMS,
+            WhatsApp and Email message. Leave empty to use the project&apos;s default public address.
+          </p>
+          <Input
+            value={form.portal_base_url ?? ""}
+            placeholder="https://portal.example.com"
+            disabled={!canManage}
+            onChange={(e) => setForm((f) => ({ ...f, portal_base_url: e.target.value }))}
           />
         </div>
 
