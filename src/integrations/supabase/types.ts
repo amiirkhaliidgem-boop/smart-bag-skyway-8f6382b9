@@ -2123,10 +2123,6 @@ export type Database = {
         Args: { p_method: Database["public"]["Enums"]["delivery_method"] }
         Returns: Database["public"]["Enums"]["lf_status"][]
       }
-      lf_apply_region: {
-        Args: { p_case: string; p_payload: Json }
-        Returns: undefined
-      }
       lf_bulk_set_status: {
         Args: {
           p_cases: string[]
@@ -2304,53 +2300,6 @@ export type Database = {
       next_case_no: { Args: never; Returns: string }
       next_delivery_no: { Args: never; Returns: string }
       next_incident_no: { Args: never; Returns: string }
-      notif_claim_batch: {
-        Args: { p_limit?: number }
-        Returns: {
-          attempt_count: number
-          body: string
-          body_ar: string | null
-          body_en: string | null
-          case_id: string | null
-          channel: Database["public"]["Enums"]["notification_channel"]
-          created_at: string
-          delivery_id: string | null
-          failure_reason: string
-          id: string
-          last_attempt_at: string | null
-          locale: string
-          next_attempt_at: string
-          provider: string | null
-          provider_message_id: string | null
-          recipient: string
-          runtime_context: Json
-          sent_at: string | null
-          state: Database["public"]["Enums"]["notification_state"]
-          subject: string
-          subject_ar: string | null
-          subject_en: string | null
-          trigger_key: string
-          trigger_status: Database["public"]["Enums"]["workflow_status"]
-          updated_at: string
-          version: number
-        }[]
-        SetofOptions: {
-          from: "*"
-          to: "notification_events"
-          isOneToOne: false
-          isSetofReturn: true
-        }
-      }
-      notif_record_result: {
-        Args: {
-          p_error?: string
-          p_id: string
-          p_provider: string
-          p_provider_message_id?: string
-          p_success: boolean
-        }
-        Returns: undefined
-      }
       notif_template_upsert: { Args: { p_payload: Json }; Returns: string }
       passenger_get_view: { Args: { p_token: string }; Returns: Json }
       passenger_report_misconduct: {
