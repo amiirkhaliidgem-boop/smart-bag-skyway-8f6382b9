@@ -130,6 +130,62 @@ export const TEMPLATES: Partial<Record<NotificationTrigger, Bundle>> = {
       }),
     },
   },
+  READY_FOR_AIRPORT_PICKUP: {
+    sms: {
+      en: (c) => ({
+        body: `${brand}: Your baggage (PIR ${c.pirNumber}) is ready for collection at the airport baggage services desk. Details: ${c.trackingUrl ?? ""}`,
+      }),
+      ar: (c) => ({
+        body: `${brand}: حقيبتك (${c.pirNumber}) جاهزة للاستلام من مكتب خدمات الحقائب بالمطار. التفاصيل: ${c.trackingUrl ?? ""}`,
+      }),
+    },
+    whatsapp: {
+      en: (c) => ({
+        body: `Hello ${c.passengerName}, your baggage (PIR ${c.pirNumber}) is ready for airport pickup. Please bring a valid ID and your PIR number to the baggage services desk: ${c.trackingUrl ?? ""}`,
+      }),
+      ar: (c) => ({
+        body: `مرحباً ${c.passengerName}، حقيبتك (${c.pirNumber}) جاهزة للاستلام من المطار. يُرجى إحضار إثبات هوية ورقم التقرير إلى مكتب خدمات الحقائب: ${c.trackingUrl ?? ""}`,
+      }),
+    },
+    email: {
+      en: (c) => ({
+        subject: "Your baggage is ready for airport pickup",
+        body: `Dear ${c.passengerName},\n\nYour baggage (PIR ${c.pirNumber}) is ready for collection at the airport baggage services desk. Please bring a valid ID and your PIR number.\n\nTrack: ${c.trackingUrl ?? ""}\n\n${brand}`,
+      }),
+      ar: (c) => ({
+        subject: "حقيبتك جاهزة للاستلام من المطار",
+        body: `عزيزي ${c.passengerName}،\n\nحقيبتك (${c.pirNumber}) جاهزة للاستلام من مكتب خدمات الحقائب بالمطار. يُرجى إحضار إثبات هوية ورقم التقرير.\n\nالمتابعة: ${c.trackingUrl ?? ""}\n\n${brand}`,
+      }),
+    },
+  },
+  PASSENGER_PICKED_UP: {
+    sms: {
+      en: (c) => ({
+        body: `${brand}: Your baggage (PIR ${c.pirNumber}) has been collected. Thank you — share your feedback: ${c.trackingUrl ?? ""}`,
+      }),
+      ar: (c) => ({
+        body: `${brand}: تم استلام حقيبتك (${c.pirNumber}). شكراً لك — شاركنا تقييمك: ${c.trackingUrl ?? ""}`,
+      }),
+    },
+    whatsapp: {
+      en: (c) => ({
+        body: `Thank you ${c.passengerName}, we confirm your baggage (PIR ${c.pirNumber}) has been collected at the airport. We would love your feedback: ${c.trackingUrl ?? ""}`,
+      }),
+      ar: (c) => ({
+        body: `شكراً ${c.passengerName}، نؤكد استلام حقيبتك (${c.pirNumber}) من المطار. نسعد بمشاركتك تقييمك: ${c.trackingUrl ?? ""}`,
+      }),
+    },
+    email: {
+      en: (c) => ({
+        subject: "Baggage collected",
+        body: `Dear ${c.passengerName},\n\nWe confirm that your baggage (PIR ${c.pirNumber}) has been collected at the airport baggage services desk.\n\nShare your feedback: ${c.trackingUrl ?? ""}\n\n${brand}`,
+      }),
+      ar: (c) => ({
+        subject: "تم استلام الحقيبة",
+        body: `عزيزي ${c.passengerName}،\n\nنؤكد استلام حقيبتك (${c.pirNumber}) من مكتب خدمات الحقائب بالمطار.\n\nشاركنا تقييمك: ${c.trackingUrl ?? ""}\n\n${brand}`,
+      }),
+    },
+  },
   STAGE_SCHEDULED: {
     sms: {
       en: (c) => ({
