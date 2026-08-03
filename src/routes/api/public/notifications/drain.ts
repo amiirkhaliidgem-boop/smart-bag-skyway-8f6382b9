@@ -77,13 +77,30 @@ export const Route = createFileRoute("/api/public/notifications/drain")({
 
         let sent = 0;
         let failed = 0;
+        let skipped = 0;
 
         for (const event of batch) {
           const attempt = (event.attempt_count ?? 0) + 1;
           const adapter = await adapterFor(event.channel);
 
-          const result = adapter
-            ? await adapter
+          // A channel with no configured transport is an operator task, not a
+          // delivery failure. The event stays queued (and keeps its attempt
+          // budget) so it sends as soon as the channel is connected in the
+          // Integration Center.
+          if (!adapter) {
+            await db
+              .from("notification_events")
+              .update({
+                state: "queued",
+                failure_reason: `No transport configured for channel ${event.channel}`,
+                next_attempt_at: new Date(Date.now() + 5 * 60_000).toISOString(),
+              })
+              .eq("id", event.id);
+            skipped += 1;
+            continue;
+          }
+
+          const result = await adapter
                 .send({
                   id: event.id,
                   channel: event.channel,
@@ -96,17 +113,9 @@ export const Route = createFileRoute("/api/public/notifications/drain")({
                   ok: false,
                   error: err instanceof Error ? err.message : String(err),
                   retryable: true,
-                }))
-            : {
-                ok: false,
-                error: `No transport configured for channel ${event.channel}`,
-                // Missing configuration is an operator action, not a permanent
-                // delivery failure: keep the event retryable so it sends as
-                // soon as the channel is connected in the Integration Center.
-                retryable: true,
-              };
+                }));
 
-          const provider = adapter?.name ?? "none";
+          const provider = adapter.name;
 
           await db.from("notification_attempts").insert({
             notification_id: event.id,
@@ -143,12 +152,12 @@ export const Route = createFileRoute("/api/public/notifications/drain")({
         await recordHealthSample({
           apiKey: "notification",
           ok: failed === 0,
-          detail: `Drained ${batch.length} · sent ${sent} · failed ${failed}`,
+          detail: `Drained ${batch.length} · sent ${sent} · failed ${failed} · waiting for transport ${skipped}`,
           error: failed > 0 ? `${failed} notification(s) failed to send` : "",
           source: "traffic",
         });
 
-        return new Response(JSON.stringify({ claimed: batch.length, sent, failed }), {
+        return new Response(JSON.stringify({ claimed: batch.length, sent, failed, skipped }), {
           headers: { "Content-Type": "application/json" },
         });
       },
