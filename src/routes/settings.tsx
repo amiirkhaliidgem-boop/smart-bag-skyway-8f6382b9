@@ -283,6 +283,7 @@ function GeneralCard({
         <div className="flex items-center gap-4 rounded-lg border border-border p-4">
           <img
             src={form.logo_url || iabLogo.url}
+            data-slot="logo"
             alt={`${form.company_name} logo`}
             className="h-16 w-16 rounded-lg bg-white ring-1 ring-border p-1 object-contain"
           />
