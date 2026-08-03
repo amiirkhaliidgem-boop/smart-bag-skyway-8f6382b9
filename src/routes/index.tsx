@@ -203,10 +203,9 @@ function Index() {
   const k = data?.kpis;
   const statusData = (data?.byStatus ?? []).map((s) => ({ ...s, fill: colorFor(s.status) }));
   const carrierData = data?.byCarrier ?? [];
-  const funnel = (data?.funnel ?? []).map((f) => ({
-    ...f,
-    label: WORKFLOW_LABELS[f.status as WorkflowStatus]?.en ?? f.status,
-  }));
+  // One unified operational pipeline across Lost & Found, Delivery and
+  // Airport Pickup — the labels are the canonical lifecycle statuses.
+  const funnel = (data?.funnel ?? []).map((f) => ({ ...f, label: f.status }));
   const trends = data?.trends ?? [];
   const funnelMax = Math.max(1, ...funnel.map((f) => f.count));
 
@@ -257,12 +256,24 @@ function Index() {
       ) : null}
 
       {isLoading || !k ? (
-        <KpiSkeletonGrid count={9} />
+        <KpiSkeletonGrid count={14} />
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
           <KpiCard label="Total Bags" kpi={k.totalCases} icon={Luggage} color="text-primary" />
           <KpiCard label="Open Cases" kpi={k.openCases} icon={AlertCircle} color="text-amber-600" />
           <KpiCard label="Located Bags" kpi={k.locatedBags} icon={MapPin} color="text-sky-600" />
+          <KpiCard
+            label="Arrived at Airport"
+            kpi={k.arrivedAtAirport}
+            icon={Plane}
+            color="text-blue-600"
+          />
+          <KpiCard
+            label="Waiting Customs Clearance"
+            kpi={k.waitingCustoms}
+            icon={FileCheck2}
+            color="text-indigo-600"
+          />
           <KpiCard
             label="Ready for Delivery"
             kpi={k.readyForDelivery}
@@ -270,10 +281,54 @@ function Index() {
             color="text-violet-600"
           />
           <KpiCard
-            label="Delivered Bags"
+            label="Out for Delivery"
+            kpi={k.outForDelivery}
+            icon={Truck}
+            color="text-cyan-600"
+          />
+          <KpiCard
+            label="Returned to Airport"
+            kpi={k.returnedToAirport}
+            icon={RotateCcw}
+            color="text-rose-600"
+          />
+          <KpiCard
+            label="Ready for Airport Pickup"
+            kpi={k.readyForPickup}
+            icon={Handshake}
+            color="text-teal-600"
+          />
+          <KpiCard
+            label="Passenger Picked Up"
+            kpi={k.passengerPickedUp}
+            icon={CheckCircle2}
+            color="text-teal-700"
+          />
+          <KpiCard
+            label="Delivered"
             kpi={k.deliveredBags}
             icon={CheckCircle2}
             color="text-emerald-600"
+          />
+          <KpiCard
+            label="Delivery Success %"
+            kpi={k.deliverySuccess}
+            icon={PackageCheck}
+            color="text-emerald-600"
+            format={(v) => `${v}%`}
+          />
+          <KpiCard
+            label="Airport Pickup Success %"
+            kpi={k.pickupSuccess}
+            icon={Handshake}
+            color="text-teal-600"
+            format={(v) => `${v}%`}
+          />
+          <KpiCard
+            label="Open Incidents"
+            kpi={k.openIncidents}
+            icon={ShieldAlert}
+            color="text-rose-600"
           />
           <KpiCard
             label="Avg. Resolution"
@@ -288,19 +343,6 @@ function Index() {
             icon={Star}
             color="text-rose-600"
             format={(v) => `${v.toFixed(1)}/5`}
-          />
-          <KpiCard
-            label="Delivery Success"
-            kpi={k.deliverySuccess}
-            icon={PackageCheck}
-            color="text-emerald-600"
-            format={(v) => `${v}%`}
-          />
-          <KpiCard
-            label="Open Incidents"
-            kpi={k.openIncidents}
-            icon={ShieldAlert}
-            color="text-rose-600"
           />
         </div>
       )}
