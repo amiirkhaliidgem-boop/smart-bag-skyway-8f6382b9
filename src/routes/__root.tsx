@@ -28,7 +28,7 @@ import { toast } from "sonner";
 
 function NotFoundComponent() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+    <div className="flex min-h-dvh items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
         <h1 className="text-7xl font-bold text-foreground">404</h1>
         <h2 className="mt-4 text-xl font-semibold text-foreground">Page not found</h2>
@@ -56,7 +56,7 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   }, [error]);
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+    <div className="flex min-h-dvh items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
         <h1 className="text-xl font-semibold tracking-tight text-foreground">
           This page didn't load
@@ -257,7 +257,7 @@ function AuthGate() {
 
   if (!ready) {
     return (
-      <div className="min-h-screen grid place-items-center text-sm text-muted-foreground">
+      <div className="min-h-dvh grid place-items-center text-sm text-muted-foreground">
         Loading…
       </div>
     );
@@ -271,7 +271,7 @@ function AuthGate() {
   // Protected: don't flash the shell before redirect completes.
   if (!session) {
     return (
-      <div className="min-h-screen grid place-items-center text-sm text-muted-foreground">
+      <div className="min-h-dvh grid place-items-center text-sm text-muted-foreground">
         Redirecting to sign in…
       </div>
     );
@@ -279,7 +279,7 @@ function AuthGate() {
 
   if (roleLoading || !roleReadyForSession || perms.loading) {
     return (
-      <div className="min-h-screen grid place-items-center text-sm text-muted-foreground">
+      <div className="min-h-dvh grid place-items-center text-sm text-muted-foreground">
         Loading…
       </div>
     );
@@ -287,7 +287,7 @@ function AuthGate() {
 
   if (!effectiveRole) {
     return (
-      <div className="min-h-screen grid place-items-center text-sm text-muted-foreground">
+      <div className="min-h-dvh grid place-items-center text-sm text-muted-foreground">
         Unable to verify your staff role. Please refresh and try again.
       </div>
     );
@@ -296,7 +296,7 @@ function AuthGate() {
   // Block rendering of disallowed routes while the redirect effect runs.
   if (effectiveRole && !allowPath(pathname)) {
     return (
-      <div className="min-h-screen grid place-items-center text-sm text-muted-foreground">
+      <div className="min-h-dvh grid place-items-center text-sm text-muted-foreground">
         Redirecting…
       </div>
     );

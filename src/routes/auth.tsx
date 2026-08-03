@@ -113,7 +113,7 @@ async function resolveLoginIdentity(input: string): Promise<string> {
 }
 
   return (
-    <div className="min-h-screen grid place-items-center bg-background p-6">
+    <div className="min-h-dvh grid place-items-center bg-background p-6">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-2 text-center">
           <div className="mx-auto h-12 w-12 rounded-xl bg-white ring-1 ring-border grid place-items-center overflow-hidden">

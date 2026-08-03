@@ -6,8 +6,6 @@ import {
   Search,
   Truck,
   BarChart3,
-  Menu,
-  X,
   QrCode,
   Headphones,
   Star,
@@ -18,17 +16,34 @@ import {
   GitBranch,
   Plug,
   Radio,
-  ArrowRightLeft,
   Settings as SettingsIcon,
   LogOut,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import iabLogo from "@/assets/iab-logo.jpeg.asset.json";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "@tanstack/react-router";
 import { useRole, canAccessPath, ROLE_LABELS } from "@/lib/rbac";
 import { usePermissions } from "@/lib/permissions";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter as SidebarFooterSlot,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarInset,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+  SidebarTrigger,
+  useSidebar,
+} from "@/components/ui/sidebar";
+
+const SIDEBAR_STORAGE_KEY = "iab.sidebar.expanded";
 
 const navSections: {
   label: string;
@@ -72,9 +87,7 @@ const navSections: {
   {
     label: "CONTACT CENTER OPERATIONS",
     items: [
-      { to: "/tracking", label: "Baggage Tracking", icon: Search },
       { to: "/contact-center", label: "Contact Center", icon: Headphones },
-      { to: "/feedback", label: "Customer Feedback", icon: Star },
     ],
   },
   {
@@ -111,179 +124,146 @@ const navSections: {
 
 
 export function AppShell() {
-  const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const currentSection = useRouterState({
-    select: (s) => (s.location.search as { section?: string })?.section,
-  });
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const { role } = useRole();
-  const perms = usePermissions();
+  const [open, setOpen] = useState(true);
 
-  const visibleSections = navSections
-    .map((section) => ({
-      ...section,
-      items: section.items.filter((item) =>
-        perms.unmanaged ? canAccessPath(item.to, role) : perms.canAccess(item.to),
-      ),
-    }))
-    .filter((section) => section.items.length > 0);
+  // Restore the persisted desktop collapse state after hydration.
+  useEffect(() => {
+    const stored = window.localStorage.getItem(SIDEBAR_STORAGE_KEY);
+    if (stored !== null) setOpen(stored === "1");
+  }, []);
 
-  const isActive = (
-    to: string,
-    exact?: boolean,
-    matchSearchKey?: string,
-  ) => {
-    const pathMatch = exact
-      ? pathname === to
-      : pathname === to || pathname.startsWith(to + "/");
-    if (!pathMatch) return false;
-    if (!matchSearchKey) return true;
-    // For sub-nav items that share a route, match on the `section` search param.
-    const current = currentSection ?? "users"; // /admin defaults to users
-    return current === matchSearchKey;
-  };
+  function handleOpenChange(next: boolean) {
+    setOpen(next);
+    try {
+      window.localStorage.setItem(SIDEBAR_STORAGE_KEY, next ? "1" : "0");
+    } catch {
+      /* storage unavailable — collapse still works for the session */
+    }
+  }
 
   return (
-    <div className="flex min-h-screen w-full bg-background text-foreground">
-      {/* Desktop sidebar */}
-      <aside className="hidden lg:flex w-64 shrink-0 flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border">
-        <SidebarBrand />
-        <nav className="flex-1 px-3 py-4 space-y-5 overflow-y-auto">
-          {visibleSections.map((section) => (
-            <div key={section.label}>
-              <p className="px-3 mb-1 text-[10px] uppercase tracking-wider text-sidebar-foreground/50 font-semibold">
-                {section.label}
-              </p>
-              <div className="space-y-1">
-                {section.items.map((item) => (
-                  <Link
-                    key={`${item.to}-${item.label}`}
-                    to={item.to}
-                    search={item.search as never}
-                    onClick={() => setMobileOpen(false)}
-                    className={cn(
-                      "flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors",
-                      isActive(item.to, item.exact, item.matchSearchKey)
-                        ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-sm"
-                        : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-                    )}
-                  >
-                    <item.icon className="h-4 w-4 shrink-0" />
-                    <span className="truncate">{item.label}</span>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          ))}
-        </nav>
-        <SidebarFooter />
-      </aside>
-
-      {/* Mobile drawer */}
-      {mobileOpen && (
-        <div className="lg:hidden fixed inset-0 z-50">
-          <div
-            className="absolute inset-0 bg-black/50"
-            onClick={() => setMobileOpen(false)}
-          />
-          <aside className="absolute left-0 top-0 bottom-0 w-72 bg-sidebar text-sidebar-foreground flex flex-col">
-            <SidebarBrand onClose={() => setMobileOpen(false)} />
-            <nav className="flex-1 px-3 py-4 space-y-5 overflow-y-auto">
-              {visibleSections.map((section) => (
-                <div key={section.label}>
-                  <p className="px-3 mb-1 text-[10px] uppercase tracking-wider text-sidebar-foreground/50 font-semibold">
-                    {section.label}
-                  </p>
-                  <div className="space-y-1">
-                    {section.items.map((item) => (
-                      <Link
-                        key={`${item.to}-${item.label}`}
-                        to={item.to}
-                        search={item.search as never}
-                        onClick={() => setMobileOpen(false)}
-                        className={cn(
-                          "flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium",
-                          isActive(item.to, item.exact, item.matchSearchKey)
-                            ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                            : "hover:bg-sidebar-accent",
-                        )}
-                      >
-                        <item.icon className="h-4 w-4" />
-                        {item.label}
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </nav>
-            <SidebarFooter />
-          </aside>
-        </div>
-      )}
-
-      <div className="flex-1 flex flex-col min-w-0">
-        <header className="h-14 border-b border-border bg-card flex items-center px-4 gap-3 sticky top-0 z-30 relative">
-          <span className="absolute left-0 right-0 bottom-0 h-[2px] bg-gradient-to-r from-primary via-accent to-primary" />
-          <button
-            type="button"
-            onClick={() => setMobileOpen(true)}
-            className="lg:hidden p-2 -ml-2 rounded-md hover:bg-muted"
-            aria-label="Open menu"
-          >
-            <Menu className="h-5 w-5" />
-          </button>
-          <div className="flex items-center gap-2 min-w-0">
+    <SidebarProvider open={open} onOpenChange={handleOpenChange}>
+      <AppSidebar />
+      <SidebarInset className="min-w-0 bg-background text-foreground">
+        <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-3 border-b border-border bg-card px-3 sm:px-4">
+          <span className="pointer-events-none absolute inset-x-0 bottom-0 h-[2px] bg-gradient-to-r from-primary via-accent to-primary" />
+          <SidebarTrigger className="min-h-10 min-w-10" />
+          <div className="flex min-w-0 items-center gap-2">
             <img
               src={iabLogo.url}
-              alt="IAB"
-              className="hidden sm:block h-8 w-8 rounded-md object-contain bg-white ring-1 ring-border p-0.5"
+              alt=""
+              className="hidden h-8 w-8 rounded-md bg-card object-contain p-0.5 ring-1 ring-border sm:block"
             />
-            <div className="min-w-0">
-              <p className="text-sm font-semibold truncate">Smart Baggage Ecosystem</p>
-            </div>
+            <p className="truncate text-sm font-semibold">Smart Baggage Ecosystem</p>
           </div>
           <div className="ml-auto flex items-center gap-3">
-            <div className="hidden md:flex items-center gap-2 text-xs text-muted-foreground">
-              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+            <div className="hidden items-center gap-2 text-xs text-muted-foreground md:flex">
+              <span className="h-2 w-2 rounded-full bg-[var(--success)]" aria-hidden />
               System Online
             </div>
             <UserMenu />
           </div>
         </header>
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-[1600px] w-full mx-auto">
+        <main className="mx-auto w-full max-w-[1600px] flex-1 p-4 sm:p-6 lg:p-8">
           <Outlet />
         </main>
-      </div>
-    </div>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }
 
-function SidebarBrand({ onClose }: { onClose?: () => void }) {
-  return (
-    <div className="relative h-16 px-5 flex items-center gap-3 border-b border-sidebar-border">
-      <span className="absolute left-0 right-0 bottom-0 h-[2px] bg-gradient-to-r from-transparent via-sidebar-primary to-transparent" />
-      <div className="h-10 w-10 rounded-lg bg-white grid place-items-center shadow ring-1 ring-sidebar-border overflow-hidden">
-        <img src={iabLogo.url} alt="IAB" className="h-9 w-9 object-contain" />
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-bold tracking-tight leading-none">IAB</p>
-        <p className="text-[11px] text-sidebar-foreground/60 mt-1">Smart Baggage Ecosystem</p>
-      </div>
-      {onClose && (
-        <button onClick={onClose} className="p-1 rounded hover:bg-sidebar-accent" aria-label="Close">
-          <X className="h-4 w-4" />
-        </button>
-      )}
-    </div>
-  );
-}
+function AppSidebar() {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const currentSection = useRouterState({
+    select: (s) => (s.location.search as { section?: string })?.section,
+  });
+  const { role } = useRole();
+  const perms = usePermissions();
+  const { isMobile, setOpenMobile } = useSidebar();
 
-function SidebarFooter() {
+  // Auto-close the overlay drawer whenever the route changes.
+  useEffect(() => {
+    if (isMobile) setOpenMobile(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]);
+
+  const visibleSections = useMemo(
+    () =>
+      navSections
+        .map((section) => ({
+          ...section,
+          items: section.items.filter((item) =>
+            perms.unmanaged ? canAccessPath(item.to, role) : perms.canAccess(item.to),
+          ),
+        }))
+        .filter((section) => section.items.length > 0),
+    [perms, role],
+  );
+
+  const isActive = (to: string, exact?: boolean, matchSearchKey?: string) => {
+    const pathMatch = exact
+      ? pathname === to
+      : pathname === to || pathname.startsWith(to + "/");
+    if (!pathMatch) return false;
+    if (!matchSearchKey) return true;
+    const current = currentSection ?? "users"; // /admin defaults to users
+    return current === matchSearchKey;
+  };
+
   return (
-    <div className="px-5 py-4 border-t border-sidebar-border text-[11px] text-sidebar-foreground/60">
-      <p className="font-medium text-sidebar-foreground/80">Ops Console v2.6</p>
-      <p className="mt-0.5">© 2026 Cairo Ground Services</p>
-    </div>
+    <Sidebar collapsible="icon" className="border-sidebar-border">
+      <SidebarHeader className="border-b border-sidebar-border">
+        <div className="flex items-center gap-3 px-1 py-1.5">
+          <div className="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-lg bg-card shadow ring-1 ring-sidebar-border">
+            <img src={iabLogo.url} alt="IAB" className="h-8 w-8 object-contain" />
+          </div>
+          <div className="min-w-0 group-data-[collapsible=icon]:hidden">
+            <p className="text-sm font-bold leading-none tracking-tight">IAB</p>
+            <p className="mt-1 truncate text-[11px] text-sidebar-foreground/60">
+              Smart Baggage Ecosystem
+            </p>
+          </div>
+        </div>
+      </SidebarHeader>
+      <SidebarContent>
+        {visibleSections.map((section) => (
+          <SidebarGroup key={section.label}>
+            <SidebarGroupLabel className="text-[10px] uppercase tracking-wider text-sidebar-foreground/50">
+              {section.label}
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {section.items.map((item) => {
+                  const active = isActive(item.to, item.exact, item.matchSearchKey);
+                  return (
+                    <SidebarMenuItem key={`${item.to}-${item.label}`}>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={active}
+                        tooltip={item.label}
+                        className={cn(
+                          active &&
+                            "bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary hover:text-sidebar-primary-foreground",
+                        )}
+                      >
+                        <Link to={item.to} search={item.search as never}>
+                          <item.icon />
+                          <span className="truncate">{item.label}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        ))}
+      </SidebarContent>
+      <SidebarFooterSlot className="border-t border-sidebar-border text-[11px] text-sidebar-foreground/60 group-data-[collapsible=icon]:hidden">
+        <p className="font-medium text-sidebar-foreground/80">Ops Console v2.6</p>
+        <p>© 2026 Cairo Ground Services</p>
+      </SidebarFooterSlot>
+    </Sidebar>
   );
 }
 
@@ -313,10 +293,11 @@ function UserMenu() {
       <button
         type="button"
         onClick={signOut}
-        className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-md border border-input bg-background text-xs font-medium hover:bg-muted"
+        className="inline-flex h-9 min-h-9 items-center gap-1.5 rounded-md border border-input bg-background px-2.5 text-xs font-medium hover:bg-muted"
         aria-label="Sign out"
       >
-        <LogOut className="h-3.5 w-3.5" /> Sign out
+        <LogOut className="h-4 w-4" />
+        <span className="hidden sm:inline">Sign out</span>
       </button>
     </div>
   );

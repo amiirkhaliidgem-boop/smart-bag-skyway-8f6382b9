@@ -15,12 +15,9 @@ import {
   canTransitionLf,
   type LFStatus,
 } from "@/lib/lost-found/statuses";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { SnapshotTruncationNotice } from "@/components/snapshot-truncation-notice";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogTrigger,
@@ -36,15 +33,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-  DropdownMenuCheckboxItem,
-} from "@/components/ui/dropdown-menu";
 import { LfStatusBadge } from "@/components/lf-status-badge";
 import { useStaffOfficers, type StaffOfficer } from "@/lib/admin/officers";
 import { PirWizard } from "@/components/lost-found/pir-wizard";
@@ -52,17 +40,15 @@ import { BulkToolbar } from "@/components/bulk/bulk-toolbar";
 import { DateRangeFilter } from "@/components/filters/date-range-filter";
 import { PirPrintHost, pirPrintBus } from "@/components/lost-found/pir-print-host";
 import {
-  Search,
   Plus,
-  Columns3,
   Star as StarIcon,
-  ChevronDown,
   X,
   UserCheck,
   Truck,
   ListChecks,
   Download,
   Printer,
+  PackageSearch,
 } from "lucide-react";
 import { toast } from "sonner";
 import { ImportDialog } from "@/components/io/import-dialog";
@@ -70,6 +56,7 @@ import { lostFoundSchema } from "@/lib/io/registry";
 import { exportCasesToXlsx } from "@/lib/lost-found/export-xlsx";
 import { Upload } from "lucide-react";
 import { PageLoading } from "@/components/ops-skeleton";
+import { PageHeader, KpiCard, KpiGrid, DataTable, type DataColumn } from "@/components/layout";
 
 export const Route = createFileRoute("/lost-found/")({
   head: () => ({
@@ -85,107 +72,175 @@ export const Route = createFileRoute("/lost-found/")({
   component: LostFoundPage,
 });
 
-type ColKey =
-  | "pir" | "passenger" | "flight" | "tag" | "status"
-  | "officer" | "priority" | "method" | "created" | "updated";
-
-// Fixed registry columns. The column-toggle selector and the "Last Updated"
-// column were removed on purpose — the registry shows one canonical layout.
-const ALL_COLUMNS: { key: ColKey; label: string; default: boolean }[] = [
-  { key: "pir", label: "PIR", default: true },
-  { key: "passenger", label: "Passenger", default: true },
-  { key: "flight", label: "Flight", default: true },
-  { key: "tag", label: "Bag Tag", default: true },
-  { key: "status", label: "Current Status", default: true },
-  { key: "officer", label: "Assigned Officer", default: true },
-  { key: "priority", label: "Priority", default: true },
-  { key: "method", label: "Delivery Method", default: true },
-  { key: "created", label: "Created Date", default: true },
-];
-
-const VISIBLE_COLUMNS = Object.fromEntries(
-  ALL_COLUMNS.map((c) => [c.key, true]),
-) as Record<ColKey, boolean>;
-
 /** Statuses selectable in the registry filter. "Closed" is a retired legacy
  *  value — the operational lifecycle ends at Delivered (Home Delivery) or
  *  Passenger Picked Up (Airport Pickup). */
 const FILTER_STATUSES = LF_STATUSES.filter((s) => s !== "Closed");
 
+const priorityOf = (c: BaggageCase) => c.priority ?? c.internal?.casePriority ?? "Normal";
+
 function LostFoundPage() {
   const cases = useStore((s) => s.cases);
   const loading = useOpsLoading();
-  const [query, setQuery] = useState("");
   const [status, setStatus] = useState<LFStatus | "all">("all");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [openNew, setOpenNew] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
-  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [assignOfficerOpen, setAssignOfficerOpen] = useState(false);
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
-  const [sortKey, setSortKey] = useState<ColKey>("created");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
-  const visible = VISIBLE_COLUMNS;
   const officers = useStaffOfficers();
+  const navigate = useNavigate();
 
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
     return cases.filter((c) => {
       const lfs = deriveLfFromCase(c);
       if (status !== "all" && lfs !== status) return false;
       if (from && c.createdAt.slice(0, 10) < from) return false;
       if (to && c.createdAt.slice(0, 10) > to) return false;
-      if (!q) return true;
-      const hay = [
-        c.bagId, c.passengerName, c.flightNumber, c.pirNumber,
-        c.bagTagNumber, c.email, c.contact,
-        c.passenger?.passportNumber, c.passenger?.pnr,
-      ].filter(Boolean).join(" ").toLowerCase();
-      return hay.includes(q);
+      return true;
     });
-  }, [cases, query, status, from, to]);
+  }, [cases, status, from, to]);
 
-  const sorted = useMemo(() => {
-    const arr = [...filtered];
-    arr.sort((a, b) => {
-      const get = (c: BaggageCase): string => {
-        switch (sortKey) {
-          case "pir": return c.pirNumber;
-          case "passenger": return c.passengerName;
-          case "flight": return c.flightNumber;
-          case "tag": return c.bagTagNumber;
-          case "status": return deriveLfFromCase(c);
-          case "officer": return c.internal?.assignedOfficer ?? "";
-          case "priority": return c.priority ?? c.internal?.casePriority ?? "Normal";
-          case "method": return c.delivery?.method ?? "";
-          case "created": return c.createdAt;
-          case "updated": return c.updatedAt ?? c.createdAt;
-        }
-      };
-      const av = get(a);
-      const bv = get(b);
-      return sortDir === "asc" ? av.localeCompare(bv) : bv.localeCompare(av);
-    });
-    return arr;
-  }, [filtered, sortKey, sortDir]);
+  const columns = useMemo<DataColumn<BaggageCase>[]>(
+    () => [
+      {
+        id: "pir",
+        header: "PIR",
+        minWidth: "10rem",
+        sortValue: (c) => c.pirNumber,
+        cell: (c) => (
+          <div className="min-w-0">
+            <Link
+              to="/lost-found/$bagId"
+              params={{ bagId: c.bagId }}
+              className="font-mono text-xs font-semibold text-primary hover:underline"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {c.pirNumber || c.bagId}
+            </Link>
+            <div className="text-[10px] text-muted-foreground">{c.bagId}</div>
+          </div>
+        ),
+      },
+      {
+        id: "passenger",
+        header: "Passenger",
+        minWidth: "12rem",
+        sortValue: (c) => c.passengerName,
+        cell: (c) => (
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5 font-medium">
+              <span className="truncate">{c.passengerName}</span>
+              {c.baggage?.vipPassenger || priorityOf(c) === "VIP" ? (
+                <StarIcon
+                  className="h-3.5 w-3.5 shrink-0 fill-[var(--warning)] text-[var(--warning)]"
+                  aria-label="VIP"
+                />
+              ) : null}
+            </div>
+            <div className="truncate text-xs text-muted-foreground">
+              {c.contact}
+              {c.passenger?.pnr ? ` · PNR ${c.passenger.pnr}` : ""}
+            </div>
+          </div>
+        ),
+      },
+      {
+        id: "flight",
+        header: "Flight",
+        minWidth: "9rem",
+        hideBelow: "lg",
+        sortValue: (c) => c.flightNumber,
+        cell: (c) => (
+          <div className="min-w-0">
+            <div className="font-medium">{c.flightNumber}</div>
+            <div className="text-[11px] text-muted-foreground">
+              {c.flight?.originAirport ?? "—"} → {c.flight?.destinationAirport ?? "CAI"}
+            </div>
+          </div>
+        ),
+      },
+      {
+        id: "tag",
+        header: "Bag Tag",
+        minWidth: "8rem",
+        hideBelow: "xl",
+        sortValue: (c) => c.bagTagNumber,
+        cell: (c) => <span className="font-mono text-xs">{c.bagTagNumber}</span>,
+      },
+      {
+        id: "status",
+        header: "Current Status",
+        minWidth: "11rem",
+        sortValue: (c) => deriveLfFromCase(c),
+        cell: (c) => <LfStatusBadge status={deriveLfFromCase(c)} />,
+      },
+      {
+        id: "officer",
+        header: "Assigned Officer",
+        minWidth: "10rem",
+        hideBelow: "xl",
+        sortValue: (c) => c.internal?.assignedOfficer ?? "",
+        cell: (c) =>
+          c.internal?.assignedOfficer ?? (
+            <span className="italic text-muted-foreground">Unassigned</span>
+          ),
+      },
+      {
+        id: "priority",
+        header: "Priority",
+        minWidth: "6rem",
+        hideBelow: "lg",
+        sortValue: priorityOf,
+        cell: (c) => <span className="text-xs font-medium">{priorityOf(c)}</span>,
+      },
+      {
+        id: "method",
+        header: "Delivery Method",
+        minWidth: "9rem",
+        hideBelow: "xl",
+        sortValue: (c) => c.delivery?.method ?? "",
+        cell: (c) => <span className="text-xs">{c.delivery?.method ?? "—"}</span>,
+      },
+      {
+        id: "created",
+        header: "Created",
+        minWidth: "7rem",
+        hideBelow: "md",
+        sortValue: (c) => c.createdAt,
+        cell: (c) => (
+          <span className="text-xs text-muted-foreground">
+            {new Date(c.createdAt).toLocaleDateString("en-GB")}
+          </span>
+        ),
+      },
+      {
+        id: "actions",
+        header: "Actions",
+        align: "right",
+        minWidth: "5rem",
+        cell: (c) => (
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8"
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate({ to: "/lost-found/$bagId", params: { bagId: c.bagId } });
+            }}
+          >
+            Open
+          </Button>
+        ),
+      },
+    ],
+    [navigate],
+  );
 
-  function toggleSelect(bagId: string, checked: boolean) {
-    setSelected((prev) => {
-      const n = new Set(prev);
-      if (checked) n.add(bagId); else n.delete(bagId);
-      return n;
-    });
-  }
-  function toggleAll(checked: boolean) {
-    setSelected(checked ? new Set(sorted.map((c) => c.bagId)) : new Set());
-  }
-  function toggleSort(key: ColKey) {
-    if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    else { setSortKey(key); setSortDir("asc"); }
-  }
   function resetFilters() {
-    setQuery(""); setStatus("all"); setFrom(""); setTo("");
+    setStatus("all"); setFrom(""); setTo("");
   }
 
   const kpis = useMemo(() => {
@@ -203,8 +258,8 @@ function LostFoundPage() {
     return { total, open, tracing, readyDelivery, delivered, vip };
   }, [cases]);
 
-  const selectedIds = Array.from(selected);
-  function clearSelection() { setSelected(new Set()); }
+  const selected = useMemo(() => new Set(selectedIds), [selectedIds]);
+  function clearSelection() { setSelectedIds([]); }
 
   async function runAssignDelivery() {
     if (selectedIds.length === 0) return;
@@ -279,13 +334,11 @@ function LostFoundPage() {
   return (
     <div className="space-y-6">
       <PirPrintHost />
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
-            Lost &amp; Found Management
-          </h1>
-        </div>
-        <div className="flex items-center gap-2">
+      <PageHeader
+        title="Lost & Found Management"
+        description="AHL / PIR registry — tracing, customs, delivery and pickup hand-off."
+        actions={
+          <>
           <Button variant="outline" className="gap-2" onClick={() => setImportOpen(true)}>
             <Upload className="h-4 w-4" /> Import
           </Button>
@@ -302,17 +355,18 @@ function LostFoundPage() {
             </DialogTrigger>
             <PirWizard mode="create" onClose={() => setOpenNew(false)} />
           </Dialog>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       {/* KPI strip */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        <Kpi label="Total Cases" value={kpis.total} />
-        <Kpi label="Open" value={kpis.open} tone="rose" />
-        <Kpi label="Tracing" value={kpis.tracing} tone="amber" />
-        <Kpi label="Ready / Assigned" value={kpis.readyDelivery} tone="violet" />
-        <Kpi label="Completed" value={kpis.delivered} tone="emerald" />
-      </div>
+      <KpiGrid className="lg:grid-cols-5 xl:grid-cols-5">
+        <KpiCard label="Total Cases" value={kpis.total} />
+        <KpiCard label="Open" value={kpis.open} tone="danger" />
+        <KpiCard label="Tracing" value={kpis.tracing} tone="warning" />
+        <KpiCard label="Ready / Assigned" value={kpis.readyDelivery} tone="primary" />
+        <KpiCard label="Completed" value={kpis.delivered} tone="success" />
+      </KpiGrid>
 
       <SnapshotTruncationNotice collection="cases" noun="cases" />
 
@@ -360,21 +414,32 @@ function LostFoundPage() {
         />
       )}
 
-      {/* Simplified filter bar */}
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="relative w-full sm:w-auto sm:flex-1 sm:max-w-md">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search"
-                className="pl-9"
-              />
-            </div>
+      <DataTable
+        data={filtered}
+        columns={columns}
+        rowId={(c) => c.bagId}
+        ariaLabel="Lost and found cases"
+        initialSort={{ id: "created", dir: "desc" }}
+        searchPlaceholder="Search PIR, passenger, flight, tag…"
+        searchText={(c) =>
+          [
+            c.bagId, c.pirNumber, c.passengerName, c.flightNumber,
+            c.bagTagNumber, c.email, c.contact,
+            c.passenger?.passportNumber, c.passenger?.pnr,
+          ].filter(Boolean).join(" ")
+        }
+        selectable
+        selectedIds={selectedIds}
+        onSelectionChange={setSelectedIds}
+        onRowClick={(c) => navigate({ to: "/lost-found/$bagId", params: { bagId: c.bagId } })}
+        loading={loading.core && cases.length === 0}
+        emptyIcon={<PackageSearch />}
+        emptyTitle="No cases match the current filters"
+        emptyDescription="Adjust the status or date filters, or create a new PIR case."
+        filters={
+          <>
             <Select value={status} onValueChange={(v) => setStatus(v as LFStatus | "all")}>
-              <SelectTrigger className="w-[190px] h-9">
+              <SelectTrigger className="h-10 w-full sm:w-[190px]" aria-label="Filter by status">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
@@ -385,67 +450,12 @@ function LostFoundPage() {
               </SelectContent>
             </Select>
             <DateRangeFilter from={from} to={to} onFromChange={setFrom} onToChange={setTo} />
-            <div className="ml-auto flex items-center gap-2">
-              <Button variant="ghost" size="sm" onClick={resetFilters} className="h-9 gap-1.5">
-                <X className="h-3.5 w-3.5" /> Reset
-              </Button>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-muted/60 text-xs uppercase tracking-wider text-muted-foreground">
-                <tr>
-                  <th className="px-3 py-3 w-8">
-                    <Checkbox
-                      checked={sorted.length > 0 && selected.size === sorted.length}
-                      onCheckedChange={(v) => toggleAll(Boolean(v))}
-                      aria-label="Select all"
-                    />
-                  </th>
-                  {ALL_COLUMNS.filter((c) => visible[c.key]).map((c) => (
-                    <th
-                      key={c.key}
-                      className="text-left px-4 py-3 font-medium select-none cursor-pointer"
-                      onClick={() => toggleSort(c.key)}
-                    >
-                      <span className="inline-flex items-center gap-1">
-                        {c.label}
-                        {sortKey === c.key && (
-                          <span className="text-[10px]">{sortDir === "asc" ? "▲" : "▼"}</span>
-                        )}
-                      </span>
-                    </th>
-                  ))}
-                  <th className="text-right px-4 py-3 font-medium">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {sorted.map((c) => (
-                  <Row
-                    key={c.bagId}
-                    c={c}
-                    visible={visible}
-                    checked={selected.has(c.bagId)}
-                    onToggle={(v) => toggleSelect(c.bagId, v)}
-                  />
-                ))}
-                {sorted.length === 0 && (
-                  <tr>
-                    <td
-                      colSpan={ALL_COLUMNS.length + 2}
-                      className="px-4 py-16 text-center text-sm text-muted-foreground"
-                    >
-                      No cases match the current filters.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
+            <Button variant="ghost" size="sm" onClick={resetFilters} className="h-10 gap-1.5">
+              <X className="h-4 w-4" /> Reset
+            </Button>
+          </>
+        }
+      />
 
       <AssignOfficerDialog
         open={assignOfficerOpen}
@@ -461,123 +471,6 @@ function LostFoundPage() {
         onSubmit={runChangeStatus}
       />
     </div>
-  );
-}
-
-function Kpi({
-  label, value, tone = "slate",
-}: {
-  label: string; value: number;
-  tone?: "slate" | "rose" | "amber" | "violet" | "emerald" | "indigo";
-}) {
-  const map: Record<string, string> = {
-    slate: "text-slate-700",
-    rose: "text-rose-600",
-    amber: "text-amber-600",
-    violet: "text-violet-600",
-    emerald: "text-emerald-600",
-    indigo: "text-indigo-600",
-  };
-  return (
-    <Card>
-      <CardContent className="p-4">
-        <p className="text-[11px] uppercase tracking-wider text-muted-foreground">{label}</p>
-        <p className={`mt-1 text-2xl font-bold ${map[tone]}`}>{value}</p>
-      </CardContent>
-    </Card>
-  );
-}
-
-function Row({
-  c, visible, checked, onToggle,
-}: {
-  c: BaggageCase;
-  visible: Record<ColKey, boolean>;
-  checked: boolean;
-  onToggle: (v: boolean) => void;
-}) {
-  const navigate = useNavigate();
-  const lfs = deriveLfFromCase(c);
-  const p = c.priority ?? c.internal?.casePriority ?? "Normal";
-  const vip = c.baggage?.vipPassenger || p === "VIP";
-
-  function openCase() {
-    navigate({ to: "/lost-found/$bagId", params: { bagId: c.bagId } });
-  }
-
-  return (
-    <tr className="hover:bg-muted/40 cursor-pointer" onClick={openCase}>
-      <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
-        <Checkbox
-          checked={checked}
-          onCheckedChange={(v) => onToggle(Boolean(v))}
-          aria-label={`Select ${c.pirNumber}`}
-        />
-      </td>
-      {visible.pir && (
-        <td className="px-4 py-3 font-mono text-xs font-semibold text-primary">
-          <Link
-            to="/lost-found/$bagId"
-            params={{ bagId: c.bagId }}
-            className="hover:underline"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {c.pirNumber}
-          </Link>
-          <div className="font-sans font-normal text-[10px] text-muted-foreground">
-            {c.bagId}
-          </div>
-        </td>
-      )}
-      {visible.passenger && (
-        <td className="px-4 py-3">
-          <div className="font-medium flex items-center gap-1.5">
-            {c.passengerName}
-            {vip && <StarIcon className="h-3 w-3 text-amber-500 fill-amber-500" />}
-          </div>
-          <div className="text-xs text-muted-foreground">
-            {c.contact}
-            {c.passenger?.pnr ? ` · PNR ${c.passenger.pnr}` : ""}
-          </div>
-        </td>
-      )}
-      {visible.flight && (
-        <td className="px-4 py-3">
-          <div className="font-medium">{c.flightNumber}</div>
-          <div className="text-[11px] text-muted-foreground">
-            {c.flight?.originAirport ?? "—"} → {c.flight?.destinationAirport ?? "CAI"}
-          </div>
-        </td>
-      )}
-      {visible.tag && <td className="px-4 py-3 font-mono text-xs">{c.bagTagNumber}</td>}
-      {visible.status && (
-        <td className="px-4 py-3"><LfStatusBadge status={lfs} /></td>
-      )}
-      {visible.officer && (
-        <td className="px-4 py-3 text-xs">
-          {c.internal?.assignedOfficer ?? (
-            <span className="text-muted-foreground italic">Unassigned</span>
-          )}
-        </td>
-      )}
-      {visible.priority && <td className="px-4 py-3 text-xs font-medium">{p}</td>}
-      {visible.method && <td className="px-4 py-3 text-xs">{c.delivery?.method ?? "—"}</td>}
-      {visible.created && (
-        <td className="px-4 py-3 text-xs text-muted-foreground">
-          {new Date(c.createdAt).toLocaleDateString("en-GB")}
-        </td>
-      )}
-      <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-7"
-          onClick={openCase}
-        >
-          Open
-        </Button>
-      </td>
-    </tr>
   );
 }
 
