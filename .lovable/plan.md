@@ -74,9 +74,49 @@ Add small presentational components and apply them across routes:
 - Keep animations to transform/opacity transitions only.
 
 ### 7. Final visual QA
-Screen-by-screen Playwright sweep at 1440, 1280, 1024, 820, 768, 430, and 390 px across every route (dashboard, L&F list + details, delivery dispatch + details, driver portal, passenger portal, admin, settings, reports, timeline, notifications, workflow monitor, integrations, API status, agent monitoring, feedback, auth), with screenshots and a written pass/fail list. Any overflow, overlap, or clipping found is fixed in the same pass.
+Screen-by-screen Playwright sweep across every route (dashboard, L&F list + details, delivery dispatch + details, driver portal, passenger portal, admin, settings, reports, timeline, notifications, workflow monitor, integrations, API status, agent monitoring, feedback, auth), with screenshots and a written pass/fail list. Any overflow, overlap, or clipping found is fixed in the same pass. Breakpoint matrix is defined in Acceptance Criteria below.
+
+---
+
+## Part C — Acceptance Criteria (mandatory for Phase 01 sign-off)
+
+### C1. Production responsive validation matrix
+Every route is captured and checked at each of these viewports:
+
+| Target | Viewport (CSS px) |
+| --- | --- |
+| iPhone (base) | 390 x 844 |
+| iPhone Plus | 430 x 932 |
+| iPhone Pro Max | 430 x 932 (landscape 932 x 430 also checked) |
+| iPad Mini | 768 x 1024 portrait + 1024 x 768 landscape |
+| iPad Pro | 1024 x 1366 portrait + 1366 x 1024 landscape |
+| Surface | 1368 x 912 |
+| Laptop | 1440 x 900 |
+| Full HD | 1920 x 1080 |
+| 2K | 2560 x 1440 |
+
+Pass condition at every cell of the matrix: no horizontal page scroll (intentional in-table scroll on the widest tables only), no clipped or truncated-to-unreadable content, no overlapping components, no hidden or unreachable buttons, no broken table or card layouts, no visual regression against the pre-change capture. Result is a written pass/fail table per route per breakpoint with screenshots.
+
+### C2. Architecture-driven dashboard
+KPI cards, funnel, and distribution charts are rendered from a declarative KPI descriptor list (key, label, icon, tone, format, source field) driven by the statuses the backend already returns, instead of hardcoded per-card JSX. Adding a workflow status or a KPI to the backend payload surfaces in the dashboard with no layout rework. Grid, card sizing, and ordering come from the descriptor list. No business logic or SQL changes.
+
+### C3. Enterprise table standard
+One system-wide `DataTable` component providing: sticky header, client pagination, search, column sorting, filter slot, export slot, row selection, row actions, loading skeleton, empty state, and a responsive mobile card view. Every operational module (L&F, Dispatch, Delivery details, Admin, Notifications, Workflow Monitor, Reports, Settings, Integrations, Feedback, Agent Monitoring) is migrated onto it. Existing filter/sort/selection/export behavior is preserved exactly — only the rendering layer changes.
+
+### C4. Shared design system
+Reusable primitives finalized under `src/components/layout/` and `src/components/ui-kit/`: `Card` conventions, `KpiCard`, `DataTable`, `Modal`/dialog shell, `PageHeader`, `EmptyState`, `ErrorState`, `LoadingState`. Tokens for spacing, radius, shadow, icon size, and type scale are declared in `src/styles.css`. A short conventions note is added to `docs/` so future modules reuse these instead of inventing new patterns.
+
+### C5. UI ↔ backend architecture validation
+A written validation report (`docs/ui-backend-validation.md`) that enumerates, and proves by reference:
+- every button/action in the UI maps to a real server function or RPC;
+- every DB function/RPC/engine entry point has at least one UI consumer (anything without one is listed as deliberately-retained-with-reason or removed);
+- every screen and widget reads live production data from the database — no demo, mock, seeded, or placeholder values;
+- no local React state substitutes for production data, and no business logic is duplicated in the frontend;
+- the Workflow Engine and the Notification Engine remain the only sources of truth for status and messaging.
+
+Findings that require a code fix are limited to presentation-layer wiring; any backend gap found is reported, not silently changed.
 
 ## Technical notes
-- Files touched are presentational only: `src/components/app-shell.tsx`, new `src/components/layout/*`, and `className`/markup in route files.
+- Files touched are presentational only: `src/components/app-shell.tsx`, new `src/components/layout/*` and `src/components/ui-kit/*`, `src/styles.css` tokens, and `className`/markup in route files.
 - No changes to `src/lib/store.ts` data flow, `*.functions.ts`, RPCs, or SQL.
-- Work lands in the order above so the shell and shared primitives exist before the per-page passes.
+- Work lands in the order above so the shell and shared primitives exist before the per-page passes; C5 validation runs last, against the polished build.
