@@ -1,5 +1,7 @@
 // Client-safe shapes for the System Settings control panel.
 
+import { WORKFLOW_LABELS, WORKFLOW_STATUSES } from "@/lib/workflow/statuses";
+
 export interface GeneralSettings {
   system_name: string;
   company_name: string;
