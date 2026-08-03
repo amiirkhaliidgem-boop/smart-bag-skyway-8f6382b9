@@ -42,6 +42,23 @@ created", even though the queued SMS/WhatsApp already contain
 No route, schema, workflow-engine, notification or portal changes — the portal reads
 live state through `passenger_get_view`, so it always reflects the Workflow Engine.
 
+## Non-negotiable requirements
+
+- Use the existing public Passenger Portal only — no preview page, no duplicate
+  page, no simulated or demo state.
+- One token per case, always. The token opened from Lost & Found is the exact same
+  `passenger_links.token` used by SMS, WhatsApp, Email, Notification Center and the
+  Communication tab. Nothing in this feature issues, rotates or derives a token.
+- Both workflows supported: Home Delivery and Airport Pickup.
+- Workflow synchronization: every Workflow Engine status change is immediately
+  reflected in Lost & Found, Passenger Portal, Notification Center, Activity
+  Timeline, Dashboard and Workflow Monitor — all of which already read the same
+  database projection; this feature adds no independent state.
+- Permissions: the action is only reachable by authenticated staff inside the
+  Lost & Found case screen. The portal itself stays public solely through the
+  secure token.
+- Pilot ready: live database and Workflow Engine only.
+
 ## Validation
 
 Open the portal from one Home Delivery case and one Airport Pickup case and confirm
@@ -49,3 +66,9 @@ against the internal screens: passenger name, PIR, current status, timeline orde
 the notification text queued in the Communication tab, and that the URL token is
 identical to the link inside the sent SMS/WhatsApp. Then advance each case one step
 and confirm the open portal tab reflects the new state on its next poll.
+
+Full end-to-end runs:
+- Home Delivery: Lost & Found -> notification -> Passenger Portal -> Delivery
+  Management -> Driver Portal -> Delivered.
+- Airport Pickup: Lost & Found -> notification -> Passenger Portal -> Ready for
+  Airport Pickup -> Passenger Picked Up.
