@@ -443,20 +443,20 @@ function CaseDetailsPage() {
               <CardTitle className="text-base">Tracking Link &amp; OTP</CardTitle>
             </CardHeader>
             <CardContent className="text-xs space-y-1">
-              {wf ? (
+              {passengerToken ? (
                 <>
-                  <div>Tracking token: <span className="font-mono">{wf.token}</span></div>
+                  <div>Tracking token: <span className="font-mono">{passengerToken}</span></div>
                   <a
-                    href={`/passenger/${wf.token}`}
+                    href={`/passenger/${passengerToken}`}
                     target="_blank"
                     rel="noreferrer"
                     className="text-primary hover:underline inline-flex items-center gap-1"
                   >
-                    /passenger/{wf.token} <ExternalLink className="h-3 w-3" />
+                    /passenger/{passengerToken} <ExternalLink className="h-3 w-3" />
                   </a>
                 </>
               ) : (
-                <Empty text="Tracking link is generated once a delivery is created." />
+                <Empty text="Tracking link is issued when the passenger is notified." />
               )}
               {linkedDelivery && (
                 <div>OTP: <span className="font-mono">{linkedDelivery.otpCode}</span> ({linkedDelivery.otpStatus})</div>
