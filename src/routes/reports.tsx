@@ -272,6 +272,7 @@ function ReportsPage() {
 
   const r = data!;
   const ex = r.executive;
+  const life = r.lifecycle;
 
   return (
     <div className="space-y-8">
@@ -329,13 +330,33 @@ function ReportsPage() {
       >
         <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-3">
           <Kpi label="Cases Registered" value={ex.cases} icon={Activity} />
-          <Kpi label="Deliveries Completed" value={ex.delivered} icon={PackageCheck} tone="emerald" />
           <Kpi
-            label="Delivery Success"
-            value={`${ex.deliverySuccessPct}%`}
+            label="Completed Journeys"
+            value={life.totals.completed}
             icon={CheckCircle2}
             tone="emerald"
-            hint="Delivered ÷ (delivered + returned)"
+            hint="Delivered + Passenger Picked Up"
+          />
+          <Kpi label="Delivered" value={life.totals.delivered} icon={PackageCheck} tone="emerald" />
+          <Kpi
+            label="Passenger Picked Up"
+            value={life.totals.pickedUp}
+            icon={CheckCircle2}
+            tone="indigo"
+          />
+          <Kpi
+            label="Delivery Success"
+            value={`${life.totals.deliverySuccessPct}%`}
+            icon={CheckCircle2}
+            tone="emerald"
+            hint="Home Delivery: delivered ÷ (delivered + returned)"
+          />
+          <Kpi
+            label="Airport Pickup Success"
+            value={`${life.totals.pickupSuccessPct}%`}
+            icon={CheckCircle2}
+            tone="indigo"
+            hint="Picked up ÷ all Airport Pickup cases"
           />
           <Kpi
             label="SLA Compliance"
@@ -345,7 +366,7 @@ function ReportsPage() {
             hint="Deliveries with no SLA breach"
           />
           <Kpi label="CSAT" value={`${ex.csat}/5`} icon={Star} tone="amber" hint="Passenger feedback" />
-          <Kpi label="Returned to Airport" value={ex.returns} icon={RotateCcw} tone="amber" />
+          <Kpi label="Returned to Airport" value={life.totals.returned} icon={RotateCcw} tone="amber" />
           <Kpi label="Open Incidents" value={ex.openIncidents} icon={ShieldAlert} tone="rose" />
           <Kpi
             label="Avg Hours to Deliver"
