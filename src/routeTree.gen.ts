@@ -14,7 +14,6 @@ import { Route as TrackingRouteImport } from './routes/tracking'
 import { Route as TimelineRouteImport } from './routes/timeline'
 import { Route as StorageRouteImport } from './routes/storage'
 import { Route as SettingsRouteImport } from './routes/settings'
-import { Route as RouteTrackingRouteImport } from './routes/route-tracking'
 import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as QrScanRouteImport } from './routes/qr-scan'
 import { Route as PassengerRouteImport } from './routes/passenger'
@@ -22,7 +21,6 @@ import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as LostFoundRouteImport } from './routes/lost-found'
 import { Route as IntegrationsRouteImport } from './routes/integrations'
 import { Route as FeedbackRouteImport } from './routes/feedback'
-import { Route as ExportCenterRouteImport } from './routes/export-center'
 import { Route as DriverPortalRouteImport } from './routes/driver-portal'
 import { Route as DeliveryRouteImport } from './routes/delivery'
 import { Route as DataIoRouteImport } from './routes/data-io'
@@ -66,11 +64,6 @@ const SettingsRoute = SettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
-const RouteTrackingRoute = RouteTrackingRouteImport.update({
-  id: '/route-tracking',
-  path: '/route-tracking',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ReportsRoute = ReportsRouteImport.update({
   id: '/reports',
   path: '/reports',
@@ -104,11 +97,6 @@ const IntegrationsRoute = IntegrationsRouteImport.update({
 const FeedbackRoute = FeedbackRouteImport.update({
   id: '/feedback',
   path: '/feedback',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ExportCenterRoute = ExportCenterRouteImport.update({
-  id: '/export-center',
-  path: '/export-center',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DriverPortalRoute = DriverPortalRouteImport.update({
@@ -209,7 +197,6 @@ export interface FileRoutesByFullPath {
   '/data-io': typeof DataIoRoute
   '/delivery': typeof DeliveryRouteWithChildren
   '/driver-portal': typeof DriverPortalRoute
-  '/export-center': typeof ExportCenterRoute
   '/feedback': typeof FeedbackRoute
   '/integrations': typeof IntegrationsRoute
   '/lost-found': typeof LostFoundRouteWithChildren
@@ -217,7 +204,6 @@ export interface FileRoutesByFullPath {
   '/passenger': typeof PassengerRouteWithChildren
   '/qr-scan': typeof QrScanRoute
   '/reports': typeof ReportsRoute
-  '/route-tracking': typeof RouteTrackingRoute
   '/settings': typeof SettingsRoute
   '/storage': typeof StorageRoute
   '/timeline': typeof TimelineRoute
@@ -241,13 +227,11 @@ export interface FileRoutesByTo {
   '/contact-center': typeof ContactCenterRoute
   '/data-io': typeof DataIoRoute
   '/driver-portal': typeof DriverPortalRoute
-  '/export-center': typeof ExportCenterRoute
   '/feedback': typeof FeedbackRoute
   '/integrations': typeof IntegrationsRoute
   '/notifications': typeof NotificationsRoute
   '/qr-scan': typeof QrScanRoute
   '/reports': typeof ReportsRoute
-  '/route-tracking': typeof RouteTrackingRoute
   '/settings': typeof SettingsRoute
   '/storage': typeof StorageRoute
   '/timeline': typeof TimelineRoute
@@ -273,7 +257,6 @@ export interface FileRoutesById {
   '/data-io': typeof DataIoRoute
   '/delivery': typeof DeliveryRouteWithChildren
   '/driver-portal': typeof DriverPortalRoute
-  '/export-center': typeof ExportCenterRoute
   '/feedback': typeof FeedbackRoute
   '/integrations': typeof IntegrationsRoute
   '/lost-found': typeof LostFoundRouteWithChildren
@@ -281,7 +264,6 @@ export interface FileRoutesById {
   '/passenger': typeof PassengerRouteWithChildren
   '/qr-scan': typeof QrScanRoute
   '/reports': typeof ReportsRoute
-  '/route-tracking': typeof RouteTrackingRoute
   '/settings': typeof SettingsRoute
   '/storage': typeof StorageRoute
   '/timeline': typeof TimelineRoute
@@ -308,7 +290,6 @@ export interface FileRouteTypes {
     | '/data-io'
     | '/delivery'
     | '/driver-portal'
-    | '/export-center'
     | '/feedback'
     | '/integrations'
     | '/lost-found'
@@ -316,7 +297,6 @@ export interface FileRouteTypes {
     | '/passenger'
     | '/qr-scan'
     | '/reports'
-    | '/route-tracking'
     | '/settings'
     | '/storage'
     | '/timeline'
@@ -340,13 +320,11 @@ export interface FileRouteTypes {
     | '/contact-center'
     | '/data-io'
     | '/driver-portal'
-    | '/export-center'
     | '/feedback'
     | '/integrations'
     | '/notifications'
     | '/qr-scan'
     | '/reports'
-    | '/route-tracking'
     | '/settings'
     | '/storage'
     | '/timeline'
@@ -371,7 +349,6 @@ export interface FileRouteTypes {
     | '/data-io'
     | '/delivery'
     | '/driver-portal'
-    | '/export-center'
     | '/feedback'
     | '/integrations'
     | '/lost-found'
@@ -379,7 +356,6 @@ export interface FileRouteTypes {
     | '/passenger'
     | '/qr-scan'
     | '/reports'
-    | '/route-tracking'
     | '/settings'
     | '/storage'
     | '/timeline'
@@ -405,7 +381,6 @@ export interface RootRouteChildren {
   DataIoRoute: typeof DataIoRoute
   DeliveryRoute: typeof DeliveryRouteWithChildren
   DriverPortalRoute: typeof DriverPortalRoute
-  ExportCenterRoute: typeof ExportCenterRoute
   FeedbackRoute: typeof FeedbackRoute
   IntegrationsRoute: typeof IntegrationsRoute
   LostFoundRoute: typeof LostFoundRouteWithChildren
@@ -413,7 +388,6 @@ export interface RootRouteChildren {
   PassengerRoute: typeof PassengerRouteWithChildren
   QrScanRoute: typeof QrScanRoute
   ReportsRoute: typeof ReportsRoute
-  RouteTrackingRoute: typeof RouteTrackingRoute
   SettingsRoute: typeof SettingsRoute
   StorageRoute: typeof StorageRoute
   TimelineRoute: typeof TimelineRoute
@@ -458,13 +432,6 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof SettingsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/route-tracking': {
-      id: '/route-tracking'
-      path: '/route-tracking'
-      fullPath: '/route-tracking'
-      preLoaderRoute: typeof RouteTrackingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reports': {
@@ -514,13 +481,6 @@ declare module '@tanstack/react-router' {
       path: '/feedback'
       fullPath: '/feedback'
       preLoaderRoute: typeof FeedbackRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/export-center': {
-      id: '/export-center'
-      path: '/export-center'
-      fullPath: '/export-center'
-      preLoaderRoute: typeof ExportCenterRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/driver-portal': {
@@ -697,7 +657,6 @@ const rootRouteChildren: RootRouteChildren = {
   DataIoRoute: DataIoRoute,
   DeliveryRoute: DeliveryRouteWithChildren,
   DriverPortalRoute: DriverPortalRoute,
-  ExportCenterRoute: ExportCenterRoute,
   FeedbackRoute: FeedbackRoute,
   IntegrationsRoute: IntegrationsRoute,
   LostFoundRoute: LostFoundRouteWithChildren,
@@ -705,7 +664,6 @@ const rootRouteChildren: RootRouteChildren = {
   PassengerRoute: PassengerRouteWithChildren,
   QrScanRoute: QrScanRoute,
   ReportsRoute: ReportsRoute,
-  RouteTrackingRoute: RouteTrackingRoute,
   SettingsRoute: SettingsRoute,
   StorageRoute: StorageRoute,
   TimelineRoute: TimelineRoute,
