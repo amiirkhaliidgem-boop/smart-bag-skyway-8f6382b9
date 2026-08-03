@@ -422,6 +422,8 @@ let deliveryIds: Record<string, string> = {};
 let agentIds: Record<string, string> = {};
 let caseVersions: Record<string, number> = {};
 let deliveryVersions: Record<string, number> = {};
+/** case_no → passenger tracking token (issued by the Workflow Engine). */
+let caseTokens: Record<string, string> = {};
 
 /** Active Delivery Agents, refreshed from `app_users` on every snapshot. */
 export const driverPool: string[] = [];
@@ -520,6 +522,7 @@ export function refreshOpsCore(): Promise<void> {
     agentIds = snap.agentIds;
     caseVersions = snap.caseVersions;
     deliveryVersions = snap.deliveryVersions;
+    caseTokens = snap.caseTokens ?? {};
     driverPool.splice(0, driverPool.length, ...snap.agents.map((a: { name: string }) => a.name));
     notify();
   });
@@ -671,6 +674,15 @@ export function findByToken(token: string): WorkflowRecord | undefined {
 
 export function ensurePassengerToken(deliveryId: string): string | undefined {
   return state.workflow.find((w) => w.deliveryId === deliveryId)?.token || undefined;
+}
+
+/**
+ * Live passenger tracking token for a case — the exact same token the
+ * Notification Engine puts in the SMS / WhatsApp / Email link. Airport Pickup
+ * cases have a case-level link and no delivery.
+ */
+export function getCaseToken(bagId: string): string | undefined {
+  return caseTokens[bagId] || undefined;
 }
 
 export function getDeliveryStage(d: Delivery): DeliveryStage {

@@ -4,6 +4,7 @@ import {
   useStore,
   editCase,
   updateLfStatus,
+  getCaseToken,
   type BaggageCase,
   type NotificationEvent,
 } from "@/lib/store";
@@ -43,6 +44,11 @@ import {
   UserCog, Printer,
   AlertTriangle,
 } from "lucide-react";
+
+/** Opens the real public Passenger Portal in a new tab. Staff-only entry point. */
+function openPassengerPortal(token: string) {
+  window.open(`/passenger/${token}`, "_blank", "noopener,noreferrer");
+}
 
 export const Route = createFileRoute("/lost-found/$bagId")({
   head: ({ params }) => ({
@@ -90,6 +96,10 @@ function CaseDetailsPage() {
   const wf = linkedDelivery
     ? workflow.find((w) => w.deliveryId === linkedDelivery.deliveryId)
     : undefined;
+  // The one tracking token for this case: the delivery link when a delivery
+  // exists, otherwise the case-level link (Airport Pickup). Identical to the
+  // token sent by SMS / WhatsApp / Email and shown in Notification Center.
+  const passengerToken = wf?.token || getCaseToken(c.bagId) || "";
   // Ownership hand-off: once the case reaches Ready for Delivery, Delivery
   // Management owns the case and L&F can only view it. Status controls
   // become read-only here. Airport Pickup never hands over — Lost & Found
@@ -251,6 +261,18 @@ function CaseDetailsPage() {
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setAssignOfficerOpen(true)}>
                     <UserCog className="h-4 w-4 mr-2" /> Assign Officer
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    disabled={!passengerToken}
+                    onClick={() => passengerToken && openPassengerPortal(passengerToken)}
+                    title={
+                      passengerToken
+                        ? "Open the passenger's live tracking page"
+                        : "Tracking link is issued when the passenger is notified"
+                    }
+                  >
+                    <ExternalLink className="h-4 w-4 mr-2" /> View Passenger Portal
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={printPir}>
@@ -421,20 +443,20 @@ function CaseDetailsPage() {
               <CardTitle className="text-base">Tracking Link &amp; OTP</CardTitle>
             </CardHeader>
             <CardContent className="text-xs space-y-1">
-              {wf ? (
+              {passengerToken ? (
                 <>
-                  <div>Tracking token: <span className="font-mono">{wf.token}</span></div>
+                  <div>Tracking token: <span className="font-mono">{passengerToken}</span></div>
                   <a
-                    href={`/passenger/${wf.token}`}
+                    href={`/passenger/${passengerToken}`}
                     target="_blank"
                     rel="noreferrer"
                     className="text-primary hover:underline inline-flex items-center gap-1"
                   >
-                    /passenger/{wf.token} <ExternalLink className="h-3 w-3" />
+                    /passenger/{passengerToken} <ExternalLink className="h-3 w-3" />
                   </a>
                 </>
               ) : (
-                <Empty text="Tracking link is generated once a delivery is created." />
+                <Empty text="Tracking link is issued when the passenger is notified." />
               )}
               {linkedDelivery && (
                 <div>OTP: <span className="font-mono">{linkedDelivery.otpCode}</span> ({linkedDelivery.otpStatus})</div>
