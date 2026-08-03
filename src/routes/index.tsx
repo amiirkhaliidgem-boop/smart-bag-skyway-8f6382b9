@@ -14,6 +14,11 @@ import {
   Star,
   ShieldAlert,
   RefreshCw,
+  Plane,
+  FileCheck2,
+  Truck,
+  RotateCcw,
+  Handshake,
 } from "lucide-react";
 import {
   BarChart,
@@ -44,7 +49,6 @@ import {
 } from "@/components/ui/select";
 import { DateRangeFilter } from "@/components/filters/date-range-filter";
 import { KpiSkeletonGrid, ChartSkeleton, ListSkeleton } from "@/components/ops-skeleton";
-import { WORKFLOW_LABELS, type WorkflowStatus } from "@/lib/workflow/statuses";
 import { supabase } from "@/integrations/supabase/client";
 import { loadExecutiveDashboard } from "@/lib/dashboard.functions";
 import type { ExecutiveDashboard, KpiValue } from "@/lib/dashboard.server";
@@ -87,10 +91,11 @@ const STATUS_COLORS: Record<string, string> = {
   "Arrived at Airport": "#3b82f6",
   "Waiting Customs Clearance": "#6366f1",
   "Ready for Delivery": "#8b5cf6",
-  "Assigned Driver": "#0ea5e9",
   "Out for Delivery": "#06b6d4",
   Delivered: "#10b981",
-  Closed: "#64748b",
+  "Returned to Airport": "#f43f5e",
+  "Ready for Airport Pickup": "#14b8a6",
+  "Passenger Picked Up": "#0d9488",
 };
 
 const colorFor = (status: string) => STATUS_COLORS[status] ?? "#94a3b8";
@@ -198,10 +203,9 @@ function Index() {
   const k = data?.kpis;
   const statusData = (data?.byStatus ?? []).map((s) => ({ ...s, fill: colorFor(s.status) }));
   const carrierData = data?.byCarrier ?? [];
-  const funnel = (data?.funnel ?? []).map((f) => ({
-    ...f,
-    label: WORKFLOW_LABELS[f.status as WorkflowStatus]?.en ?? f.status,
-  }));
+  // One unified operational pipeline across Lost & Found, Delivery and
+  // Airport Pickup — the labels are the canonical lifecycle statuses.
+  const funnel = (data?.funnel ?? []).map((f) => ({ ...f, label: f.status }));
   const trends = data?.trends ?? [];
   const funnelMax = Math.max(1, ...funnel.map((f) => f.count));
 
@@ -252,12 +256,24 @@ function Index() {
       ) : null}
 
       {isLoading || !k ? (
-        <KpiSkeletonGrid count={9} />
+        <KpiSkeletonGrid count={14} />
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
           <KpiCard label="Total Bags" kpi={k.totalCases} icon={Luggage} color="text-primary" />
           <KpiCard label="Open Cases" kpi={k.openCases} icon={AlertCircle} color="text-amber-600" />
           <KpiCard label="Located Bags" kpi={k.locatedBags} icon={MapPin} color="text-sky-600" />
+          <KpiCard
+            label="Arrived at Airport"
+            kpi={k.arrivedAtAirport}
+            icon={Plane}
+            color="text-blue-600"
+          />
+          <KpiCard
+            label="Waiting Customs Clearance"
+            kpi={k.waitingCustoms}
+            icon={FileCheck2}
+            color="text-indigo-600"
+          />
           <KpiCard
             label="Ready for Delivery"
             kpi={k.readyForDelivery}
@@ -265,10 +281,54 @@ function Index() {
             color="text-violet-600"
           />
           <KpiCard
-            label="Delivered Bags"
+            label="Out for Delivery"
+            kpi={k.outForDelivery}
+            icon={Truck}
+            color="text-cyan-600"
+          />
+          <KpiCard
+            label="Returned to Airport"
+            kpi={k.returnedToAirport}
+            icon={RotateCcw}
+            color="text-rose-600"
+          />
+          <KpiCard
+            label="Ready for Airport Pickup"
+            kpi={k.readyForPickup}
+            icon={Handshake}
+            color="text-teal-600"
+          />
+          <KpiCard
+            label="Passenger Picked Up"
+            kpi={k.passengerPickedUp}
+            icon={CheckCircle2}
+            color="text-teal-700"
+          />
+          <KpiCard
+            label="Delivered"
             kpi={k.deliveredBags}
             icon={CheckCircle2}
             color="text-emerald-600"
+          />
+          <KpiCard
+            label="Delivery Success %"
+            kpi={k.deliverySuccess}
+            icon={PackageCheck}
+            color="text-emerald-600"
+            format={(v) => `${v}%`}
+          />
+          <KpiCard
+            label="Airport Pickup Success %"
+            kpi={k.pickupSuccess}
+            icon={Handshake}
+            color="text-teal-600"
+            format={(v) => `${v}%`}
+          />
+          <KpiCard
+            label="Open Incidents"
+            kpi={k.openIncidents}
+            icon={ShieldAlert}
+            color="text-rose-600"
           />
           <KpiCard
             label="Avg. Resolution"
@@ -283,19 +343,6 @@ function Index() {
             icon={Star}
             color="text-rose-600"
             format={(v) => `${v.toFixed(1)}/5`}
-          />
-          <KpiCard
-            label="Delivery Success"
-            kpi={k.deliverySuccess}
-            icon={PackageCheck}
-            color="text-emerald-600"
-            format={(v) => `${v}%`}
-          />
-          <KpiCard
-            label="Open Incidents"
-            kpi={k.openIncidents}
-            icon={ShieldAlert}
-            color="text-rose-600"
           />
         </div>
       )}
@@ -394,7 +441,7 @@ function Index() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Cases Opened vs Resolved</CardTitle>
+            <CardTitle className="text-base">Cases Opened vs Completed Journeys</CardTitle>
           </CardHeader>
           <CardContent>
             {isLoading ? (
@@ -418,10 +465,20 @@ function Index() {
                     />
                     <Area
                       type="monotone"
-                      dataKey="resolved"
-                      name="Resolved"
+                      dataKey="delivered"
+                      name="Delivered"
+                      stackId="done"
                       stroke="#10b981"
                       fill="#10b981"
+                      fillOpacity={0.15}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="pickedUp"
+                      name="Passenger Picked Up"
+                      stackId="done"
+                      stroke="#0d9488"
+                      fill="#0d9488"
                       fillOpacity={0.15}
                     />
                   </AreaChart>
@@ -510,7 +567,7 @@ function Index() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Delivery Workflow Funnel</CardTitle>
+            <CardTitle className="text-base">Unified Operational Pipeline</CardTitle>
           </CardHeader>
           <CardContent>
             {isLoading ? (

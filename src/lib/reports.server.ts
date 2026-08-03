@@ -28,6 +28,24 @@ export interface OperationalReport {
     openIncidents: number;
     avgHoursToDeliver: number;
   };
+  /** Whole-ecosystem lifecycle block — Home Delivery and Airport Pickup. */
+  lifecycle: {
+    journey: string;
+    totals: {
+      cases: number;
+      homeDelivery: number;
+      airportPickup: number;
+      delivered: number;
+      pickedUp: number;
+      completed: number;
+      returned: number;
+      deliverySuccessPct: number;
+      pickupSuccessPct: number;
+    };
+    pipeline: { status: string; count: number }[];
+    byJourney: { journey: string; count: number }[];
+    trends: { bucket: string; delivered: number; pickedUp: number; completed: number }[];
+  };
   delivery: {
     byStage: { stage: string; count: number }[];
     firstAttemptPct: number;
@@ -91,6 +109,8 @@ export interface OperationalReport {
     returned: number;
     incidents: number;
     csat: number;
+    pickedUp?: number;
+    completed?: number;
   }[];
 }
 
@@ -99,6 +119,7 @@ export async function fetchOperationalReport(
   from: string,
   to: string,
   grain: "day" | "week" | "month",
+  journey: string = "all",
 ): Promise<OperationalReport> {
   // Raise any SLA breaches first so the numbers below already reflect them.
   await supabase.rpc("qm_sweep_sla");
@@ -109,5 +130,34 @@ export async function fetchOperationalReport(
     p_grain: grain,
   });
   if (error) throw new Error(error.message);
-  return data as unknown as OperationalReport;
+
+  // The lifecycle block is the single analytics layer shared with the
+  // Executive Dashboard: it covers Home Delivery and Airport Pickup equally.
+  const { data: life, error: lifeError } = await supabase.rpc("report_lifecycle", {
+    p_from: from,
+    p_to: to,
+    p_grain: grain,
+    p_journey: journey,
+  });
+  if (lifeError) throw new Error(lifeError.message);
+
+  const report = data as unknown as OperationalReport;
+  const lifecycle = life as unknown as OperationalReport["lifecycle"];
+  const pickupByBucket = new Map(
+    (lifecycle?.trends ?? []).map((t) => [t.bucket, t]),
+  );
+
+  return {
+    ...report,
+    lifecycle,
+    trends: (report.trends ?? []).map((t) => {
+      const l = pickupByBucket.get(t.bucket);
+      return {
+        ...t,
+        delivered: l?.delivered ?? t.delivered,
+        pickedUp: l?.pickedUp ?? 0,
+        completed: l?.completed ?? t.delivered,
+      };
+    }),
+  };
 }

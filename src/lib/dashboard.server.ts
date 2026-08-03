@@ -19,11 +19,18 @@ export interface ExecutiveDashboard {
     totalCases: KpiValue;
     openCases: KpiValue;
     locatedBags: KpiValue;
+    arrivedAtAirport: KpiValue;
+    waitingCustoms: KpiValue;
     readyForDelivery: KpiValue;
+    outForDelivery: KpiValue;
+    returnedToAirport: KpiValue;
+    readyForPickup: KpiValue;
+    passengerPickedUp: KpiValue;
     deliveredBags: KpiValue;
     avgResolution: KpiValue;
     csat: KpiValue;
     deliverySuccess: KpiValue;
+    pickupSuccess: KpiValue;
     openIncidents: KpiValue;
   };
   byStatus: { status: string; count: number }[];
@@ -34,6 +41,8 @@ export interface ExecutiveDashboard {
     opened: number;
     resolved: number;
     delivered: number;
+    pickedUp: number;
+    completed: number;
     incidents: number;
     csat: number;
     successPct: number;

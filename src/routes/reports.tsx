@@ -221,12 +221,13 @@ function ReportsPage() {
   const [from, setFrom] = useState(init.from);
   const [to, setTo] = useState(init.to);
   const [grain, setGrain] = useState<"day" | "week" | "month">("day");
+  const [journey, setJourney] = useState<string>("all");
 
   const fetchReport = useServerFn(loadOperationalReport);
   const queryClient = useQueryClient();
 
   const { data, isLoading, isError, error } = useQuery({
-    queryKey: ["operational-report", from, to, grain],
+    queryKey: ["operational-report", from, to, grain, journey],
     queryFn: () =>
       fetchReport({
         data: {
@@ -234,6 +235,7 @@ function ReportsPage() {
           // exclusive upper bound: include the whole "to" day
           to: new Date(new Date(`${to}T00:00:00.000Z`).getTime() + 86_400_000).toISOString(),
           grain,
+          journey,
         },
       }) as Promise<OperationalReport>,
     staleTime: 30_000,
@@ -270,6 +272,7 @@ function ReportsPage() {
 
   const r = data!;
   const ex = r.executive;
+  const life = r.lifecycle;
 
   return (
     <div className="space-y-8">
@@ -297,6 +300,16 @@ function ReportsPage() {
             30 days
           </Button>
           <DateRangeFilter from={from} to={to} onFromChange={setFrom} onToChange={setTo} />
+          <Select value={journey} onValueChange={setJourney}>
+            <SelectTrigger className="h-9 w-[170px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All journeys</SelectItem>
+              <SelectItem value="Home Delivery">Home Delivery</SelectItem>
+              <SelectItem value="Airport Pickup">Airport Pickup</SelectItem>
+            </SelectContent>
+          </Select>
           <Select value={grain} onValueChange={(v) => setGrain(v as typeof grain)}>
             <SelectTrigger className="h-9 w-[120px]">
               <SelectValue />
@@ -317,13 +330,33 @@ function ReportsPage() {
       >
         <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-3">
           <Kpi label="Cases Registered" value={ex.cases} icon={Activity} />
-          <Kpi label="Deliveries Completed" value={ex.delivered} icon={PackageCheck} tone="emerald" />
           <Kpi
-            label="Delivery Success"
-            value={`${ex.deliverySuccessPct}%`}
+            label="Completed Journeys"
+            value={life.totals.completed}
             icon={CheckCircle2}
             tone="emerald"
-            hint="Delivered ÷ (delivered + returned)"
+            hint="Delivered + Passenger Picked Up"
+          />
+          <Kpi label="Delivered" value={life.totals.delivered} icon={PackageCheck} tone="emerald" />
+          <Kpi
+            label="Passenger Picked Up"
+            value={life.totals.pickedUp}
+            icon={CheckCircle2}
+            tone="indigo"
+          />
+          <Kpi
+            label="Delivery Success"
+            value={`${life.totals.deliverySuccessPct}%`}
+            icon={CheckCircle2}
+            tone="emerald"
+            hint="Home Delivery: delivered ÷ (delivered + returned)"
+          />
+          <Kpi
+            label="Airport Pickup Success"
+            value={`${life.totals.pickupSuccessPct}%`}
+            icon={CheckCircle2}
+            tone="indigo"
+            hint="Picked up ÷ all Airport Pickup cases"
           />
           <Kpi
             label="SLA Compliance"
@@ -333,7 +366,7 @@ function ReportsPage() {
             hint="Deliveries with no SLA breach"
           />
           <Kpi label="CSAT" value={`${ex.csat}/5`} icon={Star} tone="amber" hint="Passenger feedback" />
-          <Kpi label="Returned to Airport" value={ex.returns} icon={RotateCcw} tone="amber" />
+          <Kpi label="Returned to Airport" value={life.totals.returned} icon={RotateCcw} tone="amber" />
           <Kpi label="Open Incidents" value={ex.openIncidents} icon={ShieldAlert} tone="rose" />
           <Kpi
             label="Avg Hours to Deliver"
@@ -372,8 +405,18 @@ function ReportsPage() {
                     type="monotone"
                     dataKey="delivered"
                     name="Delivered"
+                    stackId="done"
                     stroke="#10b981"
                     fill="url(#d)"
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="pickedUp"
+                    name="Passenger Picked Up"
+                    stackId="done"
+                    stroke="#0d9488"
+                    fill="#0d9488"
+                    fillOpacity={0.25}
                   />
                   <Line type="monotone" dataKey="incidents" name="Incidents" stroke="#e11d48" dot={false} />
                 </ComposedChart>
@@ -383,8 +426,43 @@ function ReportsPage() {
         </Card>
       </Section>
 
+      {/* ------------------------------------------------ unified pipeline */}
+      <Section
+        title="Operational Pipeline"
+        description="One pipeline across Lost & Found, Delivery Management and Airport Pickup."
+      >
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Current Pipeline by Status</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={life.pipeline}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(0 0% 90%)" />
+                  <XAxis
+                    dataKey="status"
+                    tick={{ fontSize: 10 }}
+                    interval={0}
+                    angle={-20}
+                    height={70}
+                    textAnchor="end"
+                  />
+                  <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
+                  <Tooltip />
+                  <Bar dataKey="count" name="Cases" fill="#1e40af" radius={[6, 6, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+      </Section>
+
       {/* ------------------------------------------------------- delivery */}
-      <Section title="Delivery Operations" description="Dispatch throughput and stage timing.">
+      <Section
+        title="Home Delivery Operations"
+        description="Dispatch throughput and stage timing for the Home Delivery journey."
+      >
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <Kpi label="On Time" value={r.delivery.onTime} icon={CheckCircle2} tone="emerald" />
           <Kpi label="SLA Breaches" value={r.delivery.breached} icon={AlertTriangle} tone="rose" />
@@ -394,7 +472,7 @@ function ReportsPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-base">Current Pipeline by Stage</CardTitle>
+              <CardTitle className="text-base">Home Delivery Stages</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="h-64">
@@ -457,12 +535,12 @@ function ReportsPage() {
         </div>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-base">Cases by Lost &amp; Found Status</CardTitle>
+            <CardTitle className="text-base">Cases by Lifecycle Status</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
             <SimpleTable
               head={["Status", "Cases"]}
-              rows={r.lostFound.byStatus.map((x) => [x.status, x.count])}
+              rows={life.pipeline.map((x) => [x.status, x.count])}
               empty="No cases registered."
             />
           </CardContent>
