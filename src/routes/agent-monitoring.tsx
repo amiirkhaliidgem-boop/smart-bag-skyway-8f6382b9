@@ -7,7 +7,7 @@
 // (public.timeline_events) — there is no separate driver history.
 
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   useStore,
   useOpsLoading,
@@ -31,6 +31,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { PageLoading } from "@/components/ops-skeleton";
+import { DateRangeFilter } from "@/components/filters/date-range-filter";
 import { cn } from "@/lib/utils";
 import { Activity, MapPin, Radar, Route as RouteIcon, Truck, UserCheck } from "lucide-react";
 
@@ -134,6 +135,8 @@ function AgentMonitoringPage() {
   const driverPositions = useStore((s) => s.driverPositions);
   const driverRoutes = useStore((s) => s.driverRoutes);
   const { names } = useDeliveryAgents();
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
 
   // Live updates without a manual refresh: the store already reloads on the
   // realtime `deliveries` channel; GPS positions and the engine timeline are
@@ -201,8 +204,16 @@ function AgentMonitoringPage() {
     () =>
       timeline
         .filter((t) => !!t.deliveryId && monitoredDeliveryIds.has(t.deliveryId))
+        .filter((t) => {
+          if (!from && !to) return true;
+          const day = t.at ? new Date(t.at).toISOString().slice(0, 10) : "";
+          if (!day) return false;
+          if (from && day < from) return false;
+          if (to && day > to) return false;
+          return true;
+        })
         .slice(0, 120),
-    [timeline, monitoredDeliveryIds],
+    [timeline, monitoredDeliveryIds, from, to],
   );
 
   if (loading.core && deliveries.length === 0) {
@@ -223,9 +234,8 @@ function AgentMonitoringPage() {
       </header>
 
       <Card>
-        <CardContent className="pt-6 flex flex-wrap items-end gap-4">
-          <div className="w-full sm:w-72">
-            <Label className="text-xs">Delivery Agent</Label>
+        <CardContent className="pt-6">
+          <DateRangeFilter from={from} to={to} onFromChange={setFrom} onToChange={setTo}>
             <UISelect
               value={driver ?? "__all__"}
               onValueChange={(v) =>
@@ -235,7 +245,7 @@ function AgentMonitoringPage() {
                 })
               }
             >
-              <SelectTrigger className="mt-1">
+              <SelectTrigger className="h-9 w-[220px]">
                 <SelectValue placeholder="All Delivery Agents" />
               </SelectTrigger>
               <SelectContent>
@@ -247,8 +257,8 @@ function AgentMonitoringPage() {
                 ))}
               </SelectContent>
             </UISelect>
-          </div>
-          <p className="text-xs text-muted-foreground pb-2">
+          </DateRangeFilter>
+          <p className="mt-3 text-xs text-muted-foreground">
             Monitoring {views.length} agent{views.length === 1 ? "" : "s"}
           </p>
         </CardContent>

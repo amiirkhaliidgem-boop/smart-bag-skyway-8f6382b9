@@ -183,13 +183,23 @@ function AppSidebar() {
   });
   const { role } = useRole();
   const perms = usePermissions();
-  const { isMobile, setOpenMobile, toggleSidebar } = useSidebar();
+  const { isMobile, setOpen, setOpenMobile, toggleSidebar } = useSidebar();
 
   // Auto-close the overlay drawer whenever the route changes.
   useEffect(() => {
     if (isMobile) setOpenMobile(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
+
+  /**
+   * Standard navigation behaviour on every device: picking a module minimises
+   * the sidebar so the content immediately takes the full width. Clicking the
+   * logo brings it back.
+   */
+  function collapseAfterNavigation() {
+    setOpenMobile(false);
+    setOpen(false);
+  }
 
   const visibleSections = useMemo(
     () =>
@@ -221,10 +231,12 @@ function AppSidebar() {
           type="button"
           onClick={toggleSidebar}
           aria-label="Toggle navigation"
-          className="flex w-full items-center gap-3 rounded-md px-1 py-1.5 text-left outline-none transition-[opacity,transform] duration-200 hover:opacity-90 focus-visible:ring-2 focus-visible:ring-sidebar-ring active:scale-[0.98]"
+          className="flex w-full items-center gap-2 rounded-md p-2 text-left outline-none transition-[opacity,transform] duration-200 hover:opacity-90 focus-visible:ring-2 focus-visible:ring-sidebar-ring active:scale-[0.98]"
         >
-          <span className="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-lg bg-card shadow ring-1 ring-sidebar-border">
-            <img src={iabLogo.url} alt="IAB" className="h-8 w-8 object-contain" />
+          {/* 32px tile at 8px padding puts the logo on the exact same centre
+              line as every 16px nav icon below it, expanded or collapsed. */}
+          <span className="grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-lg bg-card shadow ring-1 ring-sidebar-border">
+            <img src={iabLogo.url} alt="IAB" className="h-7 w-7 object-contain" />
           </span>
           <span className="min-w-0 group-data-[collapsible=icon]:hidden">
             <span className="block text-sm font-bold leading-none tracking-tight">IAB</span>
@@ -259,9 +271,7 @@ function AppSidebar() {
                         <Link
                           to={item.to}
                           search={item.search as never}
-                          onClick={() => {
-                            if (isMobile) setOpenMobile(false);
-                          }}
+                          onClick={collapseAfterNavigation}
                         >
                           <item.icon />
                           <span className="truncate">{item.label}</span>

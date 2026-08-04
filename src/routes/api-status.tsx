@@ -1,9 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { DateRangeFilter } from "@/components/filters/date-range-filter";
 import { Radio, CheckCircle2, AlertCircle, XCircle, MinusCircle, RefreshCw, Loader2, Database } from "lucide-react";
 import type { ApiHealthView } from "@/lib/system/catalog";
 import { loadSystemCenter, runApiHealthSweep } from "@/lib/system.functions";
@@ -50,6 +52,8 @@ function fmt(ts: string | null) {
 
 function ApiStatusPage() {
   const qc = useQueryClient();
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
   const { data, isLoading } = useQuery({
     queryKey: ["system-center"],
     queryFn: () => loadSystemCenter(),
@@ -65,7 +69,17 @@ function ApiStatusPage() {
     onError: (e: Error) => toast.error("Health sweep failed", { description: e.message }),
   });
 
-  const apis = data?.apis ?? [];
+  const allApis = data?.apis ?? [];
+  // The range scopes the board by last heartbeat; services that have never
+  // reported stay visible so an unmonitored provider is never hidden.
+  const apis = allApis.filter((a) => {
+    if (!from && !to) return true;
+    if (!a.lastHeartbeat) return true;
+    const day = new Date(a.lastHeartbeat).toISOString().slice(0, 10);
+    if (from && day < from) return false;
+    if (to && day > to) return false;
+    return true;
+  });
   const db = data?.database;
   const operational = apis.filter((a) => a.status === "operational").length;
   const degraded = apis.filter((a) => a.status === "degraded").length;
@@ -131,6 +145,12 @@ function ApiStatusPage() {
         <Stat label="Degraded" value={degraded} tone="text-amber-600" />
         <Stat label="Down" value={down} tone="text-rose-600" />
       </div>
+
+      <Card>
+        <CardContent className="pt-6">
+          <DateRangeFilter from={from} to={to} onFromChange={setFrom} onToChange={setTo} />
+        </CardContent>
+      </Card>
 
       {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
