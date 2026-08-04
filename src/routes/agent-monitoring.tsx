@@ -31,7 +31,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { PageLoading } from "@/components/ops-skeleton";
-import { DateRangeFilter } from "@/components/filters/date-range-filter";
+import { DateRangeFilter, defaultDateRange } from "@/components/filters/date-range-filter";
 import { cn } from "@/lib/utils";
 import { Activity, MapPin, Radar, Route as RouteIcon, Truck, UserCheck } from "lucide-react";
 
@@ -135,8 +135,8 @@ function AgentMonitoringPage() {
   const driverPositions = useStore((s) => s.driverPositions);
   const driverRoutes = useStore((s) => s.driverRoutes);
   const { names } = useDeliveryAgents();
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
+  const [from, setFrom] = useState(() => defaultDateRange().from);
+  const [to, setTo] = useState(() => defaultDateRange().to);
 
   // Live updates without a manual refresh: the store already reloads on the
   // realtime `deliveries` channel; GPS positions and the engine timeline are

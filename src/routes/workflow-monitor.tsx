@@ -28,7 +28,7 @@ import {
 import type { WorkflowStatus } from "@/lib/workflow/statuses";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { DateRangeFilter } from "@/components/filters/date-range-filter";
+import { DateRangeFilter, defaultDateRange } from "@/components/filters/date-range-filter";
 import {
   Select,
   SelectContent,
@@ -133,8 +133,8 @@ function WorkflowMonitorPage() {
   const [driver, setDriver] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [q, setQ] = useState("");
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
+  const [from, setFrom] = useState(() => defaultDateRange().from);
+  const [to, setTo] = useState(() => defaultDateRange().to);
 
   // Keep Elapsed / SLA badges accurate without a manual refresh. Live data
   // itself arrives through the store's Supabase realtime subscription.

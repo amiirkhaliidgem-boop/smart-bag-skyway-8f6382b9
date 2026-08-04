@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { DateRangeFilter } from "@/components/filters/date-range-filter";
+import { DateRangeFilter, defaultDateRange } from "@/components/filters/date-range-filter";
 import {
   Radio,
   CheckCircle2,
@@ -61,8 +61,8 @@ function fmt(ts: string | null) {
 
 function ApiStatusPage() {
   const qc = useQueryClient();
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
+  const [from, setFrom] = useState(() => defaultDateRange().from);
+  const [to, setTo] = useState(() => defaultDateRange().to);
   const { data, isLoading } = useQuery({
     queryKey: ["system-center"],
     queryFn: () => loadSystemCenter(),
