@@ -17,6 +17,19 @@ function iso(d: Date) {
   return d.toISOString().slice(0, 10);
 }
 
+/**
+ * The system-wide default range: the last 7 days (today - 6 → today).
+ * Every module initialises its date state with this so the From / To inputs
+ * never render an empty `dd/mm/yyyy` placeholder.
+ */
+export function defaultDateRange(days = 7): { from: string; to: string } {
+  const end = new Date();
+  return {
+    from: iso(new Date(end.getTime() - (days - 1) * 86_400_000)),
+    to: iso(end),
+  };
+}
+
 const RANGE_FMT = new Intl.DateTimeFormat("en-GB", {
   day: "numeric",
   month: "short",
@@ -56,6 +69,7 @@ export function DateRangeFilter({
   showPresets = true,
   showGrain,
   showSelectedRange = true,
+  showClear = true,
   className,
   children,
 }: {
@@ -69,6 +83,8 @@ export function DateRangeFilter({
   showGrain?: boolean;
   /** Show the selected-range summary next to the controls. */
   showSelectedRange?: boolean;
+  /** Show the "All dates" reset that widens back to the full history. */
+  showClear?: boolean;
   className?: string;
   /** Module-specific controls rendered with the same spacing. */
   children?: ReactNode;
@@ -112,6 +128,20 @@ export function DateRangeFilter({
           >
             30 days
           </Button>
+          {showClear ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-9"
+              onClick={() => {
+                onFromChange("");
+                onToChange("");
+              }}
+            >
+              All dates
+            </Button>
+          ) : null}
         </div>
       ) : null}
 
