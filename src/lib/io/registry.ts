@@ -89,7 +89,9 @@ export const lostFoundSchema: DatasetSchema = {
         .filter((v) => v !== undefined && v !== null && String(v).trim() !== "")
         .join(" — ");
 
-      const c = await addCase({
+      let c: Awaited<ReturnType<typeof addCase>> = null;
+      try {
+        c = await addCase({
         passengerName: String(raw.passengerName ?? "").trim(),
         flightNumber: String(raw.flightNumber ?? ""),
         pirNumber: String(raw.pirNumber ?? "").trim(),
@@ -129,11 +131,21 @@ export const lostFoundSchema: DatasetSchema = {
         },
         incomplete: incomplete || undefined,
         missingFields: incomplete ? missingFields : undefined,
-      });
-      if (c) ids.push(c.bagId);
+        });
+      } catch {
+        // Rejected by the Workflow Engine (duplicate PIR / bag tag). No case
+        // number is consumed, so numbering stays gapless.
+        rejected++;
+        continue;
+      }
+      if (!c) {
+        rejected++;
+        continue;
+      }
+      ids.push(c.bagId);
       created++;
     }
-    return { created, updated: 0, skipped: 0, warnings, rejected: 0, ids };
+    return { created, updated: 0, skipped: 0, warnings, rejected, ids };
   },
 };
 

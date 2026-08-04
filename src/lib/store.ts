@@ -751,8 +751,11 @@ export async function addCase(
     }
     return state.cases.find((c) => c.pirNumber === input.pirNumber) ?? null;
   } catch (err) {
-    reportError(err);
-    return null;
+    // Surface the Workflow Engine's business-readable message (duplicate PIR,
+    // duplicate bag tag, …) to the caller instead of swallowing it — the
+    // caller decides how to present it. No case number is consumed by a
+    // rejected create: allocation is transactional.
+    throw new Error(reportError(err));
   }
 }
 
