@@ -41,3 +41,25 @@ Your project uses an external/BYO Supabase, so Lovable cannot mint a staff sessi
 6. Responsive validation across 390, 430, 768, 834, 1024, 1440, 1920, 2560 with screenshots per module, fixing overflow and truncation as found.
 
 Presentation layer only — no workflow, backend, database or business-logic changes.
+
+---
+
+# Approved scope update (single continuous UI/UX stream)
+
+No more phases. UI/UX is treated as one continuous work stream until every screen is production-ready on Desktop, Tablet and Mobile. Execution order:
+
+1. **Shell & navigation** — sidebar auto-collapse on every device, logo centered on the icon axis, single shared header.
+2. **Shared primitives audit** — every page uses PageHeader, KpiCard, SectionCard, DataTable, DateRangeFilter. No bespoke headers, cards, tables or filters remain (starting with Workflow Monitor, Agent Monitoring, API Status, Quality, Admin, Settings, Integrations).
+3. **Token discipline** — remove hardcoded colors/spacing (amber/emerald/indigo/rose/slate literals in Workflow Monitor, API Status, Reports, Timeline) in favour of semantic tokens; standardize active/hover/focus/disabled/loading/empty/error states.
+4. **Data density** — sticky headers, pagination, mobile card fallback on every table; responsive chart heights and wrapping legends.
+5. **Forms & dialogs** — consistent field heights, labels, validation text, footer button order, full-screen behavior on mobile.
+6. **Responsive validation** — 390, 430, 768, 834, 1024, 1440, 1920, 2560 with screenshots per module; overflow and truncation fixed as found.
+
+## Authenticated visual validation — what I need from you
+
+This project uses an external (BYO) Supabase, so Lovable cannot mint a staff session for me automatically; I currently can only reach public routes (`/auth`, Passenger Portal by token) plus direct SQL. To validate as a real end user I need one of these:
+
+- **Preferred:** create a temporary read-only QA staff account in Administration (role with view access, no mutations), then store its credentials as project secrets named `QA_USER` and `QA_PASS`. I read them from the environment inside the browser automation, never print them, and delete the account after sign-off.
+- Alternative: a separate staging environment with the same seed data and a QA login.
+
+With that in place the final sign-off is done against the running application — navigation, responsive behavior, tables, filters, forms, dialogs, dashboards, workflow screens, Driver Portal, Passenger Portal, notifications, timeline and reports — with screenshots per module and breakpoint, not source-code inspection.
