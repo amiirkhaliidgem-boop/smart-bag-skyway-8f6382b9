@@ -21,6 +21,7 @@ import {
 import type { WorkflowStatus } from "@/lib/workflow/statuses";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { DateRangeFilter } from "@/components/filters/date-range-filter";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   GitBranch,
