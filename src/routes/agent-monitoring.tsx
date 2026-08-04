@@ -135,6 +135,8 @@ function AgentMonitoringPage() {
   const driverPositions = useStore((s) => s.driverPositions);
   const driverRoutes = useStore((s) => s.driverRoutes);
   const { names } = useDeliveryAgents();
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
 
   // Live updates without a manual refresh: the store already reloads on the
   // realtime `deliveries` channel; GPS positions and the engine timeline are
