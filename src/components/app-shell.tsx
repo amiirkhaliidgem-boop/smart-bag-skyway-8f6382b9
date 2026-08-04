@@ -153,17 +153,20 @@ export function AppShell() {
  */
 function AppHeader() {
   return (
-    <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-3 border-b border-border bg-card px-3 sm:px-4">
-      <span className="pointer-events-none absolute inset-x-0 bottom-0 h-[2px] bg-gradient-to-r from-primary via-accent to-primary" />
+    // The header shares the sidebar's surface, border, typography and motion
+    // tokens so the two read as one continuous navigation shell.
+    <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-2 border-b border-sidebar-border bg-sidebar px-2 text-sidebar-foreground transition-[background-color,border-color] duration-200 sm:px-4">
       {/* Desktop toggling happens on the sidebar logo; this trigger is the
           mobile/tablet way back to the navigation drawer. */}
-      <SidebarTrigger className="min-h-10 min-w-10 lg:hidden" />
-      <div className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
-        <span className="h-2 w-2 shrink-0 rounded-full bg-[var(--success)]" aria-hidden />
-        <span className="truncate">System Online</span>
-      </div>
-      <div className="ml-auto flex items-center gap-3">
-        <UserMenu />
+      <SidebarTrigger className="min-h-10 min-w-10 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground lg:hidden" />
+      <UserIdentity />
+      <span className="pointer-events-none absolute inset-x-0 flex justify-center px-24">
+        <span className="hidden truncate text-sm font-semibold tracking-tight text-sidebar-foreground sm:inline">
+          IAB Smart Baggage Center
+        </span>
+      </span>
+      <div className="relative z-10 ml-auto flex items-center gap-3">
+        <SignOutButton />
       </div>
     </header>
   );
