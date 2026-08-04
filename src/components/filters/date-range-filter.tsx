@@ -17,6 +17,29 @@ function iso(d: Date) {
   return d.toISOString().slice(0, 10);
 }
 
+const RANGE_FMT = new Intl.DateTimeFormat("en-GB", {
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+  timeZone: "UTC",
+});
+
+function labelOf(v: string) {
+  if (!v) return "";
+  const d = new Date(`${v}T00:00:00Z`);
+  return Number.isNaN(d.getTime()) ? "" : RANGE_FMT.format(d);
+}
+
+/** Human-readable rendering of the currently selected range. */
+export function selectedRangeLabel(from: string, to: string) {
+  const a = labelOf(from);
+  const b = labelOf(to);
+  if (a && b) return a === b ? a : `${a} – ${b}`;
+  if (a) return `From ${a}`;
+  if (b) return `Up to ${b}`;
+  return "All dates";
+}
+
 /**
  * The single system-wide date range filter.
  *
@@ -32,6 +55,7 @@ export function DateRangeFilter({
   onGrainChange,
   showPresets = true,
   showGrain,
+  showSelectedRange = true,
   className,
   children,
 }: {
@@ -43,6 +67,8 @@ export function DateRangeFilter({
   onGrainChange?: (v: DateGrain) => void;
   showPresets?: boolean;
   showGrain?: boolean;
+  /** Show the selected-range summary next to the controls. */
+  showSelectedRange?: boolean;
   className?: string;
   /** Module-specific controls rendered with the same spacing. */
   children?: ReactNode;
@@ -101,6 +127,12 @@ export function DateRangeFilter({
             <SelectItem value="month">Monthly</SelectItem>
           </SelectContent>
         </Select>
+      ) : null}
+
+      {showSelectedRange ? (
+        <span className="inline-flex h-9 shrink-0 items-center rounded-md border border-border bg-muted/60 px-2.5 text-xs font-medium text-muted-foreground">
+          {selectedRangeLabel(from, to)}
+        </span>
       ) : null}
     </div>
   );
