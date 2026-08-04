@@ -1133,6 +1133,27 @@ export type Database = {
         }
         Relationships: []
       }
+      number_counters: {
+        Row: {
+          created_at: string
+          current_value: number
+          key: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          current_value?: number
+          key: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          current_value?: number
+          key?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       otp_challenges: {
         Row: {
           attempts: number
@@ -1905,6 +1926,10 @@ export type Database = {
       agent_report_position: {
         Args: { p_accuracy?: number; p_lat: number; p_lng: number }
         Returns: undefined
+      }
+      alloc_number: {
+        Args: { p_key: string; p_prefix: string; p_width: number }
+        Returns: string
       }
       current_app_user_id: { Args: never; Returns: string }
       current_user_permissions: {
