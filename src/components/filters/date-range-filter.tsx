@@ -82,7 +82,7 @@ export function DateRangeFilter({
   }
 
   return (
-    <div className={cn("flex flex-wrap items-center gap-2", className)}>
+    <div className={cn("flex min-w-0 max-w-full flex-wrap items-center gap-2", className)}>
       {showPresets ? (
         <div className="flex items-center gap-2">
           <Button type="button" variant="outline" size="sm" className="h-9" onClick={() => preset(1)}>
@@ -97,20 +97,26 @@ export function DateRangeFilter({
         </div>
       ) : null}
 
-      <div className="flex items-center gap-1.5">
-        <Label className="text-xs text-muted-foreground">From</Label>
+      <div className="flex min-w-0 flex-1 basis-full items-center gap-1.5 sm:flex-none sm:basis-auto">
+        <Label className="shrink-0 text-xs text-muted-foreground">From</Label>
         <Input
           type="date"
           value={from}
           onChange={(e) => onFromChange(e.target.value)}
-          className={cn("h-9 w-[145px]", !from && "[&::-webkit-datetime-edit]:text-transparent")}
+          className={cn(
+            "h-9 min-w-0 flex-1 sm:w-[145px] sm:flex-none",
+            !from && "[&::-webkit-datetime-edit]:text-transparent",
+          )}
         />
-        <Label className="text-xs text-muted-foreground">To</Label>
+        <Label className="shrink-0 text-xs text-muted-foreground">To</Label>
         <Input
           type="date"
           value={to}
           onChange={(e) => onToChange(e.target.value)}
-          className={cn("h-9 w-[145px]", !to && "[&::-webkit-datetime-edit]:text-transparent")}
+          className={cn(
+            "h-9 min-w-0 flex-1 sm:w-[145px] sm:flex-none",
+            !to && "[&::-webkit-datetime-edit]:text-transparent",
+          )}
         />
       </div>
 
