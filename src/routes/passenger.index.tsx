@@ -408,7 +408,7 @@ function WelcomeCard({ delivery, kase }: { delivery: Delivery; kase: BaggageCase
           style={{ fontFamily: "var(--font-heading)" }}
         >
           <MetaCell label="Flight" value={kase.flightNumber ?? "—"} />
-          <MetaCell label="PIR" value={delivery.pirNumber} />
+          <MetaCell label="Reference" value={delivery.pirNumber} />
           <MetaCell label="Bag Tag" value={bagTag} />
         </dl>
       </motion.div>
@@ -1054,9 +1054,9 @@ function BilingualCheck({
 
 function ContactCard({ delivery, contacts }: { delivery: Delivery; contacts?: ContactSettings }) {
   const waMessage = encodeURIComponent(
-    `Hello IAB Support, I need assistance with delivery ${delivery.deliveryId} (PIR ${delivery.pirNumber}).`,
+    `Hello IAB Support, I need assistance with delivery ${delivery.deliveryId} (Ref ${delivery.pirNumber}).`,
   );
-  const mailSubject = encodeURIComponent(`PIR ${delivery.pirNumber} — Support request`);
+  const mailSubject = encodeURIComponent(`Ref ${delivery.pirNumber} — Support request`);
   const callNumber = contacts?.call_number.trim() ?? "";
   const whatsappNumber = contacts?.whatsapp_number.trim() ?? "";
   const email = contacts?.email.trim() ?? "";
