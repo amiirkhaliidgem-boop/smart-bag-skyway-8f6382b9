@@ -79,8 +79,6 @@ export const lostFoundSchema: DatasetSchema = {
     for (const raw of rows) {
       const missingFields = optional.filter((f) => isBlank(raw[f.key])).map((f) => f.label);
       const incomplete = missingFields.length > 0;
-      if (incomplete) warnings++;
-
       const bagTag = String(raw.bagTag ?? "").trim();
       const numBags = Number(raw.numberOfBags) > 0 ? Number(raw.numberOfBags) : 1;
       const rawPriority = raw.priority ? String(raw.priority) : "Normal";
