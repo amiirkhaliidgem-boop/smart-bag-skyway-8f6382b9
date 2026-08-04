@@ -706,9 +706,13 @@ export function PirWizard({
               Next <ChevronRight className="h-4 w-4" />
             </Button>
           ) : (
-            <Button onClick={submit} disabled={!canSubmit} className="gap-1.5">
+            <Button onClick={submit} disabled={!canSubmit || submitting} className="gap-1.5">
               <Upload className="h-4 w-4" />
-              {mode === "edit" ? "Save Changes" : "Register Case"}
+              {submitting
+                ? "Saving…"
+                : mode === "edit"
+                  ? "Save Changes"
+                  : "Register Case"}
             </Button>
           )}
         </div>
