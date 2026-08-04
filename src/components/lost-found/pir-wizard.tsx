@@ -303,6 +303,17 @@ export function PirWizard({
       toast.error("Please complete every required field before submitting.");
       return;
     }
+    // Guard against a double click issuing two create calls.
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      await runSubmit();
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function runSubmit() {
     const cleanTags = form.bagTags.map((t) => t.trim()).filter(Boolean);
     const commonPatch: Partial<BaggageCase> = {
       passengerName: passengerName(),
