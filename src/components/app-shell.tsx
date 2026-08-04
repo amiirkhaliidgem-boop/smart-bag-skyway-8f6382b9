@@ -289,35 +289,47 @@ function AppSidebar() {
   );
 }
 
-function UserMenu() {
-  const navigate = useNavigate();
-  const [email, setEmail] = useState<string>("");
-  const { role } = useRole();
+/** User name + live system state. No role text — roles live in the sidebar. */
+function UserIdentity() {
+  const [name, setName] = useState<string>("");
   useEffect(() => {
     void supabase.auth.getUser().then(({ data }) => {
-      setEmail(data.user?.email ?? "");
+      const meta = (data.user?.user_metadata ?? {}) as Record<string, unknown>;
+      const display =
+        (typeof meta.full_name === "string" && meta.full_name) ||
+        (typeof meta.name === "string" && meta.name) ||
+        (typeof meta.username === "string" && meta.username) ||
+        data.user?.email ||
+        "";
+      setName(display);
     });
   }, []);
+  return (
+    <div className="relative z-10 flex min-w-0 flex-col justify-center leading-tight">
+      <span className="truncate text-xs font-semibold text-sidebar-foreground">{name}</span>
+      <span className="flex items-center gap-1.5 text-[11px] text-sidebar-foreground/70">
+        <span className="h-2 w-2 shrink-0 rounded-full bg-[var(--success)]" aria-hidden />
+        <span className="truncate">System Online</span>
+      </span>
+    </div>
+  );
+}
+
+function SignOutButton() {
+  const navigate = useNavigate();
   async function signOut() {
     await supabase.auth.signOut();
     navigate({ to: "/auth", replace: true });
   }
   return (
-    <div className="flex items-center gap-2">
-      <div className="hidden md:flex flex-col items-end leading-tight max-w-[220px]">
-        <span className="text-xs text-foreground truncate">{email}</span>
-        {role && (
-          <span className="text-[10px] text-muted-foreground truncate">{ROLE_LABELS[role]}</span>
-        )}
-      </div>
-      <button
-        type="button"
-        onClick={signOut}
-        className="inline-flex h-9 min-h-9 items-center gap-1.5 rounded-md border border-input bg-background px-2.5 text-xs font-medium hover:bg-muted"
-        aria-label="Sign out"
-      >
-        <LogOut className="h-4 w-4" />
-        <span className="hidden sm:inline">Sign out</span>
+    <button
+      type="button"
+      onClick={signOut}
+      className="inline-flex h-9 min-h-9 items-center gap-1.5 rounded-md border border-sidebar-border bg-transparent px-2.5 text-xs font-medium text-sidebar-foreground transition-colors duration-200 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
+      aria-label="Sign out"
+    >
+      <LogOut className="h-4 w-4" />
+      <span className="hidden sm:inline">Sign out</span>
       </button>
     </div>
   );
