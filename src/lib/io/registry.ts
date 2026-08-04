@@ -62,6 +62,7 @@ export const lostFoundSchema: DatasetSchema = {
     const ids: string[] = [];
     let created = 0;
     let warnings = 0;
+    let rejected = 0;
     const optional: { key: string; label: string }[] = [
       { key: "mobile2", label: "Mobile 2" },
       { key: "email", label: "Email" },
