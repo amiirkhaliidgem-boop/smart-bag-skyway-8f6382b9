@@ -143,6 +143,7 @@ export const lostFoundSchema: DatasetSchema = {
       }
       ids.push(c.bagId);
       created++;
+      if (incomplete) warnings++;
     }
     return { created, updated: 0, skipped: 0, warnings, rejected, ids };
   },
