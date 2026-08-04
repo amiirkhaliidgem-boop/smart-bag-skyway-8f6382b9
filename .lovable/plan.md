@@ -25,6 +25,18 @@ The header becomes a three-zone bar that reads as one unit with the sidebar:
 - **Center:** `IAB Smart Baggage Center`, absolutely centered so it stays centered at any width independent of the left/right zone widths; truncates gracefully and hides below `sm` where there is no room.
 - **Styling:** dark navy header surface with white typography, using the same sidebar tokens as the navigation so header and sidebar form one continuous navy shell. The sign-out button and toggle are restyled for the navy surface (white text, subtle border/hover), keeping `h-9` control height.
 
+### Header + Sidebar = one Navigation Shell
+
+Header and sidebar are treated as a single component, not two surfaces that happen to match. Both are driven by the same sidebar tokens so they always stay in sync:
+
+- identical background colour (sidebar navy) and foreground/typography hierarchy
+- shared spacing scale (same horizontal padding rhythm, same 8px grid, header height aligned to the sidebar header block)
+- shared elevation and border treatment (same divider token, no competing shadows)
+- shared transition timing (200–250ms, transform/opacity only)
+- shared responsive behaviour and interactive states (hover, focus ring, active)
+
+Any later change to one must be made through those shared tokens so the other inherits it automatically.
+
 ## 3. Sidebar role badge
 
 The role indicator loses its filled pill: transparent background, no border, plain white/near-white text at the same small size, blending into the sidebar.
