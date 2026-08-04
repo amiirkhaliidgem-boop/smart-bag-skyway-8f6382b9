@@ -2473,6 +2473,19 @@ export type Database = {
         }
         Returns: undefined
       }
+      wf_journal_public: {
+        Args: {
+          p_action?: string
+          p_actor?: string
+          p_case?: string
+          p_delivery?: string
+          p_detail?: string
+          p_metadata?: Json
+          p_module: Database["public"]["Enums"]["timeline_module"]
+          p_title: string
+        }
+        Returns: undefined
+      }
       wf_lf_workflow: {
         Args: { p: Database["public"]["Enums"]["lf_status"] }
         Returns: Database["public"]["Enums"]["workflow_status"]
