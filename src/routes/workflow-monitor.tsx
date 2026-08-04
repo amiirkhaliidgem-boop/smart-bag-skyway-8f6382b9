@@ -113,6 +113,8 @@ function WorkflowMonitorPage() {
   const [driver, setDriver] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [q, setQ] = useState("");
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
 
   // Keep Elapsed / SLA badges accurate without a manual refresh. Live data
   // itself arrives through the store's Supabase realtime subscription.
@@ -215,6 +217,12 @@ function WorkflowMonitorPage() {
     return allRows.filter((r) => {
       if (driver !== "all" && r.agent !== driver) return false;
       if (statusFilter !== "all" && r.statusKey !== statusFilter) return false;
+      if (from || to) {
+        const day = r.lastAt ? new Date(r.lastAt).toISOString().slice(0, 10) : "";
+        if (!day) return false;
+        if (from && day < from) return false;
+        if (to && day > to) return false;
+      }
       if (q) {
         const s = q.toLowerCase();
         const hay = `${r.bagId} ${r.pirNumber} ${r.passengerName} ${r.deliveryId ?? ""}`.toLowerCase();
@@ -222,7 +230,7 @@ function WorkflowMonitorPage() {
       }
       return true;
     });
-  }, [allRows, driver, statusFilter, q]);
+  }, [allRows, driver, statusFilter, q, from, to]);
 
   const kpis = useMemo(() => {
     const stageCount = (...stages: DeliveryStage[]) =>
@@ -305,14 +313,15 @@ function WorkflowMonitorPage() {
           <CardTitle className="text-base">Live Workflow Board</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
             <Input
               placeholder="Search PIR, case, delivery ID or passenger…"
               value={q}
               onChange={(e) => setQ(e.target.value)}
+              className="h-9"
             />
             <Select value={driver} onValueChange={setDriver}>
-              <SelectTrigger>
+              <SelectTrigger className="h-9">
                 <SelectValue placeholder="Delivery Agent" />
               </SelectTrigger>
               <SelectContent>
@@ -325,7 +334,7 @@ function WorkflowMonitorPage() {
               </SelectContent>
             </Select>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger>
+              <SelectTrigger className="h-9">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
@@ -343,6 +352,8 @@ function WorkflowMonitorPage() {
               </SelectContent>
             </Select>
           </div>
+
+          <DateRangeFilter from={from} to={to} onFromChange={setFrom} onToChange={setTo} />
 
           <div className="overflow-x-auto rounded-md border border-border">
             <table className="w-full text-sm">
