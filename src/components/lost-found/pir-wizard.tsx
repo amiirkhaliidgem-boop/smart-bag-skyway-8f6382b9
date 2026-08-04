@@ -171,6 +171,7 @@ export function PirWizard({
   onClose: () => void;
 }) {
   const [step, setStep] = useState(0);
+  const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState<F>(() =>
     mode === "edit" && caseData ? fromCase(caseData) : empty(),
   );
