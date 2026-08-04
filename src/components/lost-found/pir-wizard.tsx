@@ -367,11 +367,19 @@ export function PirWizard({
       });
       toast.success(`Case ${caseData.pirNumber} updated`);
     } else {
-      const created = await addCase({
-        ...(commonPatch as Omit<BaggageCase, "bagId" | "status" | "storage" | "createdAt">),
-        documents: [],
-        initialLfStatus: "Open",
-      });
+      let created: BaggageCase | null = null;
+      try {
+        created = await addCase({
+          ...(commonPatch as Omit<BaggageCase, "bagId" | "status" | "storage" | "createdAt">),
+          documents: [],
+          initialLfStatus: "Open",
+        });
+      } catch (err) {
+        // The case was rejected before a BAG number was allocated — the
+        // operator can correct the field and retry without burning a number.
+        toast.error((err as Error).message || "Case could not be registered");
+        return;
+      }
       if (created) toast.success(`Case registered · ${created.pirNumber} · ${created.bagId}`);
     }
     onClose();
