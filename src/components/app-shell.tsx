@@ -282,6 +282,12 @@ function AppSidebar() {
         ))}
       </SidebarContent>
       <SidebarFooterSlot className="border-t border-sidebar-border text-[11px] text-sidebar-foreground/60 group-data-[collapsible=icon]:hidden">
+        {role ? (
+          // Plain text, no filled pill — it blends into the sidebar surface.
+          <p className="truncate bg-transparent text-[11px] font-medium text-sidebar-foreground">
+            {ROLE_LABELS[role]}
+          </p>
+        ) : null}
         <p className="font-medium text-sidebar-foreground/80">Ops Console v2.6</p>
         <p>© 2026 Cairo Ground Services</p>
       </SidebarFooterSlot>
