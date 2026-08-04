@@ -13,10 +13,12 @@ IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'
 The Passenger Portal is deliberately anonymous — there is no signed-in user on a tracking link. So the guard raises, the whole transaction rolls back, and the feedback row inserted a few lines earlier is discarded. Nothing reaches `passenger_feedback`, `timeline_events`, or `audit_events`.
 
 Evidence:
+
 - `passenger_feedback` holds 9 rows, newest 2026-08-02 11:44. Delivery DEL-000011, delivered 2026-08-04, has a valid tracking link and zero feedback rows.
 - The auth guard lives inside `wf_journal_event`, which is granted to `authenticated` only.
 
 Two further defects sit behind the same flow:
+
 - The function's `ON CONFLICT (delivery_id) DO UPDATE` collides with the `passenger_feedback_immutable` BEFORE UPDATE trigger, so any re-submission would also fail.
 - Feedback never advances the workflow to `FEEDBACK_SUBMITTED`.
 
@@ -29,11 +31,13 @@ It was not caused by the UI/UX standardization. The regression window (last succ
 ## Fix
 
 Database migration:
+
 1. Add `wf_journal_public(...)` — same insert behaviour as `wf_journal_event` but with no `auth.uid()` requirement, attributing the actor as `Passenger Portal`. Callable only from SECURITY DEFINER functions. Leave `wf_journal_event` and its guard untouched for staff paths.
 2. Rewrite `passenger_submit_feedback` to journal through the public variant, replace `ON CONFLICT DO UPDATE` with a conflict-safe path that reports "already submitted" instead of hitting the immutability trigger, and advance the delivery/case workflow to `FEEDBACK_SUBMITTED` through the workflow engine so Dashboard, Reports and Timeline stay consistent.
 3. Apply the same public-journal fix to `passenger_report_misconduct` if `qm_raise_incident` reaches the guarded journal on the anonymous path.
 
 Frontend (`src/routes/passenger.index.tsx`, `src/lib/passenger.functions.ts`):
+
 - Wrap the submit in try/catch, disable the button while in flight, show the Thanks screen only on a successful result, and surface a retry message otherwise.
 - Return a discriminated result from `mutatePassengerView` instead of a bare boolean the UI ignores.
 
@@ -47,4 +51,17 @@ Frontend (`src/routes/passenger.index.tsx`, `src/lib/passenger.functions.ts`):
 
 ## Technical notes
 
-Passenger Portal visual design stays frozen — the only portal change is error handling around submit. No table schema changes; immutability triggers and RLS denials stay as they are.
+Passenger Portal visual design stays frozen — the only portal change is error handling around submit. No table schema changes; immutability triggers and RLS denials stay as they are.  
+**7. Production Hardening**
+
+After completing the Root Cause Analysis, Workflow Verification, Database Integrity Verification, Regression Testing and End-to-End UAT:
+
+- Verify that there are **no orphan records** anywhere in the database.
+- Verify that every Workflow transition is **idempotent** (repeating the same action cannot corrupt data or create duplicates).
+- Verify that every background worker (Cron Jobs, Notification Engine, Workflow Engine) can safely recover after failures or server restarts.
+- Verify that all scheduled jobs, queues and retry mechanisms are functioning correctly.
+- Verify there are no duplicate notifications, duplicate timeline entries, duplicate delivery records or duplicate workflow events.
+- Verify all indexes, constraints and foreign keys are optimized and valid.
+- Verify that no placeholder/demo/mock code remains anywhere in the project.
+- Verify that Production Build is clean (no console errors, warnings or failed network requests).
+- Verify that the application can safely transition from Lovable Preview to the Production Server without requiring code modifications.
