@@ -34,7 +34,7 @@ export function BulkToolbar({
   onCancel,
   cancelLabel = "Cancel Selection",
 }: BulkToolbarProps) {
-  const label = count === 1 ? noun : pluralNoun ?? `${noun}s`;
+  const label = count === 1 ? noun : (pluralNoun ?? `${noun}s`);
   return (
     <div className="sticky top-2 z-20 flex flex-wrap items-center gap-3 rounded-lg border border-primary/30 bg-primary/5 px-4 py-2.5 shadow-sm">
       <div className="text-sm">

@@ -85,13 +85,31 @@ export function DateRangeFilter({
     <div className={cn("flex min-w-0 max-w-full flex-wrap items-center gap-2", className)}>
       {showPresets ? (
         <div className="flex items-center gap-2">
-          <Button type="button" variant="outline" size="sm" className="h-9" onClick={() => preset(1)}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-9"
+            onClick={() => preset(1)}
+          >
             Today
           </Button>
-          <Button type="button" variant="outline" size="sm" className="h-9" onClick={() => preset(7)}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-9"
+            onClick={() => preset(7)}
+          >
             7 days
           </Button>
-          <Button type="button" variant="outline" size="sm" className="h-9" onClick={() => preset(30)}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-9"
+            onClick={() => preset(30)}
+          >
             30 days
           </Button>
         </div>
@@ -103,20 +121,16 @@ export function DateRangeFilter({
           type="date"
           value={from}
           onChange={(e) => onFromChange(e.target.value)}
-          className={cn(
-            "h-9 min-w-0 flex-1 sm:w-[145px] sm:flex-none",
-            !from && "[&::-webkit-datetime-edit]:text-transparent",
-          )}
+          aria-label="From date"
+          className="h-9 min-w-0 flex-1 sm:w-[145px] sm:flex-none"
         />
         <Label className="shrink-0 text-xs text-muted-foreground">To</Label>
         <Input
           type="date"
           value={to}
           onChange={(e) => onToChange(e.target.value)}
-          className={cn(
-            "h-9 min-w-0 flex-1 sm:w-[145px] sm:flex-none",
-            !to && "[&::-webkit-datetime-edit]:text-transparent",
-          )}
+          aria-label="To date"
+          className="h-9 min-w-0 flex-1 sm:w-[145px] sm:flex-none"
         />
       </div>
 

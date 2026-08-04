@@ -1,6 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { getDeliveryStage, useStore, useOpsLoading, type BaggageCase, type Delivery, type WorkflowRecord } from "@/lib/store";
+import {
+  getDeliveryStage,
+  useStore,
+  useOpsLoading,
+  type BaggageCase,
+  type Delivery,
+  type WorkflowRecord,
+} from "@/lib/store";
 import { useSystemSettings } from "@/lib/settings/use-settings";
 import type { SlaRegion } from "@/lib/settings/types";
 import {
@@ -22,7 +29,13 @@ import type { WorkflowStatus } from "@/lib/workflow/statuses";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { DateRangeFilter } from "@/components/filters/date-range-filter";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   GitBranch,
   Clock,
@@ -34,6 +47,8 @@ import {
   ShieldAlert,
 } from "lucide-react";
 import { PageLoading } from "@/components/ops-skeleton";
+import { PageHeader, DataTable, type DataColumn } from "@/components/layout";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/workflow-monitor")({
   head: () => ({
@@ -87,7 +102,11 @@ interface MonitorRow {
   inStorage: boolean;
 }
 
-function lastTimestamp(kase?: BaggageCase, del?: Delivery, wf?: WorkflowRecord): string | undefined {
+function lastTimestamp(
+  kase?: BaggageCase,
+  del?: Delivery,
+  wf?: WorkflowRecord,
+): string | undefined {
   const candidates = [
     wf?.history?.[wf.history.length - 1]?.at,
     del?.lastUpdatedAt,
@@ -145,14 +164,17 @@ function WorkflowMonitorPage() {
         : (LF_STATUS_COLOR[lfStatus] ?? "bg-muted text-muted-foreground border-border");
 
       const workflowStatus: WorkflowStatus =
-        wf?.status ?? (stage ? stageToWorkflow(stage) : (LF_TO_WORKFLOW[lfStatus] ?? "PIR_CREATED"));
+        wf?.status ??
+        (stage ? stageToWorkflow(stage) : (LF_TO_WORKFLOW[lfStatus] ?? "PIR_CREATED"));
 
       const lastAt = lastTimestamp(kase, del, wf);
-      const elapsedMin = lastAt ? Math.max(0, Math.floor((now - new Date(lastAt).getTime()) / 60000)) : 0;
+      const elapsedMin = lastAt
+        ? Math.max(0, Math.floor((now - new Date(lastAt).getTime()) / 60000))
+        : 0;
       const regionHours = del
         ? (regions.find((r) => r.id === kase?.delivery?.regionId)?.sla_hours ??
-           regions.find((r) => r.is_default)?.sla_hours ??
-           24)
+          regions.find((r) => r.is_default)?.sla_hours ??
+          24)
         : lfSlaHours;
       const sla = TERMINAL_STATUSES.includes(workflowStatus) ? 0 : regionHours * 60;
 
@@ -168,11 +190,7 @@ function WorkflowMonitorPage() {
         const pickup = path !== (LF_OWNED_STATUSES as ReadonlyArray<LFStatus>);
         const idx = path.indexOf(lfStatus);
         const next = idx >= 0 ? path[idx + 1] : undefined;
-        nextStep = next
-          ? (LF_STATUS_LABEL[next] ?? next)
-          : pickup
-            ? "—"
-            : "Hand over to Delivery";
+        nextStep = next ? (LF_STATUS_LABEL[next] ?? next) : pickup ? "—" : "Hand over to Delivery";
       }
 
       const bagId = kase?.bagId ?? del?.bagId ?? "—";
@@ -211,7 +229,9 @@ function WorkflowMonitorPage() {
       rows.push(build(undefined, del));
     }
 
-    return rows.sort((a, b) => new Date(b.lastAt ?? 0).getTime() - new Date(a.lastAt ?? 0).getTime());
+    return rows.sort(
+      (a, b) => new Date(b.lastAt ?? 0).getTime() - new Date(a.lastAt ?? 0).getTime(),
+    );
   }, [cases, deliveries, workflow, feedback, tick, regions, lfSlaHours]);
 
   const rows = useMemo(() => {
@@ -226,12 +246,108 @@ function WorkflowMonitorPage() {
       }
       if (q) {
         const s = q.toLowerCase();
-        const hay = `${r.bagId} ${r.pirNumber} ${r.passengerName} ${r.deliveryId ?? ""}`.toLowerCase();
+        const hay =
+          `${r.bagId} ${r.pirNumber} ${r.passengerName} ${r.deliveryId ?? ""}`.toLowerCase();
         if (!hay.includes(s)) return false;
       }
       return true;
     });
   }, [allRows, driver, statusFilter, q, from, to]);
+
+  const wfColumns: DataColumn<(typeof rows)[number]>[] = [
+    {
+      id: "ref",
+      header: "Case / Delivery",
+      minWidth: "150px",
+      sortValue: (r) => r.deliveryId ?? r.bagId,
+      cell: (r) => (
+        <div className="min-w-0">
+          <div className="font-mono text-xs">{r.deliveryId ?? r.bagId}</div>
+          <div className="text-[11px] text-muted-foreground">{r.phase}</div>
+        </div>
+      ),
+    },
+    {
+      id: "passenger",
+      header: "Passenger / PIR",
+      minWidth: "160px",
+      sortValue: (r) => r.passengerName,
+      cell: (r) => (
+        <div className="min-w-0">
+          <div className="truncate font-medium">{r.passengerName}</div>
+          <div className="truncate font-mono text-xs text-muted-foreground">{r.pirNumber}</div>
+        </div>
+      ),
+    },
+    {
+      id: "status",
+      header: "Status",
+      sortValue: (r) => r.statusLabel,
+      cell: (r) => (
+        <span
+          className={cn(
+            "inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium",
+            r.statusColor,
+          )}
+        >
+          {r.statusLabel}
+        </span>
+      ),
+    },
+    {
+      id: "agent",
+      header: "Delivery Agent",
+      hideBelow: "md",
+      sortValue: (r) => r.agent,
+      cell: (r) => <span className="text-sm">{r.agent}</span>,
+    },
+    {
+      id: "elapsed",
+      header: "Elapsed",
+      hideBelow: "lg",
+      sortValue: (r) => r.elapsedMin,
+      cell: (r) => <span className="text-xs tabular-nums">{r.elapsedMin}m</span>,
+    },
+    {
+      id: "sla",
+      header: "SLA",
+      hideBelow: "md",
+      sortValue: (r) => (r.breached ? 1 : 0),
+      cell: (r) =>
+        r.sla ? (
+          <span
+            className={cn(
+              "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium",
+              r.breached ? "bg-destructive/10 text-destructive" : "bg-success/10 text-success",
+            )}
+          >
+            {r.breached ? "Breached" : "On Track"} · {r.sla}m
+          </span>
+        ) : (
+          <span className="text-muted-foreground">—</span>
+        ),
+    },
+    {
+      id: "next",
+      header: "Next Step",
+      hideBelow: "xl",
+      cell: (r) => <span className="text-xs">{r.nextStep}</span>,
+    },
+    {
+      id: "feedback",
+      header: "Feedback",
+      hideBelow: "xl",
+      sortValue: (r) => (r.feedbackSubmitted ? 1 : 0),
+      cell: (r) =>
+        r.feedbackSubmitted ? (
+          <span className="inline-flex items-center rounded-full bg-success/10 px-2 py-0.5 text-xs font-medium text-success">
+            Submitted
+          </span>
+        ) : (
+          <span className="text-muted-foreground">—</span>
+        ),
+    },
+  ];
 
   const kpis = useMemo(() => {
     const stageCount = (...stages: DeliveryStage[]) =>
@@ -243,7 +359,12 @@ function WorkflowMonitorPage() {
         icon: Clock,
         tone: "amber",
       },
-      { label: "In Storage", value: allRows.filter((r) => r.inStorage).length, icon: Warehouse, tone: "indigo" },
+      {
+        label: "In Storage",
+        value: allRows.filter((r) => r.inStorage).length,
+        icon: Warehouse,
+        tone: "indigo",
+      },
       {
         label: "Ready for Delivery",
         value: stageCount("Ready for Delivery", "Scheduled"),
@@ -257,43 +378,51 @@ function WorkflowMonitorPage() {
         tone: "primary",
       },
       { label: "Delivered", value: stageCount("Delivered"), icon: PackageCheck, tone: "emerald" },
-      { label: "Delayed", value: allRows.filter((r) => r.breached).length, icon: AlertTriangle, tone: "rose" },
+      {
+        label: "Delayed",
+        value: allRows.filter((r) => r.breached).length,
+        icon: AlertTriangle,
+        tone: "rose",
+      },
       {
         label: "Quality Alerts",
         value: incidents.filter((i) => i.status !== "Resolved").length,
         icon: ShieldAlert,
         tone: "rose",
       },
-      { label: "Returned", value: stageCount("Returned to Airport"), icon: RotateCcw, tone: "amber" },
+      {
+        label: "Returned",
+        value: stageCount("Returned to Airport"),
+        icon: RotateCcw,
+        tone: "amber",
+      },
     ];
   }, [allRows, incidents]);
 
   const tones: Record<string, string> = {
     primary: "bg-primary/10 text-primary",
-    amber: "bg-amber-100 text-amber-700",
-    emerald: "bg-emerald-100 text-emerald-700",
-    indigo: "bg-indigo-100 text-indigo-700",
-    rose: "bg-rose-100 text-rose-700",
+    amber: "bg-warning/15 text-warning",
+    emerald: "bg-success/10 text-success",
+    indigo: "bg-info/10 text-info",
+    rose: "bg-destructive/10 text-destructive",
   };
 
   const agents = Array.from(new Set(allRows.map((r) => r.agent))).filter((d) => d && d !== "—");
 
-
   // Progressive loading: render the page shell with placeholders while this
   // screen's data tier is still in flight, instead of showing empty values.
   if (loading.core && workflow.length === 0)
-    return <PageLoading title={"Workflow Monitor"} subtitle={"Real-time operational board across the full delivery lifecycle."} kpis={5} />;
+    return (
+      <PageLoading
+        title={"Workflow Monitor"}
+        subtitle={"Real-time operational board across the full delivery lifecycle."}
+        kpis={5}
+      />
+    );
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="h-10 w-10 rounded-lg bg-primary/10 text-primary grid place-items-center">
-          <GitBranch className="h-5 w-5" />
-        </div>
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Workflow Monitor</h1>
-        </div>
-      </div>
+      <PageHeader title="Workflow Monitor" icon={<GitBranch />} />
 
       <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-3">
         {kpis.map((k) => (
@@ -356,73 +485,21 @@ function WorkflowMonitorPage() {
 
           <DateRangeFilter from={from} to={to} onFromChange={setFrom} onToChange={setTo} />
 
-          <div className="overflow-x-auto rounded-md border border-border">
-            <table className="w-full text-sm">
-              <thead className="bg-muted/60 text-xs uppercase tracking-wider text-muted-foreground">
-                <tr>
-                  <th className="text-left px-4 py-3 font-medium">Case / Delivery</th>
-                  <th className="text-left px-4 py-3 font-medium">Passenger / PIR</th>
-                  <th className="text-left px-4 py-3 font-medium">Status</th>
-                  <th className="text-left px-4 py-3 font-medium">Delivery Agent</th>
-                  <th className="text-left px-4 py-3 font-medium">Elapsed</th>
-                  <th className="text-left px-4 py-3 font-medium">SLA</th>
-                  <th className="text-left px-4 py-3 font-medium">Next Step</th>
-                  <th className="text-left px-4 py-3 font-medium">Feedback</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {rows.length === 0 && (
-                  <tr>
-                    <td colSpan={8} className="text-center text-muted-foreground py-10 text-sm">
-                      No live cases match the current filters.
-                    </td>
-                  </tr>
-                )}
-                {rows.map((r) => (
-                  <tr key={r.key} className="hover:bg-muted/40">
-                    <td className="px-4 py-3">
-                      <div className="font-mono text-xs">{r.deliveryId ?? r.bagId}</div>
-                      <div className="text-[11px] text-muted-foreground">{r.phase}</div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="font-medium">{r.passengerName}</div>
-                      <div className="text-xs text-muted-foreground font-mono">{r.pirNumber}</div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium border ${r.statusColor}`}
-                      >
-                        {r.statusLabel}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">{r.agent}</td>
-                    <td className="px-4 py-3 tabular-nums text-xs">{r.elapsedMin}m</td>
-                    <td className="px-4 py-3 text-xs">
-                      {r.sla ? (
-                        <span
-                          className={`inline-flex items-center px-2 py-0.5 rounded-full font-medium ${r.breached ? "bg-rose-100 text-rose-700" : "bg-emerald-100 text-emerald-700"}`}
-                        >
-                          {r.breached ? "Breached" : "On Track"} · {r.sla}m
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-xs">{r.nextStep}</td>
-                    <td className="px-4 py-3 text-xs">
-                      {r.feedbackSubmitted ? (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full font-medium bg-emerald-100 text-emerald-700">
-                          Submitted
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable
+            data={rows}
+            columns={wfColumns}
+            rowId={(r) => r.key}
+            ariaLabel="Live workflow cases"
+            searchText={(r) =>
+              [r.deliveryId, r.bagId, r.passengerName, r.pirNumber, r.statusLabel, r.agent].join(
+                " ",
+              )
+            }
+            searchPlaceholder="Search live cases…"
+            emptyTitle="No live cases"
+            emptyDescription="No live cases match the current filters."
+            pageSize={25}
+          />
         </CardContent>
       </Card>
     </div>

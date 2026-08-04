@@ -18,11 +18,7 @@ import { Toaster } from "../components/ui/sonner";
 import { supabase } from "@/integrations/supabase/client";
 import type { Session } from "@supabase/supabase-js";
 import { RoleContext, canAccessPath, defaultPathForRole, useCurrentRole } from "@/lib/rbac";
-import {
-  PermissionContext,
-  firstAllowedPath,
-  useLivePermissions,
-} from "@/lib/permissions";
+import { PermissionContext, firstAllowedPath, useLivePermissions } from "@/lib/permissions";
 import { moduleForPath } from "@/lib/admin/modules";
 import { toast } from "sonner";
 
@@ -92,7 +88,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "Smart Baggage Ecosystem" },
-      { name: "description", content: "Enterprise baggage operations platform: lost & found, storage control, passenger tracking, and home delivery." },
+      {
+        name: "description",
+        content:
+          "Enterprise baggage operations platform: lost & found, storage control, passenger tracking, and home delivery.",
+      },
       { name: "author", content: "Cairo Ground Services" },
       { property: "og:title", content: "Smart Baggage Ecosystem" },
       { property: "og:description", content: "Enterprise airport baggage operations platform." },
@@ -153,8 +153,7 @@ function RootComponent() {
 // Public paths that don't require staff sign-in.
 function isPublicPath(pathname: string): boolean {
   return (
-    pathname === "/auth" ||
-    pathname.startsWith("/passenger/") // token portal only; /passenger alone is staff
+    pathname === "/auth" || pathname.startsWith("/passenger/") // token portal only; /passenger alone is staff
   );
 }
 
@@ -163,12 +162,12 @@ function AuthGate() {
   const [ready, setReady] = useState(false);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
-  const { role, loading: roleLoading, resolvedUserId } = useCurrentRole(
-    session?.user?.id ?? null,
-    session?.user?.app_metadata?.role,
-  );
-  const claimedRole =
-    session?.user?.app_metadata?.role ?? session?.user?.user_metadata?.role;
+  const {
+    role,
+    loading: roleLoading,
+    resolvedUserId,
+  } = useCurrentRole(session?.user?.id ?? null, session?.user?.app_metadata?.role);
+  const claimedRole = session?.user?.app_metadata?.role ?? session?.user?.user_metadata?.role;
   const effectiveRole =
     role ??
     (claimedRole === "admin" ||
@@ -253,7 +252,18 @@ function AuthGate() {
       navigate({ to: landingPath(), replace: true });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready, session, effectiveRole, roleLoading, roleReadyForSession, pathname, navigate, perms.loading, perms.granted, perms.unmanaged]);
+  }, [
+    ready,
+    session,
+    effectiveRole,
+    roleLoading,
+    roleReadyForSession,
+    pathname,
+    navigate,
+    perms.loading,
+    perms.granted,
+    perms.unmanaged,
+  ]);
 
   if (!ready) {
     return (

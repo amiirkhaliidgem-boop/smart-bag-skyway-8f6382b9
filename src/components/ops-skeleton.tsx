@@ -9,11 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export function KpiSkeletonGrid({ count = 6, className }: { count?: number; className?: string }) {
   return (
-    <div
-      className={
-        className ?? "grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4"
-      }
-    >
+    <div className={className ?? "grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4"}>
       {Array.from({ length: count }).map((_, i) => (
         <Card key={i} className="overflow-hidden">
           <CardContent className="p-5">
@@ -93,7 +89,10 @@ export function PageLoading({
         {subtitle ? <p className="text-sm text-muted-foreground mt-1">{subtitle}</p> : null}
       </div>
       {kpis > 0 ? (
-        <KpiSkeletonGrid count={kpis} className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4" />
+        <KpiSkeletonGrid
+          count={kpis}
+          className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4"
+        />
       ) : null}
       <Card>
         <CardContent className="p-0">

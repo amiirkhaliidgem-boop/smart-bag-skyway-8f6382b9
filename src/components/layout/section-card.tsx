@@ -25,9 +25,7 @@ export function SectionCard({
   padded?: boolean;
 }) {
   return (
-    <section
-      className={cn("rounded-xl border border-border bg-card shadow-sm", className)}
-    >
+    <section className={cn("rounded-xl border border-border bg-card shadow-sm", className)}>
       {title || actions ? (
         <header className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-border p-4 sm:flex sm:justify-between">
           <div className="flex min-w-0 items-center gap-2">
@@ -43,9 +41,7 @@ export function SectionCard({
               ) : null}
             </div>
           </div>
-          {actions ? (
-            <div className="flex shrink-0 items-center gap-2">{actions}</div>
-          ) : null}
+          {actions ? <div className="flex shrink-0 items-center gap-2">{actions}</div> : null}
         </header>
       ) : null}
       <div className={cn(padded && "p-4 sm:p-5", bodyClassName)}>{children}</div>

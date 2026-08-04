@@ -1,9 +1,4 @@
-import {
-  memo,
-  useMemo,
-  useState,
-  type ReactNode,
-} from "react";
+import { memo, useMemo, useState, type ReactNode } from "react";
 import { ArrowDown, ArrowUp, ChevronsUpDown, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
@@ -57,6 +52,8 @@ export interface DataTableProps<T> {
   onSelectionChange?: (ids: string[]) => void;
   onRowClick?: (row: T) => void;
   loading?: boolean;
+  /** Highlights the row currently shown in a companion detail panel. */
+  activeRowId?: string | null;
   emptyTitle?: ReactNode;
   emptyDescription?: ReactNode;
   emptyIcon?: ReactNode;
@@ -90,6 +87,7 @@ export function DataTable<T>({
   onSelectionChange,
   onRowClick,
   loading,
+  activeRowId,
   emptyTitle = "No records",
   emptyDescription,
   emptyIcon,
@@ -105,9 +103,7 @@ export function DataTable<T>({
   ariaLabel,
 }: DataTableProps<T>) {
   const [query, setQuery] = useState("");
-  const [sort, setSort] = useState<{ id: string; dir: "asc" | "desc" } | null>(
-    initialSort ?? null,
-  );
+  const [sort, setSort] = useState<{ id: string; dir: "asc" | "desc" } | null>(initialSort ?? null);
   const [page, setPage] = useState(1);
 
   const filtered = useMemo(() => {
@@ -135,17 +131,13 @@ export function DataTable<T>({
   const totalPages = paginate ? Math.max(1, Math.ceil(sorted.length / pageSize)) : 1;
   const currentPage = Math.min(page, totalPages);
   const rows = useMemo(
-    () =>
-      paginate
-        ? sorted.slice((currentPage - 1) * pageSize, currentPage * pageSize)
-        : sorted,
+    () => (paginate ? sorted.slice((currentPage - 1) * pageSize, currentPage * pageSize) : sorted),
     [sorted, currentPage, pageSize, paginate],
   );
 
   const selected = useMemo(() => new Set(selectedIds ?? []), [selectedIds]);
   const pageIds = rows.map(rowId);
-  const allOnPageSelected =
-    pageIds.length > 0 && pageIds.every((id) => selected.has(id));
+  const allOnPageSelected = pageIds.length > 0 && pageIds.every((id) => selected.has(id));
 
   function toggleAll() {
     if (!onSelectionChange) return;
@@ -159,9 +151,7 @@ export function DataTable<T>({
   function toggleRow(id: string) {
     if (!onSelectionChange) return;
     onSelectionChange(
-      selected.has(id)
-        ? (selectedIds ?? []).filter((x) => x !== id)
-        : [...(selectedIds ?? []), id],
+      selected.has(id) ? (selectedIds ?? []).filter((x) => x !== id) : [...(selectedIds ?? []), id],
     );
   }
 
@@ -266,18 +256,12 @@ export function DataTable<T>({
 
           {/* Desktop table */}
           <div
-            className={cn(
-              "w-full overflow-auto",
-              !disableMobileCards && "hidden md:block",
-            )}
+            className={cn("w-full overflow-auto", !disableMobileCards && "hidden md:block")}
             style={{ maxHeight }}
           >
             <table className="w-full caption-bottom text-sm" aria-label={ariaLabel}>
               <thead
-                className={cn(
-                  "bg-muted/60 backdrop-blur",
-                  stickyHeader && "sticky top-0 z-10",
-                )}
+                className={cn("bg-muted/60 backdrop-blur", stickyHeader && "sticky top-0 z-10")}
               >
                 <tr className="border-b border-border">
                   {selectable ? (
@@ -343,6 +327,7 @@ export function DataTable<T>({
                     selected={selected.has(rowId(row))}
                     onToggle={toggleRow}
                     onRowClick={onRowClick}
+                    active={activeRowId != null && rowId(row) === activeRowId}
                   />
                 ))}
               </tbody>
@@ -394,6 +379,7 @@ const DataTableRow = memo(function DataTableRow<T>({
   selected,
   onToggle,
   onRowClick,
+  active,
 }: {
   row: T;
   id: string;
@@ -402,12 +388,13 @@ const DataTableRow = memo(function DataTableRow<T>({
   selected: boolean;
   onToggle: (id: string) => void;
   onRowClick?: (row: T) => void;
+  active?: boolean;
 }) {
   return (
     <tr
       className={cn(
         "border-b border-border last:border-0 transition-colors hover:bg-muted/40",
-        selected && "bg-primary/5",
+        (selected || active) && "bg-primary/5",
         onRowClick && "cursor-pointer",
       )}
       onClick={onRowClick ? () => onRowClick(row) : undefined}
@@ -444,4 +431,5 @@ const DataTableRow = memo(function DataTableRow<T>({
   selected: boolean;
   onToggle: (id: string) => void;
   onRowClick?: (row: T) => void;
+  active?: boolean;
 }) => ReactNode;

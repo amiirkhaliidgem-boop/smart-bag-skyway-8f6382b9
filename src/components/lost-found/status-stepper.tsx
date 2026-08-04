@@ -35,12 +35,7 @@ export function LfStatusStepper({
   // Once past Ready for Delivery, force the last step to render as complete.
   const currentIndex = stepIndex >= 0 ? stepIndex : globalCurrent > readyIdx ? steps.length : 0;
   return (
-    <div
-      className={cn(
-        "flex flex-wrap items-stretch gap-y-2 gap-x-0 text-xs",
-        className,
-      )}
-    >
+    <div className={cn("flex flex-wrap items-stretch gap-y-2 gap-x-0 text-xs", className)}>
       {steps.map((s, i) => {
         const done = i < currentIndex;
         const isCurrent = i === currentIndex;
@@ -54,7 +49,8 @@ export function LfStatusStepper({
               onClick={() => onSelect?.(s)}
               className={cn(
                 "group flex items-center gap-1.5 rounded-md px-2 py-1.5 border transition-colors",
-                isCurrent && "bg-primary text-primary-foreground border-primary font-semibold shadow-sm",
+                isCurrent &&
+                  "bg-primary text-primary-foreground border-primary font-semibold shadow-sm",
                 done && "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100",
                 isFuture && "bg-muted/40 text-muted-foreground border-transparent",
                 clickable && "cursor-pointer",
@@ -70,7 +66,13 @@ export function LfStatusStepper({
                   isFuture && "bg-muted text-muted-foreground",
                 )}
               >
-                {done ? <Check className="h-3 w-3" /> : isCurrent ? <Circle className="h-2.5 w-2.5 fill-current" /> : i + 1}
+                {done ? (
+                  <Check className="h-3 w-3" />
+                ) : isCurrent ? (
+                  <Circle className="h-2.5 w-2.5 fill-current" />
+                ) : (
+                  i + 1
+                )}
               </span>
               <span className="whitespace-nowrap">{s}</span>
             </button>

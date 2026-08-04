@@ -58,9 +58,7 @@ const navSections: {
 }[] = [
   {
     label: "Operations",
-    items: [
-      { to: "/", label: "Executive Dashboard", icon: LayoutDashboard, exact: true },
-    ],
+    items: [{ to: "/", label: "Executive Dashboard", icon: LayoutDashboard, exact: true }],
   },
   {
     label: "Baggage Operations",
@@ -86,9 +84,7 @@ const navSections: {
   },
   {
     label: "CONTACT CENTER OPERATIONS",
-    items: [
-      { to: "/contact-center", label: "Contact Center", icon: Headphones },
-    ],
+    items: [{ to: "/contact-center", label: "Contact Center", icon: Headphones }],
   },
   {
     label: "Operations Center",
@@ -108,9 +104,7 @@ const navSections: {
   },
   {
     label: "Administration",
-    items: [
-      { to: "/admin", label: "Administration", icon: ShieldCheck },
-    ],
+    items: [{ to: "/admin", label: "Administration", icon: ShieldCheck }],
   },
   {
     label: "System",
@@ -121,7 +115,6 @@ const navSections: {
     ],
   },
 ];
-
 
 export function AppShell() {
   const [open, setOpen] = useState(true);
@@ -215,9 +208,7 @@ function AppSidebar() {
   );
 
   const isActive = (to: string, exact?: boolean, matchSearchKey?: string) => {
-    const pathMatch = exact
-      ? pathname === to
-      : pathname === to || pathname.startsWith(to + "/");
+    const pathMatch = exact ? pathname === to : pathname === to || pathname.startsWith(to + "/");
     if (!pathMatch) return false;
     if (!matchSearchKey) return true;
     const current = currentSection ?? "users"; // /admin defaults to users
@@ -231,10 +222,12 @@ function AppSidebar() {
           type="button"
           onClick={toggleSidebar}
           aria-label="Toggle navigation"
-          className="flex w-full items-center gap-2 rounded-md p-2 text-left outline-none transition-[opacity,transform] duration-200 hover:opacity-90 focus-visible:ring-2 focus-visible:ring-sidebar-ring active:scale-[0.98]"
+          className="flex w-full items-center gap-2 rounded-md py-2 pl-0 pr-2 text-left outline-none transition-[opacity,transform] duration-200 hover:opacity-90 focus-visible:ring-2 focus-visible:ring-sidebar-ring active:scale-[0.98]"
         >
-          {/* 32px tile at 8px padding puts the logo on the exact same centre
-              line as every 16px nav icon below it, expanded or collapsed. */}
+          {/* Nav icons sit at 24px from the sidebar edge (group p-2 + button
+              p-2 + half of a 16px icon), in both the expanded and the 48px
+              icon rail. A 32px tile flush against the header's own 8px
+              padding puts the logo centre on that exact same 24px axis. */}
           <span className="grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-lg bg-card shadow ring-1 ring-sidebar-border">
             <img src={iabLogo.url} alt="IAB" className="h-7 w-7 object-contain" />
           </span>
@@ -311,9 +304,7 @@ function UserMenu() {
       <div className="hidden md:flex flex-col items-end leading-tight max-w-[220px]">
         <span className="text-xs text-foreground truncate">{email}</span>
         {role && (
-          <span className="text-[10px] text-muted-foreground truncate">
-            {ROLE_LABELS[role]}
-          </span>
+          <span className="text-[10px] text-muted-foreground truncate">{ROLE_LABELS[role]}</span>
         )}
       </div>
       <button

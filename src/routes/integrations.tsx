@@ -1,3 +1,4 @@
+import { DataTable, type DataColumn } from "@/components/layout";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -112,8 +113,10 @@ function IntegrationsPage() {
       testIntegrationConnection({ data: vars }),
     onSuccess: (res, vars) => {
       const name = definitionFor(vars.key)?.name ?? vars.key;
-      if (res.ok) toast.success(`${name} connected`, { description: res.detail || `${res.latencyMs} ms` });
-      else if (res.notConfigured) toast.warning(`${name} is not configured`, { description: res.error });
+      if (res.ok)
+        toast.success(`${name} connected`, { description: res.detail || `${res.latencyMs} ms` });
+      else if (res.notConfigured)
+        toast.warning(`${name} is not configured`, { description: res.error });
       else toast.error(`${name} test failed`, { description: res.error });
       invalidate();
     },
@@ -132,7 +135,9 @@ function IntegrationsPage() {
   const disconnect = useMutation({
     mutationFn: (key: string) => disconnectIntegrationConfig({ data: { key } }),
     onSuccess: () => {
-      toast.success("Integration disconnected", { description: "Stored credentials were cleared." });
+      toast.success("Integration disconnected", {
+        description: "Stored credentials were cleared.",
+      });
       invalidate();
     },
     onError: (e: Error) => toast.error("Disconnect failed", { description: e.message }),
@@ -140,6 +145,66 @@ function IntegrationsPage() {
 
   const integrations = data?.integrations ?? [];
   const events = data?.events ?? [];
+
+  const activityColumns: DataColumn<(typeof events)[number]>[] = [
+    {
+      id: "when",
+      header: "When",
+      sortValue: (e) => e.occurred_at,
+      cell: (e) => <span className="whitespace-nowrap text-xs">{fmt(e.occurred_at)}</span>,
+    },
+    {
+      id: "integration",
+      header: "Integration",
+      sortValue: (e) => e.integration_key,
+      cell: (e) => (
+        <span className="text-xs">
+          {definitionFor(e.integration_key)?.name ?? e.integration_key}
+        </span>
+      ),
+    },
+    {
+      id: "action",
+      header: "Action",
+      hideBelow: "md",
+      sortValue: (e) => e.action,
+      cell: (e) => <span className="text-xs capitalize">{e.action}</span>,
+    },
+    {
+      id: "outcome",
+      header: "Outcome",
+      sortValue: (e) => e.outcome,
+      cell: (e) =>
+        e.outcome === "success" ? (
+          <span className="inline-flex items-center gap-1 text-xs text-success">
+            <CheckCircle2 className="h-3.5 w-3.5" /> Success
+          </span>
+        ) : e.outcome === "failure" ? (
+          <span className="inline-flex items-center gap-1 text-xs text-destructive">
+            <XCircle className="h-3.5 w-3.5" /> Failure
+          </span>
+        ) : (
+          <span className="text-xs text-muted-foreground">Info</span>
+        ),
+    },
+    {
+      id: "actor",
+      header: "Actor",
+      hideBelow: "lg",
+      sortValue: (e) => e.actor_name,
+      cell: (e) => <span className="text-xs">{e.actor_name}</span>,
+    },
+    {
+      id: "detail",
+      header: "Detail",
+      hideBelow: "lg",
+      className: "max-w-[420px]",
+      cell: (e) => (
+        <span className="line-clamp-2 text-xs text-muted-foreground">{e.error || e.detail}</span>
+      ),
+    },
+  ];
+
   const connected = integrations.filter((i) => i.status === "connected").length;
   const errored = integrations.filter((i) => i.status === "error").length;
   const withCredentials = integrations.filter((i) => i.secretsSet.length > 0).length;
@@ -164,11 +229,7 @@ function IntegrationsPage() {
         <StatCard label="Integrations" value={integrations.length} />
         <StatCard label="Connected" value={connected} tone="text-emerald-600" />
         <StatCard label="In error" value={errored} tone="text-rose-600" />
-        <StatCard
-          label="Slots holding credentials"
-          value={withCredentials}
-          tone="text-primary"
-        />
+        <StatCard label="Slots holding credentials" value={withCredentials} tone="text-primary" />
       </div>
 
       {isLoading ? (
@@ -219,7 +280,9 @@ function IntegrationsPage() {
                     <Row label="Environment" value={i.environment} />
                     <Row
                       label="Credentials"
-                      value={i.secretsSet.length ? `${i.secretsSet.length} stored (encrypted)` : "None"}
+                      value={
+                        i.secretsSet.length ? `${i.secretsSet.length} stored (encrypted)` : "None"
+                      }
                     />
                     <Row label="Last success" value={fmt(i.lastSuccessAt)} />
                     <Row
@@ -254,11 +317,7 @@ function IntegrationsPage() {
                       title={i.configured ? undefined : "Configure credentials first"}
                       onClick={() => test.mutate({ key: i.key })}
                     >
-                      {busy ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        "Test connection"
-                      )}
+                      {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Test connection"}
                     </Button>
                     {!def?.managed && i.secretsSet.length > 0 && (
                       <Button
@@ -283,53 +342,19 @@ function IntegrationsPage() {
           <CardTitle className="text-base">Integration Activity</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs">
-              <thead className="bg-muted/50 text-muted-foreground">
-                <tr>
-                  <th className="text-left font-medium px-4 py-2">When</th>
-                  <th className="text-left font-medium px-4 py-2">Integration</th>
-                  <th className="text-left font-medium px-4 py-2">Action</th>
-                  <th className="text-left font-medium px-4 py-2">Outcome</th>
-                  <th className="text-left font-medium px-4 py-2">Actor</th>
-                  <th className="text-left font-medium px-4 py-2">Detail</th>
-                </tr>
-              </thead>
-              <tbody>
-                {events.length === 0 && (
-                  <tr>
-                    <td colSpan={6} className="px-4 py-6 text-center text-muted-foreground">
-                      No integration activity recorded yet.
-                    </td>
-                  </tr>
-                )}
-                {events.map((e) => (
-                  <tr key={e.id} className="border-t border-border">
-                    <td className="px-4 py-2 whitespace-nowrap">{fmt(e.occurred_at)}</td>
-                    <td className="px-4 py-2">{definitionFor(e.integration_key)?.name ?? e.integration_key}</td>
-                    <td className="px-4 py-2 capitalize">{e.action}</td>
-                    <td className="px-4 py-2">
-                      {e.outcome === "success" ? (
-                        <span className="inline-flex items-center gap-1 text-emerald-600">
-                          <CheckCircle2 className="h-3.5 w-3.5" /> Success
-                        </span>
-                      ) : e.outcome === "failure" ? (
-                        <span className="inline-flex items-center gap-1 text-rose-600">
-                          <XCircle className="h-3.5 w-3.5" /> Failure
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground">Info</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-2">{e.actor_name}</td>
-                    <td className="px-4 py-2 text-muted-foreground max-w-[420px] truncate">
-                      {e.error || e.detail}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable
+            data={events}
+            columns={activityColumns}
+            rowId={(e) => String(e.id)}
+            ariaLabel="Integration activity"
+            searchText={(e) =>
+              [e.integration_key, e.action, e.outcome, e.actor_name, e.detail].join(" ")
+            }
+            searchPlaceholder="Search activity…"
+            emptyTitle="No integration activity"
+            emptyDescription="No integration activity recorded yet."
+            pageSize={25}
+          />
         </CardContent>
       </Card>
 
@@ -360,7 +385,9 @@ function StatCard({
     <Card>
       <CardContent className="p-4">
         <p className="text-xs text-muted-foreground">{label}</p>
-        <p className={`${small ? "text-base" : "text-2xl"} font-bold mt-1 ${tone ?? ""}`}>{value}</p>
+        <p className={`${small ? "text-base" : "text-2xl"} font-bold mt-1 ${tone ?? ""}`}>
+          {value}
+        </p>
       </CardContent>
     </Card>
   );
@@ -436,7 +463,10 @@ function ConfigureDialog({
         data: { key: integration.key, testInput: testInput || undefined },
       }),
     onSuccess: (res) => {
-      if (res.ok) toast.success("Connection successful", { description: res.detail || `${res.latencyMs} ms` });
+      if (res.ok)
+        toast.success("Connection successful", {
+          description: res.detail || `${res.latencyMs} ms`,
+        });
       else if (res.notConfigured) toast.warning("Not configured", { description: res.error });
       else toast.error("Connection failed", { description: res.error });
       onSaved();
@@ -521,7 +551,9 @@ function ConfigureDialog({
                 <Input
                   type={f.secret ? "password" : f.kind === "number" ? "number" : "text"}
                   autoComplete="off"
-                  placeholder={f.secret && stored ? "•••••••• (stored — leave blank to keep)" : f.placeholder}
+                  placeholder={
+                    f.secret && stored ? "•••••••• (stored — leave blank to keep)" : f.placeholder
+                  }
                   value={f.secret ? (secrets[f.name] ?? "") : String(config[f.name] ?? "")}
                   onChange={(e) =>
                     f.secret

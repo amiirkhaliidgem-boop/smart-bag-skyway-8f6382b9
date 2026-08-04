@@ -12,11 +12,7 @@ import {
 import { getDeliveryStage } from "@/lib/store";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "@tanstack/react-router";
-import {
-  stopNavigationHref,
-  routeNavigationHref,
-  type LatLng,
-} from "@/lib/routing/optimize";
+import { stopNavigationHref, routeNavigationHref, type LatLng } from "@/lib/routing/optimize";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,10 +38,7 @@ import {
   UserCheck,
 } from "lucide-react";
 import { toast } from "sonner";
-import {
-  DriverLanguageProvider,
-  useDriverLang,
-} from "@/lib/i18n/driver-language";
+import { DriverLanguageProvider, useDriverLang } from "@/lib/i18n/driver-language";
 import { DriverShell } from "@/components/driver-shell";
 
 export const Route = createFileRoute("/driver-portal")({
@@ -83,10 +76,7 @@ function DriverPortalBody() {
         .eq("user_id", userId)
         .maybeSingle();
       if (cancelled) return;
-      setDriver(
-        data?.full_name ??
-          (typeof metaName === "string" && metaName ? metaName : null),
-      );
+      setDriver(data?.full_name ?? (typeof metaName === "string" && metaName ? metaName : null));
       setResolving(false);
     };
 
@@ -152,9 +142,7 @@ function DriverDashboard({ driver }: { driver: string }) {
   const route: Delivery[] = useMemo(() => {
     if (!engineRoute) return [];
     const byId = new Map(mine.map((d) => [d.deliveryId, d]));
-    return engineRoute.stops
-      .map((id) => byId.get(id))
-      .filter((d): d is Delivery => !!d);
+    return engineRoute.stops.map((id) => byId.get(id)).filter((d): d is Delivery => !!d);
   }, [engineRoute, mine]);
   const origin: LatLng | null = engineRoute
     ? { lat: engineRoute.origin.lat, lng: engineRoute.origin.lng }
@@ -207,9 +195,7 @@ function DriverDashboard({ driver }: { driver: string }) {
     <div className="space-y-6">
       <header className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 sm:flex sm:flex-wrap sm:justify-between">
         <div className="min-w-0">
-          <h1 className="truncate text-xl font-bold tracking-tight sm:text-2xl">
-            {t.portalTitle}
-          </h1>
+          <h1 className="truncate text-xl font-bold tracking-tight sm:text-2xl">{t.portalTitle}</h1>
           <p className="mt-1 truncate text-sm text-muted-foreground">
             {t.signedInAs} <span className="font-medium text-foreground">{driver}</span>
           </p>
@@ -318,9 +304,7 @@ function RouteSection({
       </CardHeader>
       <CardContent className="space-y-3">
         {route.length === 0 && (
-          <p className="text-sm text-muted-foreground text-center py-6">
-            {t.noStops}
-          </p>
+          <p className="text-sm text-muted-foreground text-center py-6">{t.noStops}</p>
         )}
         {route.length > 0 && fullRouteHref && (
           <Button asChild size="sm" className="gap-1.5">
@@ -349,15 +333,7 @@ function RouteSection({
   );
 }
 
-function Section({
-  title,
-  items,
-  empty,
-}: {
-  title: string;
-  items: Delivery[];
-  empty: string;
-}) {
+function Section({ title, items, empty }: { title: string; items: Delivery[]; empty: string }) {
   return (
     <Card>
       <CardHeader>
@@ -367,7 +343,9 @@ function Section({
         {items.length === 0 && (
           <p className="text-sm text-muted-foreground text-center py-6">{empty}</p>
         )}
-        {items.map((d) => <DeliveryCard key={d.deliveryId} d={d} />)}
+        {items.map((d) => (
+          <DeliveryCard key={d.deliveryId} d={d} />
+        ))}
       </CardContent>
     </Card>
   );
@@ -389,10 +367,7 @@ function DeliveryCard({
   const stage = getDeliveryStage(d);
   const cases = useStore((s) => s.cases);
   const kase = cases.find((c) => c.bagId === d.bagId);
-  const bagTag =
-    kase?.baggage?.bagTags?.filter(Boolean).join(", ") ||
-    kase?.bagTagNumber ||
-    "—";
+  const bagTag = kase?.baggage?.bagTags?.filter(Boolean).join(", ") || kase?.bagTagNumber || "—";
   const priorityTone: Record<string, string> = {
     VIP: "bg-rose-100 text-rose-700",
     High: "bg-amber-100 text-amber-700",
@@ -417,9 +392,9 @@ function DeliveryCard({
           )}
           <div className="min-w-0">
             <p className="font-semibold">{d.passengerName}</p>
-          <p className="text-xs font-mono text-muted-foreground" dir="ltr">
+            <p className="text-xs font-mono text-muted-foreground" dir="ltr">
               {d.deliveryId} · PIR {d.pirNumber} · Tag {bagTag}
-          </p>
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -428,14 +403,22 @@ function DeliveryCard({
               {t.currentStop}
             </span>
           )}
-          <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${priorityTone[d.priority]}`}>
+          <span
+            className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${priorityTone[d.priority]}`}
+          >
             {t.priority(d.priority)}
           </span>
         </div>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3 text-sm">
-        <p className="flex items-start gap-2"><MapPin className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />{d.address}</p>
-        <p className="flex items-center gap-2"><Phone className="h-4 w-4 text-muted-foreground" /><span dir="ltr">{d.mobile}</span></p>
+        <p className="flex items-start gap-2">
+          <MapPin className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
+          {d.address}
+        </p>
+        <p className="flex items-center gap-2">
+          <Phone className="h-4 w-4 text-muted-foreground" />
+          <span dir="ltr">{d.mobile}</span>
+        </p>
       </div>
       <div className="flex flex-wrap gap-2 mt-3">
         {legOrigin && (
@@ -533,9 +516,7 @@ function OtpDialog({ d, onClose }: { d: Delivery; onClose: () => void }) {
         }}
         className="space-y-3"
       >
-        <p className="text-sm text-muted-foreground">
-          {t.otpHint}
-        </p>
+        <p className="text-sm text-muted-foreground">{t.otpHint}</p>
         <Input
           value={code}
           onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}

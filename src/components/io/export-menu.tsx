@@ -24,7 +24,14 @@ interface Props {
   disabled?: boolean;
 }
 
-export function ExportMenu({ schema, rows, scope = "all", size = "default", actor = "Operator", disabled }: Props) {
+export function ExportMenu({
+  schema,
+  rows,
+  scope = "all",
+  size = "default",
+  actor = "Operator",
+  disabled,
+}: Props) {
   const [busy, setBusy] = useState<ExportFormat | null>(null);
 
   const run = (format: ExportFormat) => {

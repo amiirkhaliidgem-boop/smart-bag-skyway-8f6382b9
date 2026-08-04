@@ -58,14 +58,10 @@ export function PodReport({
   const bagTags = c?.baggage?.bagTags?.length
     ? c.baggage.bagTags
     : c?.bagTagNumber
-    ? [c.bagTagNumber]
-    : [];
+      ? [c.bagTagNumber]
+      : [];
   const verification =
-    d.otpStatus === "Verified"
-      ? "Verified"
-      : d.deliveredAt
-      ? "Delivered (Unverified)"
-      : "Pending";
+    d.otpStatus === "Verified" ? "Verified" : d.deliveredAt ? "Delivered (Unverified)" : "Pending";
 
   return (
     <article className="pir-print">
@@ -77,10 +73,22 @@ export function PodReport({
           <div className="pir-sub">Smart Baggage Ecosystem — Home Delivery</div>
         </div>
         <div className="pir-header-meta">
-          <div><span>Delivery</span><b>{d.deliveryId}</b></div>
-          <div><span>PIR</span><b>{d.pirNumber}</b></div>
-          <div><span>Bag ID</span><b>{d.bagId}</b></div>
-          <div><span>Generated</span><b>{fmtDate(new Date().toISOString())}</b></div>
+          <div>
+            <span>Delivery</span>
+            <b>{d.deliveryId}</b>
+          </div>
+          <div>
+            <span>PIR</span>
+            <b>{d.pirNumber}</b>
+          </div>
+          <div>
+            <span>Bag ID</span>
+            <b>{d.bagId}</b>
+          </div>
+          <div>
+            <span>Generated</span>
+            <b>{fmtDate(new Date().toISOString())}</b>
+          </div>
         </div>
       </header>
 
@@ -102,13 +110,7 @@ export function PodReport({
       <Section title="Baggage Information">
         <Row
           k="Bag Tag(s)"
-          v={
-            bagTags.length ? (
-              <span className="pir-mono">{bagTags.join(", ")}</span>
-            ) : (
-              "—"
-            )
-          }
+          v={bagTags.length ? <span className="pir-mono">{bagTags.join(", ")}</span> : "—"}
         />
         <Row k="Number of Bags" v={c?.baggage?.numberOfBags ?? bagTags.length ?? 1} />
         <Row k="Color" v={c?.baggage?.color} />
@@ -151,7 +153,9 @@ export function PodReport({
       </section>
 
       <footer className="pir-footer">
-        <span>{d.deliveryId} · PIR {d.pirNumber}</span>
+        <span>
+          {d.deliveryId} · PIR {d.pirNumber}
+        </span>
         <span>IAB Smart Baggage Ecosystem — Confidential</span>
       </footer>
     </article>

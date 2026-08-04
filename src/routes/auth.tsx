@@ -83,34 +83,30 @@ function AuthPage() {
     }
   }
 
-async function resolveDefaultPath(userId: string | null): Promise<string> {
-  if (!userId) return "/";
-  const { data } = await supabase
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", userId);
-  const roles = (data ?? [])
-    .map((r) => r.role as string)
-    .filter((r): r is AppRole =>
-      r === "admin" || r === "agent" || r === "coordinator" || r === "driver",
-    );
-  // Prefer admin if present.
-  const role: AppRole | null = roles.includes("admin")
-    ? "admin"
-    : (roles[0] ?? null);
-  return defaultPathForRole(role);
-}
+  async function resolveDefaultPath(userId: string | null): Promise<string> {
+    if (!userId) return "/";
+    const { data } = await supabase.from("user_roles").select("role").eq("user_id", userId);
+    const roles = (data ?? [])
+      .map((r) => r.role as string)
+      .filter(
+        (r): r is AppRole =>
+          r === "admin" || r === "agent" || r === "coordinator" || r === "driver",
+      );
+    // Prefer admin if present.
+    const role: AppRole | null = roles.includes("admin") ? "admin" : (roles[0] ?? null);
+    return defaultPathForRole(role);
+  }
 
-/**
- * Staff may sign in with a username (no corporate email required). Usernames are
- * resolved to the account's internal sign-in identity before authenticating.
- */
-async function resolveLoginIdentity(input: string): Promise<string> {
-  const value = input.trim();
-  if (value.includes("@")) return value;
-  const { data } = await supabase.rpc("login_identity_for_username", { _username: value });
-  return (typeof data === "string" && data) || `${value.toLowerCase()}@staff.local`;
-}
+  /**
+   * Staff may sign in with a username (no corporate email required). Usernames are
+   * resolved to the account's internal sign-in identity before authenticating.
+   */
+  async function resolveLoginIdentity(input: string): Promise<string> {
+    const value = input.trim();
+    if (value.includes("@")) return value;
+    const { data } = await supabase.rpc("login_identity_for_username", { _username: value });
+    return (typeof data === "string" && data) || `${value.toLowerCase()}@staff.local`;
+  }
 
   return (
     <div className="min-h-dvh grid place-items-center bg-background p-6">
@@ -159,9 +155,7 @@ async function resolveLoginIdentity(input: string): Promise<string> {
               onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
               className="w-full text-xs text-muted-foreground hover:text-foreground"
             >
-              {mode === "signin"
-                ? "New here? Create a staff account"
-                : "Have an account? Sign in"}
+              {mode === "signin" ? "New here? Create a staff account" : "Have an account? Sign in"}
             </button>
           </form>
         </CardContent>

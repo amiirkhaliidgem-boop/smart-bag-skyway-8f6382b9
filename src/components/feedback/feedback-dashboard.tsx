@@ -3,18 +3,13 @@ import { useStore, useOpsLoading } from "@/lib/store";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { BulkToolbar } from "@/components/bulk/bulk-toolbar";
 import { DateRangeFilter } from "@/components/filters/date-range-filter";
-import {
-  exportFeedbackToXlsx,
-  fmtDateTime,
-  type FeedbackRow,
-} from "@/lib/feedback/export-xlsx";
+import { exportFeedbackToXlsx, fmtDateTime, type FeedbackRow } from "@/lib/feedback/export-xlsx";
 import { Star, FileSpreadsheet, RotateCcw, Search } from "lucide-react";
 import { toast } from "sonner";
 import { PageLoading } from "@/components/ops-skeleton";
-
+import { PageHeader, DataTable, type DataColumn } from "@/components/layout";
 
 const DASH = "—";
 
@@ -37,12 +32,16 @@ export function FeedbackDashboard() {
     const deliveryById = new Map(deliveries.map((d) => [d.deliveryId, d]));
 
     const build = (
-      base: Omit<FeedbackRow, "pirNumber" | "deliveryId" | "driver" | "airline" | "flightNumber" | "station">,
+      base: Omit<
+        FeedbackRow,
+        "pirNumber" | "deliveryId" | "driver" | "airline" | "flightNumber" | "station"
+      >,
       bagId: string,
       deliveryId?: string,
     ): FeedbackRow => {
       const delivery = deliveryId ? deliveryById.get(deliveryId) : deliveryByBag.get(bagId);
-      const kase = caseByBag.get(bagId ?? delivery?.bagId ?? "") ??
+      const kase =
+        caseByBag.get(bagId ?? delivery?.bagId ?? "") ??
         (delivery ? caseByBag.get(delivery.bagId) : undefined);
       return {
         ...base,
@@ -118,14 +117,6 @@ export function FeedbackDashboard() {
     (f) => new Date(f.at).toDateString() === new Date().toDateString(),
   ).length;
 
-  const allSelected = filtered.length > 0 && selected.length === filtered.length;
-
-  function toggleAll() {
-    setSelected(allSelected ? [] : filtered.map((r) => r.id));
-  }
-  function toggleOne(id: string) {
-    setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
-  }
   function resetFilters() {
     setQ("");
     setFrom("");
@@ -140,6 +131,84 @@ export function FeedbackDashboard() {
     toast.success(`Exported ${chosen.length} feedback record(s)`);
   }
 
+  const fbColumns: DataColumn<FeedbackRow>[] = [
+    {
+      id: "passenger",
+      header: "Passenger",
+      minWidth: "150px",
+      sortValue: (r) => r.passengerName ?? "",
+      cell: (r) => <span className="font-medium">{r.passengerName || DASH}</span>,
+    },
+    {
+      id: "pir",
+      header: "PIR",
+      hideBelow: "md",
+      sortValue: (r) => r.pirNumber ?? "",
+      cell: (r) => <span className="font-mono text-xs">{r.pirNumber || DASH}</span>,
+    },
+    {
+      id: "delivery",
+      header: "Delivery ID",
+      hideBelow: "lg",
+      sortValue: (r) => r.deliveryId ?? "",
+      cell: (r) => <span className="font-mono text-xs">{r.deliveryId || DASH}</span>,
+    },
+    {
+      id: "agent",
+      header: "Delivery Agent",
+      hideBelow: "lg",
+      sortValue: (r) => r.driver ?? "",
+      cell: (r) => <span>{r.driver || DASH}</span>,
+    },
+    {
+      id: "airline",
+      header: "Airline",
+      hideBelow: "xl",
+      sortValue: (r) => r.airline ?? "",
+      cell: (r) => <span>{r.airline || DASH}</span>,
+    },
+    {
+      id: "flight",
+      header: "Flight",
+      hideBelow: "xl",
+      sortValue: (r) => r.flightNumber ?? "",
+      cell: (r) => <span className="font-mono text-xs">{r.flightNumber || DASH}</span>,
+    },
+    {
+      id: "rating",
+      header: "Rating",
+      sortValue: (r) => r.rating ?? 0,
+      cell: (r) => <Stars value={r.rating} />,
+    },
+    {
+      id: "resolved",
+      header: "Resolved",
+      hideBelow: "md",
+      sortValue: (r) => (r.resolved ? 1 : 0),
+      cell: (r) => (
+        <span className={r.resolved ? "font-medium text-success" : "font-medium text-destructive"}>
+          {r.resolved ? "Yes" : "No"}
+        </span>
+      ),
+    },
+    {
+      id: "comment",
+      header: "Comment",
+      hideBelow: "lg",
+      className: "max-w-[320px]",
+      cell: (r) => <span className="line-clamp-2">{r.comments || DASH}</span>,
+    },
+    {
+      id: "submitted",
+      header: "Submitted",
+      sortValue: (r) => r.at ?? "",
+      cell: (r) => (
+        <span className="whitespace-nowrap text-xs text-muted-foreground">
+          {fmtDateTime(r.at) || DASH}
+        </span>
+      ),
+    },
+  ];
 
   // Progressive loading: render the page shell with placeholders while this
   // screen's data tier is still in flight, instead of showing empty values.
@@ -148,14 +217,12 @@ export function FeedbackDashboard() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Customer Feedback</h1>
-      </div>
+      <PageHeader title="Customer Feedback" icon={<Star />} />
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Kpi label="Avg Rating" value={`${avg.toFixed(1)}/5`} tone="text-amber-600" />
+        <Kpi label="Avg Rating" value={`${avg.toFixed(1)}/5`} tone="text-warning" />
         <Kpi label="Total Responses" value={total} tone="text-primary" />
-        <Kpi label="Issue Resolved" value={`${resolvedPct}%`} tone="text-emerald-600" />
+        <Kpi label="Issue Resolved" value={`${resolvedPct}%`} tone="text-success" />
         <Kpi label="Today" value={today} tone="text-primary" />
       </div>
 
@@ -219,81 +286,19 @@ export function FeedbackDashboard() {
         />
       )}
 
-      <Card>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-muted/60 text-xs uppercase tracking-wider text-muted-foreground">
-                <tr>
-                  <th className="px-3 py-3 w-10">
-                    <Checkbox
-                      checked={allSelected}
-                      onCheckedChange={toggleAll}
-                      aria-label="Select all"
-                    />
-                  </th>
-                  <th className="text-left px-4 py-3 font-medium">Passenger</th>
-                  <th className="text-left px-4 py-3 font-medium">PIR</th>
-                  <th className="text-left px-4 py-3 font-medium">Delivery ID</th>
-                  <th className="text-left px-4 py-3 font-medium">Delivery Agent</th>
-                  <th className="text-left px-4 py-3 font-medium">Airline</th>
-                  <th className="text-left px-4 py-3 font-medium">Flight</th>
-                  <th className="text-left px-4 py-3 font-medium">Rating</th>
-                  <th className="text-left px-4 py-3 font-medium">Resolved</th>
-                  <th className="text-left px-4 py-3 font-medium">Comment</th>
-                  <th className="text-left px-4 py-3 font-medium">Submitted</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {filtered.length === 0 && (
-                  <tr>
-                    <td colSpan={11} className="px-4 py-10 text-center text-muted-foreground">
-                      No passenger feedback matches the current filters.
-                    </td>
-                  </tr>
-                )}
-                {filtered.map((r) => (
-                  <tr key={r.id} className="hover:bg-muted/40">
-                    <td className="px-3 py-3">
-                      <Checkbox
-                        checked={selected.includes(r.id)}
-                        onCheckedChange={() => toggleOne(r.id)}
-                        aria-label={`Select ${r.id}`}
-                      />
-                    </td>
-                    <td className="px-4 py-3 font-medium">{r.passengerName || DASH}</td>
-                    <td className="px-4 py-3 font-mono text-xs">{r.pirNumber || DASH}</td>
-                    <td className="px-4 py-3 font-mono text-xs">{r.deliveryId || DASH}</td>
-                    <td className="px-4 py-3">{r.driver || DASH}</td>
-                    <td className="px-4 py-3">{r.airline || DASH}</td>
-                    <td className="px-4 py-3 font-mono text-xs">{r.flightNumber || DASH}</td>
-                    <td className="px-4 py-3">
-                      <Stars value={r.rating} />
-                    </td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={
-                          r.resolved
-                            ? "text-emerald-600 font-medium"
-                            : "text-rose-600 font-medium"
-                        }
-                      >
-                        {r.resolved ? "Yes" : "No"}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 max-w-[320px]">
-                      <span className="line-clamp-2">{r.comments || DASH}</span>
-                    </td>
-                    <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
-                      {fmtDateTime(r.at) || DASH}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
+      <DataTable
+        data={filtered}
+        columns={fbColumns}
+        rowId={(r) => r.id}
+        ariaLabel="Passenger feedback"
+        selectable
+        selectedIds={selected}
+        onSelectionChange={setSelected}
+        emptyTitle="No feedback"
+        emptyDescription="No passenger feedback matches the current filters."
+        emptyIcon={<Star />}
+        pageSize={25}
+      />
     </div>
   );
 }

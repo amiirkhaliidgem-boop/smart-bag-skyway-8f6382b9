@@ -67,10 +67,7 @@ export function PirPrintHost() {
     <div className="pir-print-portal" aria-hidden="true">
       <div className="pir-shell">
         {matched.map((c, i) => (
-          <div
-            key={c.bagId}
-            className={i < matched.length - 1 ? "pir-page-break" : ""}
-          >
+          <div key={c.bagId} className={i < matched.length - 1 ? "pir-page-break" : ""}>
             <PirReport caseRecord={c} />
           </div>
         ))}

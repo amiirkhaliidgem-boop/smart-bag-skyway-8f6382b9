@@ -64,28 +64,31 @@ export function PirReport({ caseRecord }: { caseRecord: BaggageCase }) {
   const bagTags = c.baggage?.bagTags?.length
     ? c.baggage.bagTags
     : c.bagTagNumber
-    ? [c.bagTagNumber]
-    : [];
+      ? [c.bagTagNumber]
+      : [];
 
   return (
     <article className="pir-print">
       <header className="pir-header">
-        <img
-          src={iabLogo.url}
-          alt="IAB"
-          className="pir-logo"
-        />
+        <img src={iabLogo.url} alt="IAB" className="pir-logo" />
         <div className="pir-header-title">
           <div className="pir-brand">IAB · Smart Baggage Ecosystem</div>
           <h1 className="pir-title">Property Irregularity Report</h1>
-          <div className="pir-sub">
-            Smart Baggage Ecosystem — Ground Handling
-          </div>
+          <div className="pir-sub">Smart Baggage Ecosystem — Ground Handling</div>
         </div>
         <div className="pir-header-meta">
-          <div><span>PIR</span><b>{c.pirNumber}</b></div>
-          <div><span>Bag ID</span><b>{c.bagId}</b></div>
-          <div><span>Generated</span><b>{fmtDate(new Date().toISOString())}</b></div>
+          <div>
+            <span>PIR</span>
+            <b>{c.pirNumber}</b>
+          </div>
+          <div>
+            <span>Bag ID</span>
+            <b>{c.bagId}</b>
+          </div>
+          <div>
+            <span>Generated</span>
+            <b>{fmtDate(new Date().toISOString())}</b>
+          </div>
         </div>
       </header>
 
@@ -119,13 +122,7 @@ export function PirReport({ caseRecord }: { caseRecord: BaggageCase }) {
         <Row k="Number of Bags" v={c.baggage?.numberOfBags ?? bagTags.length ?? 1} />
         <Row
           k="Bag Tag(s)"
-          v={
-            bagTags.length ? (
-              <span className="pir-mono">{bagTags.join(", ")}</span>
-            ) : (
-              "—"
-            )
-          }
+          v={bagTags.length ? <span className="pir-mono">{bagTags.join(", ")}</span> : "—"}
         />
         <Row k="Brand" v={c.baggage?.brand} />
         <Row k="Color" v={c.baggage?.color} />
@@ -139,7 +136,14 @@ export function PirReport({ caseRecord }: { caseRecord: BaggageCase }) {
         <Row k="Method" v={c.delivery?.method} />
         <Row k="Full Address" v={fullAddress(c)} />
         <Row k="Preferred Time" v={c.delivery?.preferredDeliveryTime} />
-        <Row k="Storage Location" v={c.storage ? `Zone ${c.storage.zone} · Shelf ${c.storage.shelf} · Pos ${c.storage.position}` : "—"} />
+        <Row
+          k="Storage Location"
+          v={
+            c.storage
+              ? `Zone ${c.storage.zone} · Shelf ${c.storage.shelf} · Pos ${c.storage.position}`
+              : "—"
+          }
+        />
       </Section>
 
       <section className="pir-signatures">
@@ -156,7 +160,9 @@ export function PirReport({ caseRecord }: { caseRecord: BaggageCase }) {
       </section>
 
       <footer className="pir-footer">
-        <span>{c.pirNumber} · {c.bagId}</span>
+        <span>
+          {c.pirNumber} · {c.bagId}
+        </span>
         <span>IAB Smart Baggage Ecosystem — Confidential</span>
       </footer>
     </article>

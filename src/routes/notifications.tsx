@@ -30,12 +30,16 @@ import {
   type NotificationTrigger,
 } from "@/lib/notifications/templates";
 import { PageLoading } from "@/components/ops-skeleton";
+import { PageHeader, DataTable, type DataColumn } from "@/components/layout";
 
 export const Route = createFileRoute("/notifications")({
   head: () => ({
     meta: [
       { title: "Notification Center — IAB Smart Baggage" },
-      { name: "description", content: "Central log and preview of every workflow-driven passenger notification." },
+      {
+        name: "description",
+        content: "Central log and preview of every workflow-driven passenger notification.",
+      },
     ],
   }),
   component: NotificationCenter,
@@ -76,13 +80,18 @@ function NotificationCenter() {
         return false;
       return true;
     });
-  }, [notifications, statusFilter, channelFilter, dateFrom, dateTo, passengerFilter, deliveryFilter]);
+  }, [
+    notifications,
+    statusFilter,
+    channelFilter,
+    dateFrom,
+    dateTo,
+    passengerFilter,
+    deliveryFilter,
+  ]);
 
   const selected =
-    notifications.find((n) => n.id === selectedId) ??
-    filtered[0] ??
-    notifications[0] ??
-    null;
+    notifications.find((n) => n.id === selectedId) ?? filtered[0] ?? notifications[0] ?? null;
 
   const counts = useMemo(() => {
     return {
@@ -94,36 +103,110 @@ function NotificationCenter() {
     };
   }, [notifications]);
 
-
   // Progressive loading: render the page shell with placeholders while this
   // screen's data tier is still in flight, instead of showing empty values.
   if (loading.activity && notifications.length === 0)
     return <PageLoading title={"Notification Center"} kpis={5} />;
 
+  const columns: DataColumn<NotificationEvent>[] = [
+    {
+      id: "passenger",
+      header: "Passenger",
+      minWidth: "160px",
+      sortValue: (n) => n.passengerName ?? "",
+      cell: (n) => (
+        <div className="min-w-0">
+          <div className="truncate font-medium">{n.passengerName ?? "—"}</div>
+          <div className="truncate text-[11px] text-muted-foreground">{n.to}</div>
+        </div>
+      ),
+    },
+    {
+      id: "reference",
+      header: "PIR / Delivery",
+      hideBelow: "md",
+      sortValue: (n) => n.pirNumber ?? "",
+      cell: (n) => (
+        <div className="min-w-0">
+          <div className="font-mono text-xs">{n.pirNumber ?? "—"}</div>
+          <div className="truncate font-mono text-[11px] text-muted-foreground">{n.deliveryId}</div>
+        </div>
+      ),
+    },
+    {
+      id: "channel",
+      header: "Channel",
+      hideBelow: "sm",
+      sortValue: (n) => n.channel,
+      cell: (n) => {
+        const ChIcon = CHANNEL_META[n.channel].icon;
+        return (
+          <div>
+            <span className="inline-flex items-center gap-1.5 text-xs">
+              <ChIcon className="h-3.5 w-3.5" />
+              {CHANNEL_META[n.channel].label}
+            </span>
+            <div className="text-[11px] uppercase text-muted-foreground">{n.locale}</div>
+          </div>
+        );
+      },
+    },
+    {
+      id: "trigger",
+      header: "Trigger",
+      hideBelow: "lg",
+      sortValue: (n) => triggerLabel(n.triggerKey as NotificationTrigger),
+      cell: (n) => (
+        <span className="text-xs">{triggerLabel(n.triggerKey as NotificationTrigger)}</span>
+      ),
+    },
+    {
+      id: "status",
+      header: "Status",
+      sortValue: (n) => n.status_,
+      cell: (n) => <StatusPill status={n.status_} />,
+    },
+    {
+      id: "time",
+      header: "Time",
+      hideBelow: "sm",
+      sortValue: (n) => n.sentAt ?? n.createdAt,
+      cell: (n) => (
+        <div className="whitespace-nowrap text-xs">
+          {new Date(n.sentAt ?? n.createdAt).toLocaleTimeString("en-GB", {
+            hour: "2-digit",
+            minute: "2-digit",
+            timeZone: "UTC",
+          })}
+          <div className="text-[11px] text-muted-foreground">{n.operator ?? "system"}</div>
+        </div>
+      ),
+    },
+  ];
+
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2">
-            <Bell className="h-7 w-7 text-primary" />
-            Notification Center
-          </h1>
-        </div>
-      </div>
+      <PageHeader title="Notification Center" icon={<Bell />} />
 
       <div className="flex items-start gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
         <Lock className="h-4 w-4 shrink-0 mt-px text-muted-foreground" />
         <p>
-          Read-only monitor. Passenger notifications are generated automatically by the
-          Workflow Engine on every operational transition — they cannot be created,
-          edited or sent manually from this screen.
+          Read-only monitor. Passenger notifications are generated automatically by the Workflow
+          Engine on every operational transition — they cannot be created, edited or sent manually
+          from this screen.
         </p>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <Kpi label="Total" value={counts.total} icon={Bell} />
         <Kpi label="Queued" value={counts.queued} icon={Clock} tone="warning" />
-        <Kpi label="Sending" value={counts.sending} icon={Loader2} tone="info" spin={counts.sending > 0} />
+        <Kpi
+          label="Sending"
+          value={counts.sending}
+          icon={Loader2}
+          tone="info"
+          spin={counts.sending > 0}
+        />
         <Kpi label="Sent" value={counts.sent} icon={CheckCircle2} tone="success" />
         <Kpi label="Failed" value={counts.failed} icon={AlertTriangle} tone="danger" />
       </div>
@@ -132,11 +215,13 @@ function NotificationCenter() {
         <CardHeader>
           <CardTitle className="text-base">Filters</CardTitle>
         </CardHeader>
-        <CardContent className="grid gap-3 md:grid-cols-5">
+        <CardContent className="grid gap-3 md:grid-cols-5 [&>*]:min-w-0">
           <div className="space-y-1">
             <Label className="text-xs">Status</Label>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All</SelectItem>
                 <SelectItem value="queued">Queued</SelectItem>
@@ -149,11 +234,15 @@ function NotificationCenter() {
           <div className="space-y-1">
             <Label className="text-xs">Channel</Label>
             <Select value={channelFilter} onValueChange={setChannelFilter}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All</SelectItem>
                 {(Object.keys(CHANNEL_META) as NotificationChannel[]).map((c) => (
-                  <SelectItem key={c} value={c}>{CHANNEL_META[c].label}</SelectItem>
+                  <SelectItem key={c} value={c}>
+                    {CHANNEL_META[c].label}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -169,91 +258,43 @@ function NotificationCenter() {
           </div>
           <div className="space-y-1">
             <Label className="text-xs">Passenger</Label>
-            <Input placeholder="Name" value={passengerFilter} onChange={(e) => setPassengerFilter(e.target.value)} />
+            <Input
+              placeholder="Name"
+              value={passengerFilter}
+              onChange={(e) => setPassengerFilter(e.target.value)}
+            />
           </div>
           <div className="space-y-1">
             <Label className="text-xs">Delivery ID</Label>
-            <Input placeholder="DEL-..." value={deliveryFilter} onChange={(e) => setDeliveryFilter(e.target.value)} />
+            <Input
+              placeholder="DEL-..."
+              value={deliveryFilter}
+              onChange={(e) => setDeliveryFilter(e.target.value)}
+            />
           </div>
         </CardContent>
       </Card>
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
-        <Card className="min-w-0">
-          <CardHeader className="flex-row items-center justify-between">
-            <CardTitle className="text-base">Events ({filtered.length})</CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="max-h-[520px] overflow-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-muted/50 text-xs uppercase text-muted-foreground sticky top-0">
-                  <tr>
-                    <th className="text-left px-3 py-2 font-medium">Passenger</th>
-                    <th className="text-left px-3 py-2 font-medium">PIR / Delivery</th>
-                    <th className="text-left px-3 py-2 font-medium">Channel</th>
-                    <th className="text-left px-3 py-2 font-medium">Trigger</th>
-                    <th className="text-left px-3 py-2 font-medium">Status</th>
-                    <th className="text-left px-3 py-2 font-medium">Time</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.length === 0 && (
-                    <tr>
-                      <td colSpan={6} className="text-center py-10 text-sm text-muted-foreground">
-                        No notifications match the current filters.
-                      </td>
-                    </tr>
-                  )}
-                  {filtered.map((n) => {
-                    const ChIcon = CHANNEL_META[n.channel].icon;
-                    const active = selected?.id === n.id;
-                    return (
-                      <tr
-                        key={n.id}
-                        onClick={() => setSelectedId(n.id)}
-                        className={cn(
-                          "border-t border-border cursor-pointer hover:bg-muted/40 transition-colors",
-                          active && "bg-primary/5",
-                        )}
-                      >
-                        <td className="px-3 py-2">
-                          <div className="font-medium truncate">{n.passengerName ?? "—"}</div>
-                          <div className="text-[11px] text-muted-foreground">{n.to}</div>
-                        </td>
-                        <td className="px-3 py-2">
-                          <div className="font-mono text-xs">{n.pirNumber ?? "—"}</div>
-                          <div className="text-[11px] text-muted-foreground font-mono">{n.deliveryId}</div>
-                        </td>
-                        <td className="px-3 py-2">
-                          <span className="inline-flex items-center gap-1.5 text-xs">
-                            <ChIcon className="h-3.5 w-3.5" />
-                            {CHANNEL_META[n.channel].label}
-                          </span>
-                          <div className="text-[11px] text-muted-foreground uppercase">{n.locale}</div>
-                        </td>
-                        <td className="px-3 py-2 text-xs">
-                          {triggerLabel(n.triggerKey as NotificationTrigger)}
-                        </td>
-                        <td className="px-3 py-2">
-                          <StatusPill status={n.status_} />
-                        </td>
-                        <td className="px-3 py-2 text-xs whitespace-nowrap">
-                          {new Date(n.sentAt ?? n.createdAt).toLocaleTimeString("en-GB", {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                          <div className="text-[11px] text-muted-foreground">
-                            {n.operator ?? "system"}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="min-w-0">
+          <DataTable
+            data={filtered}
+            columns={columns}
+            rowId={(n) => n.id}
+            ariaLabel="Notification events"
+            searchText={(n) =>
+              [n.passengerName, n.to, n.pirNumber, n.deliveryId, n.channel, n.status_].join(" ")
+            }
+            searchPlaceholder="Search notifications…"
+            onRowClick={(n) => setSelectedId(n.id)}
+            activeRowId={selected?.id ?? null}
+            emptyTitle="No notifications"
+            emptyDescription="No notifications match the current filters."
+            emptyIcon={<Bell />}
+            maxHeight="520px"
+            pageSize={25}
+          />
+        </div>
 
         <Card className="min-w-0">
           <CardHeader>
@@ -273,11 +314,8 @@ function NotificationCenter() {
                   <Row k="PIR Number" v={selected.pirNumber ?? "—"} mono />
                   <Row k="Delivery ID" v={selected.deliveryId} mono />
                   <Row k="Channel" v={CHANNEL_META[selected.channel].label} />
-                   <Row
-                     k="Trigger"
-                     v={triggerLabel(selected.triggerKey as NotificationTrigger)}
-                   />
-                   <Row k="Language" v={selected.locale === "ar" ? "Arabic" : "English"} />
+                  <Row k="Trigger" v={triggerLabel(selected.triggerKey as NotificationTrigger)} />
+                  <Row k="Language" v={selected.locale === "ar" ? "Arabic" : "English"} />
                   <Row k="Operator" v={selected.operator ?? "system"} />
                   <Row
                     k="Time"
@@ -286,9 +324,7 @@ function NotificationCenter() {
                   <Row k="Provider" v={selected.provider ?? "—"} />
                   <Row k="Provider Message ID" v={selected.providerId ?? "—"} mono />
                   <Row k="Attempts" v={String(selected.attempts ?? 0)} />
-                  {selected.failureReason && (
-                    <Row k="Last Failure" v={selected.failureReason} />
-                  )}
+                  {selected.failureReason && <Row k="Last Failure" v={selected.failureReason} />}
                 </div>
 
                 <div className="space-y-2">
@@ -296,10 +332,10 @@ function NotificationCenter() {
                     <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">
                       English
                     </p>
-                     {selected.messageEn && <StatusPill status={selected.status_} />}
+                    {selected.messageEn && <StatusPill status={selected.status_} />}
                   </div>
                   <div className="rounded-md border border-border p-3 text-sm bg-card whitespace-pre-wrap">
-                     {selected.messageEn?.body ?? "Unavailable for this legacy event"}
+                    {selected.messageEn?.body ?? "Unavailable for this legacy event"}
                   </div>
                 </div>
 
@@ -308,14 +344,14 @@ function NotificationCenter() {
                     <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">
                       العربية
                     </p>
-                     {selected.messageAr && <StatusPill status={selected.status_} />}
+                    {selected.messageAr && <StatusPill status={selected.status_} />}
                   </div>
                   <div
                     dir="rtl"
                     lang="ar"
                     className="rounded-md border border-border p-3 text-sm bg-card whitespace-pre-wrap"
                   >
-                     {selected.messageAr?.body ?? "غير متاح لهذا السجل القديم"}
+                    {selected.messageAr?.body ?? "غير متاح لهذا السجل القديم"}
                   </div>
                 </div>
               </>
@@ -337,7 +373,10 @@ function Row({ k, v, mono }: { k: string; v: string; mono?: boolean }) {
 }
 
 function StatusPill({ status }: { status: NotificationEvent["status_"] }) {
-  const map: Record<NotificationEvent["status_"], { label: string; cls: string; icon: typeof Clock; spin?: boolean }> = {
+  const map: Record<
+    NotificationEvent["status_"],
+    { label: string; cls: string; icon: typeof Clock; spin?: boolean }
+  > = {
     queued: {
       label: "Queued",
       cls: "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30",

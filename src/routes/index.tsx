@@ -2,12 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import {
-  Luggage,
-  TrendingUp,
-  TrendingDown,
-  RefreshCw,
-} from "lucide-react";
+import { Luggage, TrendingUp, TrendingDown, RefreshCw } from "lucide-react";
 import {
   BarChart,
   Bar,
@@ -181,8 +176,7 @@ function Index() {
   // invalidates the aggregate so the dashboard reflects the new state with no
   // manual refresh logic anywhere in the UI.
   useEffect(() => {
-    const invalidate = () =>
-      queryClient.invalidateQueries({ queryKey: ["executive-dashboard"] });
+    const invalidate = () => queryClient.invalidateQueries({ queryKey: ["executive-dashboard"] });
     const channel = supabase.channel("executive_dashboard_sync");
     for (const table of [
       "baggage_cases",
@@ -221,23 +215,23 @@ function Index() {
         title="Executive Dashboard"
         actions={
           <>
-          <DateRangeFilter
-            from={from}
-            to={to}
-            onFromChange={setFrom}
-            onToChange={setTo}
-            grain={grain}
-            onGrainChange={setGrain}
-          />
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-9"
-            aria-label="Refresh dashboard"
-            onClick={() => queryClient.invalidateQueries({ queryKey: ["executive-dashboard"] })}
-          >
-            <RefreshCw className={`h-3.5 w-3.5 ${isFetching ? "animate-spin" : ""}`} />
-          </Button>
+            <DateRangeFilter
+              from={from}
+              to={to}
+              onFromChange={setFrom}
+              onToChange={setTo}
+              grain={grain}
+              onGrainChange={setGrain}
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-9"
+              aria-label="Refresh dashboard"
+              onClick={() => queryClient.invalidateQueries({ queryKey: ["executive-dashboard"] })}
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${isFetching ? "animate-spin" : ""}`} />
+            </Button>
           </>
         }
       />

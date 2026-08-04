@@ -5,11 +5,7 @@ import {
   isTerminalPassengerStage,
   type PassengerView,
 } from "@/lib/passenger.functions";
-import type {
-  BaggageCase,
-  Delivery,
-  DeliveryStatus,
-} from "@/lib/store";
+import type { BaggageCase, Delivery, DeliveryStatus } from "@/lib/store";
 import type { DeliveryStage } from "@/lib/delivery/stages";
 import type { LFStatus } from "@/lib/lost-found/statuses";
 import { DELIVERY_STAGES, stageToLegacyStatus } from "@/lib/delivery/stages";
@@ -156,11 +152,7 @@ function TokenLoading() {
   return (
     <div className="min-h-[60vh] grid place-items-center px-6 text-center">
       <div className="flex flex-col items-center gap-4">
-        <img
-          src={iabLogo.url}
-          alt="IAB"
-          className="h-12 w-auto opacity-90"
-        />
+        <img src={iabLogo.url} alt="IAB" className="h-12 w-auto opacity-90" />
         <div
           aria-hidden
           className="h-6 w-6 rounded-full border-2 border-neutral-200 border-t-neutral-900 animate-spin"
@@ -177,8 +169,8 @@ function TokenNotFound() {
       <div>
         <h1 className="text-xl font-semibold">Tracking link not found</h1>
         <p className="mt-2 text-sm text-muted-foreground max-w-sm">
-          This link is invalid or has expired. Please contact IAB Baggage
-          Services or check your original SMS/WhatsApp message.
+          This link is invalid or has expired. Please contact IAB Baggage Services or check your
+          original SMS/WhatsApp message.
         </p>
       </div>
     </div>
