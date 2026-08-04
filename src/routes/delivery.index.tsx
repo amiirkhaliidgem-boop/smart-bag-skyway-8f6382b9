@@ -53,6 +53,8 @@ import { PodPrintHost, podPrintBus } from "@/components/delivery/pod-print-host"
 import { ReturnToAirportDialog } from "@/components/delivery/return-to-airport-dialog";
 import { DateRangeFilter } from "@/components/filters/date-range-filter";
 import { PageLoading } from "@/components/ops-skeleton";
+import { PageHeader } from "@/components/layout/page-header";
+import { DataTable, type DataColumn } from "@/components/layout/data-table";
 
 export const Route = createFileRoute("/delivery/")({
   head: () => ({
@@ -71,6 +73,7 @@ export const Route = createFileRoute("/delivery/")({
 function DispatchCenter() {
   const deliveries = useStore((s) => s.deliveries);
   const loading = useOpsLoading();
+  const navigate = useNavigate();
 
   // ---- Filters (URL-independent; local UI state for this operational view)
   const [q, setQ] = useState("");
@@ -130,16 +133,140 @@ function DispatchCenter() {
   const [bulkReturnOpen, setBulkReturnOpen] = useState(false);
   const [assignFor, setAssignFor] = useState<string | null>(null);
   const [failFor, setFailFor] = useState<string | null>(null);
-  const toggleAll = () => {
-    if (selected.size === filtered.length) setSelected(new Set());
-    else setSelected(new Set(filtered.map((d) => d.deliveryId)));
-  };
-  const toggleOne = (id: string) => {
-    const next = new Set(selected);
-    next.has(id) ? next.delete(id) : next.add(id);
-    setSelected(next);
-  };
 
+  const columns: DataColumn<Delivery>[] = useMemo(
+    () => [
+      {
+        id: "deliveryId",
+        header: "Delivery",
+        minWidth: "8rem",
+        sortValue: (d) => d.deliveryId,
+        cell: (d) => (
+          <span className="font-mono text-xs font-semibold text-primary">{d.deliveryId}</span>
+        ),
+      },
+      {
+        id: "pir",
+        header: "PIR",
+        minWidth: "8rem",
+        hideBelow: "lg",
+        sortValue: (d) => d.pirNumber || d.bagId,
+        cell: (d) => <span className="font-mono text-xs">{d.pirNumber || d.bagId}</span>,
+      },
+      {
+        id: "passenger",
+        header: "Passenger",
+        minWidth: "10rem",
+        sortValue: (d) => d.passengerName,
+        cell: (d) => (
+          <div className="flex items-center gap-1.5">
+            {d.priority === "VIP" && (
+              <span className="rounded border border-amber-200 bg-amber-100 px-1 text-[10px] font-bold text-amber-700">
+                VIP
+              </span>
+            )}
+            <span className="truncate">{d.passengerName}</span>
+          </div>
+        ),
+      },
+      {
+        id: "mobile",
+        header: "Mobile",
+        hideBelow: "xl",
+        cell: (d) => <span className="font-mono text-xs">{d.mobile}</span>,
+      },
+      {
+        id: "address",
+        header: "Address",
+        hideBelow: "xl",
+        cell: (d) => (
+          <span
+            className="block max-w-[220px] truncate text-xs text-muted-foreground"
+            title={d.address}
+          >
+            {d.address}
+          </span>
+        ),
+      },
+      {
+        id: "driver",
+        header: "Delivery Agent",
+        minWidth: "9rem",
+        hideBelow: "lg",
+        sortValue: (d) => d.driver ?? "",
+        cell: (d) =>
+          d.driver && d.driver !== "—" ? (
+            <span className="text-xs">{d.driver}</span>
+          ) : (
+            <span className="text-xs italic text-muted-foreground">Unassigned</span>
+          ),
+      },
+      {
+        id: "stage",
+        header: "Status",
+        minWidth: "10rem",
+        sortValue: (d) => getDeliveryStage(d),
+        cell: (d) => {
+          const stage = getDeliveryStage(d);
+          return (
+            <span
+              className={cn(
+                "inline-flex items-center whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] font-medium",
+                STAGE_STYLES[stage],
+              )}
+            >
+              {STAGE_LABELS[stage]}
+            </span>
+          );
+        },
+      },
+      {
+        id: "priority",
+        header: "Priority",
+        hideBelow: "xl",
+        sortValue: (d) => d.priority ?? "",
+        cell: (d) => <span className="text-xs">{d.priority}</span>,
+      },
+      {
+        id: "created",
+        header: "Created",
+        hideBelow: "xl",
+        sortValue: (d) => d.createdAt ?? "",
+        cell: (d) => (
+          <span className="whitespace-nowrap text-xs text-muted-foreground">
+            {fmt(d.createdAt ?? "")}
+          </span>
+        ),
+      },
+      {
+        id: "actions",
+        header: "Actions",
+        align: "right",
+        minWidth: "12rem",
+        cell: (d) => (
+          <div
+            className="inline-flex flex-wrap items-center justify-end gap-1"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <RowActions
+              d={d}
+              acts={actionsForStage(getDeliveryStage(d))}
+              onAssign={() => setAssignFor(d.deliveryId)}
+              onMarkFailed={() => setFailFor(d.deliveryId)}
+            />
+            <Link
+              to="/delivery/$deliveryId"
+              params={{ deliveryId: d.deliveryId }}
+              className="inline-flex h-7 items-center rounded-md border border-input bg-background px-2.5 text-xs font-medium hover:bg-muted"
+            >
+              Open
+            </Link>
+          </div>
+        ),
+      },
+    ],
+    [],
+  );
 
   // Progressive loading: render the page shell with placeholders while this
   // screen's data tier is still in flight, instead of showing empty values.
@@ -148,14 +275,7 @@ function DispatchCenter() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
-            Delivery Dispatch Center
-          </h1>
-        </div>
-        <div />
-      </div>
+      <PageHeader title="Delivery Dispatch Center" />
 
       {selected.size > 0 && (
         <SharedBulkToolbar
@@ -260,56 +380,27 @@ function DispatchCenter() {
 
       <SnapshotTruncationNotice collection="deliveries" noun="deliveries" />
 
-      <Card>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-muted/60 text-xs uppercase tracking-wider text-muted-foreground">
-                <tr>
-                  <th className="w-8 px-3 py-3">
-                    <input
-                      type="checkbox"
-                      checked={filtered.length > 0 && selected.size === filtered.length}
-                      onChange={toggleAll}
-                    />
-                  </th>
-                  <th className="text-left px-3 py-3 font-medium">Delivery</th>
-                  <th className="text-left px-3 py-3 font-medium">PIR</th>
-                  <th className="text-left px-3 py-3 font-medium">Passenger</th>
-                  <th className="text-left px-3 py-3 font-medium">Mobile</th>
-                  <th className="text-left px-3 py-3 font-medium">Address</th>
-                  <th className="text-left px-3 py-3 font-medium">Delivery Agent</th>
-                  <th className="text-left px-3 py-3 font-medium">Status</th>
-                  <th className="text-left px-3 py-3 font-medium">Priority</th>
-                  <th className="text-left px-3 py-3 font-medium">Created</th>
-                  <th className="text-right px-3 py-3 font-medium">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {filtered.map((d) => (
-                  <Row
-                    key={d.deliveryId}
-                    d={d}
-                    checked={selected.has(d.deliveryId)}
-                    onToggle={() => toggleOne(d.deliveryId)}
-                    onAssign={() => setAssignFor(d.deliveryId)}
-                    onMarkFailed={() => setFailFor(d.deliveryId)}
-                  />
-                ))}
-                {filtered.length === 0 && (
-                  <tr>
-                    <td colSpan={11} className="px-4 py-16 text-center text-sm text-muted-foreground">
-                      {deliveries.length === 0
-                        ? "No deliveries yet. Cases enter this module when Lost & Found marks them Ready for Delivery."
-                        : "No deliveries match the current filters."}
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
+      <DataTable
+        data={filtered}
+        columns={columns}
+        rowId={(d) => d.deliveryId}
+        selectable
+        selectedIds={Array.from(selected)}
+        onSelectionChange={(ids) => setSelected(new Set(ids))}
+        onRowClick={(d) =>
+          navigate({ to: "/delivery/$deliveryId", params: { deliveryId: d.deliveryId } })
+        }
+        ariaLabel="Deliveries"
+        emptyTitle={
+          deliveries.length === 0 ? "No deliveries yet" : "No matching deliveries"
+        }
+        emptyDescription={
+          deliveries.length === 0
+            ? "Cases enter this module when Lost & Found marks them Ready for Delivery."
+            : "No deliveries match the current filters."
+        }
+        mobileCard={(d) => <DeliveryCard d={d} />}
+      />
 
       <BulkAssignDialog
         open={bulkAssignOpen}
@@ -366,74 +457,54 @@ function DispatchCenter() {
   );
 }
 
-function Row({
-  d,
-  checked,
-  onToggle,
-  onAssign,
-  onMarkFailed,
-}: {
-  d: Delivery;
-  checked: boolean;
-  onToggle: () => void;
-  onAssign: () => void;
-  onMarkFailed: () => void;
-}) {
-  const navigate = useNavigate();
+function DeliveryCard({ d }: { d: Delivery }) {
   const stage = getDeliveryStage(d);
-  const acts = actionsForStage(stage);
-  const stop = (e: React.MouseEvent | React.ChangeEvent) => e.stopPropagation();
-  const openDetails = () =>
-    navigate({ to: "/delivery/$deliveryId", params: { deliveryId: d.deliveryId } });
   return (
-    <tr
-      className="hover:bg-muted/40 cursor-pointer"
-      onClick={openDetails}
-    >
-      <td className="px-3 py-3" onClick={stop as never}>
-        <input type="checkbox" checked={checked} onChange={(e) => { stop(e); onToggle(); }} />
-      </td>
-      <td className="px-3 py-3">
+    <div className="space-y-2">
+      <div className="flex items-center justify-between gap-2">
         <span className="font-mono text-xs font-semibold text-primary">{d.deliveryId}</span>
-      </td>
-      <td className="px-3 py-3 font-mono text-xs">{d.pirNumber || d.bagId}</td>
-      <td className="px-3 py-3">
-        <div className="flex items-center gap-1.5">
-          {d.priority === "VIP" && (
-            <span className="text-[10px] font-bold text-amber-700 bg-amber-100 border border-amber-200 px-1 rounded">VIP</span>
+        <span
+          className={cn(
+            "inline-flex items-center whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] font-medium",
+            STAGE_STYLES[stage],
           )}
-          <span>{d.passengerName}</span>
-        </div>
-      </td>
-      <td className="px-3 py-3 font-mono text-xs">{d.mobile}</td>
-      <td className="px-3 py-3 text-xs text-muted-foreground max-w-[220px] truncate" title={d.address}>{d.address}</td>
-      <td className="px-3 py-3 text-xs">
-        {d.driver && d.driver !== "—" ? d.driver : <span className="text-muted-foreground italic">Unassigned</span>}
-      </td>
-      <td className="px-3 py-3">
-        <span className={cn("inline-flex items-center px-2 py-0.5 rounded-full border text-[11px] font-medium whitespace-nowrap", STAGE_STYLES[stage])}>
+        >
           {STAGE_LABELS[stage]}
         </span>
-      </td>
-      <td className="px-3 py-3">
-        <span className="text-xs">{d.priority}</span>
-      </td>
-      <td className="px-3 py-3 text-xs text-muted-foreground whitespace-nowrap">
-        {fmt(d.createdAt ?? "")}
-      </td>
-      <td className="px-3 py-3 text-right" onClick={stop as never}>
-        <div className="inline-flex items-center gap-1 flex-wrap justify-end">
-          <RowActions d={d} acts={acts} onAssign={onAssign} onMarkFailed={onMarkFailed} />
-          <Link
-            to="/delivery/$deliveryId"
-            params={{ deliveryId: d.deliveryId }}
-            className="inline-flex items-center h-7 px-2.5 rounded-md border border-input bg-background text-xs font-medium hover:bg-muted"
-          >
-            Open
-          </Link>
+      </div>
+      <div className="flex items-center gap-1.5 text-sm font-medium">
+        {d.priority === "VIP" && (
+          <span className="rounded border border-amber-200 bg-amber-100 px-1 text-[10px] font-bold text-amber-700">
+            VIP
+          </span>
+        )}
+        <span className="truncate">{d.passengerName}</span>
+      </div>
+      <dl className="space-y-0.5 text-xs text-muted-foreground">
+        <div className="flex gap-2">
+          <dt className="w-20 shrink-0">PIR</dt>
+          <dd className="min-w-0 truncate font-mono">{d.pirNumber || d.bagId}</dd>
         </div>
-      </td>
-    </tr>
+        <div className="flex gap-2">
+          <dt className="w-20 shrink-0">Mobile</dt>
+          <dd className="min-w-0 truncate font-mono">{d.mobile}</dd>
+        </div>
+        <div className="flex gap-2">
+          <dt className="w-20 shrink-0">Address</dt>
+          <dd className="min-w-0 break-words">{d.address}</dd>
+        </div>
+        <div className="flex gap-2">
+          <dt className="w-20 shrink-0">Agent</dt>
+          <dd className="min-w-0 truncate">
+            {d.driver && d.driver !== "—" ? d.driver : "Unassigned"}
+          </dd>
+        </div>
+        <div className="flex gap-2">
+          <dt className="w-20 shrink-0">Created</dt>
+          <dd className="min-w-0">{fmt(d.createdAt ?? "")}</dd>
+        </div>
+      </dl>
+    </div>
   );
 }
 

@@ -26,7 +26,7 @@ export function PageHeader({
 }) {
   return (
     <div className={cn("mb-5 sm:mb-6", className)}>
-      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 sm:flex sm:flex-wrap sm:items-center sm:justify-between sm:gap-4">
+      <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,auto)] items-start gap-3 sm:flex sm:flex-wrap sm:items-center sm:justify-between sm:gap-4">
         <div className="flex min-w-0 items-start gap-3">
           {icon ? (
             <span className="mt-0.5 grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary [&_svg]:h-5 [&_svg]:w-5">
@@ -48,7 +48,7 @@ export function PageHeader({
           </div>
         </div>
         {actions ? (
-          <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+          <div className="flex min-w-0 max-w-full flex-wrap items-center justify-end gap-2">
             {actions}
           </div>
         ) : null}
