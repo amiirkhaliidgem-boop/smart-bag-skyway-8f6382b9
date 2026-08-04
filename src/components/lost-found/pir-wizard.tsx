@@ -6,12 +6,7 @@ import {
   type Priority,
   type DeliveryMethod,
 } from "@/lib/store";
-import {
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
+import { DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -72,19 +67,32 @@ type F = {
 
 function empty(): F {
   return {
-    firstName: "", lastName: "", pnr: "", mobile: "", mobile2: "",
+    firstName: "",
+    lastName: "",
+    pnr: "",
+    mobile: "",
+    mobile2: "",
     email: "",
-    airline: "", flightNumber: "",
+    airline: "",
+    flightNumber: "",
     flightDate: new Date().toISOString().slice(0, 10),
-    originAirport: "", destinationAirport: "CAI",
-    pirNumber: "", numberOfBags: "1", bagTags: [""], weightKg: "",
-    color: "", type: "", distinctiveMarks: "",
+    originAirport: "",
+    destinationAirport: "CAI",
+    pirNumber: "",
+    numberOfBags: "1",
+    bagTags: [""],
+    weightKg: "",
+    color: "",
+    type: "",
+    distinctiveMarks: "",
     priority: "Normal",
     method: "Home Delivery",
     fullAddress: "",
     regionId: "",
     station: "CAI - Cairo International Airport",
-    department: "Lost & Found", internalNotes: "", casePriority: "Normal",
+    department: "Lost & Found",
+    internalNotes: "",
+    casePriority: "Normal",
     createdBy: "Ops Console",
   };
 }
@@ -103,20 +111,20 @@ function fromCase(c: BaggageCase): F {
     firstName = parts[0] ?? "";
     lastName = parts.length > 1 ? parts[parts.length - 1] : "";
   }
-  const legacyAddress = [
-    d.building, d.street, d.district, d.city, d.governorate, d.country,
-  ].filter(Boolean).join(", ");
+  const legacyAddress = [d.building, d.street, d.district, d.city, d.governorate, d.country]
+    .filter(Boolean)
+    .join(", ");
   const nBags = Number(b.numberOfBags ?? 1) || 1;
-  const existingTags = b.bagTags && b.bagTags.length > 0
-    ? b.bagTags
-    : (c.bagTagNumber ? [c.bagTagNumber] : [""]);
+  const existingTags =
+    b.bagTags && b.bagTags.length > 0 ? b.bagTags : c.bagTagNumber ? [c.bagTagNumber] : [""];
   const bagTags = Array.from({ length: nBags }, (_, idx) => existingTags[idx] ?? "");
   const rawPriority = c.priority ?? "Normal";
   const priority: Priority = rawPriority === "VIP" ? "VIP" : "Normal";
   const rawCasePriority = i.casePriority ?? c.priority ?? "Normal";
   const casePriority: Priority = rawCasePriority === "VIP" ? "VIP" : "Normal";
   return {
-    firstName, lastName,
+    firstName,
+    lastName,
     pnr: p.pnr ?? "",
     mobile: c.contact ?? "",
     mobile2: p.mobile2 ?? "",
@@ -175,7 +183,9 @@ export function PirWizard({
     return (
       <Fld label="Delivery Region (SLA)">
         <Select value={value} onValueChange={onChange}>
-          <SelectTrigger><SelectValue placeholder="Select region" /></SelectTrigger>
+          <SelectTrigger>
+            <SelectValue placeholder="Select region" />
+          </SelectTrigger>
           <SelectContent>
             {regions.map((r) => (
               <SelectItem key={r.id} value={r.id}>
@@ -208,7 +218,8 @@ export function PirWizard({
 
   function validateStep(i: number): string | null {
     if (i === 0) {
-      if (!form.firstName.trim() || !form.lastName.trim()) return "First and last name are required.";
+      if (!form.firstName.trim() || !form.lastName.trim())
+        return "First and last name are required.";
       if (!form.mobile.trim()) return "Mobile number is required.";
     }
     if (i === 1) {
@@ -257,15 +268,18 @@ export function PirWizard({
     }
     setStep((s) => Math.min(STEPS.length - 1, s + 1));
   }
-  function prev() { setStep((s) => Math.max(0, s - 1)); }
+  function prev() {
+    setStep((s) => Math.max(0, s - 1));
+  }
 
   function passengerName(): string {
     return [form.firstName, form.lastName]
-      .map((s) => s.trim()).filter(Boolean).join(" ");
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .join(" ");
   }
   function description(): string {
-    return [form.color, form.type, form.distinctiveMarks]
-      .filter(Boolean).join(" — ");
+    return [form.color, form.type, form.distinctiveMarks].filter(Boolean).join(" — ");
   }
 
   // Keep bagTags length in sync with numberOfBags.
@@ -301,17 +315,21 @@ export function PirWizard({
       description: description(),
       priority: form.priority,
       passenger: {
-        firstName: form.firstName, lastName: form.lastName,
-        pnr: form.pnr, mobile2: form.mobile2,
+        firstName: form.firstName,
+        lastName: form.lastName,
+        pnr: form.pnr,
+        mobile2: form.mobile2,
       },
       flight: {
         airline: form.airline,
-        originAirport: form.originAirport, destinationAirport: form.destinationAirport,
+        originAirport: form.originAirport,
+        destinationAirport: form.destinationAirport,
       },
       baggage: {
         numberOfBags: Number(form.numberOfBags) || 1,
         weightKg: Number(form.weightKg) || undefined,
-        color: form.color, type: form.type,
+        color: form.color,
+        type: form.type,
         bagTags: cleanTags,
         distinctiveMarks: form.distinctiveMarks,
       },
@@ -323,8 +341,10 @@ export function PirWizard({
       },
       internal: {
         station: form.station,
-        department: form.department, internalNotes: form.internalNotes,
-        casePriority: form.casePriority, createdBy: form.createdBy,
+        department: form.department,
+        internalNotes: form.internalNotes,
+        casePriority: form.casePriority,
+        createdBy: form.createdBy,
       },
     };
 
@@ -336,7 +356,7 @@ export function PirWizard({
       toast.success(`Case ${caseData.pirNumber} updated`);
     } else {
       const created = await addCase({
-        ...commonPatch as Omit<BaggageCase, "bagId" | "status" | "storage" | "createdAt">,
+        ...(commonPatch as Omit<BaggageCase, "bagId" | "status" | "storage" | "createdAt">),
         documents: [],
         initialLfStatus: "Open",
       });
@@ -381,13 +401,21 @@ export function PirWizard({
               aria-disabled={locked}
               title={locked ? "Complete the previous steps first" : undefined}
             >
-              <span className={cn(
-                "inline-flex items-center justify-center h-5 w-5 rounded-full text-[10px] font-bold",
-                active && "bg-primary-foreground text-primary",
-                done && "bg-emerald-600 text-white",
-                !active && !done && "bg-muted text-muted-foreground",
-              )}>
-                {done ? <CheckCircle2 className="h-3.5 w-3.5" /> : locked ? <Lock className="h-3 w-3" /> : i + 1}
+              <span
+                className={cn(
+                  "inline-flex items-center justify-center h-5 w-5 rounded-full text-[10px] font-bold",
+                  active && "bg-primary-foreground text-primary",
+                  done && "bg-emerald-600 text-white",
+                  !active && !done && "bg-muted text-muted-foreground",
+                )}
+              >
+                {done ? (
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                ) : locked ? (
+                  <Lock className="h-3 w-3" />
+                ) : (
+                  i + 1
+                )}
               </span>
               <Icon className="h-3.5 w-3.5" />
               {s.label}
@@ -400,22 +428,69 @@ export function PirWizard({
       <div className="flex-1 overflow-y-auto px-6 py-5">
         {step === 0 && (
           <Grid>
-            <Fld label="First Name" required><Input value={form.firstName} onChange={(e) => set("firstName", e.target.value)} /></Fld>
-            <Fld label="Last Name" required><Input value={form.lastName} onChange={(e) => set("lastName", e.target.value)} /></Fld>
-            <Fld label="PNR"><Input value={form.pnr} onChange={(e) => set("pnr", e.target.value)} /></Fld>
-            <Fld label="Mobile Number 1" required><Input value={form.mobile} onChange={(e) => set("mobile", e.target.value)} /></Fld>
-            <Fld label="Mobile Number 2"><Input value={form.mobile2} onChange={(e) => set("mobile2", e.target.value)} /></Fld>
-            <Fld label="Email"><Input type="email" value={form.email} onChange={(e) => set("email", e.target.value)} /></Fld>
+            <Fld label="First Name" required>
+              <Input value={form.firstName} onChange={(e) => set("firstName", e.target.value)} />
+            </Fld>
+            <Fld label="Last Name" required>
+              <Input value={form.lastName} onChange={(e) => set("lastName", e.target.value)} />
+            </Fld>
+            <Fld label="PNR">
+              <Input value={form.pnr} onChange={(e) => set("pnr", e.target.value)} />
+            </Fld>
+            <Fld label="Mobile Number 1" required>
+              <Input value={form.mobile} onChange={(e) => set("mobile", e.target.value)} />
+            </Fld>
+            <Fld label="Mobile Number 2">
+              <Input value={form.mobile2} onChange={(e) => set("mobile2", e.target.value)} />
+            </Fld>
+            <Fld label="Email">
+              <Input
+                type="email"
+                value={form.email}
+                onChange={(e) => set("email", e.target.value)}
+              />
+            </Fld>
           </Grid>
         )}
 
         {step === 1 && (
           <Grid>
-            <Fld label="Airline" required><Input value={form.airline} onChange={(e) => set("airline", e.target.value)} placeholder="e.g. MS" /></Fld>
-            <Fld label="Flight Number" required><Input value={form.flightNumber} onChange={(e) => set("flightNumber", e.target.value)} /></Fld>
-            <Fld label="Flight Date" required><Input type="date" value={form.flightDate} onChange={(e) => set("flightDate", e.target.value)} /></Fld>
-            <Fld label="Origin"><Input maxLength={3} value={form.originAirport} onChange={(e) => set("originAirport", e.target.value.toUpperCase())} placeholder="e.g. JFK" /></Fld>
-            <Fld label="Destination"><Input maxLength={3} value={form.destinationAirport} onChange={(e) => set("destinationAirport", e.target.value.toUpperCase())} placeholder="e.g. CAI" /></Fld>
+            <Fld label="Airline" required>
+              <Input
+                value={form.airline}
+                onChange={(e) => set("airline", e.target.value)}
+                placeholder="e.g. MS"
+              />
+            </Fld>
+            <Fld label="Flight Number" required>
+              <Input
+                value={form.flightNumber}
+                onChange={(e) => set("flightNumber", e.target.value)}
+              />
+            </Fld>
+            <Fld label="Flight Date" required>
+              <Input
+                type="date"
+                value={form.flightDate}
+                onChange={(e) => set("flightDate", e.target.value)}
+              />
+            </Fld>
+            <Fld label="Origin">
+              <Input
+                maxLength={3}
+                value={form.originAirport}
+                onChange={(e) => set("originAirport", e.target.value.toUpperCase())}
+                placeholder="e.g. JFK"
+              />
+            </Fld>
+            <Fld label="Destination">
+              <Input
+                maxLength={3}
+                value={form.destinationAirport}
+                onChange={(e) => set("destinationAirport", e.target.value.toUpperCase())}
+                placeholder="e.g. CAI"
+              />
+            </Fld>
           </Grid>
         )}
 
@@ -437,20 +512,41 @@ export function PirWizard({
                 onChange={(e) => setNumberOfBags(e.target.value)}
               />
             </Fld>
-            <Fld label="Weight (kg)"><Input type="number" step="0.1" value={form.weightKg} onChange={(e) => set("weightKg", e.target.value)} /></Fld>
+            <Fld label="Weight (kg)">
+              <Input
+                type="number"
+                step="0.1"
+                value={form.weightKg}
+                onChange={(e) => set("weightKg", e.target.value)}
+              />
+            </Fld>
             <Fld label="Priority">
               <Select value={form.priority} onValueChange={(v) => set("priority", v as Priority)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   {(["Normal", "VIP"] as Priority[]).map((p) => (
-                    <SelectItem key={p} value={p}>{p}</SelectItem>
+                    <SelectItem key={p} value={p}>
+                      {p}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </Fld>
-            <Fld label="Color"><Input value={form.color} onChange={(e) => set("color", e.target.value)} /></Fld>
-            <Fld label="Type"><Input value={form.type} onChange={(e) => set("type", e.target.value)} /></Fld>
-            <Fld label="Distinctive Marks" wide><Textarea rows={2} value={form.distinctiveMarks} onChange={(e) => set("distinctiveMarks", e.target.value)} /></Fld>
+            <Fld label="Color">
+              <Input value={form.color} onChange={(e) => set("color", e.target.value)} />
+            </Fld>
+            <Fld label="Type">
+              <Input value={form.type} onChange={(e) => set("type", e.target.value)} />
+            </Fld>
+            <Fld label="Distinctive Marks" wide>
+              <Textarea
+                rows={2}
+                value={form.distinctiveMarks}
+                onChange={(e) => set("distinctiveMarks", e.target.value)}
+              />
+            </Fld>
             <div className="sm:col-span-3 space-y-2 pt-1">
               <Label className="font-semibold">
                 Bag Tags <span className="text-rose-500">*</span>
@@ -473,7 +569,13 @@ export function PirWizard({
                 ))}
               </div>
             </div>
-            <Fld label="Internal Notes" wide><Textarea rows={2} value={form.internalNotes} onChange={(e) => set("internalNotes", e.target.value)} /></Fld>
+            <Fld label="Internal Notes" wide>
+              <Textarea
+                rows={2}
+                value={form.internalNotes}
+                onChange={(e) => set("internalNotes", e.target.value)}
+              />
+            </Fld>
           </Grid>
         )}
 
@@ -481,7 +583,9 @@ export function PirWizard({
           <div className="space-y-4">
             <Fld label="Delivery Method">
               <Select value={form.method} onValueChange={(v) => set("method", v as DeliveryMethod)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="Home Delivery">Home Delivery</SelectItem>
                   <SelectItem value="Airport Pickup">Airport Pickup</SelectItem>
@@ -492,9 +596,9 @@ export function PirWizard({
               <div className="rounded-md border border-sky-200 bg-sky-50 p-3 text-xs text-sky-800 space-y-1">
                 <p className="font-semibold">Airport Pickup — no delivery details required</p>
                 <p>
-                  The passenger collects the baggage at the airport Lost &amp; Found office.
-                  No delivery region, address, delivery agent or route applies. The case
-                  stays with Lost &amp; Found and completes at “Passenger Picked Up”.
+                  The passenger collects the baggage at the airport Lost &amp; Found office. No
+                  delivery region, address, delivery agent or route applies. The case stays with
+                  Lost &amp; Found and completes at “Passenger Picked Up”.
                 </p>
               </div>
             ) : (
@@ -514,8 +618,8 @@ export function PirWizard({
                     }
                   />
                   <p className="text-xs text-muted-foreground">
-                    This address is passed to Delivery Management once the case reaches
-                    Ready for Delivery.
+                    This address is passed to Delivery Management once the case reaches Ready for
+                    Delivery.
                   </p>
                 </div>
               </>
@@ -532,9 +636,15 @@ export function PirWizard({
               <ReviewKV k="Email" v={form.email} />
             </ReviewGroup>
             <ReviewGroup title="Flight" onEdit={() => setStep(1)}>
-              <ReviewKV k="Airline / Flight" v={[form.airline, form.flightNumber].filter(Boolean).join(" ")} />
+              <ReviewKV
+                k="Airline / Flight"
+                v={[form.airline, form.flightNumber].filter(Boolean).join(" ")}
+              />
               <ReviewKV k="Date" v={form.flightDate} />
-              <ReviewKV k="Route" v={`${form.originAirport || "—"} → ${form.destinationAirport || "CAI"}`} />
+              <ReviewKV
+                k="Route"
+                v={`${form.originAirport || "—"} → ${form.destinationAirport || "CAI"}`}
+              />
             </ReviewGroup>
             <ReviewGroup title="Baggage" onEdit={() => setStep(2)}>
               <ReviewKV k="PIR Number" v={form.pirNumber} />
@@ -564,7 +674,9 @@ export function PirWizard({
       </div>
 
       <DialogFooter className="px-6 py-3 border-t flex-row justify-between gap-2">
-        <Button variant="outline" onClick={onClose}>Cancel</Button>
+        <Button variant="outline" onClick={onClose}>
+          Cancel
+        </Button>
         <div className="flex items-center gap-2">
           <Button variant="outline" onClick={prev} disabled={step === 0} className="gap-1">
             <ChevronLeft className="h-4 w-4" /> Back
@@ -590,12 +702,21 @@ function Grid({ children }: { children: React.ReactNode }) {
 }
 
 function Fld({
-  label, required, wide, children,
-}: { label: string; required?: boolean; wide?: boolean; children: React.ReactNode }) {
+  label,
+  required,
+  wide,
+  children,
+}: {
+  label: string;
+  required?: boolean;
+  wide?: boolean;
+  children: React.ReactNode;
+}) {
   return (
     <div className={cn("space-y-1.5", wide && "sm:col-span-3")}>
       <Label className={required ? "font-semibold" : ""}>
-        {label}{required && <span className="text-rose-500 ml-0.5">*</span>}
+        {label}
+        {required && <span className="text-rose-500 ml-0.5">*</span>}
       </Label>
       {children}
     </div>
@@ -603,18 +724,20 @@ function Fld({
 }
 
 function ReviewGroup({
-  title, children, onEdit,
-}: { title: string; children: React.ReactNode; onEdit?: () => void }) {
+  title,
+  children,
+  onEdit,
+}: {
+  title: string;
+  children: React.ReactNode;
+  onEdit?: () => void;
+}) {
   return (
     <div className="rounded-md border p-3">
       <div className="flex items-center justify-between mb-2">
         <p className="text-xs uppercase tracking-wider text-muted-foreground">{title}</p>
         {onEdit && (
-          <button
-            type="button"
-            onClick={onEdit}
-            className="text-xs text-primary hover:underline"
-          >
+          <button type="button" onClick={onEdit} className="text-xs text-primary hover:underline">
             Edit
           </button>
         )}

@@ -38,15 +38,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import {
-  UserCheck,
-  Search,
-  Repeat,
-  X,
-  Printer,
-  RotateCcw,
-  XCircle,
-} from "lucide-react";
+import { UserCheck, Search, Repeat, X, Printer, RotateCcw, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { PodPrintHost, podPrintBus } from "@/components/delivery/pod-print-host";
@@ -84,7 +76,8 @@ function DispatchCenter() {
   const filtered = useMemo(() => {
     return deliveries.filter((d) => {
       const stage = getDeliveryStage(d);
-      const hay = `${d.deliveryId} ${d.pirNumber} ${d.passengerName} ${d.mobile} ${d.address} ${d.driver}`.toLowerCase();
+      const hay =
+        `${d.deliveryId} ${d.pirNumber} ${d.passengerName} ${d.mobile} ${d.address} ${d.driver}`.toLowerCase();
       if (q && !hay.includes(q.toLowerCase())) return false;
       if (stageF !== "all" && stage !== stageF) return false;
       const day = (d.createdAt ?? "").slice(0, 10);
@@ -109,9 +102,7 @@ function DispatchCenter() {
       (d.deliveredAt ?? d.createdAt ?? "").slice(0, 10) === today,
   ).length;
 
-  const completed = deliveries.filter(
-    (d) => getDeliveryStage(d) === "Delivered",
-  );
+  const completed = deliveries.filter((d) => getDeliveryStage(d) === "Delivered");
   const durationsMs = completed
     .map((d) => {
       const start = d.createdAt ? new Date(d.createdAt).getTime() : NaN;
@@ -123,9 +114,7 @@ function DispatchCenter() {
     ? durationsMs.reduce((a, b) => a + b, 0) / durationsMs.length / 3_600_000
     : null;
 
-  const active = deliveries.filter(
-    (d) => getDeliveryStage(d) !== "Delivered",
-  ).length;
+  const active = deliveries.filter((d) => getDeliveryStage(d) !== "Delivered").length;
 
   // ---- Selection (bulk actions)
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -333,7 +322,11 @@ function DispatchCenter() {
       {/* KPI strip — matches Lost & Found */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <Kpi label="Ready for Delivery" value={stageCounts["Ready for Delivery"]} tone="slate" />
-        <Kpi label="Assigned" value={stageCounts["Assigned"] + stageCounts["Driver Accepted"]} tone="indigo" />
+        <Kpi
+          label="Assigned"
+          value={stageCounts["Assigned"] + stageCounts["Driver Accepted"]}
+          tone="indigo"
+        />
         <Kpi label="Out for Delivery" value={stageCounts["Out for Delivery"]} tone="amber" />
         <Kpi label="Delivered" value={stageCounts["Delivered"]} tone="emerald" />
         <Kpi label="Active" value={active} tone="violet" />
@@ -359,7 +352,9 @@ function DispatchCenter() {
               <SelectContent>
                 <SelectItem value="all">All stages</SelectItem>
                 {DELIVERY_STAGES.map((s) => (
-                  <SelectItem key={s} value={s}>{STAGE_LABELS[s]}</SelectItem>
+                  <SelectItem key={s} value={s}>
+                    {STAGE_LABELS[s]}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </UISelect>
@@ -369,7 +364,12 @@ function DispatchCenter() {
                 variant="ghost"
                 size="sm"
                 className="h-9 gap-1.5"
-                onClick={() => { setQ(""); setStageF("all"); setFrom(""); setTo(""); }}
+                onClick={() => {
+                  setQ("");
+                  setStageF("all");
+                  setFrom("");
+                  setTo("");
+                }}
               >
                 <X className="h-3.5 w-3.5" /> Reset
               </Button>
@@ -391,9 +391,7 @@ function DispatchCenter() {
           navigate({ to: "/delivery/$deliveryId", params: { deliveryId: d.deliveryId } })
         }
         ariaLabel="Deliveries"
-        emptyTitle={
-          deliveries.length === 0 ? "No deliveries yet" : "No matching deliveries"
-        }
+        emptyTitle={deliveries.length === 0 ? "No deliveries yet" : "No matching deliveries"}
         emptyDescription={
           deliveries.length === 0
             ? "Cases enter this module when Lost & Found marks them Ready for Delivery."
@@ -430,10 +428,7 @@ function DispatchCenter() {
           setSelected(new Set());
         }}
       />
-      <SingleAssignDialog
-        deliveryId={assignFor}
-        onClose={() => setAssignFor(null)}
-      />
+      <SingleAssignDialog deliveryId={assignFor} onClose={() => setAssignFor(null)} />
       <ReturnToAirportDialog
         open={failFor !== null}
         onOpenChange={(v) => !v && setFailFor(null)}
@@ -520,7 +515,8 @@ function RowActions({
   onMarkFailed: () => void;
 }) {
   const id = d.deliveryId;
-  const btn = "inline-flex items-center gap-1 h-7 px-2 rounded-md border border-input bg-background text-[11px] font-medium hover:bg-muted whitespace-nowrap";
+  const btn =
+    "inline-flex items-center gap-1 h-7 px-2 rounded-md border border-input bg-background text-[11px] font-medium hover:bg-muted whitespace-nowrap";
   return (
     <>
       {(acts.assign || acts.reassign) && (
@@ -607,8 +603,7 @@ function BulkAssignDialog({
   const [note, setNote] = useState("");
   const deliveryIds = deliveries.map((d) => d.deliveryId);
   const allAssigned =
-    deliveries.length > 0 &&
-    deliveries.every((d) => d.driver && d.driver !== "—");
+    deliveries.length > 0 && deliveries.every((d) => d.driver && d.driver !== "—");
   const mode: "assign" | "reassign" = allAssigned ? "reassign" : "assign";
   function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -645,7 +640,11 @@ function BulkAssignDialog({
               value={driver}
               onChange={(e) => setDriver(e.target.value)}
             >
-              {agentNames.map((d) => <option key={d} value={d}>{d}</option>)}
+              {agentNames.map((d) => (
+                <option key={d} value={d}>
+                  {d}
+                </option>
+              ))}
             </select>
           </div>
           <div className="space-y-1.5">
@@ -658,10 +657,10 @@ function BulkAssignDialog({
             />
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button type="submit">
-              {mode === "reassign" ? "Reassign" : "Assign"}
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              Cancel
             </Button>
+            <Button type="submit">{mode === "reassign" ? "Reassign" : "Assign"}</Button>
           </DialogFooter>
         </form>
       </DialogContent>
@@ -676,7 +675,9 @@ function SingleAssignDialog({
   deliveryId: string | null;
   onClose: () => void;
 }) {
-  const d = useStore((s) => (deliveryId ? s.deliveries.find((x) => x.deliveryId === deliveryId) : undefined));
+  const d = useStore((s) =>
+    deliveryId ? s.deliveries.find((x) => x.deliveryId === deliveryId) : undefined,
+  );
   const { names: agentNames } = useDeliveryAgents();
   const [driverPick, setDriverPick] = useState("");
   const driver = driverPick || agentNames[0] || "—";
@@ -686,7 +687,10 @@ function SingleAssignDialog({
   function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!deliveryId) return;
-    assignDriver(deliveryId, driver, { actor: "Delivery Coordinator", role: "DeliveryCoordinator" });
+    assignDriver(deliveryId, driver, {
+      actor: "Delivery Coordinator",
+      role: "DeliveryCoordinator",
+    });
     toast.success(`${wasAssigned ? "Reassigned" : "Assigned"} to ${driver}`);
     onClose();
   }
@@ -694,7 +698,9 @@ function SingleAssignDialog({
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
-          <DialogTitle>{wasAssigned ? "Reassign Delivery Agent" : "Assign Delivery Agent"}</DialogTitle>
+          <DialogTitle>
+            {wasAssigned ? "Reassign Delivery Agent" : "Assign Delivery Agent"}
+          </DialogTitle>
         </DialogHeader>
         <form onSubmit={submit} className="space-y-4">
           {d && (
@@ -709,11 +715,17 @@ function SingleAssignDialog({
               value={driver}
               onChange={(e) => setDriver(e.target.value)}
             >
-              {agentNames.map((dv) => <option key={dv} value={dv}>{dv}</option>)}
+              {agentNames.map((dv) => (
+                <option key={dv} value={dv}>
+                  {dv}
+                </option>
+              ))}
             </select>
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+            <Button type="button" variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
             <Button type="submit">{wasAssigned ? "Reassign" : "Assign"}</Button>
           </DialogFooter>
         </form>
@@ -721,4 +733,3 @@ function SingleAssignDialog({
     </Dialog>
   );
 }
-

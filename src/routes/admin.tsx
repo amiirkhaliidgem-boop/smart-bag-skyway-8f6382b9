@@ -454,9 +454,9 @@ function UsersTab({ data }: { data: AdminWorkspaceData }) {
           <DialogHeader>
             <DialogTitle>{form.id ? "Edit User" : "Create User"}</DialogTitle>
             <DialogDescription>
-              Staff accounts sign in with their username and password — email is optional.
-              Delivery agents sign in on the same login page with their username or
-              employee ID and their PIN, and land in the Delivery Agent Portal.
+              Staff accounts sign in with their username and password — email is optional. Delivery
+              agents sign in on the same login page with their username or employee ID and their
+              PIN, and land in the Delivery Agent Portal.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 sm:grid-cols-2">
@@ -577,10 +577,7 @@ function UsersTab({ data }: { data: AdminWorkspaceData }) {
             <Button variant="outline" onClick={() => setOpen(false)}>
               Cancel
             </Button>
-            <Button
-              disabled={save.isPending}
-              onClick={() => save.mutate({ data: { ...form } })}
-            >
+            <Button disabled={save.isPending} onClick={() => save.mutate({ data: { ...form } })}>
               {save.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Save
             </Button>
           </DialogFooter>
@@ -900,9 +897,7 @@ function PermissionsTab({ data }: { data: AdminWorkspaceData }) {
                     <TableCell key={a} className="text-center">
                       <Checkbox
                         checked={value(key)}
-                        onCheckedChange={(c) =>
-                          setDraft((d) => ({ ...d, [key]: c === true }))
-                        }
+                        onCheckedChange={(c) => setDraft((d) => ({ ...d, [key]: c === true }))}
                       />
                     </TableCell>
                   );

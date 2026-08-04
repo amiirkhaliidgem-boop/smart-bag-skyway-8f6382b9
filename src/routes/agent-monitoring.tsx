@@ -174,7 +174,9 @@ function AgentMonitoringPage() {
           : active;
         const current =
           ordered.find((d) => getDeliveryStage(d) === "Out for Delivery") ?? ordered[0];
-        const fresh = position ? Date.now() - new Date(position.at).getTime() < ONLINE_WINDOW_MS : false;
+        const fresh = position
+          ? Date.now() - new Date(position.at).getTime() < ONLINE_WINDOW_MS
+          : false;
         const status: AgentStatus = active.length > 0 ? "Busy" : fresh ? "Online" : "Offline";
         return {
           name,
@@ -217,7 +219,9 @@ function AgentMonitoringPage() {
   );
 
   if (loading.core && deliveries.length === 0) {
-    return <PageLoading title="Delivery Agent Monitoring" subtitle="Loading live agent operations…" />;
+    return (
+      <PageLoading title="Delivery Agent Monitoring" subtitle="Loading live agent operations…" />
+    );
   }
 
   return (
@@ -306,9 +310,7 @@ function AgentMonitoringPage() {
                       </span>
                     )}
                   </div>
-                  {t.detail && (
-                    <p className="text-xs text-muted-foreground mt-0.5">{t.detail}</p>
-                  )}
+                  {t.detail && <p className="text-xs text-muted-foreground mt-0.5">{t.detail}</p>}
                   <p className="text-[11px] text-muted-foreground mt-1 font-mono">
                     {t.deliveryId ?? t.reference} · {t.actor} · {fmtDateTime(t.at)}
                   </p>

@@ -2,14 +2,7 @@ import { memo, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 
-export type KpiTone =
-  | "default"
-  | "primary"
-  | "success"
-  | "warning"
-  | "danger"
-  | "info"
-  | "muted";
+export type KpiTone = "default" | "primary" | "success" | "warning" | "danger" | "info" | "muted";
 
 const TONE_RING: Record<KpiTone, string> = {
   default: "bg-muted text-foreground",
@@ -116,13 +109,7 @@ export const KpiCard = memo(function KpiCard({
 });
 
 /** One shared responsive KPI ladder used by every dashboard surface. */
-export function KpiGrid({
-  children,
-  className,
-}: {
-  children: ReactNode;
-  className?: string;
-}) {
+export function KpiGrid({ children, className }: { children: ReactNode; className?: string }) {
   return (
     <div
       className={cn(

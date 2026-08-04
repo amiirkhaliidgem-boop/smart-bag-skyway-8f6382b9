@@ -60,7 +60,8 @@ export const Route = createFileRoute("/settings")({
       { property: "og:title", content: "System Settings — IAB Smart Baggage Ecosystem" },
       {
         property: "og:description",
-        content: "Database-backed configuration driving the workflow, notification and passenger engines.",
+        content:
+          "Database-backed configuration driving the workflow, notification and passenger engines.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -214,7 +215,9 @@ function GeneralCard({
     }
     const base = (form.portal_base_url ?? "").trim().replace(/\/+$/, "");
     if (base && !/^https:\/\/[^\s/]+\.[^\s/]+$/.test(base)) {
-      toast.error("Public portal address must be an absolute https:// origin, e.g. https://portal.example.com");
+      toast.error(
+        "Public portal address must be an absolute https:// origin, e.g. https://portal.example.com",
+      );
       return;
     }
     setBusy(true);
@@ -238,8 +241,18 @@ function GeneralCard({
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <LabeledInput label="System Name" value={form.system_name} onChange={set("system_name")} disabled={!canManage} />
-          <LabeledInput label="Company Name" value={form.company_name} onChange={set("company_name")} disabled={!canManage} />
+          <LabeledInput
+            label="System Name"
+            value={form.system_name}
+            onChange={set("system_name")}
+            disabled={!canManage}
+          />
+          <LabeledInput
+            label="Company Name"
+            value={form.company_name}
+            onChange={set("company_name")}
+            disabled={!canManage}
+          />
           <LabeledSelect
             label="Time Zone"
             value={form.time_zone}
@@ -280,7 +293,8 @@ function GeneralCard({
           <p className="font-medium text-sm">Public Portal Address</p>
           <p className="text-xs text-muted-foreground mb-2">
             Absolute https:// origin used to build the passenger tracking link inside every SMS,
-            WhatsApp and Email message. Leave empty to use the project&apos;s default public address.
+            WhatsApp and Email message. Leave empty to use the project&apos;s default public
+            address.
           </p>
           <Input
             value={form.portal_base_url ?? ""}
@@ -699,8 +713,18 @@ function TemplateEditor({
 
       {channel === "email" && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <LabeledInput label="Subject (English)" value={subjectEn} onChange={setSubjectEn} disabled={!canManage} />
-          <LabeledInput label="Subject (Arabic)" value={subjectAr} onChange={setSubjectAr} disabled={!canManage} />
+          <LabeledInput
+            label="Subject (English)"
+            value={subjectEn}
+            onChange={setSubjectEn}
+            disabled={!canManage}
+          />
+          <LabeledInput
+            label="Subject (Arabic)"
+            value={subjectAr}
+            onChange={setSubjectAr}
+            disabled={!canManage}
+          />
         </div>
       )}
 
@@ -846,8 +870,8 @@ function StationCard() {
       </CardHeader>
       <CardContent className="space-y-4">
         <p className="text-xs text-muted-foreground">
-          These coordinates are the starting point for the driver route optimizer.
-          Update them when deploying at a different airport.
+          These coordinates are the starting point for the driver route optimizer. Update them when
+          deploying at a different airport.
         </p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>

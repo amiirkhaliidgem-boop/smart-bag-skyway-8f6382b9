@@ -240,12 +240,18 @@ function LostFoundPage() {
   );
 
   function resetFilters() {
-    setStatus("all"); setFrom(""); setTo("");
+    setStatus("all");
+    setFrom("");
+    setTo("");
   }
 
   const kpis = useMemo(() => {
     const total = cases.length;
-    let open = 0, tracing = 0, readyDelivery = 0, delivered = 0, vip = 0;
+    let open = 0,
+      tracing = 0,
+      readyDelivery = 0,
+      delivered = 0,
+      vip = 0;
     for (const c of cases) {
       const s = deriveLfFromCase(c);
       if (s === "Open") open++;
@@ -259,7 +265,9 @@ function LostFoundPage() {
   }, [cases]);
 
   const selected = useMemo(() => new Set(selectedIds), [selectedIds]);
-  function clearSelection() { setSelectedIds([]); }
+  function clearSelection() {
+    setSelectedIds([]);
+  }
 
   async function runAssignDelivery() {
     if (selectedIds.length === 0) return;
@@ -277,7 +285,10 @@ function LostFoundPage() {
     let skipped = 0;
     for (const id of selectedIds) {
       const c = cases.find((x) => x.bagId === id);
-      if (!c) { skipped++; continue; }
+      if (!c) {
+        skipped++;
+        continue;
+      }
       const current = c.lfStatus ?? deriveLfFromCase(c);
       // Airport Pickup cases never enter the Home Delivery path.
       if (next === "Ready for Delivery" && c.delivery?.method === "Airport Pickup") {
@@ -325,7 +336,6 @@ function LostFoundPage() {
     pirPrintBus.print(selectedIds);
   }
 
-
   // Progressive loading: render the page shell with placeholders while this
   // screen's data tier is still in flight, instead of showing empty values.
   if (loading.core && cases.length === 0)
@@ -338,22 +348,18 @@ function LostFoundPage() {
         title="Lost & Found Management"
         actions={
           <>
-          <Button variant="outline" className="gap-2" onClick={() => setImportOpen(true)}>
-            <Upload className="h-4 w-4" /> Import
-          </Button>
-          <ImportDialog
-            schema={lostFoundSchema}
-            open={importOpen}
-            onOpenChange={setImportOpen}
-          />
-          <Dialog open={openNew} onOpenChange={setOpenNew}>
-            <DialogTrigger asChild>
-              <Button className="gap-2">
-                <Plus className="h-4 w-4" /> New PIR Case
-              </Button>
-            </DialogTrigger>
-            <PirWizard mode="create" onClose={() => setOpenNew(false)} />
-          </Dialog>
+            <Button variant="outline" className="gap-2" onClick={() => setImportOpen(true)}>
+              <Upload className="h-4 w-4" /> Import
+            </Button>
+            <ImportDialog schema={lostFoundSchema} open={importOpen} onOpenChange={setImportOpen} />
+            <Dialog open={openNew} onOpenChange={setOpenNew}>
+              <DialogTrigger asChild>
+                <Button className="gap-2">
+                  <Plus className="h-4 w-4" /> New PIR Case
+                </Button>
+              </DialogTrigger>
+              <PirWizard mode="create" onClose={() => setOpenNew(false)} />
+            </Dialog>
           </>
         }
       />
@@ -422,10 +428,18 @@ function LostFoundPage() {
         searchPlaceholder="Search PIR, passenger, flight, tag…"
         searchText={(c) =>
           [
-            c.bagId, c.pirNumber, c.passengerName, c.flightNumber,
-            c.bagTagNumber, c.email, c.contact,
-            c.passenger?.passportNumber, c.passenger?.pnr,
-          ].filter(Boolean).join(" ")
+            c.bagId,
+            c.pirNumber,
+            c.passengerName,
+            c.flightNumber,
+            c.bagTagNumber,
+            c.email,
+            c.contact,
+            c.passenger?.passportNumber,
+            c.passenger?.pnr,
+          ]
+            .filter(Boolean)
+            .join(" ")
         }
         selectable
         selectedIds={selectedIds}
@@ -444,7 +458,9 @@ function LostFoundPage() {
               <SelectContent>
                 <SelectItem value="all">All Statuses</SelectItem>
                 {FILTER_STATUSES.map((s) => (
-                  <SelectItem key={s} value={s}>{s}</SelectItem>
+                  <SelectItem key={s} value={s}>
+                    {s}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -474,7 +490,11 @@ function LostFoundPage() {
 }
 
 function AssignOfficerDialog({
-  open, onOpenChange, officers, count, onSubmit,
+  open,
+  onOpenChange,
+  officers,
+  count,
+  onSubmit,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -515,8 +535,12 @@ function AssignOfficerDialog({
           </div>
         </div>
         <DialogFooter>
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={() => onSubmit(officerId)} disabled={!officerId}>Assign</Button>
+          <Button variant="ghost" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button onClick={() => onSubmit(officerId)} disabled={!officerId}>
+            Assign
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -524,7 +548,10 @@ function AssignOfficerDialog({
 }
 
 function ChangeStatusDialog({
-  open, onOpenChange, count, onSubmit,
+  open,
+  onOpenChange,
+  count,
+  onSubmit,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -543,20 +570,26 @@ function ChangeStatusDialog({
         </DialogHeader>
         <div className="space-y-3 py-2">
           <p className="text-sm text-muted-foreground">
-            Move {count} selected case{count === 1 ? "" : "s"} to a new status.
-            Cases already past the target or handed over to Delivery will be skipped.
+            Move {count} selected case{count === 1 ? "" : "s"} to a new status. Cases already past
+            the target or handed over to Delivery will be skipped.
           </p>
           <Select value={s} onValueChange={(v) => setS(v as LFStatus)}>
-            <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="h-9">
+              <SelectValue />
+            </SelectTrigger>
             <SelectContent>
               {options.map((x) => (
-                <SelectItem key={x} value={x}>{x}</SelectItem>
+                <SelectItem key={x} value={x}>
+                  {x}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
         <DialogFooter>
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button variant="ghost" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
           <Button onClick={() => onSubmit(s)}>Apply</Button>
         </DialogFooter>
       </DialogContent>

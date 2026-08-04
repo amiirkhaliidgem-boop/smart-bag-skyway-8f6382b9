@@ -20,9 +20,8 @@ async function adapterFor(channel: string): Promise<NotificationChannelAdapter |
   const live = await configuredAdapter(channel).catch(() => null);
   if (live) return live;
   // 2. Legacy environment-based Twilio credentials.
-  const { twilioAdapters, twilioConfigured } = await import(
-    "@/lib/notifications/adapters/twilio.server"
-  );
+  const { twilioAdapters, twilioConfigured } =
+    await import("@/lib/notifications/adapters/twilio.server");
   if (twilioConfigured()) return twilioAdapters[channel];
   return null;
 }
@@ -101,19 +100,19 @@ export const Route = createFileRoute("/api/public/notifications/drain")({
           }
 
           const result = await adapter
-                .send({
-                  id: event.id,
-                  channel: event.channel,
-                  to: event.recipient,
-                  message: { subject: event.subject ?? "", body: event.body ?? "" },
-                  locale: event.locale === "ar" ? "ar" : "en",
-                  attempt,
-                })
-                .catch((err: unknown) => ({
-                  ok: false,
-                  error: err instanceof Error ? err.message : String(err),
-                  retryable: true,
-                }));
+            .send({
+              id: event.id,
+              channel: event.channel,
+              to: event.recipient,
+              message: { subject: event.subject ?? "", body: event.body ?? "" },
+              locale: event.locale === "ar" ? "ar" : "en",
+              attempt,
+            })
+            .catch((err: unknown) => ({
+              ok: false,
+              error: err instanceof Error ? err.message : String(err),
+              retryable: true,
+            }));
 
           const provider = adapter.name;
 
@@ -133,7 +132,9 @@ export const Route = createFileRoute("/api/public/notifications/drain")({
               attempt_count: attempt,
               provider,
               provider_message_id:
-                "providerId" in result ? (result.providerId ?? event.provider_message_id) : event.provider_message_id,
+                "providerId" in result
+                  ? (result.providerId ?? event.provider_message_id)
+                  : event.provider_message_id,
               state: result.ok ? "sent" : exhausted ? "failed" : "queued",
               sent_at: result.ok ? new Date().toISOString() : event.sent_at,
               failure_reason: result.ok ? "" : (result.error ?? ""),

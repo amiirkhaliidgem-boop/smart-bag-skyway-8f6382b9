@@ -39,9 +39,7 @@ export function PageHeader({
                 {eyebrow}
               </p>
             ) : null}
-            <h1 className="truncate text-xl font-semibold tracking-tight sm:text-2xl">
-              {title}
-            </h1>
+            <h1 className="truncate text-xl font-semibold tracking-tight sm:text-2xl">{title}</h1>
             {description ? (
               <p className="mt-1 text-sm text-muted-foreground">{description}</p>
             ) : null}

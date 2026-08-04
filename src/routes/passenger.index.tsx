@@ -2,12 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
-import {
-  useStore,
-  getDeliveryStage,
-  type Delivery,
-  type BaggageCase,
-} from "@/lib/store";
+import { useStore, getDeliveryStage, type Delivery, type BaggageCase } from "@/lib/store";
 import { mutatePassengerView } from "@/lib/passenger.functions";
 import { usePublicSettings } from "@/lib/settings/use-settings";
 import type { ContactSettings } from "@/lib/settings/types";
@@ -42,8 +37,7 @@ export const Route = createFileRoute("/passenger/")({
       { title: "Passenger Portal — IAB Smart Baggage Delivery" },
       {
         name: "description",
-        content:
-          "Track your home baggage delivery, verify OTP, and share feedback with IAB.",
+        content: "Track your home baggage delivery, verify OTP, and share feedback with IAB.",
       },
     ],
   }),
@@ -91,7 +85,8 @@ export function PassengerPortal({
   // A token-scoped portal must render only the server-resolved pair. It must
   // never substitute the first staff delivery when a record is unavailable.
   const delivery = resolvedDelivery ?? active.find((d) => d.deliveryId === selectedId);
-  const kase = resolvedCase ?? (delivery ? cases.find((c) => c.bagId === delivery.bagId) : undefined);
+  const kase =
+    resolvedCase ?? (delivery ? cases.find((c) => c.bagId === delivery.bagId) : undefined);
 
   const [screen, setScreen] = useState<Screen>(
     delivery?.status === "Delivered" ? "feedback" : "track",
@@ -105,20 +100,13 @@ export function PassengerPortal({
     <div
       className="iab-grain relative -mx-4 sm:-mx-6 lg:-mx-8 min-h-[calc(100vh-3.5rem)] font-[family-name:var(--font-sans)] text-[color:var(--iab-ink)]"
       style={{
-        ["--font-display" as any]:
-          '"General Sans", "Fraunces", ui-serif, Georgia, serif',
-        ["--font-heading" as any]:
-          '"Manrope", "Inter", ui-sans-serif, system-ui, sans-serif',
-        ["--font-sans" as any]:
-          '"Manrope", "Inter", ui-sans-serif, system-ui, sans-serif',
-        ["--font-arabic" as any]:
-          '"IBM Plex Sans Arabic", system-ui, sans-serif',
-        ["--font-arabic-display" as any]:
-          '"IBM Plex Sans Arabic", system-ui, sans-serif',
-        ["--font-passenger-display" as any]:
-          '"General Sans", "Fraunces", ui-serif, Georgia, serif',
-        ["--font-passenger-ui" as any]:
-          '"Manrope", "Inter", ui-sans-serif, system-ui, sans-serif',
+        ["--font-display" as any]: '"General Sans", "Fraunces", ui-serif, Georgia, serif',
+        ["--font-heading" as any]: '"Manrope", "Inter", ui-sans-serif, system-ui, sans-serif',
+        ["--font-sans" as any]: '"Manrope", "Inter", ui-sans-serif, system-ui, sans-serif',
+        ["--font-arabic" as any]: '"IBM Plex Sans Arabic", system-ui, sans-serif',
+        ["--font-arabic-display" as any]: '"IBM Plex Sans Arabic", system-ui, sans-serif',
+        ["--font-passenger-display" as any]: '"General Sans", "Fraunces", ui-serif, Georgia, serif',
+        ["--font-passenger-ui" as any]: '"Manrope", "Inter", ui-sans-serif, system-ui, sans-serif',
         ["--iab-gold" as any]: "#C9A84C",
         ["--iab-navy-card" as any]: "#081C3A",
         background: "#FFFFFF",
@@ -145,11 +133,7 @@ export function PassengerPortal({
         )}
 
         {screen === "feedback" && (
-          <FeedbackScreen
-            delivery={delivery}
-            token={token}
-            onSubmit={() => setScreen("thanks")}
-          />
+          <FeedbackScreen delivery={delivery} token={token} onSubmit={() => setScreen("thanks")} />
         )}
 
         {screen === "thanks" && <ThanksScreen delivery={delivery} />}
@@ -224,9 +208,7 @@ function TrackScreen({
         await mutatePassenger({ data: { token, action: "report-misconduct" } });
       }
       setReported(true);
-      toast.error(
-        "High priority incident created. Contact Center Supervisor notified.",
-      );
+      toast.error("High priority incident created. Contact Center Supervisor notified.");
     }
   }
 
@@ -264,18 +246,18 @@ function TrackScreen({
       {showOtpCard && (
         <MotionSection>
           <OtpHeroCard
-          code={delivery.otpCode}
-          tags={tags}
-          sealed={sealed}
-          otpAfter={otpAfter}
-          noBribe={noBribe}
-          onTags={setTags}
-          onSealed={setSealed}
-          onOtpAfter={setOtpAfter}
-          onNoBribe={handleNoBribeChange}
-          reported={reported}
-          allChecked={allChecked}
-          onConfirm={confirm}
+            code={delivery.otpCode}
+            tags={tags}
+            sealed={sealed}
+            otpAfter={otpAfter}
+            noBribe={noBribe}
+            onTags={setTags}
+            onSealed={setSealed}
+            onOtpAfter={setOtpAfter}
+            onNoBribe={handleNoBribeChange}
+            reported={reported}
+            allChecked={allChecked}
+            onConfirm={confirm}
           />
         </MotionSection>
       )}
@@ -344,10 +326,7 @@ function Bi({
 // ---------------------------------------------------------------------------
 
 function WelcomeCard({ delivery, kase }: { delivery: Delivery; kase: BaggageCase }) {
-  const bagTag =
-    kase.baggage?.bagTags?.filter(Boolean).join(" · ") ??
-    kase.bagTagNumber ??
-    "—";
+  const bagTag = kase.baggage?.bagTags?.filter(Boolean).join(" · ") ?? kase.bagTagNumber ?? "—";
   const ease = [0.2, 0.7, 0.2, 1] as const;
   const rise = (delay: number) => ({
     initial: { opacity: 0, y: 10 },
@@ -471,8 +450,7 @@ function StatusHero({
   journey?: "delivery" | "pickup";
 }) {
   const stage = getDeliveryStage(delivery);
-  const heroCopy =
-    journey === "pickup" ? pickupHeroCopy(kase) : heroCopyForStage(stage);
+  const heroCopy = journey === "pickup" ? pickupHeroCopy(kase) : heroCopyForStage(stage);
   const reduce = useReducedMotion();
   void kase;
   const delivered = stage === "Delivered";
@@ -483,12 +461,9 @@ function StatusHero({
       transition={{ duration: 0.6, ease: [0.2, 0.7, 0.2, 1] }}
       className="iab-grain relative overflow-hidden rounded-[32px] px-6 py-8 sm:px-10 sm:py-10 text-white"
       style={{
-        background:
-          "linear-gradient(180deg, #0E2C5C 0%, #0A2248 55%, #06142E 100%)",
-        boxShadow:
-          "0 20px 50px -30px rgba(8,28,58,0.45), 0 8px 20px -14px rgba(8,28,58,0.18)",
+        background: "linear-gradient(180deg, #0E2C5C 0%, #0A2248 55%, #06142E 100%)",
+        boxShadow: "0 20px 50px -30px rgba(8,28,58,0.45), 0 8px 20px -14px rgba(8,28,58,0.18)",
       }}
-
     >
       {/* Gold hairline top border */}
       <div
@@ -502,27 +477,18 @@ function StatusHero({
       <div
         className="pointer-events-none absolute inset-0 opacity-30"
         style={{
-          background:
-            "radial-gradient(120% 60% at 0% 0%, rgba(255,255,255,0.14), transparent 55%)",
+          background: "radial-gradient(120% 60% at 0% 0%, rgba(255,255,255,0.14), transparent 55%)",
         }}
       />
-      <MapPin
-        className="absolute top-5 right-5 h-5 w-5 text-white/60"
-        strokeWidth={1.5}
-      />
+      <MapPin className="absolute top-5 right-5 h-5 w-5 text-white/60" strokeWidth={1.5} />
 
       <div className="relative grid grid-cols-[1fr_auto] gap-4 items-center">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <span
-              className={cn(
-                "h-2 w-2 rounded-full",
-                !reduce && !delivered && "iab-pulse-ring",
-              )}
+              className={cn("h-2 w-2 rounded-full", !reduce && !delivered && "iab-pulse-ring")}
               style={{
-                background: delivered
-                  ? "var(--iab-emerald)"
-                  : "var(--iab-gold, #C9A84C)",
+                background: delivered ? "var(--iab-emerald)" : "var(--iab-gold, #C9A84C)",
               }}
             />
             <p
@@ -576,8 +542,7 @@ function StatusHero({
           <div
             className="absolute inset-x-6 bottom-1 h-3 rounded-full blur-lg opacity-60"
             style={{
-              background:
-                "radial-gradient(closest-side, rgba(0,0,0,0.55), transparent)",
+              background: "radial-gradient(closest-side, rgba(0,0,0,0.55), transparent)",
             }}
           />
           <img
@@ -641,8 +606,7 @@ function pickupHeroCopy(kase: BaggageCase): { en: string; ar: string } {
   if (lf === "Passenger Picked Up") return { en: "Collected", ar: "تم الاستلام" };
   if (lf === "Ready for Airport Pickup")
     return { en: "Ready for Airport Pickup", ar: "جاهزة للاستلام من المطار" };
-  if (lf === "Waiting Customs Clearance")
-    return { en: "Customs Clearance", ar: "التخليص الجمركي" };
+  if (lf === "Waiting Customs Clearance") return { en: "Customs Clearance", ar: "التخليص الجمركي" };
   if (lf === "Located" || lf === "Arrived at Airport")
     return { en: "Bag Located", ar: "تم العثور على الأمتعة" };
   return { en: "Locating Your Baggage", ar: "جارٍ تحديد موقع أمتعتك" };
@@ -687,21 +651,14 @@ function SimpleTimeline({
   const reduce = useReducedMotion();
   const delivered = steps[steps.length - 1]?.reached;
   return (
-    <div
-      className="iab-white-glass rounded-[28px] pt-5 pb-7 px-7 sm:pt-6 sm:pb-9 sm:px-9"
-    >
+    <div className="iab-white-glass rounded-[28px] pt-5 pb-7 px-7 sm:pt-6 sm:pb-9 sm:px-9">
       <ol className="relative">
         {steps.map((step, i) => (
-          <li
-            key={step.en}
-            className="relative flex items-start gap-6 pb-7 last:pb-0"
-          >
+          <li key={step.en} className="relative flex items-start gap-6 pb-7 last:pb-0">
             {/* Rail */}
             {i < steps.length - 1 && (
               <span
-                className={cn(
-                  "absolute left-[5px] top-3 w-px h-full",
-                )}
+                className={cn("absolute left-[5px] top-3 w-px h-full")}
                 style={{
                   background: step.reached
                     ? "color-mix(in oklab, #081C3A 40%, transparent)"
@@ -721,9 +678,7 @@ function SimpleTimeline({
                     ? "var(--iab-emerald)"
                     : "var(--iab-navy)"
                   : "transparent",
-                border: step.reached
-                  ? "none"
-                  : "1.5px solid var(--iab-platinum)",
+                border: step.reached ? "none" : "1.5px solid var(--iab-platinum)",
               }}
             />
             <div className={cn("flex-1", !step.reached && "opacity-55")}>
@@ -931,12 +886,9 @@ function OtpHeroCard({
     <div
       className="iab-grain relative overflow-hidden rounded-[32px] px-6 py-8 sm:px-10 sm:py-10 text-white"
       style={{
-        background:
-          "linear-gradient(180deg, #0E2C5C 0%, #0A2248 55%, #06142E 100%)",
-        boxShadow:
-          "0 20px 50px -30px rgba(8,28,58,0.45), 0 8px 20px -14px rgba(8,28,58,0.18)",
+        background: "linear-gradient(180deg, #0E2C5C 0%, #0A2248 55%, #06142E 100%)",
+        boxShadow: "0 20px 50px -30px rgba(8,28,58,0.45), 0 8px 20px -14px rgba(8,28,58,0.18)",
       }}
-
     >
       {/* Gold hairline top border */}
       <div
@@ -951,8 +903,7 @@ function OtpHeroCard({
       <div
         className="pointer-events-none absolute inset-0 opacity-30"
         style={{
-          background:
-            "radial-gradient(120% 60% at 0% 0%, rgba(255,255,255,0.14), transparent 55%)",
+          background: "radial-gradient(120% 60% at 0% 0%, rgba(255,255,255,0.14), transparent 55%)",
         }}
       />
       <div className="relative">
@@ -1105,9 +1056,7 @@ function ContactCard({ delivery, contacts }: { delivery: Delivery; contacts?: Co
   const waMessage = encodeURIComponent(
     `Hello IAB Support, I need assistance with delivery ${delivery.deliveryId} (PIR ${delivery.pirNumber}).`,
   );
-  const mailSubject = encodeURIComponent(
-    `PIR ${delivery.pirNumber} — Support request`,
-  );
+  const mailSubject = encodeURIComponent(`PIR ${delivery.pirNumber} — Support request`);
   const callNumber = contacts?.call_number.trim() ?? "";
   const whatsappNumber = contacts?.whatsapp_number.trim() ?? "";
   const email = contacts?.email.trim() ?? "";
@@ -1167,21 +1116,14 @@ function ContactCard({ delivery, contacts }: { delivery: Delivery; contacts?: Co
             onPointerDown={(e) => {
               const target = e.currentTarget;
               const rect = target.getBoundingClientRect();
-              target.style.setProperty(
-                "--x",
-                `${((e.clientX - rect.left) / rect.width) * 100}%`,
-              );
-              target.style.setProperty(
-                "--y",
-                `${((e.clientY - rect.top) / rect.height) * 100}%`,
-              );
+              target.style.setProperty("--x", `${((e.clientX - rect.left) / rect.width) * 100}%`);
+              target.style.setProperty("--y", `${((e.clientY - rect.top) / rect.height) * 100}%`);
             }}
           >
             <div
               className="h-11 w-11 rounded-2xl grid place-items-center text-white shrink-0 transition-transform group-hover:scale-105"
               style={{
-                background:
-                  "linear-gradient(180deg, #0B2247 0%, #081C3A 55%, #050F24 100%)",
+                background: "linear-gradient(180deg, #0B2247 0%, #081C3A 55%, #050F24 100%)",
               }}
             >
               <t.icon className="h-5 w-5" strokeWidth={1.75} />
@@ -1267,9 +1209,7 @@ function DeliveredCelebration({
         >
           تم التسليم
         </p>
-        <p className="mt-3 text-sm text-[color:var(--iab-navy)]/70">
-          Thank you, {passengerName}.
-        </p>
+        <p className="mt-3 text-sm text-[color:var(--iab-navy)]/70">Thank you, {passengerName}.</p>
       </div>
     </div>
   );
@@ -1320,10 +1260,8 @@ function FeedbackScreen({
     <div
       className="iab-grain relative overflow-hidden rounded-[32px] px-6 py-8 sm:px-10 sm:py-10 text-white iab-rise"
       style={{
-        background:
-          "linear-gradient(180deg, #0E2C5C 0%, #0A2248 55%, #06142E 100%)",
-        boxShadow:
-          "0 20px 50px -30px rgba(8,28,58,0.45), 0 8px 20px -14px rgba(8,28,58,0.18)",
+        background: "linear-gradient(180deg, #0E2C5C 0%, #0A2248 55%, #06142E 100%)",
+        boxShadow: "0 20px 50px -30px rgba(8,28,58,0.45), 0 8px 20px -14px rgba(8,28,58,0.18)",
       }}
     >
       {/* Gold hairline top border */}
@@ -1338,72 +1276,79 @@ function FeedbackScreen({
       <div
         className="pointer-events-none absolute inset-0 opacity-30"
         style={{
-          background:
-            "radial-gradient(120% 60% at 0% 0%, rgba(255,255,255,0.14), transparent 55%)",
+          background: "radial-gradient(120% 60% at 0% 0%, rgba(255,255,255,0.14), transparent 55%)",
         }}
       />
       <div className="relative">
-      <div
-        className="flex items-center gap-2 text-[10px] uppercase tracking-[0.28em] text-white/70 font-medium"
-        style={{ fontFamily: "var(--font-heading)" }}
-      >
-        Feedback
-      </div>
-      <h2
-        className="mt-3 text-2xl sm:text-3xl text-white leading-tight"
-        style={{ fontFamily: "var(--font-display)" }}
-      >
-        How was your delivery?
-      </h2>
-      <p
-        className="mt-1 text-base sm:text-lg text-white/80"
-        dir="rtl"
-        lang="ar"
-        style={{ fontFamily: "var(--font-arabic)" }}
-      >
-        كيف كانت تجربتك؟
-      </p>
-
-      <form onSubmit={submit} className="mt-6 space-y-5">
-        <RatingRow label="Overall Service" ar="التقييم العام" value={overall} onChange={setOverall} />
-        <RatingRow label="Delivery Professionalism" ar="احترافية التسليم" value={prof} onChange={setProf} />
-        <RatingRow label="Delivery Time" ar="وقت التسليم" value={time} onChange={setTime} />
-
-        <YesNoRow
-          en="Was your baggage delivered safely?"
-          ar="هل تم تسليم أمتعتك بأمان؟"
-          value={safe}
-          onChange={setSafe}
-        />
-        <YesNoRow
-          en="Would you recommend IAB?"
-          ar="هل توصي بخدمات IAB؟"
-          value={recommend}
-          onChange={setRecommend}
-        />
-
-        <div>
-          <label className="text-sm font-medium text-white">
-            Comments · ملاحظات
-          </label>
-          <Textarea
-            value={comments}
-            onChange={(e) => setComments(e.target.value)}
-            placeholder="Share anything you'd like the team to know…"
-            className="mt-2 w-full rounded-2xl border-white/10 bg-white/[0.06] text-white placeholder:text-white/50 backdrop-blur min-h-24 focus-visible:ring-white/30"
-            rows={4}
-            maxLength={500}
-          />
-        </div>
-
-        <Button
-          type="submit"
-          size="lg"
-          className="w-full h-14 rounded-2xl text-base bg-white text-[color:var(--iab-navy)] active:scale-[0.99]"
+        <div
+          className="flex items-center gap-2 text-[10px] uppercase tracking-[0.28em] text-white/70 font-medium"
+          style={{ fontFamily: "var(--font-heading)" }}
         >
-          Submit Feedback · إرسال التقييم
-        </Button>
-      </form>
+          Feedback
+        </div>
+        <h2
+          className="mt-3 text-2xl sm:text-3xl text-white leading-tight"
+          style={{ fontFamily: "var(--font-display)" }}
+        >
+          How was your delivery?
+        </h2>
+        <p
+          className="mt-1 text-base sm:text-lg text-white/80"
+          dir="rtl"
+          lang="ar"
+          style={{ fontFamily: "var(--font-arabic)" }}
+        >
+          كيف كانت تجربتك؟
+        </p>
+
+        <form onSubmit={submit} className="mt-6 space-y-5">
+          <RatingRow
+            label="Overall Service"
+            ar="التقييم العام"
+            value={overall}
+            onChange={setOverall}
+          />
+          <RatingRow
+            label="Delivery Professionalism"
+            ar="احترافية التسليم"
+            value={prof}
+            onChange={setProf}
+          />
+          <RatingRow label="Delivery Time" ar="وقت التسليم" value={time} onChange={setTime} />
+
+          <YesNoRow
+            en="Was your baggage delivered safely?"
+            ar="هل تم تسليم أمتعتك بأمان؟"
+            value={safe}
+            onChange={setSafe}
+          />
+          <YesNoRow
+            en="Would you recommend IAB?"
+            ar="هل توصي بخدمات IAB؟"
+            value={recommend}
+            onChange={setRecommend}
+          />
+
+          <div>
+            <label className="text-sm font-medium text-white">Comments · ملاحظات</label>
+            <Textarea
+              value={comments}
+              onChange={(e) => setComments(e.target.value)}
+              placeholder="Share anything you'd like the team to know…"
+              className="mt-2 w-full rounded-2xl border-white/10 bg-white/[0.06] text-white placeholder:text-white/50 backdrop-blur min-h-24 focus-visible:ring-white/30"
+              rows={4}
+              maxLength={500}
+            />
+          </div>
+
+          <Button
+            type="submit"
+            size="lg"
+            className="w-full h-14 rounded-2xl text-base bg-white text-[color:var(--iab-navy)] active:scale-[0.99]"
+          >
+            Submit Feedback · إرسال التقييم
+          </Button>
+        </form>
       </div>
     </div>
   );
@@ -1445,9 +1390,7 @@ function RatingRow({
             <Star
               className={cn(
                 "h-6 w-6 sm:h-8 sm:w-8 transition-all duration-200",
-                n <= value
-                  ? "fill-white text-white"
-                  : "text-white/30",
+                n <= value ? "fill-white text-white" : "text-white/30",
               )}
             />
           </button>

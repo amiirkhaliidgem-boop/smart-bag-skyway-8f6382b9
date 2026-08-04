@@ -39,18 +39,32 @@ interface Props {
   onImported?: (result: { created: number; ids: string[] }) => void;
 }
 
-export function ImportDialog({ schema, open, onOpenChange, actor = "Operator", onImported }: Props) {
+export function ImportDialog({
+  schema,
+  open,
+  onOpenChange,
+  actor = "Operator",
+  onImported,
+}: Props) {
   const [phase, setPhase] = useState<Phase>("idle");
   const [progress, setProgress] = useState(0);
   const [file, setFile] = useState<File | null>(null);
   const [report, setReport] = useState<ValidationReport | null>(null);
-  const [result, setResult] = useState<
-    { created: number; updated: number; skipped: number; warnings: number; ids: string[] } | null
-  >(null);
+  const [result, setResult] = useState<{
+    created: number;
+    updated: number;
+    skipped: number;
+    warnings: number;
+    ids: string[];
+  } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const reset = () => {
-    setPhase("idle"); setProgress(0); setFile(null); setReport(null); setResult(null);
+    setPhase("idle");
+    setProgress(0);
+    setFile(null);
+    setReport(null);
+    setResult(null);
   };
 
   const close = (v: boolean) => {
@@ -151,7 +165,9 @@ export function ImportDialog({ schema, open, onOpenChange, actor = "Operator", o
               <Loader2 className="h-5 w-5 animate-spin text-primary" />
               <div className="text-sm">
                 <p className="font-medium">
-                  {phase === "reading" ? "Reading & validating file…" : "Committing to workflow engine…"}
+                  {phase === "reading"
+                    ? "Reading & validating file…"
+                    : "Committing to workflow engine…"}
                 </p>
                 <p className="text-xs text-muted-foreground">{file?.name}</p>
               </div>
@@ -160,9 +176,7 @@ export function ImportDialog({ schema, open, onOpenChange, actor = "Operator", o
           </div>
         )}
 
-        {phase === "preview" && report && (
-          <PreviewView schema={schema} report={report} />
-        )}
+        {phase === "preview" && report && <PreviewView schema={schema} report={report} />}
 
         {phase === "done" && result && report && (
           <SummaryView schema={schema} report={report} result={result} />
@@ -178,13 +192,21 @@ export function ImportDialog({ schema, open, onOpenChange, actor = "Operator", o
 
         <DialogFooter>
           {phase === "idle" && (
-            <Button variant="outline" onClick={() => close(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => close(false)}>
+              Cancel
+            </Button>
           )}
           {phase === "preview" && report && (
             <>
-              <Button variant="outline" onClick={reset}>Choose another file</Button>
+              <Button variant="outline" onClick={reset}>
+                Choose another file
+              </Button>
               {report.rejectedRows > 0 && (
-                <Button variant="outline" className="gap-2" onClick={() => downloadErrorReport(report)}>
+                <Button
+                  variant="outline"
+                  className="gap-2"
+                  onClick={() => downloadErrorReport(report)}
+                >
                   <Download className="h-4 w-4" /> Error Report
                 </Button>
               )}
@@ -199,7 +221,11 @@ export function ImportDialog({ schema, open, onOpenChange, actor = "Operator", o
           {phase === "done" && (
             <>
               {report && report.rejectedRows > 0 && (
-                <Button variant="outline" className="gap-2" onClick={() => downloadErrorReport(report)}>
+                <Button
+                  variant="outline"
+                  className="gap-2"
+                  onClick={() => downloadErrorReport(report)}
+                >
                   <Download className="h-4 w-4" /> Error Report
                 </Button>
               )}
@@ -225,7 +251,15 @@ function downloadErrorReport(report: ValidationReport) {
   download(`${base}-errors.csv`, "text/csv", csv);
 }
 
-function DropZone({ onPick, onDrop, onTemplate }: { onPick: () => void; onDrop: (e: React.DragEvent) => void; onTemplate: () => void }) {
+function DropZone({
+  onPick,
+  onDrop,
+  onTemplate,
+}: {
+  onPick: () => void;
+  onDrop: (e: React.DragEvent) => void;
+  onTemplate: () => void;
+}) {
   return (
     <div className="space-y-4 py-2">
       <div
@@ -240,7 +274,9 @@ function DropZone({ onPick, onDrop, onTemplate }: { onPick: () => void; onDrop: 
           <Upload className="h-6 w-6" />
         </div>
         <p className="font-semibold">Drop CSV file here, or click to browse</p>
-        <p className="text-xs text-muted-foreground mt-1">Supports .csv files up to 20MB. UTF-8 encoded.</p>
+        <p className="text-xs text-muted-foreground mt-1">
+          Supports .csv files up to 20MB. UTF-8 encoded.
+        </p>
       </div>
       <div className="flex items-center justify-between rounded-lg border p-3 bg-muted/40">
         <div className="flex items-center gap-2 text-sm">
@@ -288,7 +324,8 @@ function PreviewView({ schema, report }: { schema: DatasetSchema; report: Valida
       {(report.missingColumns.length > 0 || report.unknownColumns.length > 0) && (
         <div className="rounded-lg border border-rose-300 bg-rose-50 dark:bg-rose-950/30 p-3 text-sm space-y-1">
           {report.missingColumns.length > 0 && (
-            <p><AlertTriangle className="inline h-4 w-4 mr-1 text-rose-600" />
+            <p>
+              <AlertTriangle className="inline h-4 w-4 mr-1 text-rose-600" />
               <strong>Missing required columns:</strong> {report.missingColumns.join(", ")}
             </p>
           )}
@@ -307,7 +344,9 @@ function PreviewView({ schema, report }: { schema: DatasetSchema; report: Valida
               <th className="text-left px-2 py-2 w-16">Row</th>
               <th className="text-left px-2 py-2 w-24">Status</th>
               {schema.fields.slice(0, 6).map((f) => (
-                <th key={f.key} className="text-left px-2 py-2">{f.label}</th>
+                <th key={f.key} className="text-left px-2 py-2">
+                  {f.label}
+                </th>
               ))}
               <th className="text-left px-2 py-2">Issues</th>
             </tr>
@@ -329,17 +368,27 @@ function PreviewView({ schema, report }: { schema: DatasetSchema; report: Valida
 }
 
 function PreviewRow({ row, schema }: { row: ParsedRow; schema: DatasetSchema }) {
-  const tone = row.rejected ? "bg-rose-50 dark:bg-rose-950/20" : row.issues.some((i) => i.level === "warning") ? "bg-amber-50 dark:bg-amber-950/20" : "";
+  const tone = row.rejected
+    ? "bg-rose-50 dark:bg-rose-950/20"
+    : row.issues.some((i) => i.level === "warning")
+      ? "bg-amber-50 dark:bg-amber-950/20"
+      : "";
   return (
     <tr className={tone}>
       <td className="px-2 py-1.5 font-mono text-muted-foreground">{row.row}</td>
       <td className="px-2 py-1.5">
         {row.rejected ? (
-          <Badge variant="destructive" className="gap-1"><XCircle className="h-3 w-3" /> Rejected</Badge>
+          <Badge variant="destructive" className="gap-1">
+            <XCircle className="h-3 w-3" /> Rejected
+          </Badge>
         ) : row.issues.some((i) => i.level === "warning") ? (
-          <Badge className="bg-amber-500 text-white gap-1"><AlertTriangle className="h-3 w-3" /> Warning</Badge>
+          <Badge className="bg-amber-500 text-white gap-1">
+            <AlertTriangle className="h-3 w-3" /> Warning
+          </Badge>
         ) : (
-          <Badge className="bg-emerald-600 text-white gap-1"><CheckCircle2 className="h-3 w-3" /> Ready</Badge>
+          <Badge className="bg-emerald-600 text-white gap-1">
+            <CheckCircle2 className="h-3 w-3" /> Ready
+          </Badge>
         )}
       </td>
       {schema.fields.slice(0, 6).map((f) => (
@@ -353,9 +402,13 @@ function PreviewRow({ row, schema }: { row: ParsedRow; schema: DatasetSchema }) 
         ) : (
           <ul className="space-y-0.5">
             {row.issues.slice(0, 3).map((i, idx) => (
-              <li key={idx} className={i.level === "error" ? "text-rose-600" : "text-amber-600"}>• {i.message}</li>
+              <li key={idx} className={i.level === "error" ? "text-rose-600" : "text-amber-600"}>
+                • {i.message}
+              </li>
             ))}
-            {row.issues.length > 3 && <li className="text-muted-foreground">+{row.issues.length - 3} more</li>}
+            {row.issues.length > 3 && (
+              <li className="text-muted-foreground">+{row.issues.length - 3} more</li>
+            )}
           </ul>
         )}
       </td>
@@ -385,9 +438,10 @@ function SummaryView({
         <div>
           <p className="font-semibold">Import complete</p>
           <p className="text-sm text-muted-foreground">
-            {created + updated} record(s) processed for {schema.label}. Every record was routed through
-            the Workflow Engine, Timeline, and Audit Log. Cases with missing optional data were created
-            as “Incomplete” and can be completed later — airport operations never stop for missing data.
+            {created + updated} record(s) processed for {schema.label}. Every record was routed
+            through the Workflow Engine, Timeline, and Audit Log. Cases with missing optional data
+            were created as “Incomplete” and can be completed later — airport operations never stop
+            for missing data.
           </p>
         </div>
       </div>
@@ -399,7 +453,8 @@ function SummaryView({
         <Item label="Rejected" value={rejected} />
       </dl>
       <p className="text-xs text-muted-foreground">
-        File: <span className="font-medium">{report.fileName}</span> · Total rows: {report.totalRows}
+        File: <span className="font-medium">{report.fileName}</span> · Total rows:{" "}
+        {report.totalRows}
       </p>
       <p className="text-xs text-muted-foreground flex items-center gap-1">
         <Copy className="h-3 w-3" /> Audit reference logged under Activity Timeline → Import events.

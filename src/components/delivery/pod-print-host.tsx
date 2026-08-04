@@ -73,8 +73,7 @@ export function PodPrintHost() {
 
   if (matched.length === 0 || typeof document === "undefined") return null;
 
-  const findCase = (bagId: string): BaggageCase | undefined =>
-    cases.find((c) => c.bagId === bagId);
+  const findCase = (bagId: string): BaggageCase | undefined => cases.find((c) => c.bagId === bagId);
   const findWorkflow = (deliveryId: string): WorkflowRecord | undefined =>
     workflow.find((w) => w.deliveryId === deliveryId);
 
@@ -84,10 +83,7 @@ export function PodPrintHost() {
         {matched.map((d, i) => {
           const wf = findWorkflow(d.deliveryId);
           return (
-            <div
-              key={d.deliveryId}
-              className={i < matched.length - 1 ? "pir-page-break" : ""}
-            >
+            <div key={d.deliveryId} className={i < matched.length - 1 ? "pir-page-break" : ""}>
               <PodReport
                 delivery={d}
                 caseRecord={findCase(d.bagId)}

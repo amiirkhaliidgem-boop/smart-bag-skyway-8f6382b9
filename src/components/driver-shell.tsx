@@ -31,9 +31,7 @@ export function DriverShell({
             className="h-8 w-8 shrink-0 rounded-md bg-white object-contain p-0.5 ring-1 ring-border"
           />
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold leading-tight">
-              Smart Baggage Ecosystem
-            </p>
+            <p className="truncate text-sm font-semibold leading-tight">Smart Baggage Ecosystem</p>
             <p className="truncate text-[11px] leading-tight text-muted-foreground">
               {t.portalTitle}
             </p>
@@ -54,9 +52,7 @@ export function DriverShell({
           )}
         </div>
       </header>
-      <main className="mx-auto w-full max-w-[1200px] flex-1 p-4 sm:p-6 lg:p-8">
-        {children}
-      </main>
+      <main className="mx-auto w-full max-w-[1200px] flex-1 p-4 sm:p-6 lg:p-8">{children}</main>
     </div>
   );
 }

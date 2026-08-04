@@ -32,10 +32,7 @@ const PROGRESS_STAGES: DeliveryStage[] = [
 ];
 
 // OTP is only meaningful once the agent is en route.
-const OTP_VISIBLE_STAGES = new Set<DeliveryStage>([
-  "Out for Delivery",
-  "Delivered",
-]);
+const OTP_VISIBLE_STAGES = new Set<DeliveryStage>(["Out for Delivery", "Delivered"]);
 
 export function TrackBaggage({ showHeading = true }: { showHeading?: boolean }) {
   const cases = useStore((s) => s.cases);
@@ -58,12 +55,12 @@ export function TrackBaggage({ showHeading = true }: { showHeading?: boolean }) 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
       {showHeading && (
-      <div className="text-center space-y-2">
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Track Baggage</h1>
-        <p className="text-sm text-muted-foreground">
-          Locate any baggage case using its operational reference.
-        </p>
-      </div>
+        <div className="text-center space-y-2">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Track Baggage</h1>
+          <p className="text-sm text-muted-foreground">
+            Locate any baggage case using its operational reference.
+          </p>
+        </div>
       )}
 
       <Card>
@@ -106,7 +103,7 @@ export function TrackBaggage({ showHeading = true }: { showHeading?: boolean }) 
 function TrackingResultPanel({ result }: { result: TrackingResult }) {
   const { kase, delivery, workflow, matchedBy } = result;
   const stage: DeliveryStage | undefined = delivery
-    ? delivery.stage ?? stageFromLegacy(delivery)
+    ? (delivery.stage ?? stageFromLegacy(delivery))
     : undefined;
   const stageIndex = stage ? PROGRESS_STAGES.indexOf(stage) : -1;
   const agentAssigned = !!delivery?.driver && delivery.driver !== "—";
@@ -163,11 +160,7 @@ function TrackingResultPanel({ result }: { result: TrackingResult }) {
 
           {workflow?.token && (
             <Button asChild variant="outline" className="h-10">
-              <a
-                href={`/passenger/${workflow.token}`}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
+              <a href={`/passenger/${workflow.token}`} target="_blank" rel="noopener noreferrer">
                 <ExternalLink className="h-4 w-4" />
                 View Passenger Portal
               </a>
@@ -288,14 +281,12 @@ function TrackingResultPanel({ result }: { result: TrackingResult }) {
                     {delivery.otpCode || "——————"}
                   </span>
                 </div>
-                <span className="text-sm text-muted-foreground">
-                  Status: {delivery.otpStatus}
-                </span>
+                <span className="text-sm text-muted-foreground">Status: {delivery.otpStatus}</span>
               </div>
             ) : (
               <p className="text-sm text-muted-foreground">
-                OTP becomes available once the baggage is out for delivery. Current
-                status: {delivery.otpStatus}.
+                OTP becomes available once the baggage is out for delivery. Current status:{" "}
+                {delivery.otpStatus}.
               </p>
             )}
           </CardContent>
@@ -353,9 +344,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   return (
     <Card>
       <CardContent className="p-6">
-        <p className="text-xs text-muted-foreground uppercase tracking-wider mb-3">
-          {title}
-        </p>
+        <p className="text-xs text-muted-foreground uppercase tracking-wider mb-3">{title}</p>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">{children}</div>
       </CardContent>
     </Card>
@@ -384,8 +373,7 @@ function InfoTile({
   value?: string | number | null;
   className?: string;
 }) {
-  const text =
-    value === undefined || value === null || value === "" ? "—" : String(value);
+  const text = value === undefined || value === null || value === "" ? "—" : String(value);
   return (
     <div className={`rounded-lg border border-border bg-muted/40 p-3 ${className}`}>
       <p className="text-[11px] uppercase tracking-wider text-muted-foreground">{label}</p>

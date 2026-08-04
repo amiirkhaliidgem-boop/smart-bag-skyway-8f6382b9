@@ -28,20 +28,42 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
-  DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import {
-  ArrowLeft, ChevronRight, Truck, MessageSquare, Phone, Mail,
-  MapPin, Star as StarIcon, ExternalLink, Pencil, MoreHorizontal,
-  UserCog, Printer,
+  ArrowLeft,
+  ChevronRight,
+  Truck,
+  MessageSquare,
+  Phone,
+  Mail,
+  MapPin,
+  Star as StarIcon,
+  ExternalLink,
+  Pencil,
+  MoreHorizontal,
+  UserCog,
+  Printer,
   AlertTriangle,
 } from "lucide-react";
 
@@ -54,7 +76,10 @@ export const Route = createFileRoute("/lost-found/$bagId")({
   head: ({ params }) => ({
     meta: [
       { title: `Case ${params.bagId} — Lost & Found` },
-      { name: "description", content: "Enterprise baggage case detail — tracing, delivery, and communication." },
+      {
+        name: "description",
+        content: "Enterprise baggage case detail — tracing, delivery, and communication.",
+      },
       { name: "robots", content: "noindex" },
     ],
   }),
@@ -104,17 +129,14 @@ function CaseDetailsPage() {
   // Management owns the case and L&F can only view it. Status controls
   // become read-only here. Airport Pickup never hands over — Lost & Found
   // owns that path all the way to "Passenger Picked Up".
-  const deliveryOwned =
-    !pickup && LF_STATUS_ORDER[lfs] >= LF_STATUS_ORDER["Ready for Delivery"];
+  const deliveryOwned = !pickup && LF_STATUS_ORDER[lfs] >= LF_STATUS_ORDER["Ready for Delivery"];
   const pickupComplete = pickup && lfs === "Passenger Picked Up";
   const locked = deliveryOwned || pickupComplete;
 
   const relatedNotifications = notifications.filter(
     (n) => n.pirNumber === c.pirNumber || n.deliveryId === linkedDelivery?.deliveryId,
   );
-  const relatedCalls = callLogs.filter(
-    (l) => l.bagId === c.bagId || l.pirNumber === c.pirNumber,
-  );
+  const relatedCalls = callLogs.filter((l) => l.bagId === c.bagId || l.pirNumber === c.pirNumber);
   const relatedWhatsapp = whatsapp.filter(
     (w) => w.pirNumber === c.pirNumber || w.phone === c.contact,
   );
@@ -178,8 +200,8 @@ function CaseDetailsPage() {
               Incomplete data — case created, please complete when possible
             </p>
             <p className="text-xs text-amber-800/90 dark:text-amber-200/80 mt-1">
-              Airport operations continued with the mandatory fields. The
-              following optional fields are still pending:
+              Airport operations continued with the mandatory fields. The following optional fields
+              are still pending:
             </p>
             <div className="mt-2 flex flex-wrap gap-1.5">
               {c.missingFields.map((f) => (
@@ -221,7 +243,10 @@ function CaseDetailsPage() {
                 <HeaderKV k="Officer" v={c.internal?.assignedOfficer || "Unassigned"} />
                 <HeaderKV k="Delivery Method" v={c.delivery?.method || "—"} />
                 <HeaderKV k="Created" v={new Date(c.createdAt).toLocaleString("en-GB")} />
-                <HeaderKV k="Last Updated" v={c.updatedAt ? new Date(c.updatedAt).toLocaleString("en-GB") : "—"} />
+                <HeaderKV
+                  k="Last Updated"
+                  v={c.updatedAt ? new Date(c.updatedAt).toLocaleString("en-GB") : "—"}
+                />
                 <HeaderKV k="Contact" v={c.contact || "—"} />
               </div>
             </div>
@@ -296,8 +321,8 @@ function CaseDetailsPage() {
             {deliveryOwned && (
               <div className="mt-3 rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-800 flex items-center gap-2">
                 <Truck className="h-3.5 w-3.5" />
-                This case has been handed over to Delivery Management. Status
-                updates from Ready for Delivery onward are controlled there.
+                This case has been handed over to Delivery Management. Status updates from Ready for
+                Delivery onward are controlled there.
                 {linkedDelivery && (
                   <Link
                     to="/delivery"
@@ -311,14 +336,14 @@ function CaseDetailsPage() {
             {pickupComplete && (
               <div className="mt-3 rounded-md border border-teal-200 bg-teal-50 px-3 py-2 text-xs text-teal-800 flex items-center gap-2">
                 <Truck className="h-3.5 w-3.5" />
-                Airport Pickup completed — the passenger collected the baggage at the
-                airport office. This case is closed to further status changes.
+                Airport Pickup completed — the passenger collected the baggage at the airport
+                office. This case is closed to further status changes.
               </div>
             )}
             {pickup && !pickupComplete && (
               <div className="mt-3 rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-800">
-                Airport Pickup case — no delivery order, region, agent or route applies.
-                Lost &amp; Found owns this case until the passenger collects the baggage.
+                Airport Pickup case — no delivery order, region, agent or route applies. Lost &amp;
+                Found owns this case until the passenger collects the baggage.
               </div>
             )}
           </div>
@@ -395,15 +420,24 @@ function CaseDetailsPage() {
         {/* COMMUNICATION */}
         <TabsContent value="communication" className="pt-4 space-y-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <ChannelCard title="SMS" icon={<MessageSquare className="h-4 w-4" />}
-              items={relatedNotifications.filter((n) => n.channel === "sms")} empty="No SMS on this case yet." />
-            <ChannelCard title="WhatsApp" icon={<MessageSquare className="h-4 w-4" />}
-              items={relatedNotifications.filter((n) => n.channel === "whatsapp")} empty="No WhatsApp messages yet."
+            <ChannelCard
+              title="SMS"
+              icon={<MessageSquare className="h-4 w-4" />}
+              items={relatedNotifications.filter((n) => n.channel === "sms")}
+              empty="No SMS on this case yet."
+            />
+            <ChannelCard
+              title="WhatsApp"
+              icon={<MessageSquare className="h-4 w-4" />}
+              items={relatedNotifications.filter((n) => n.channel === "whatsapp")}
+              empty="No WhatsApp messages yet."
               extra={
                 <>
                   {relatedWhatsapp.map((w) => (
                     <div key={w.id} className="text-xs border rounded p-2">
-                      <div className="text-muted-foreground">{new Date(w.at).toLocaleString("en-GB")}</div>
+                      <div className="text-muted-foreground">
+                        {new Date(w.at).toLocaleString("en-GB")}
+                      </div>
                       {w.thread.map((t, i) => (
                         <div key={i} className="mt-1">
                           <span className="font-semibold">{t.from}:</span> {t.text}
@@ -412,9 +446,14 @@ function CaseDetailsPage() {
                     </div>
                   ))}
                 </>
-              } />
-            <ChannelCard title="Email" icon={<Mail className="h-4 w-4" />}
-              items={relatedNotifications.filter((n) => n.channel === "email")} empty="No email records on this case." />
+              }
+            />
+            <ChannelCard
+              title="Email"
+              icon={<Mail className="h-4 w-4" />}
+              items={relatedNotifications.filter((n) => n.channel === "email")}
+              empty="No email records on this case."
+            />
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-base flex items-center gap-2">
@@ -426,7 +465,9 @@ function CaseDetailsPage() {
                   relatedCalls.map((l) => (
                     <div key={l.id} className="text-xs border rounded p-2 bg-muted/30">
                       <div className="flex justify-between text-muted-foreground">
-                        <span>{l.direction} · {l.agent}</span>
+                        <span>
+                          {l.direction} · {l.agent}
+                        </span>
                         <span>{new Date(l.at).toLocaleString("en-GB")}</span>
                       </div>
                       <div className="mt-1">{l.notes}</div>
@@ -445,7 +486,9 @@ function CaseDetailsPage() {
             <CardContent className="text-xs space-y-1">
               {passengerToken ? (
                 <>
-                  <div>Tracking token: <span className="font-mono">{passengerToken}</span></div>
+                  <div>
+                    Tracking token: <span className="font-mono">{passengerToken}</span>
+                  </div>
                   <a
                     href={`/passenger/${passengerToken}`}
                     target="_blank"
@@ -459,12 +502,14 @@ function CaseDetailsPage() {
                 <Empty text="Tracking link is issued when the passenger is notified." />
               )}
               {linkedDelivery && (
-                <div>OTP: <span className="font-mono">{linkedDelivery.otpCode}</span> ({linkedDelivery.otpStatus})</div>
+                <div>
+                  OTP: <span className="font-mono">{linkedDelivery.otpCode}</span> (
+                  {linkedDelivery.otpStatus})
+                </div>
               )}
             </CardContent>
           </Card>
         </TabsContent>
-
       </Tabs>
 
       {/* Edit wizard */}
@@ -504,7 +549,10 @@ function CaseDetailsPage() {
 
 // ---------- Change Status dialog ----------
 function ChangeStatusDialog({
-  current, method, onConfirm, onClose,
+  current,
+  method,
+  onConfirm,
+  onClose,
 }: {
   current: LFStatus;
   method?: string;
@@ -521,22 +569,28 @@ function ChangeStatusDialog({
       <DialogHeader>
         <DialogTitle>Change Status</DialogTitle>
         <p className="text-xs text-muted-foreground">
-          Transitions are validated by the Workflow Engine and automatically update
-          Timeline, Audit, Notifications, Passenger Tracking, and Delivery.
+          Transitions are validated by the Workflow Engine and automatically update Timeline, Audit,
+          Notifications, Passenger Tracking, and Delivery.
         </p>
       </DialogHeader>
       <div className="space-y-3">
         <div>
           <Label className="text-xs">Current</Label>
-          <div className="mt-1"><LfStatusBadge status={current} /></div>
+          <div className="mt-1">
+            <LfStatusBadge status={current} />
+          </div>
         </div>
         <div>
           <Label className="text-xs">New status</Label>
           <Select value={target} onValueChange={(v) => setTarget(v as LFStatus)}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
             <SelectContent>
               {options.map((s) => (
-                <SelectItem key={s} value={s}>{s}</SelectItem>
+                <SelectItem key={s} value={s}>
+                  {s}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -553,7 +607,9 @@ function ChangeStatusDialog({
         )}
       </div>
       <DialogFooter>
-        <Button variant="outline" onClick={onClose}>Cancel</Button>
+        <Button variant="outline" onClick={onClose}>
+          Cancel
+        </Button>
         <Button
           disabled={backward}
           onClick={() => onConfirm(target, force, note.trim() || undefined)}
@@ -567,7 +623,9 @@ function ChangeStatusDialog({
 
 // ---------- Assign Officer dialog ----------
 function AssignOfficerDialog({
-  current, onConfirm, onClose,
+  current,
+  onConfirm,
+  onClose,
 }: {
   current: string;
   onConfirm: (officer: string) => void;
@@ -581,10 +639,17 @@ function AssignOfficerDialog({
       </DialogHeader>
       <div className="space-y-2">
         <Label className="text-xs">Officer name</Label>
-        <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. A. Hassan" autoFocus />
+        <Input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="e.g. A. Hassan"
+          autoFocus
+        />
       </div>
       <DialogFooter>
-        <Button variant="outline" onClick={onClose}>Cancel</Button>
+        <Button variant="outline" onClick={onClose}>
+          Cancel
+        </Button>
         <Button onClick={() => onConfirm(name.trim())}>Save</Button>
       </DialogFooter>
     </DialogContent>
@@ -615,9 +680,12 @@ function OverviewFlight({ c }: { c: BaggageCase; full?: boolean }) {
   );
 }
 function OverviewBaggage({ c }: { c: BaggageCase; full?: boolean }) {
-  const tags = c.baggage?.bagTags && c.baggage.bagTags.length > 0
-    ? c.baggage.bagTags
-    : (c.bagTagNumber ? [c.bagTagNumber] : []);
+  const tags =
+    c.baggage?.bagTags && c.baggage.bagTags.length > 0
+      ? c.baggage.bagTags
+      : c.bagTagNumber
+        ? [c.bagTagNumber]
+        : [];
   return (
     <InfoCard title="Baggage">
       <KV k="Number Of Bags" v={c.baggage?.numberOfBags?.toString()} />
@@ -650,9 +718,15 @@ function OverviewBaggage({ c }: { c: BaggageCase; full?: boolean }) {
 }
 function OverviewDelivery({ c, full }: { c: BaggageCase; full?: boolean }) {
   const legacyAddress = [
-    c.delivery?.building, c.delivery?.street, c.delivery?.district,
-    c.delivery?.city, c.delivery?.governorate, c.delivery?.country,
-  ].filter(Boolean).join(", ");
+    c.delivery?.building,
+    c.delivery?.street,
+    c.delivery?.district,
+    c.delivery?.city,
+    c.delivery?.governorate,
+    c.delivery?.country,
+  ]
+    .filter(Boolean)
+    .join(", ");
   const address = c.delivery?.fullAddress || legacyAddress;
   return (
     <InfoCard title="Delivery Address" className={full ? "" : ""}>
@@ -679,7 +753,10 @@ function OverviewInternal({ c }: { c: BaggageCase }) {
       <KV k="Case Priority" v={c.internal?.casePriority} />
       <KV k="Created By" v={c.internal?.createdBy} />
       <KV k="Created" v={new Date(c.createdAt).toLocaleString("en-GB")} />
-      <KV k="Last Updated" v={c.updatedAt ? new Date(c.updatedAt).toLocaleString("en-GB") : undefined} />
+      <KV
+        k="Last Updated"
+        v={c.updatedAt ? new Date(c.updatedAt).toLocaleString("en-GB") : undefined}
+      />
       {c.internal?.internalNotes && (
         <div className="col-span-full pt-2 border-t mt-2">
           <p className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1">Notes</p>
@@ -692,7 +769,11 @@ function OverviewInternal({ c }: { c: BaggageCase }) {
 
 // ---------- Channel card ----------
 function ChannelCard({
-  title, icon, items, empty, extra,
+  title,
+  icon,
+  items,
+  empty,
+  extra,
 }: {
   title: string;
   icon: React.ReactNode;
@@ -712,12 +793,12 @@ function ChannelCard({
           items.map((n) => (
             <div key={n.id} className="text-xs border rounded p-2 bg-muted/30">
               <div className="flex justify-between text-muted-foreground">
-                <span>{n.locale.toUpperCase()} · {n.status_}</span>
+                <span>
+                  {n.locale.toUpperCase()} · {n.status_}
+                </span>
                 <span>{new Date(n.createdAt).toLocaleString("en-GB")}</span>
               </div>
-              {n.message.subject && (
-                <div className="font-medium mt-1">{n.message.subject}</div>
-              )}
+              {n.message.subject && <div className="font-medium mt-1">{n.message.subject}</div>}
               <div className="mt-1">{n.message.body}</div>
             </div>
           ))
@@ -741,18 +822,20 @@ function HeaderKV({ k, v, mono }: { k: string; v: string; mono?: boolean }) {
 }
 
 function InfoCard({
-  title, children, className = "",
+  title,
+  children,
+  className = "",
 }: {
-  title: string; children: React.ReactNode; className?: string;
+  title: string;
+  children: React.ReactNode;
+  className?: string;
 }) {
   return (
     <Card className={className}>
       <CardHeader className="pb-2">
         <CardTitle className="text-base">{title}</CardTitle>
       </CardHeader>
-      <CardContent className="grid grid-cols-2 gap-x-6 gap-y-1.5 text-sm">
-        {children}
-      </CardContent>
+      <CardContent className="grid grid-cols-2 gap-x-6 gap-y-1.5 text-sm">{children}</CardContent>
     </Card>
   );
 }
@@ -777,4 +860,3 @@ function KV({ k, v, mono }: { k: string; v?: string; mono?: boolean }) {
 function Empty({ text }: { text: string }) {
   return <p className="text-xs text-muted-foreground italic py-3 text-center">{text}</p>;
 }
-

@@ -51,6 +51,7 @@ import {
 } from "@/components/ui/dialog";
 import { DateRangeFilter } from "@/components/filters/date-range-filter";
 import { PageLoading } from "@/components/ops-skeleton";
+import { DataTable, type DataColumn } from "@/components/layout";
 import { useStaffOfficers } from "@/lib/admin/officers";
 import { useRole } from "@/lib/rbac";
 import { loadOperationalReport, callQualityRpc } from "@/lib/reports.functions";
@@ -176,41 +177,24 @@ function SimpleTable({
   rows: (string | number)[][];
   empty: string;
 }) {
+  const columns: DataColumn<(string | number)[]>[] = head.map((h, i) => ({
+    id: `${i}-${h}`,
+    header: h,
+    align: i === 0 ? "left" : "right",
+    className: i === 0 ? undefined : "tabular-nums",
+    sortValue: (r) => r[i] ?? null,
+    cell: (r) => r[i],
+  }));
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead className="bg-muted/60 text-xs uppercase tracking-wider text-muted-foreground">
-          <tr>
-            {head.map((h, i) => (
-              <th key={h} className={`px-4 py-3 font-medium ${i === 0 ? "text-left" : "text-right"}`}>
-                {h}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-border">
-          {rows.length === 0 && (
-            <tr>
-              <td colSpan={head.length} className="px-4 py-8 text-center text-muted-foreground text-sm">
-                {empty}
-              </td>
-            </tr>
-          )}
-          {rows.map((r, i) => (
-            <tr key={i} className="hover:bg-muted/40">
-              {r.map((c, j) => (
-                <td
-                  key={j}
-                  className={`px-4 py-2.5 ${j === 0 ? "" : "text-right tabular-nums"}`}
-                >
-                  {c}
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <DataTable
+      data={rows}
+      columns={columns}
+      rowId={(r) => String(r[0])}
+      paginate={false}
+      emptyTitle={empty}
+      ariaLabel={head.join(", ")}
+      disableMobileCards
+    />
   );
 }
 
@@ -343,8 +327,19 @@ function ReportsPage() {
             tone={ex.slaCompliancePct >= 90 ? "emerald" : "amber"}
             hint="Deliveries with no SLA breach"
           />
-          <Kpi label="CSAT" value={`${ex.csat}/5`} icon={Star} tone="amber" hint="Passenger feedback" />
-          <Kpi label="Returned to Airport" value={life.totals.returned} icon={RotateCcw} tone="amber" />
+          <Kpi
+            label="CSAT"
+            value={`${ex.csat}/5`}
+            icon={Star}
+            tone="amber"
+            hint="Passenger feedback"
+          />
+          <Kpi
+            label="Returned to Airport"
+            value={life.totals.returned}
+            icon={RotateCcw}
+            tone="amber"
+          />
           <Kpi label="Open Incidents" value={ex.openIncidents} icon={ShieldAlert} tone="rose" />
           <Kpi
             label="Avg Hours to Deliver"
@@ -378,7 +373,13 @@ function ReportsPage() {
                   <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
                   <Tooltip />
                   <Legend />
-                  <Area type="monotone" dataKey="cases" name="Cases" stroke="#1e40af" fill="url(#c)" />
+                  <Area
+                    type="monotone"
+                    dataKey="cases"
+                    name="Cases"
+                    stroke="#1e40af"
+                    fill="url(#c)"
+                  />
                   <Area
                     type="monotone"
                     dataKey="delivered"
@@ -396,7 +397,13 @@ function ReportsPage() {
                     fill="#0d9488"
                     fillOpacity={0.25}
                   />
-                  <Line type="monotone" dataKey="incidents" name="Incidents" stroke="#e11d48" dot={false} />
+                  <Line
+                    type="monotone"
+                    dataKey="incidents"
+                    name="Incidents"
+                    stroke="#e11d48"
+                    dot={false}
+                  />
                 </ComposedChart>
               </ResponsiveContainer>
             </div>
@@ -444,7 +451,11 @@ function ReportsPage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <Kpi label="On Time" value={r.delivery.onTime} icon={CheckCircle2} tone="emerald" />
           <Kpi label="SLA Breaches" value={r.delivery.breached} icon={AlertTriangle} tone="rose" />
-          <Kpi label="First-Attempt Success" value={`${r.delivery.firstAttemptPct}%`} icon={PackageCheck} />
+          <Kpi
+            label="First-Attempt Success"
+            value={`${r.delivery.firstAttemptPct}%`}
+            icon={PackageCheck}
+          />
           <Kpi label="Deliveries Created" value={ex.deliveries} icon={Activity} tone="indigo" />
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -457,7 +468,14 @@ function ReportsPage() {
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={r.delivery.byStage}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(0 0% 90%)" />
-                    <XAxis dataKey="stage" tick={{ fontSize: 10 }} interval={0} angle={-20} height={60} textAnchor="end" />
+                    <XAxis
+                      dataKey="stage"
+                      tick={{ fontSize: 10 }}
+                      interval={0}
+                      angle={-20}
+                      height={60}
+                      textAnchor="end"
+                    />
                     <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
                     <Tooltip />
                     <Bar dataKey="count" name="Deliveries" fill="#1e40af" radius={[6, 6, 0, 0]} />
@@ -533,9 +551,24 @@ function ReportsPage() {
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
           <Kpi label="CSAT" value={`${r.experience.csat}/5`} icon={Star} tone="amber" />
           <Kpi label="Responses" value={r.experience.responses} icon={Activity} />
-          <Kpi label="Response Rate" value={`${r.experience.responseRatePct}%`} icon={CheckCircle2} tone="indigo" />
-          <Kpi label="Issue Resolved" value={`${r.experience.resolvedPct}%`} icon={CheckCircle2} tone="emerald" />
-          <Kpi label="Tracking Link Opened" value={`${r.experience.linkViewRatePct}%`} icon={Activity} tone="indigo" />
+          <Kpi
+            label="Response Rate"
+            value={`${r.experience.responseRatePct}%`}
+            icon={CheckCircle2}
+            tone="indigo"
+          />
+          <Kpi
+            label="Issue Resolved"
+            value={`${r.experience.resolvedPct}%`}
+            icon={CheckCircle2}
+            tone="emerald"
+          />
+          <Kpi
+            label="Tracking Link Opened"
+            value={`${r.experience.linkViewRatePct}%`}
+            icon={Activity}
+            tone="indigo"
+          />
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <Card>
@@ -563,7 +596,12 @@ function ReportsPage() {
             <CardContent className="p-0">
               <SimpleTable
                 head={["Channel", "Sent", "Failed", "Pending"]}
-                rows={r.experience.notifications.map((n) => [n.channel, n.sent, n.failed, n.pending])}
+                rows={r.experience.notifications.map((n) => [
+                  n.channel,
+                  n.sent,
+                  n.failed,
+                  n.pending,
+                ])}
                 empty="No passenger notifications were queued in this period."
               />
             </CardContent>
@@ -575,7 +613,10 @@ function ReportsPage() {
       <QualitySection report={r} onChanged={refresh} />
 
       {/* ----------------------------------------------------- performance */}
-      <Section title="Performance" description="League tables across agents, officers and airlines.">
+      <Section
+        title="Performance"
+        description="League tables across agents, officers and airlines."
+      >
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
           <Card>
             <CardHeader className="pb-2">
@@ -602,7 +643,12 @@ function ReportsPage() {
             <CardContent className="p-0">
               <SimpleTable
                 head={["Officer", "Cases", "Progressed", "Avg hrs"]}
-                rows={r.performance.officers.map((o) => [o.name, o.cases, o.progressed, o.avg_hours])}
+                rows={r.performance.officers.map((o) => [
+                  o.name,
+                  o.cases,
+                  o.progressed,
+                  o.avg_hours,
+                ])}
                 empty="No cases were assigned to an officer in this period."
               />
             </CardContent>
@@ -648,7 +694,9 @@ function QualitySection({
   const [stateFilter, setStateFilter] = useState("open");
   const [severityFilter, setSeverityFilter] = useState("all");
   const [sourceFilter, setSourceFilter] = useState("all");
-  const [active, setActive] = useState<OperationalReport["quality"]["incidents"][number] | null>(null);
+  const [active, setActive] = useState<OperationalReport["quality"]["incidents"][number] | null>(
+    null,
+  );
   const [raiseOpen, setRaiseOpen] = useState(false);
 
   const mutate = useMutation({
@@ -669,16 +717,111 @@ function QualitySection({
     return true;
   });
 
+  const incidentColumns: DataColumn<(typeof incidents)[number]>[] = [
+    {
+      id: "incident",
+      header: "Incident",
+      minWidth: "140px",
+      sortValue: (i) => i.incident_no,
+      cell: (i) => (
+        <div className="min-w-0">
+          <div className="font-mono text-xs">{i.incident_no}</div>
+          <div className="text-[11px] text-muted-foreground">
+            {SOURCE_LABEL[i.source] ?? i.source}
+          </div>
+        </div>
+      ),
+    },
+    {
+      id: "category",
+      header: "Category",
+      hideBelow: "md",
+      sortValue: (i) => i.category,
+      cell: (i) => <span className="text-sm">{i.category}</span>,
+    },
+    {
+      id: "reference",
+      header: "Reference",
+      hideBelow: "lg",
+      sortValue: (i) => i.delivery_no || i.reference || "",
+      cell: (i) => (
+        <div className="min-w-0">
+          <div className="font-mono text-xs">{i.delivery_no || i.reference || "—"}</div>
+          <div className="text-[11px] text-muted-foreground">{i.airline || "—"}</div>
+        </div>
+      ),
+    },
+    {
+      id: "severity",
+      header: "Severity",
+      sortValue: (i) => i.severity,
+      cell: (i) => (
+        <Badge variant="outline" className={SEVERITY_TONE[i.severity]}>
+          {i.severity}
+        </Badge>
+      ),
+    },
+    {
+      id: "state",
+      header: "State",
+      sortValue: (i) => i.state,
+      cell: (i) => (
+        <Badge variant="outline" className={STATE_TONE[i.state]}>
+          {i.state}
+        </Badge>
+      ),
+    },
+    {
+      id: "owner",
+      header: "Owner",
+      hideBelow: "lg",
+      sortValue: (i) => i.assignee || "",
+      cell: (i) => <span className="text-xs">{i.assignee || "Unassigned"}</span>,
+    },
+    {
+      id: "raised",
+      header: "Raised",
+      hideBelow: "md",
+      sortValue: (i) => i.created_at,
+      cell: (i) => <span className="text-xs text-muted-foreground">{fmtDate(i.created_at)}</span>,
+    },
+    {
+      id: "actions",
+      header: "",
+      align: "right",
+      cell: (i) => (
+        <Button size="sm" variant="outline" onClick={() => setActive(i)}>
+          {canManage ? "Manage" : "View"}
+        </Button>
+      ),
+    },
+  ];
+
   return (
     <Section
       title="Quality Management"
       description="Incidents are raised automatically by the Workflow Engine on SLA breaches, returns to airport, one-time-code lockouts and low passenger ratings — plus anything staff raise manually."
     >
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Kpi label="Raised in Period" value={report.quality.raised} icon={ShieldAlert} tone="rose" />
+        <Kpi
+          label="Raised in Period"
+          value={report.quality.raised}
+          icon={ShieldAlert}
+          tone="rose"
+        />
         <Kpi label="Currently Open" value={report.quality.open} icon={AlertTriangle} tone="amber" />
-        <Kpi label="Resolved in Period" value={report.quality.resolved} icon={CheckCircle2} tone="emerald" />
-        <Kpi label="Avg Hours to Resolve" value={report.quality.avgResolveHours} icon={Clock} tone="indigo" />
+        <Kpi
+          label="Resolved in Period"
+          value={report.quality.resolved}
+          icon={CheckCircle2}
+          tone="emerald"
+        />
+        <Kpi
+          label="Avg Hours to Resolve"
+          value={report.quality.avgResolveHours}
+          icon={Clock}
+          tone="indigo"
+        />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -772,63 +915,21 @@ function QualitySection({
             </Select>
           </div>
 
-          <div className="overflow-x-auto rounded-md border border-border">
-            <table className="w-full text-sm">
-              <thead className="bg-muted/60 text-xs uppercase tracking-wider text-muted-foreground">
-                <tr>
-                  <th className="text-left px-4 py-3 font-medium">Incident</th>
-                  <th className="text-left px-4 py-3 font-medium">Category</th>
-                  <th className="text-left px-4 py-3 font-medium">Reference</th>
-                  <th className="text-left px-4 py-3 font-medium">Severity</th>
-                  <th className="text-left px-4 py-3 font-medium">State</th>
-                  <th className="text-left px-4 py-3 font-medium">Owner</th>
-                  <th className="text-left px-4 py-3 font-medium">Raised</th>
-                  <th className="px-4 py-3" />
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {incidents.length === 0 && (
-                  <tr>
-                    <td colSpan={8} className="text-center text-muted-foreground py-10 text-sm">
-                      No quality incidents match the current filters.
-                    </td>
-                  </tr>
-                )}
-                {incidents.map((i) => (
-                  <tr key={i.id} className="hover:bg-muted/40">
-                    <td className="px-4 py-2.5">
-                      <div className="font-mono text-xs">{i.incident_no}</div>
-                      <div className="text-[11px] text-muted-foreground">
-                        {SOURCE_LABEL[i.source] ?? i.source}
-                      </div>
-                    </td>
-                    <td className="px-4 py-2.5">{i.category}</td>
-                    <td className="px-4 py-2.5">
-                      <div className="font-mono text-xs">{i.delivery_no || i.reference || "—"}</div>
-                      <div className="text-[11px] text-muted-foreground">{i.airline || "—"}</div>
-                    </td>
-                    <td className="px-4 py-2.5">
-                      <Badge variant="outline" className={SEVERITY_TONE[i.severity]}>
-                        {i.severity}
-                      </Badge>
-                    </td>
-                    <td className="px-4 py-2.5">
-                      <Badge variant="outline" className={STATE_TONE[i.state]}>
-                        {i.state}
-                      </Badge>
-                    </td>
-                    <td className="px-4 py-2.5 text-xs">{i.assignee || "Unassigned"}</td>
-                    <td className="px-4 py-2.5 text-xs text-muted-foreground">{fmtDate(i.created_at)}</td>
-                    <td className="px-4 py-2.5 text-right">
-                      <Button size="sm" variant="outline" onClick={() => setActive(i)}>
-                        {canManage ? "Manage" : "View"}
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable
+            data={incidents}
+            columns={incidentColumns}
+            rowId={(i) => i.id}
+            ariaLabel="Quality incidents"
+            searchText={(i) =>
+              [i.incident_no, i.category, i.delivery_no, i.reference, i.airline, i.assignee].join(
+                " ",
+              )
+            }
+            searchPlaceholder="Search incidents…"
+            emptyTitle="No quality incidents"
+            emptyDescription="No quality incidents match the current filters."
+            pageSize={25}
+          />
         </CardContent>
       </Card>
 
@@ -886,8 +987,8 @@ function RaiseIncidentDialog({
         </DialogHeader>
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Raised through the Workflow Engine, so it appears in the register, the Timeline and
-            the Audit Log immediately.
+            Raised through the Workflow Engine, so it appears in the register, the Timeline and the
+            Audit Log immediately.
           </p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div className="space-y-1.5">

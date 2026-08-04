@@ -1,13 +1,7 @@
 import { cn } from "@/lib/utils";
 import { LF_STATUS_COLOR, lfStatusLabel, type LFStatus } from "@/lib/lost-found/statuses";
 
-export function LfStatusBadge({
-  status,
-  className,
-}: {
-  status: LFStatus;
-  className?: string;
-}) {
+export function LfStatusBadge({ status, className }: { status: LFStatus; className?: string }) {
   return (
     <span
       className={cn(
