@@ -62,6 +62,7 @@ export const lostFoundSchema: DatasetSchema = {
     const ids: string[] = [];
     let created = 0;
     let warnings = 0;
+    let rejected = 0;
     const optional: { key: string; label: string }[] = [
       { key: "mobile2", label: "Mobile 2" },
       { key: "email", label: "Email" },
@@ -78,8 +79,6 @@ export const lostFoundSchema: DatasetSchema = {
     for (const raw of rows) {
       const missingFields = optional.filter((f) => isBlank(raw[f.key])).map((f) => f.label);
       const incomplete = missingFields.length > 0;
-      if (incomplete) warnings++;
-
       const bagTag = String(raw.bagTag ?? "").trim();
       const numBags = Number(raw.numberOfBags) > 0 ? Number(raw.numberOfBags) : 1;
       const rawPriority = raw.priority ? String(raw.priority) : "Normal";
@@ -89,7 +88,9 @@ export const lostFoundSchema: DatasetSchema = {
         .filter((v) => v !== undefined && v !== null && String(v).trim() !== "")
         .join(" — ");
 
-      const c = await addCase({
+      let c: Awaited<ReturnType<typeof addCase>> = null;
+      try {
+        c = await addCase({
         passengerName: String(raw.passengerName ?? "").trim(),
         flightNumber: String(raw.flightNumber ?? ""),
         pirNumber: String(raw.pirNumber ?? "").trim(),
@@ -129,11 +130,22 @@ export const lostFoundSchema: DatasetSchema = {
         },
         incomplete: incomplete || undefined,
         missingFields: incomplete ? missingFields : undefined,
-      });
-      if (c) ids.push(c.bagId);
+        });
+      } catch {
+        // Rejected by the Workflow Engine (duplicate PIR / bag tag). No case
+        // number is consumed, so numbering stays gapless.
+        rejected++;
+        continue;
+      }
+      if (!c) {
+        rejected++;
+        continue;
+      }
+      ids.push(c.bagId);
       created++;
+      if (incomplete) warnings++;
     }
-    return { created, updated: 0, skipped: 0, warnings, rejected: 0, ids };
+    return { created, updated: 0, skipped: 0, warnings, rejected, ids };
   },
 };
 

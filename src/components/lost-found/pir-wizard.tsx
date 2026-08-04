@@ -171,6 +171,7 @@ export function PirWizard({
   onClose: () => void;
 }) {
   const [step, setStep] = useState(0);
+  const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState<F>(() =>
     mode === "edit" && caseData ? fromCase(caseData) : empty(),
   );
@@ -303,6 +304,17 @@ export function PirWizard({
       toast.error("Please complete every required field before submitting.");
       return;
     }
+    // Guard against a double click issuing two create calls.
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      await runSubmit();
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function runSubmit() {
     const cleanTags = form.bagTags.map((t) => t.trim()).filter(Boolean);
     const commonPatch: Partial<BaggageCase> = {
       passengerName: passengerName(),
@@ -355,11 +367,19 @@ export function PirWizard({
       });
       toast.success(`Case ${caseData.pirNumber} updated`);
     } else {
-      const created = await addCase({
-        ...(commonPatch as Omit<BaggageCase, "bagId" | "status" | "storage" | "createdAt">),
-        documents: [],
-        initialLfStatus: "Open",
-      });
+      let created: BaggageCase | null = null;
+      try {
+        created = await addCase({
+          ...(commonPatch as Omit<BaggageCase, "bagId" | "status" | "storage" | "createdAt">),
+          documents: [],
+          initialLfStatus: "Open",
+        });
+      } catch (err) {
+        // The case was rejected before a BAG number was allocated — the
+        // operator can correct the field and retry without burning a number.
+        toast.error((err as Error).message || "Case could not be registered");
+        return;
+      }
       if (created) toast.success(`Case registered · ${created.pirNumber} · ${created.bagId}`);
     }
     onClose();
@@ -686,9 +706,13 @@ export function PirWizard({
               Next <ChevronRight className="h-4 w-4" />
             </Button>
           ) : (
-            <Button onClick={submit} disabled={!canSubmit} className="gap-1.5">
+            <Button onClick={submit} disabled={!canSubmit || submitting} className="gap-1.5">
               <Upload className="h-4 w-4" />
-              {mode === "edit" ? "Save Changes" : "Register Case"}
+              {submitting
+                ? "Saving…"
+                : mode === "edit"
+                  ? "Save Changes"
+                  : "Register Case"}
             </Button>
           )}
         </div>
