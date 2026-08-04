@@ -1235,15 +1235,24 @@ function FeedbackScreen({
   const [recommend, setRecommend] = useState<"yes" | "no">("yes");
   const [comments, setComments] = useState("");
   const mutatePassenger = useServerFn(mutatePassengerView);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (submitting) return;
     const avg = Math.round((overall + prof + time) / 3);
     const feedbackComments =
       `Overall ${overall}★ · Professionalism ${prof}★ · Time ${time}★ · Safe: ${safe} · Recommend: ${recommend}` +
       (comments ? ` — ${comments}` : "");
-    if (token) {
-      await mutatePassenger({
+    if (!token) {
+      onSubmit();
+      return;
+    }
+    setSubmitting(true);
+    setError("");
+    try {
+      const result = await mutatePassenger({
         data: {
           token,
           action: "submit-feedback",
@@ -1252,8 +1261,16 @@ function FeedbackScreen({
           comments: feedbackComments,
         },
       });
+      if (!result?.ok) {
+        setError("We couldn't save your feedback. Please try again · تعذر حفظ التقييم، حاول مرة أخرى");
+        return;
+      }
+      onSubmit();
+    } catch {
+      setError("We couldn't save your feedback. Please try again · تعذر حفظ التقييم، حاول مرة أخرى");
+    } finally {
+      setSubmitting(false);
     }
-    onSubmit();
   }
 
   return (
@@ -1341,12 +1358,19 @@ function FeedbackScreen({
             />
           </div>
 
+          {error && (
+            <p className="text-sm text-white bg-white/10 border border-white/20 rounded-xl px-4 py-3">
+              {error}
+            </p>
+          )}
+
           <Button
             type="submit"
             size="lg"
+            disabled={submitting}
             className="w-full h-14 rounded-2xl text-base bg-white text-[color:var(--iab-navy)] active:scale-[0.99]"
           >
-            Submit Feedback · إرسال التقييم
+            {submitting ? "Submitting… · جارٍ الإرسال" : "Submit Feedback · إرسال التقييم"}
           </Button>
         </form>
       </div>
