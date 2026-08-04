@@ -744,12 +744,15 @@ export async function addCase(
         : [],
   };
   try {
+    const before = new Set(state.cases.map((c) => c.bagId));
     await rpc("lf_create_case", { p_payload: payload });
-    const created = state.cases.find((c) => c.pirNumber === input.pirNumber);
+    // PIR is optional, so the new case cannot be identified by PIR. Match on
+    // the BAG number that was not present before the create.
+    const created = state.cases.find((c) => !before.has(c.bagId));
     if (created && input.initialLfStatus && input.initialLfStatus !== "Open") {
       await updateLfStatus(created.bagId, input.initialLfStatus, { force: true });
     }
-    return state.cases.find((c) => c.pirNumber === input.pirNumber) ?? null;
+    return (created ? state.cases.find((c) => c.bagId === created.bagId) : undefined) ?? null;
   } catch (err) {
     // Surface the Workflow Engine's business-readable message (duplicate PIR,
     // duplicate bag tag, …) to the caller instead of swallowing it — the

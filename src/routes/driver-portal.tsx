@@ -393,7 +393,7 @@ function DeliveryCard({
           <div className="min-w-0">
             <p className="font-semibold">{d.passengerName}</p>
             <p className="text-xs font-mono text-muted-foreground" dir="ltr">
-              {d.deliveryId} · PIR {d.pirNumber} · Tag {bagTag}
+              {d.deliveryId} · Ref {d.pirNumber} · Tag {bagTag}
             </p>
           </div>
         </div>

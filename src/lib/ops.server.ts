@@ -260,7 +260,7 @@ export async function buildActivitySnapshot(
       at: t.occurred_at,
       bagId: kase?.case_no,
       deliveryId: del?.delivery_no,
-      pirNumber: kase?.pir_number || undefined,
+      pirNumber: kase?.pir_number || kase?.case_no || undefined,
       passengerName: del?.passenger_name ?? kase?.passenger_name ?? undefined,
     };
   });

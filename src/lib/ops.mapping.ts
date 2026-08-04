@@ -90,6 +90,17 @@ export interface OpsSecondarySnapshot {
   driverRoutes: Record<string, DriverRoute>;
 }
 
+/**
+ * Canonical operational reference for a case or delivery.
+ * Business rule: PIR number when present, otherwise the BAG number.
+ */
+export function operationalRef(
+  pirNumber: string | null | undefined,
+  bagId: string | null | undefined,
+): string {
+  return (pirNumber ?? "").trim() || (bagId ?? "").trim();
+}
+
 export function mapCase(
   c: Row,
   bags: Row[],
@@ -103,7 +114,9 @@ export function mapCase(
     bagId: c.case_no,
     passengerName: c.passenger_name ?? "",
     flightNumber: c.flight_number ?? "",
-    pirNumber: c.pir_number ?? "",
+    // PIR is optional by business rule. When it is absent the BAG number is
+    // the operational reference, so no screen ever renders a blank identifier.
+    pirNumber: operationalRef(c.pir_number as string | null, c.case_no as string),
     bagTagNumber: tags[0] ?? "",
     arrivalDate: c.arrival_date ?? "",
     contact: c.contact_mobile ?? "",

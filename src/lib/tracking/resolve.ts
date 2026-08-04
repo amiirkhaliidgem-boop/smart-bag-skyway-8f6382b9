@@ -56,15 +56,16 @@ export function resolveTracking(
   const byDelivery = data.deliveries.find((d) => norm(d.deliveryId) === q);
   if (byDelivery) return finish("Delivery ID", undefined, byDelivery);
 
-  // 2. PIR Number
+  // 2. Bag ID — checked before PIR because PIR-less cases fall back to the
+  // BAG number as their operational reference.
+  const byBagId = data.cases.find((c) => norm(c.bagId) === q);
+  if (byBagId) return finish("Bag ID", byBagId);
+
+  // 3. PIR Number
   const byPir = data.cases.find((c) => norm(c.pirNumber) === q);
   if (byPir) return finish("PIR Number", byPir);
   const delByPir = data.deliveries.find((d) => norm(d.pirNumber) === q);
   if (delByPir) return finish("PIR Number", undefined, delByPir);
-
-  // 3. Bag ID
-  const byBagId = data.cases.find((c) => norm(c.bagId) === q);
-  if (byBagId) return finish("Bag ID", byBagId);
 
   // 4. Bag Tag (single tag or per-bag tag list)
   const byTag = data.cases.find(
