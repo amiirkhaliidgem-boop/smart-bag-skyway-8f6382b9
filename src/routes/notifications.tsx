@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { DateRangeFilter } from "@/components/filters/date-range-filter";
+import { DateRangeFilter, defaultDateRange } from "@/components/filters/date-range-filter";
 import { useMemo, useState } from "react";
 import { useStore, useOpsLoading, type NotificationEvent } from "@/lib/store";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -58,8 +58,8 @@ function NotificationCenter() {
 
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [channelFilter, setChannelFilter] = useState<string>("all");
-  const [dateFrom, setDateFrom] = useState<string>("");
-  const [dateTo, setDateTo] = useState<string>("");
+  const [dateFrom, setDateFrom] = useState(() => defaultDateRange().from);
+  const [dateTo, setDateTo] = useState(() => defaultDateRange().to);
   const [passengerFilter, setPassengerFilter] = useState<string>("");
   const [deliveryFilter, setDeliveryFilter] = useState<string>("");
   const [selectedId, setSelectedId] = useState<string | null>(null);

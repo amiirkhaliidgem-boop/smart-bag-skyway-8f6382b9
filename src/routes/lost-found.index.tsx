@@ -37,7 +37,7 @@ import { LfStatusBadge } from "@/components/lf-status-badge";
 import { useStaffOfficers, type StaffOfficer } from "@/lib/admin/officers";
 import { PirWizard } from "@/components/lost-found/pir-wizard";
 import { BulkToolbar } from "@/components/bulk/bulk-toolbar";
-import { DateRangeFilter } from "@/components/filters/date-range-filter";
+import { DateRangeFilter, defaultDateRange } from "@/components/filters/date-range-filter";
 import { PirPrintHost, pirPrintBus } from "@/components/lost-found/pir-print-host";
 import {
   Plus,
@@ -83,8 +83,8 @@ function LostFoundPage() {
   const cases = useStore((s) => s.cases);
   const loading = useOpsLoading();
   const [status, setStatus] = useState<LFStatus | "all">("all");
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
+  const [from, setFrom] = useState(() => defaultDateRange().from);
+  const [to, setTo] = useState(() => defaultDateRange().to);
   const [openNew, setOpenNew] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);

@@ -19,7 +19,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { DateRangeFilter } from "@/components/filters/date-range-filter";
+import { DateRangeFilter, defaultDateRange } from "@/components/filters/date-range-filter";
 import { cn } from "@/lib/utils";
 import {
   Activity,
@@ -696,8 +696,8 @@ function TimelinePage() {
   }, [cases, workflow]);
 
   const [q, setQ] = useState("");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
+  const [dateFrom, setDateFrom] = useState(() => defaultDateRange().from);
+  const [dateTo, setDateTo] = useState(() => defaultDateRange().to);
   const [fStatus, setFStatus] = useState<"all" | WorkflowStatus>("all");
   const [fModule, setFModule] = useState<"all" | ModuleSource>("all");
   const [fEmployee, setFEmployee] = useState("all");

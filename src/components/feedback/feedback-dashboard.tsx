@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { BulkToolbar } from "@/components/bulk/bulk-toolbar";
-import { DateRangeFilter } from "@/components/filters/date-range-filter";
+import { DateRangeFilter, defaultDateRange } from "@/components/filters/date-range-filter";
 import { exportFeedbackToXlsx, fmtDateTime, type FeedbackRow } from "@/lib/feedback/export-xlsx";
 import { Star, FileSpreadsheet, RotateCcw, Search } from "lucide-react";
 import { toast } from "sonner";
@@ -20,8 +20,8 @@ export function FeedbackDashboard() {
   const loading = useOpsLoading();
 
   const [q, setQ] = useState("");
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
+  const [from, setFrom] = useState(() => defaultDateRange().from);
+  const [to, setTo] = useState(() => defaultDateRange().to);
   const [airline, setAirline] = useState("all");
   const [agent, setAgent] = useState("all");
   const [selected, setSelected] = useState<string[]>([]);

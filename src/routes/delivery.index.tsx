@@ -43,7 +43,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { PodPrintHost, podPrintBus } from "@/components/delivery/pod-print-host";
 import { ReturnToAirportDialog } from "@/components/delivery/return-to-airport-dialog";
-import { DateRangeFilter } from "@/components/filters/date-range-filter";
+import { DateRangeFilter, defaultDateRange } from "@/components/filters/date-range-filter";
 import { PageLoading } from "@/components/ops-skeleton";
 import { PageHeader } from "@/components/layout/page-header";
 import { DataTable, type DataColumn } from "@/components/layout/data-table";
@@ -70,8 +70,8 @@ function DispatchCenter() {
   // ---- Filters (URL-independent; local UI state for this operational view)
   const [q, setQ] = useState("");
   const [stageF, setStageF] = useState<DeliveryStage | "all">("all");
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
+  const [from, setFrom] = useState(() => defaultDateRange().from);
+  const [to, setTo] = useState(() => defaultDateRange().to);
 
   const filtered = useMemo(() => {
     return deliveries.filter((d) => {
