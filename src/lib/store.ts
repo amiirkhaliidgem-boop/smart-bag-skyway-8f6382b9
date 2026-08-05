@@ -631,7 +631,7 @@ function boot() {
   const channel = supabase
     .channel("ops_sync")
     .on("postgres_changes", { event: "*", schema: "public", table: "deliveries" }, () =>
-      scheduleRefresh("core", "secondary"),
+      scheduleRefresh("core"),
     )
     .on("postgres_changes", { event: "*", schema: "public", table: "baggage_cases" }, () =>
       scheduleRefresh("core"),
@@ -642,6 +642,14 @@ function boot() {
     .subscribe();
   window.addEventListener("beforeunload", () => {
     void supabase.removeChannel(channel);
+  });
+
+  // A tab that was hidden while changes arrived catches up once, on return,
+  // instead of every tab refetching in lockstep the moment the write lands.
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden || !pendingWhileHidden) return;
+    pendingWhileHidden = false;
+    scheduleRefresh(...(refreshTiers.size ? Array.from(refreshTiers) : (["core"] as const)));
   });
 }
 
