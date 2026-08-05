@@ -187,31 +187,17 @@ export async function buildCoreSnapshot(supabase: SupabaseClient<any>): Promise<
 export async function buildActivitySnapshot(
   supabase: SupabaseClient<any>,
 ): Promise<OpsActivitySnapshot> {
-  const [refs, auditRows, notifRows] = await Promise.all([
-    loadRefs(supabase),
-    q(
-      supabase
-        .from("audit_events")
-        .select("*")
-        .order("occurred_at", { ascending: false })
-        .limit(SNAPSHOT_LIMITS.audit),
-    ),
-    q(
-      supabase
-        .from("notification_events")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .limit(SNAPSHOT_LIMITS.notifications),
-    ),
-  ]);
-
-  const timelineRows = await q(
-    supabase
-      .from("timeline_events")
-      .select("*")
-      .order("occurred_at", { ascending: false })
-      .limit(SNAPSHOT_LIMITS.timeline),
-  );
+  const payload = await rpcRows(supabase, "ops_activity_rows", {
+    p_cases: SNAPSHOT_LIMITS.cases,
+    p_deliveries: SNAPSHOT_LIMITS.deliveries,
+    p_audit: SNAPSHOT_LIMITS.audit,
+    p_notifications: SNAPSHOT_LIMITS.notifications,
+    p_timeline: SNAPSHOT_LIMITS.timeline,
+  });
+  const refs = refMaps(payload);
+  const auditRows = payload.audit ?? [];
+  const notifRows = payload.notifications ?? [];
+  const timelineRows = payload.timeline ?? [];
 
   const timeline = (timelineRows as Row[]).map((t) => {
     const kase = t.case_id ? refs.caseById.get(t.case_id) : undefined;
