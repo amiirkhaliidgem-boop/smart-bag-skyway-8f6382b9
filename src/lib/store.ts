@@ -637,10 +637,39 @@ if (typeof window !== "undefined") setTimeout(boot, 0);
 
 type RpcArgs = Record<string, unknown>;
 
+/**
+ * The Workflow Engine bounds every row lock (lock_timeout) and turns a lock
+ * that could not be taken into a business conflict. Two distinct conflicts
+ * come back from it:
+ *
+ *  - a *lock* conflict — someone else held the record for the moment we tried.
+ *    Nothing was written, so retrying is safe and invisible to the operator.
+ *  - a *version* conflict — the record genuinely changed since it was loaded.
+ *    Retrying would silently overwrite that change, so it is surfaced instead.
+ */
+const LOCK_CONFLICT = /being updated by someone else/i;
+const LOCK_RETRIES = 2;
+
+function isLockConflict(err: unknown) {
+  return LOCK_CONFLICT.test(err instanceof Error ? err.message : String(err));
+}
+
 async function rpc(fn: string, args: RpcArgs) {
-  const result = await callOpsRpc({ data: { fn, args } });
-  await refreshOps();
-  return result;
+  let lastError: unknown;
+  for (let attempt = 0; attempt <= LOCK_RETRIES; attempt += 1) {
+    try {
+      const result = await callOpsRpc({ data: { fn, args } });
+      await refreshOps();
+      return result;
+    } catch (err) {
+      lastError = err;
+      if (!isLockConflict(err) || attempt === LOCK_RETRIES) break;
+      // Jittered backoff so simultaneous writers do not re-collide in lockstep.
+      const delay = 120 * 2 ** attempt + Math.floor(Math.random() * 120);
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+  }
+  throw lastError;
 }
 
 function caseUuid(bagId: string) {
