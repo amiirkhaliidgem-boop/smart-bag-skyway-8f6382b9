@@ -95,6 +95,15 @@ export async function ensureAuthIdentity(params: {
 }): Promise<string> {
   const { existingUserId } = params;
   if (existingUserId) {
+    // Keep the sign-in address aligned with the current username/email first.
+    await syncAuthIdentity({
+      appUserId: params.appUserId,
+      authUserId: existingUserId,
+      username: params.username,
+      email: params.email,
+      fullName: params.fullName,
+      userType: params.userType,
+    });
     const { error } = await supabaseAdmin.auth.admin.updateUserById(existingUserId, {
       password: params.password,
     });
