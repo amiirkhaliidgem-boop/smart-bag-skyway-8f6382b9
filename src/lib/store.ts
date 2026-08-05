@@ -571,9 +571,23 @@ export async function refreshOps(): Promise<void> {
 
 let refreshTimer: ReturnType<typeof setTimeout> | null = null;
 let refreshTiers = new Set<keyof OpsLoading>();
-/** Debounced, tier-scoped realtime refresh: only reload what actually changed. */
+let pendingWhileHidden = false;
+
+/**
+ * Debounced, tier-scoped realtime refresh: only reload what actually changed.
+ *
+ * Every refresh costs one pooled PostgREST connection per tier, and every open
+ * tab reacts to the same realtime event — so an unthrottled refresh multiplies
+ * database load by (tabs x tiers) on every single write. The debounce window
+ * collapses bursts, and a hidden tab defers entirely until it is looked at
+ * again, so background tabs cost nothing.
+ */
 function scheduleRefresh(...tiers: (keyof OpsLoading)[]) {
   tiers.forEach((t) => refreshTiers.add(t));
+  if (typeof document !== "undefined" && document.hidden) {
+    pendingWhileHidden = true;
+    return;
+  }
   if (refreshTimer) return;
   refreshTimer = setTimeout(() => {
     refreshTimer = null;
@@ -582,7 +596,7 @@ function scheduleRefresh(...tiers: (keyof OpsLoading)[]) {
     if (pending.has("core")) void refreshOpsCore();
     if (pending.has("activity")) void refreshOpsActivity();
     if (pending.has("secondary")) void refreshOpsSecondary();
-  }, 150);
+  }, 750);
 }
 
 function boot() {
