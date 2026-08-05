@@ -188,7 +188,9 @@ function AuthGate() {
       const busy = /being updated by someone else|55P03|57014|lock_timeout|statement timeout|canceling statement/i.test(
         detail.message,
       );
-      const conflict = /version|40001|40P01|conflict|changed since you opened/i.test(detail.message);
+      const conflict = /version|PT409|40001|40P01|conflict|changed since you opened/i.test(
+        detail.message,
+      );
       if (busy) {
         toast.error("Record is busy", {
           description:

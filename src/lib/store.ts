@@ -661,8 +661,11 @@ type RpcArgs = Record<string, unknown>;
 
 /**
  * The Workflow Engine bounds every row lock (lock_timeout) and turns a lock
- * that could not be taken into a business conflict. Two distinct conflicts
- * come back from it:
+ * that could not be taken into a business conflict, raised as SQLSTATE PT409
+ * so PostgREST answers 409 immediately. (40001 must never be used: PostgREST
+ * treats serialization failures as retryable and re-runs the request until
+ * the client gives up, leaking a pooled connection each time.) Two distinct
+ * conflicts come back from it:
  *
  *  - a *lock* conflict — someone else held the record for the moment we tried.
  *    Nothing was written, so retrying is safe and invisible to the operator.
