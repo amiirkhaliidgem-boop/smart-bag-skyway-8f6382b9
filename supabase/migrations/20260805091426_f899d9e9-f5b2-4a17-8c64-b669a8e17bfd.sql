@@ -1,0 +1,1 @@
+REVOKE ALL ON FUNCTION public.case_bags_tag_unique() FROM PUBLIC, anon, authenticated;

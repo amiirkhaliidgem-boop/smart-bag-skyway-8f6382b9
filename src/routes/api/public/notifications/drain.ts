@@ -41,16 +41,12 @@ export const Route = createFileRoute("/api/public/notifications/drain")({
 
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const db = supabaseAdmin as any;
-        const nowIso = new Date().toISOString();
-
-        const { data: claimed, error: claimError } = await db
-          .from("notification_events")
-          .select("*")
-          .in("state", ["queued", "failed"])
-          .lt("attempt_count", MAX_ATTEMPTS)
-          .lte("next_attempt_at", nowIso)
-          .order("created_at")
-          .limit(BATCH_SIZE);
+        // Claim and mark in a single statement (FOR UPDATE SKIP LOCKED), so two
+        // overlapping runs can never pick up the same event and double-send it.
+        const { data: claimed, error: claimError } = await db.rpc("notif_claim_batch_atomic", {
+          p_limit: BATCH_SIZE,
+          p_max_attempts: MAX_ATTEMPTS,
+        });
 
         if (claimError) {
           return new Response(JSON.stringify({ error: claimError.message }), {
@@ -65,14 +61,6 @@ export const Route = createFileRoute("/api/public/notifications/drain")({
             headers: { "Content-Type": "application/json" },
           });
         }
-
-        await db
-          .from("notification_events")
-          .update({ state: "sending", last_attempt_at: nowIso })
-          .in(
-            "id",
-            batch.map((n) => n.id),
-          );
 
         let sent = 0;
         let failed = 0;
