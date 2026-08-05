@@ -98,27 +98,57 @@ export const saveAppUser = createServerFn({ method: "POST" })
     let appUserId = data.id ?? null;
 
     if (appUserId) {
-      const { error } = await supabaseAdmin.from("app_users").update(row as never).eq("id", appUserId);
-      if (error) throw new Error(friendlyUserError(error.message));
-      // A Delivery Agent's PIN is also their sign-in password on the single
-      // login page, so keep the auth identity in step with it.
-      if (data.userType === "driver" && data.pin) {
-        const { ensureAuthIdentity } = await import("@/lib/admin/identity.server");
-        const { data: existing } = await supabaseAdmin
-          .from("app_users")
-          .select("user_id")
-          .eq("id", appUserId)
-          .maybeSingle();
+      const { data: existing } = await supabaseAdmin
+        .from("app_users")
+        .select("user_id")
+        .eq("id", appUserId)
+        .maybeSingle();
+      const { ensureAuthIdentity, syncAuthIdentity } = await import("@/lib/admin/identity.server");
+      // A Delivery Agent signs in with their PIN; staff with their password.
+      const credential = data.userType === "driver" ? data.pin : data.password;
+
+      // Identity work runs before the profile write so a rejected edit (e.g. a
+      // colliding sign-in address) leaves nothing half-applied.
+      if (existing?.user_id) {
+        // Editing a username or email changes the address the login page
+        // resolves — push it to Supabase Auth so credentials keep working.
+        await syncAuthIdentity({
+          appUserId,
+          authUserId: existing.user_id,
+          username: data.username,
+          email: data.email,
+          fullName: data.fullName,
+          userType: data.userType,
+        });
+        if (credential) {
+          const { error: pwError } = await supabaseAdmin.auth.admin.updateUserById(
+            existing.user_id,
+            { password: credential },
+          );
+          if (pwError) throw new Error(pwError.message);
+        }
+      } else {
+        // No orphaned profiles: an account without a sign-in identity gets one.
+        if (!credential) {
+          throw new Error(
+            data.userType === "driver"
+              ? "This account has no sign-in identity yet. Set a 6–8 digit PIN to create it."
+              : "This account has no sign-in identity yet. Set a password to create it.",
+          );
+        }
         await ensureAuthIdentity({
           appUserId,
           username: data.username,
           email: data.email,
           fullName: data.fullName,
-          userType: "driver",
-          password: data.pin,
-          existingUserId: existing?.user_id ?? null,
+          userType: data.userType,
+          password: credential,
+          existingUserId: null,
         });
       }
+
+      const { error } = await supabaseAdmin.from("app_users").update(row as never).eq("id", appUserId);
+      if (error) throw new Error(friendlyUserError(error.message));
       await logAdminAction(actor, "User Updated", data.fullName, `Employee ${data.employeeId}`);
     } else {
       if (data.userType === "staff") {
