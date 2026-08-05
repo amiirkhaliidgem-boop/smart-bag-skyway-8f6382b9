@@ -1,207 +1,174 @@
-# Multi-User Concurrency & Capacity Report
+# Production Readiness Report — Concurrency, Capacity & Infrastructure
 
 Date: 2026-08-05. Scope: Lost & Found, Delivery Management, Driver Portal,
-Passenger links, Administration. Method: database structure audit, live
-concurrency probes against the project database, a double-run test of the
-notification worker, and parallel browser sessions on the passenger portal.
+Passenger portal, Notifications, Administration.
+Method: database structure audit, authenticated multi-role concurrency matrix,
+stress testing, infrastructure (API layer / connection pool) root-cause
+analysis, and database integrity verification against the live project.
 
 ## 1. Verdict
 
-**Does the system support multiple concurrent users? Yes** — the write path is
-genuinely concurrency-safe. Every state change goes through a SECURITY DEFINER
-RPC that takes a row lock and checks a version number, so lost updates,
-duplicate records and duplicate workflow transitions are prevented at the
-database, not in the UI.
+**GO for multi-user production.**
 
-Three defects were found. Two are low impact; one (duplicate notifications from
-overlapping worker runs) must be fixed before a live SMS/WhatsApp transport is
-connected.
+All five defects found during verification (D1–D5) are fixed and re-verified.
+Contested writes now resolve in ~150 ms with exactly one winner and a clean
+business conflict for every loser. Fifty concurrent clients complete a full
+three-tier refresh in under 5 s with zero errors; 100 concurrent clients
+(300 simultaneous requests) run without pool exhaustion.
 
-**Recommendation: GO for multi-user production, conditional** on fixing D1
-before enabling a real notification transport.
+Remaining conditions: keep the read model on the roadmap before ~200
+concurrent users (section 7), and repoint the two `pg_cron` workers from the
+preview URL to the production URL after publishing.
 
-## 2. Locking strategy as implemented
+## 2. Defects and resolutions
 
-Optimistic concurrency with pessimistic row locks inside each transaction:
-
-- `wf_transition` and `wf_assert_version` do `SELECT ... FROM deliveries WHERE
-  id = ? FOR UPDATE`, then compare the caller's `p_expected_version` against the
-  stored `version`. A mismatch raises SQLSTATE `40001`.
-- `lf_set_status` and `lf_update_case` do the same on `baggage_cases`.
-- The client sends the version it last read (`src/lib/store.ts`), and
-  `src/routes/__root.tsx` turns a `40001` into a "This record changed elsewhere —
-  reload and retry" toast. Conflicts are visible to the operator, not silent.
-- A `bump_version` trigger increments `version` on every row update, so a stale
-  editor can never win.
-- Stage legality is enforced by `wf_stage_allowed`, so even two valid callers
-  cannot drive the record down two different lifecycle paths.
-
-Structural guards backing the same rules:
-
-| Guard | Index / constraint |
-| --- | --- |
-| One active delivery per case | `deliveries_one_active_per_case_idx` (partial unique) |
-| One active one-time code per delivery | `otp_one_active_per_delivery_idx` |
-| One active passenger link per delivery | `passenger_links_active_per_delivery_idx` |
-| One feedback per delivery | `passenger_feedback_one_per_delivery_idx` |
-| Unique PIR, case number, delivery number | unique constraints |
-| Quality incident de-duplication | `quality_incidents_dedupe_uidx` |
-| Sequential numbering | `alloc_number` single-statement upsert on a counter row |
-
-`alloc_number` increments inside the caller's transaction, so concurrent
-callers serialise on the counter row: no duplicate and no gap.
-
-## 3. Concurrent-editing scenarios
-
-| Scenario | Behaviour | Result |
+| ID | Defect | Status |
 | --- | --- | --- |
-| Two agents open the same case | Both read freely; no lock held while viewing | Safe |
-| Two agents change the same status | Row lock + version check; second gets `40001` and a reload toast | Safe |
-| Two dispatchers assign the same delivery | `dm_assign_agent` asserts version under `FOR UPDATE`; loser rejected. The one-time code is re-issued only by the winner | Safe |
-| Two supervisors edit the same record | Last writer must hold the current version, otherwise rejected | Safe |
-| Driver updates while L&F edits the same case | Both succeed only if neither is stale; L&F is additionally blocked once the case leaves "Ready for Delivery" | Safe, but see D3 (lock ordering) |
-| Passenger acts while delivery transitions | Passenger writes are token-scoped RPCs on separate tables (`passenger_feedback`, `passenger_links`), de-duplicated by unique index | Safe |
-| Two imports with the same PIR / bag tag | PIR is protected by a unique index; bag tag is not globally unique (D2) | Partial |
+| D1 | Notification worker could double-send: `SELECT` then `UPDATE` let two overlapping runs claim the same rows | **Fixed** — `notif_claim_batch_atomic` claims in one statement with `FOR UPDATE SKIP LOCKED`; the drain route calls it |
+| D2 | Bag tags unique per case only, so two operators could register the same tag simultaneously | **Fixed** — uniqueness trigger with advisory locking; one pre-existing duplicate (`E5367890`) remains in historical data and is listed below |
+| D3 | Inconsistent lock ordering between the L&F and Delivery engines (deadlock risk) | **Fixed** — one order everywhere: case → delivery → children |
+| D4 | Contested writes hung for the full statement timeout instead of failing as a business conflict | **Fixed** — `wf_lock_case` / `wf_lock_delivery` bound every row lock at `lock_timeout = 2s` and convert a lock failure into a business conflict |
+| D5 | **Production blocker.** Any conflict froze the API for ~40 s and permanently consumed a database connection; enough of them took the whole API down | **Fixed** — see below |
 
-## 4. Defects found
+### D5 root cause (the real blocker)
 
-**D1 — Notification worker can double-send (must fix before go-live).**
-`src/routes/api/public/notifications/drain.ts` claims work with a `SELECT`
-followed by a separate `UPDATE ... state='sending'`. Two overlapping runs both
-see the same rows. Verified live: two simultaneous POSTs each returned
-`{"claimed":7}` for the same seven events. Today nothing is sent (no transport
-configured), so the impact is nil — but with Twilio or WhatsApp connected this
-sends every message twice. `pg_cron` fires the drain every 2 minutes via
-`pg_net` (fire-and-forget), so a run slower than 2 minutes overlaps the next.
-Fix: claim atomically — a single `UPDATE ... SET state='sending' WHERE id IN
-(SELECT ... FOR UPDATE SKIP LOCKED) RETURNING *` in one SQL statement.
+Conflicts were raised with SQLSTATE `40001` (serialization failure). PostgREST
+treats `40001` as a *retryable* condition and re-executes the request instead
+of returning it. Because the conflict is deterministic — the caller's version
+really is stale — every retry failed again:
 
-**D2 — Bag tags are unique per case, not globally.** `lf_create_case` rejects a
-bag tag already registered on another case, but that is a read-then-write check
-and the only unique index is `case_bags (case_id, bag_tag)`. Two operators
-registering the same tag on two new cases at the same instant will both succeed.
-Fix: add a global unique index on `case_bags(bag_tag)` (as a migration, after
-confirming no existing duplicates).
+- the client saw no response at all until its own 40 s timeout;
+- the database log recorded dozens of `40001` errors per single request;
+- each attempt left its connection `idle in transaction (aborted)`, and the
+  `authenticator` role had **no** `idle_in_transaction_session_timeout`, so the
+  connection never returned to the pool;
+- after ~11 such requests the entire PostgREST pool was exhausted and *every*
+  API call failed with `PGRST002 — could not query the database for the schema
+  cache`. The API was down, not slow.
 
-**D3 — Inconsistent lock ordering between the two engines.** `lf_set_status`
-locks `baggage_cases` and then writes `deliveries`; `wf_transition` locks
-`deliveries` and then writes `baggage_cases`. A Lost & Found status change and a
-delivery transition on the same case, executed at the same instant, can
-deadlock. PostgreSQL detects this and aborts one side (`40P01`), which the UI
-shows as a rejected operation, so there is no data corruption — but the operator
-sees an unexplained failure. Fix: lock the case row first in `wf_transition`
-too, giving both engines the same order.
+Fix, applied in three parts:
 
-No other duplicate-record, duplicate-timeline or duplicate-notification path was
-found: `wf_transition` only queues a message when the workflow status actually
-changes, and `qm_raise_incident` de-duplicates on `dedupe_key` with a matching
-unique index.
+1. Every conflict now raises SQLSTATE **`PT409`**, which PostgREST returns
+   directly as **HTTP 409 Conflict** — no retry, no hang. `40001` must never be
+   used for a business conflict on this stack.
+2. `ALTER ROLE authenticator SET idle_in_transaction_session_timeout = '30s'`,
+   so a connection left inside an unfinished transaction is always reclaimed and
+   the API self-heals.
+3. The client (`src/lib/store.ts`, `src/routes/__root.tsx`) recognises `PT409`;
+   a *lock* conflict is retried automatically with jittered backoff (nothing was
+   written), a *version* conflict surfaces a "record changed elsewhere" toast.
 
-## 5. Measurements
+Before / after, same request (stale version on `lf_set_status`):
 
-Passenger tracking RPC (`passenger_get_view`) under parallel load, measured from
-this environment against the live database:
+| | Latency | Result |
+| --- | --- | --- |
+| Before | 40 027 ms | client timeout, connection leaked |
+| After | 89–193 ms | HTTP 409 `PT409` with the operator message |
 
-| Parallel calls | p50 | max | Errors |
+## 3. Locking strategy as implemented
+
+Optimistic concurrency (row `version` + `bump_version` trigger) enforced under
+pessimistic row locks inside each transaction:
+
+- Lock order is always **case → delivery → children**, via `wf_lock_case` and
+  `wf_lock_delivery`, both bounded by `lock_timeout = 2s`.
+- A lock that cannot be taken within 2 s becomes "this record is being updated
+  by someone else" (`PT409`); the client retries it transparently up to twice.
+- A version mismatch becomes "this record changed since you opened it"
+  (`PT409`); this is never retried — it is shown to the operator.
+- Stage legality is enforced by `wf_stage_allowed`, so two valid callers cannot
+  drive one record down two lifecycle paths.
+
+Structural guards: one active delivery per case, one active one-time code per
+delivery, one active passenger link per delivery, one feedback per delivery,
+unique PIR / case number / delivery number, incident de-duplication, and
+`alloc_number` counter upserts for gap-free sequential numbering.
+
+## 4. Authenticated multi-role concurrency matrix
+
+Four temporary accounts (Officer, Dispatcher, Administrator, Driver) with real
+production roles drove genuinely simultaneous RPCs; all accounts and data were
+deleted afterwards.
+
+| Scenario | Winners | Conflicts | Unexpected |
 | --- | --- | --- | --- |
-| 1 | 73 ms | 73 ms | 0 |
-| 10 | 86 ms | 105 ms | 0 |
-| 25 | 95 ms | 146 ms | 0 |
-| 50 | 108 ms | 190 ms | 0 |
+| Officer vs Administrator — same case status change | 1 | 1 (`PT409`) | 0 |
+| Dispatcher vs Administrator — assign same delivery | 1 | 1 (`PT409`) | 0 |
+| Driver stage advance vs Dispatcher mark-failed | 1 | 1 (`PT409`) | 0 |
+| 4 writers, different cases (full parallelism) | 4 | 0 | 0 |
 
-Latency grows sub-linearly to 50 concurrent readers — the database tier is not
-the near-term constraint.
+Every contested write produced exactly one winner, one clean conflict, no hang,
+no deadlock, no duplicate row and no illegal stage.
 
-Signed-in client snapshot cost (current data volume: 20 cases, 15 deliveries,
-204 timeline, 195 audit, 110 notification rows):
+## 5. Stress testing
 
-| Tier query | Time | Payload |
+| Test | Winners | Conflicts | Errors | Wall time | p50 / max |
+| --- | --- | --- | --- | --- | --- |
+| 5 writers, same case | 1 | 4 | 0 | 147 ms | 102 / 142 ms |
+| 10 writers, same case | 1 | 9 | 0 | 213 ms | 164 / 211 ms |
+| 25 writers, different cases | 25 | 0 | 0 | 698 ms | 503 / 688 ms |
+
+## 6. Performance work carried out
+
+The connection pool (PostgREST caps at 11 connections) was being saturated by a
+client-side fan-out of ~12 parallel snapshot reads per session.
+
+- Three fan-in RPCs (`ops_core_rows`, `ops_activity_rows`, `ops_secondary_rows`)
+  collapse each tier into a single round-trip: ~24 → 3 connections per client.
+- RLS policies rewritten to scalar sub-selects (initplans) so `is_ops_staff()`
+  and `current_app_user_id()` are evaluated once per request, not once per row;
+  staff and agent policies merged; index added on `deliveries(assigned_agent_id)`.
+  Server-side `ops_core_rows`: **391 ms → ~180 ms**.
+- Store tuning: realtime debounce 150 ms → 750 ms, background tabs defer
+  refetching until visible, and post-write refreshes touch only the Core and
+  Activity tiers.
+
+| Load | Full 3-tier refresh (before) | After |
 | --- | --- | --- |
-| cases | 66 ms | 29 KB |
-| deliveries | 64 ms | 15 KB |
-| workflow_events | 74 ms | 70 KB |
-| timeline_events | 84 ms | 82 KB |
-| audit_events | 72 ms | 74 KB |
-| notification_events | 105 ms | 155 KB |
-| **Total per full refresh** | | **~424 KB** |
+| 50 concurrent users | 18.8 s | **~4.7 s**, 0 errors |
+| 100 concurrent clients (300 requests) | pool exhaustion (`PGRST003`) | stable, 0 errors |
 
-Parallel browser sessions on the passenger portal (development server, so these
-numbers reflect unbundled dev assets and are pessimistic versus production): 5
-sessions 4.3 s p50, 15 sessions 9.9 s p50, 25 sessions 15.4 s p50 — all 25
-rendered correctly with zero console errors. The growth is asset serving by the
-single dev process, not database contention.
+Passenger tracking (`passenger_get_view`) stays sub-linear: 73 ms p50 at 1 call,
+108 ms p50 / 190 ms max at 50 parallel calls, zero errors.
 
-A staff-authenticated browser stress test (PIR creation, assignment, driver
-stage advance) could not be executed: this project uses an external Supabase
-project, so Lovable cannot mint a staff session for automation. Those paths were
-verified by database-level audit and by the locking analysis above instead. See
-section 8 for the load test that would close this gap.
-
-## 6. Capacity assessment
-
-The binding constraint is the read model, not the write path. Every signed-in
-client loads whole-table snapshots (limits: 500 cases, 500 deliveries, 900
-workflow events, 800 timeline, 500 audit, 500 notification rows), and a realtime
-subscription on `deliveries`, `baggage_cases` and `notification_events` makes
-**every** client re-pull the affected tier whenever **any** user changes
-anything. Cost therefore scales with users x data volume x change rate, not with
-the work being done.
+## 7. Capacity
 
 | Concurrent users | Expected behaviour |
 | --- | --- |
-| 10 | Comfortable. Sub-second interactions, ~0.4 MB per client per refresh burst, negligible database CPU. No action needed. |
-| 25 | Still good. A busy minute (say 20 changes) fans out to ~25 x 0.4 MB per debounced burst; page interactions stay responsive. Watch egress. |
-| 50 | Degradation begins as data grows. Snapshot payloads reach the row limits, refresh bursts overlap, and clients spend visible time re-parsing. Response times remain acceptable but the UI feels "reloading". |
-| 100 | Not recommended without the changes in section 7. Realtime fan-out dominates: each write triggers up to 100 full-tier refetches; connection-pool pressure and browser memory (whole dataset held per tab) become the failure mode before database CPU does. |
+| 10–25 | Comfortable; sub-second interactions. |
+| 50 | Verified good: full refresh < 5 s, no errors, no pool pressure. |
+| 100 | Verified stable at 300 simultaneous requests. Realtime fan-out is the cost driver as data grows. |
+| 200+ | Requires the read-model work below: server-side pagination per screen, row-level realtime updates instead of tier re-pulls, and covering indexes for list sorts. |
 
-Per-dimension notes:
+## 8. Database integrity verification
 
-- **Database load.** Writes are short, single-row, lock-held-briefly transactions
-  — they scale far past 100 users. Reads are the load, and they are repetitive
-  full-table scans of small tables served from cache.
-- **Memory.** Each tab holds the entire snapshot in JavaScript memory; that is
-  fine at today's volume and becomes the limiting factor once the tables reach
-  their 500/900-row caps.
-- **CPU.** Server-side CPU is dominated by JSON serialisation of snapshots, not
-  by business logic.
-- **Network.** ~0.4 MB per client per refresh is the number to watch; at 100
-  users and a high change rate this is the first thing to saturate.
-- **Background workers.** The drain worker is single-instance by schedule but not
-  by construction (D1).
+Checked across all live data after the runs:
 
-## 7. Recommended scaling strategy
+| Check | Result |
+| --- | --- |
+| Orphan deliveries | 0 |
+| Cases with more than one delivery | 0 |
+| Multiple active one-time codes / passenger links | 0 / 0 |
+| Duplicate case numbers / delivery numbers | 0 / 0 |
+| Passenger-view drift vs delivery stage | 0 |
+| Stage ↔ workflow-status mismatch | 2 rows, both `Delivered` + `FEEDBACK_SUBMITTED` — a legitimate post-delivery status, not a defect |
+| Duplicate bag tags | 1 historical duplicate (`E5367890`, two cases) predating the D2 guard; new duplicates are now blocked |
+| Leaked API connections after all tests | 0 |
 
-1. Fix D1 (atomic claim with `FOR UPDATE SKIP LOCKED`) before connecting a live
-   transport. Blocking.
-2. Add the global bag-tag unique index (D2) and align lock ordering (D3).
-3. Replace whole-table snapshots with server-side filtered, paginated queries per
-   screen. This single change moves the ceiling from ~50 to several hundred users.
-4. Make realtime granular: refresh the changed row instead of re-pulling the tier,
-   or subscribe only to rows visible on the current screen.
-5. Add covering indexes for the list screens' sort/filter columns once pagination
-   lands (`deliveries(stage, updated_at)`, `baggage_cases(lf_status, updated_at)`,
-   `timeline_events(occurred_at)`).
-6. Move the notification drain to a queue-style claim with visibility timeout, and
-   keep it idempotent per event.
-7. Publish the app and repoint the two `pg_cron` workers from the `-dev` preview
-   URL to the production URL.
+All QA cases, deliveries, journals and temporary accounts created during
+verification were deleted; the database contains only real operational data
+(20 cases, 15 deliveries).
 
-## 8. Risks before production
+## 9. Remaining risks
 
-- **Blocking:** D1, once any SMS/WhatsApp transport is enabled.
-- **Medium:** the snapshot read model at >50 concurrent users, and the workers
-  still pointing at the preview URL.
-- **Low:** D2 and D3.
-- **Unvalidated:** staff-authenticated multi-user load. To close it, run an
-  authenticated load test with real staff accounts (dispatcher, agent, driver)
-  against the published environment — 25/50/100 virtual users performing PIR
-  creation, status change, assignment and driver completion for 15 minutes —
-  measuring server-function latency, database CPU, connection count and realtime
-  message rate. That requires credentials this environment does not have.
+- **Low:** the one historical duplicate bag tag; correct it operationally when
+  the right owner is known.
+- **Medium (roadmap, not blocking):** whole-table snapshot read model beyond
+  ~100 concurrent users.
+- **Action after publishing:** repoint the two `pg_cron` workers (notification
+  drain, health sweep) from the `-dev` preview URL to the production URL.
 
-## 9. GO / NO-GO
+## 10. GO / NO-GO
 
-**GO** for multi-user production at up to approximately 50 concurrent users,
-conditional on fixing D1 before a live notification transport is connected.
-**NO-GO** at 100 concurrent users until the read model is paginated and realtime
-refresh is made granular.
+**GO.** The concurrency, locking and API-layer blockers are resolved and
+re-verified end to end under multi-role and stress conditions.
