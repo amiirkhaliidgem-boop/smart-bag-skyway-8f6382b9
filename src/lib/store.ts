@@ -571,9 +571,23 @@ export async function refreshOps(): Promise<void> {
 
 let refreshTimer: ReturnType<typeof setTimeout> | null = null;
 let refreshTiers = new Set<keyof OpsLoading>();
-/** Debounced, tier-scoped realtime refresh: only reload what actually changed. */
+let pendingWhileHidden = false;
+
+/**
+ * Debounced, tier-scoped realtime refresh: only reload what actually changed.
+ *
+ * Every refresh costs one pooled PostgREST connection per tier, and every open
+ * tab reacts to the same realtime event — so an unthrottled refresh multiplies
+ * database load by (tabs x tiers) on every single write. The debounce window
+ * collapses bursts, and a hidden tab defers entirely until it is looked at
+ * again, so background tabs cost nothing.
+ */
 function scheduleRefresh(...tiers: (keyof OpsLoading)[]) {
   tiers.forEach((t) => refreshTiers.add(t));
+  if (typeof document !== "undefined" && document.hidden) {
+    pendingWhileHidden = true;
+    return;
+  }
   if (refreshTimer) return;
   refreshTimer = setTimeout(() => {
     refreshTimer = null;
@@ -582,7 +596,7 @@ function scheduleRefresh(...tiers: (keyof OpsLoading)[]) {
     if (pending.has("core")) void refreshOpsCore();
     if (pending.has("activity")) void refreshOpsActivity();
     if (pending.has("secondary")) void refreshOpsSecondary();
-  }, 150);
+  }, 750);
 }
 
 function boot() {
@@ -617,7 +631,7 @@ function boot() {
   const channel = supabase
     .channel("ops_sync")
     .on("postgres_changes", { event: "*", schema: "public", table: "deliveries" }, () =>
-      scheduleRefresh("core", "secondary"),
+      scheduleRefresh("core"),
     )
     .on("postgres_changes", { event: "*", schema: "public", table: "baggage_cases" }, () =>
       scheduleRefresh("core"),
@@ -628,6 +642,14 @@ function boot() {
     .subscribe();
   window.addEventListener("beforeunload", () => {
     void supabase.removeChannel(channel);
+  });
+
+  // A tab that was hidden while changes arrived catches up once, on return,
+  // instead of every tab refetching in lockstep the moment the write lands.
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden || !pendingWhileHidden) return;
+    pendingWhileHidden = false;
+    scheduleRefresh(...(refreshTiers.size ? Array.from(refreshTiers) : (["core"] as const)));
   });
 }
 
@@ -659,7 +681,11 @@ async function rpc(fn: string, args: RpcArgs) {
   for (let attempt = 0; attempt <= LOCK_RETRIES; attempt += 1) {
     try {
       const result = await callOpsRpc({ data: { fn, args } });
-      await refreshOps();
+      // Only the tiers a workflow write can touch are reloaded. Pulling the
+      // secondary tier (CSAT, incidents, agent geography) after every status
+      // change wasted a third of the writer's pool budget on unchanged data;
+      // realtime still refreshes it when those tables actually change.
+      await Promise.all([refreshOpsCore(), refreshOpsActivity()]);
       return result;
     } catch (err) {
       lastError = err;
