@@ -2325,6 +2325,43 @@ export type Database = {
       next_case_no: { Args: never; Returns: string }
       next_delivery_no: { Args: never; Returns: string }
       next_incident_no: { Args: never; Returns: string }
+      notif_claim_batch_atomic: {
+        Args: { p_limit: number; p_max_attempts: number }
+        Returns: {
+          attempt_count: number
+          body: string
+          body_ar: string | null
+          body_en: string | null
+          case_id: string | null
+          channel: Database["public"]["Enums"]["notification_channel"]
+          created_at: string
+          delivery_id: string | null
+          failure_reason: string
+          id: string
+          last_attempt_at: string | null
+          locale: string
+          next_attempt_at: string
+          provider: string | null
+          provider_message_id: string | null
+          recipient: string
+          runtime_context: Json
+          sent_at: string | null
+          state: Database["public"]["Enums"]["notification_state"]
+          subject: string
+          subject_ar: string | null
+          subject_en: string | null
+          trigger_key: string
+          trigger_status: Database["public"]["Enums"]["workflow_status"]
+          updated_at: string
+          version: number
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "notification_events"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       notif_template_upsert: { Args: { p_payload: Json }; Returns: string }
       passenger_get_view: { Args: { p_token: string }; Returns: Json }
       passenger_report_misconduct: {
