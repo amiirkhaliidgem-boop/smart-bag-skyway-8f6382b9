@@ -166,7 +166,7 @@ export const saveAppUser = createServerFn({ method: "POST" })
           email_confirm: true,
           user_metadata: { full_name: data.fullName },
         });
-        if (created.error) throw new Error(created.error.message);
+        if (created.error) throw new Error(friendlyIdentityError(created.error.message));
         row.user_id = created.data.user?.id ?? null;
       } else {
         // Delivery Agents sign in on the same login page with Username /
@@ -181,7 +181,7 @@ export const saveAppUser = createServerFn({ method: "POST" })
           email_confirm: true,
           user_metadata: { full_name: data.fullName },
         });
-        if (created.error) throw new Error(created.error.message);
+        if (created.error) throw new Error(friendlyIdentityError(created.error.message));
         row.user_id = created.data.user?.id ?? null;
       }
       const { data: inserted, error } = await supabaseAdmin
