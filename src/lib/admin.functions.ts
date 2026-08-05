@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { friendlyUserError } from "@/lib/admin/errors";
+import { friendlyIdentityError, friendlyUserError } from "@/lib/admin/errors";
 import type { AdminWorkspaceData } from "@/lib/admin/modules";
 
 export const getAdminWorkspace = createServerFn({ method: "GET" })
