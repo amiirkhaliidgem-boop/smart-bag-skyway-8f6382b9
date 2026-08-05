@@ -185,7 +185,18 @@ function AuthGate() {
     const handleOpsError = (event: Event) => {
       const detail = (event as CustomEvent<{ message?: string }>).detail;
       if (!detail?.message) return;
-      const conflict = /version|40001|conflict/i.test(detail.message);
+      const busy = /being updated by someone else|55P03|57014|lock_timeout|statement timeout|canceling statement/i.test(
+        detail.message,
+      );
+      const conflict = /version|40001|40P01|conflict|changed since you opened/i.test(detail.message);
+      if (busy) {
+        toast.error("Record is busy", {
+          description:
+            "Another user is editing this record right now. Nothing was changed — try again in a moment.",
+          duration: 8_000,
+        });
+        return;
+      }
       toast.error(conflict ? "This record changed elsewhere" : "Operation rejected", {
         description: conflict
           ? "Reload the page and retry — someone else updated this record."

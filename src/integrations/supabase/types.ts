@@ -2527,6 +2527,8 @@ export type Database = {
         Args: { p: Database["public"]["Enums"]["lf_status"] }
         Returns: Database["public"]["Enums"]["workflow_status"]
       }
+      wf_lock_case: { Args: { p_case: string }; Returns: undefined }
+      wf_lock_delivery: { Args: { p_delivery: string }; Returns: undefined }
       wf_open_delivery: {
         Args: { p_case: string }
         Returns: {
