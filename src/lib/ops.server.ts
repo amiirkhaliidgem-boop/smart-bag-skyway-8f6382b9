@@ -262,26 +262,18 @@ export async function buildActivitySnapshot(
 export async function buildSecondarySnapshot(
   supabase: SupabaseClient<any>,
 ): Promise<OpsSecondarySnapshot> {
-  const [refs, feedbackRows, incidents, positions, routes, routeStops] = await Promise.all([
-    loadRefs(supabase),
-    q(
-      supabase
-        .from("passenger_feedback")
-        .select("*")
-        .order("submitted_at", { ascending: false })
-        .limit(SNAPSHOT_LIMITS.feedback),
-    ),
-    q(
-      supabase
-        .from("quality_incidents")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .limit(SNAPSHOT_LIMITS.incidents),
-    ),
-    q(supabase.from("agent_positions").select("*")),
-    q(supabase.from("agent_routes").select("*")),
-    q(supabase.from("agent_route_stops").select("*").order("seq")),
-  ]);
+  const payload = await rpcRows(supabase, "ops_secondary_rows", {
+    p_cases: SNAPSHOT_LIMITS.cases,
+    p_deliveries: SNAPSHOT_LIMITS.deliveries,
+    p_feedback: SNAPSHOT_LIMITS.feedback,
+    p_incidents: SNAPSHOT_LIMITS.incidents,
+  });
+  const refs = refMaps(payload);
+  const feedbackRows = payload.feedback ?? [];
+  const incidents = payload.incidents ?? [];
+  const positions = payload.positions ?? [];
+  const routes = payload.routes ?? [];
+  const routeStops = payload.route_stops ?? [];
 
   const { caseById, deliveryById, userById } = refs;
 
