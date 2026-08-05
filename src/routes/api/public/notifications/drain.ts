@@ -41,8 +41,6 @@ export const Route = createFileRoute("/api/public/notifications/drain")({
 
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const db = supabaseAdmin as any;
-        const nowIso = new Date().toISOString();
-
         // Claim and mark in a single statement (FOR UPDATE SKIP LOCKED), so two
         // overlapping runs can never pick up the same event and double-send it.
         const { data: claimed, error: claimError } = await db.rpc("notif_claim_batch_atomic", {
