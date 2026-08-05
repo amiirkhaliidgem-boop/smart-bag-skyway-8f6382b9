@@ -2363,6 +2363,35 @@ export type Database = {
         }
       }
       notif_template_upsert: { Args: { p_payload: Json }; Returns: string }
+      ops_activity_rows: {
+        Args: {
+          p_audit?: number
+          p_cases?: number
+          p_deliveries?: number
+          p_notifications?: number
+          p_timeline?: number
+        }
+        Returns: Json
+      }
+      ops_core_rows: {
+        Args: {
+          p_cases?: number
+          p_deliveries?: number
+          p_notes?: number
+          p_otps?: number
+          p_wf?: number
+        }
+        Returns: Json
+      }
+      ops_secondary_rows: {
+        Args: {
+          p_cases?: number
+          p_deliveries?: number
+          p_feedback?: number
+          p_incidents?: number
+        }
+        Returns: Json
+      }
       passenger_get_view: { Args: { p_token: string }; Returns: Json }
       passenger_report_misconduct: {
         Args: { p_details?: string; p_token: string }
