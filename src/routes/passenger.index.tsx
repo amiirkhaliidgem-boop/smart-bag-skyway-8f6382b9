@@ -620,11 +620,11 @@ function heroCopyForStage(stage: ReturnType<typeof getDeliveryStage>): {
     case "Delivered":
       return { en: "Delivered", ar: "تم التسليم" };
     case "Out for Delivery":
-      return { en: "Out for Delivery", ar: "في الطريق إليك" };
+      return { en: "Out for Delivery", ar: "حقائبك في الطريق إليك" };
     case "Collected Bag":
     case "Driver Accepted":
     case "Assigned":
-      return { en: "Assigned to Delivery", ar: "تم التعيين للتسليم" };
+      return { en: "Assigned to Delivery", ar: "حقائبك جاهزة للتسليم" };
     case "Scheduled":
     case "Ready for Delivery":
       return { en: "Ready for Dispatch", ar: "جاهزة للإرسال" };
@@ -718,8 +718,8 @@ function passengerSteps(delivery: Delivery, kase: BaggageCase) {
   const definitions = [
     { en: "Bag Located", ar: "تم العثور على الأمتعة" },
     { en: "Customs Cleared", ar: "تم التخليص الجمركي" },
-    { en: "Assigned to Delivery", ar: "تم التعيين للتسليم" },
-    { en: "Out for Delivery", ar: "في الطريق إليك" },
+    { en: "Assigned to Delivery", ar: "حقائبك جاهزة للتسليم" },
+    { en: "Out for Delivery", ar: "حقائبك في الطريق إليك" },
     { en: "Delivered", ar: "تم التسليم" },
   ];
   // Determine the highest reached index.
@@ -778,9 +778,10 @@ function PickupInstructionsCard() {
         Collecting your baggage
       </p>
       <ul className="space-y-1.5 text-[0.92rem] text-[color:var(--iab-navy)]/80">
-        <li>Visit the airport Lost &amp; Found office in the arrivals hall.</li>
-        <li>Bring a valid photo ID and your PIR reference number.</li>
-        <li>Our staff verify your identity in person — no security code is needed.</li>
+        <li>Visit the Airport Lost &amp; Found Office at the Airport.</li>
+        <li>Bring your valid passport.</li>
+        <li>Represent yourself in person.</li>
+        <li>Bring your PIR reference number if available.</li>
       </ul>
       <p
         className="text-[0.92rem] text-[color:var(--iab-navy)]/80"
@@ -788,7 +789,15 @@ function PickupInstructionsCard() {
         lang="ar"
         style={{ fontFamily: "var(--font-arabic-display)" }}
       >
-        يرجى التوجه إلى مكتب المفقودات بصالة الوصول ومعك هوية سارية ورقم التقرير.
+        استلام الأمتعة
+        <br />
+        يرجى التوجه إلى مكتب المفقودات بالمطار.
+        <br />
+        يجب حضور صاحب الامتعة شخصيًا.
+        <br />
+        يرجى إحضار جواز سفر ساري.
+        <br />
+        ويرجى إحضار رقم تقرير PIR إن وجد.
       </p>
     </div>
   );
@@ -960,13 +969,13 @@ function OtpHeroCard({
               checked={sealed}
               onChange={onSealed}
               en="I confirmed the baggage is sealed and in good condition."
-              ar="أؤكد أن الأمتعة مختومة وبحالة جيدة."
+              ar="أؤكد أن الأمتعة مغلقة وبحالة جيدة."
             />
             <BilingualCheck
               checked={otpAfter}
               onChange={onOtpAfter}
-              en="I will provide the OTP only after receiving my baggage."
-              ar="لن أشارك رمز التحقق إلا بعد استلام الأمتعة."
+              en="I provided the OTP after receiving my baggage."
+              ar="قد شاركت رمز التحقق بعد استلام الأمتعة."
             />
             <BilingualCheck
               checked={noBribe}
