@@ -43,75 +43,42 @@ export const SNAPSHOT_LIMITS = {
 
 const q = <T = Row[]>(p: any) => p.then((r: any) => (r.data ?? []) as T);
 
-/** Small lookup read shared by the activity / secondary tiers. */
-async function loadRefs(supabase: SupabaseClient<any>) {
-  const [cases, deliveries, users] = await Promise.all([
-    q(
-      supabase
-        .from("baggage_cases")
-        .select("id, case_no, pir_number, passenger_name")
-        .limit(SNAPSHOT_LIMITS.cases),
-    ),
-    q(
-      supabase
-        .from("deliveries")
-        .select("id, delivery_no, passenger_name, assigned_agent_id")
-        .limit(SNAPSHOT_LIMITS.deliveries),
-    ),
-    q(supabase.from("app_users").select("id, full_name")),
-  ]);
-  return {
-    caseById: new Map<string, Row>((cases as Row[]).map((c) => [c.id, c])),
-    deliveryById: new Map<string, Row>((deliveries as Row[]).map((d) => [d.id, d])),
-    userById: new Map<string, Row>((users as Row[]).map((u) => [u.id, u])),
-  };
+// Every tier is read through ONE fan-in RPC (`ops_*_rows`, SECURITY INVOKER so
+// RLS is unchanged). Previously each tier issued 6-10 separate PostgREST
+// requests, and each request checks out a connection from the PostgREST pool:
+// a single client refresh cost ~24 pooled connections. That fan-out — not row
+// volume — is what saturated the pool. One RPC per tier = 3 connections.
+async function rpcRows(supabase: SupabaseClient<any>, fn: string, args: Record<string, unknown>) {
+  const { data, error } = await (supabase as any).rpc(fn, args);
+  if (error) throw new Error(error.message);
+  return (data ?? {}) as Record<string, Row[]>;
 }
+
+const refMaps = (payload: Record<string, Row[]>) => ({
+  caseById: new Map<string, Row>((payload.ref_cases ?? []).map((c) => [c.id, c])),
+  deliveryById: new Map<string, Row>((payload.ref_deliveries ?? []).map((d) => [d.id, d])),
+  userById: new Map<string, Row>((payload.ref_users ?? []).map((u) => [u.id, u])),
+});
 
 /** Tier 1 — everything the KPI cards, registries and dispatch tables need. */
 export async function buildCoreSnapshot(supabase: SupabaseClient<any>): Promise<OpsCoreSnapshot> {
-  const [stations, cases, bags, deliveries, notes, otps, links, wfEvents, users, failureReasons] =
-    await Promise.all([
-      q(supabase.from("stations").select("*").order("is_default", { ascending: false })),
-      q(
-        supabase
-          .from("baggage_cases")
-          .select("*")
-          .order("created_at", { ascending: false })
-          .limit(SNAPSHOT_LIMITS.cases),
-      ),
-      q(supabase.from("case_bags").select("*").limit(SNAPSHOT_LIMITS.cases * 2)),
-      q(
-        supabase
-          .from("deliveries")
-          .select("*")
-          .order("created_at", { ascending: false })
-          .limit(SNAPSHOT_LIMITS.deliveries),
-      ),
-      q(
-        supabase
-          .from("delivery_notes")
-          .select("*")
-          .order("created_at", { ascending: false })
-          .limit(SNAPSHOT_LIMITS.notes),
-      ),
-      q(
-        supabase
-          .from("otp_challenges")
-          .select("*")
-          .order("issued_at", { ascending: false })
-          .limit(SNAPSHOT_LIMITS.otps),
-      ),
-      q(supabase.from("passenger_links").select("*").is("revoked_at", null)),
-      q(
-        supabase
-          .from("workflow_events")
-          .select("*")
-          .order("occurred_at", { ascending: false })
-          .limit(SNAPSHOT_LIMITS.workflowEvents),
-      ),
-      q(supabase.from("app_users").select("id, full_name, employee_id, user_type, status")),
-      q(supabase.from("failure_reasons").select("*")),
-    ]);
+  const payload = await rpcRows(supabase, "ops_core_rows", {
+    p_cases: SNAPSHOT_LIMITS.cases,
+    p_deliveries: SNAPSHOT_LIMITS.deliveries,
+    p_notes: SNAPSHOT_LIMITS.notes,
+    p_otps: SNAPSHOT_LIMITS.otps,
+    p_wf: SNAPSHOT_LIMITS.workflowEvents,
+  });
+  const stations = payload.stations ?? [];
+  const cases = payload.cases ?? [];
+  const bags = payload.bags ?? [];
+  const deliveries = payload.deliveries ?? [];
+  const notes = payload.notes ?? [];
+  const otps = payload.otps ?? [];
+  const links = payload.links ?? [];
+  const wfEvents = payload.wf_events ?? [];
+  const users = payload.users ?? [];
+  const failureReasons = payload.failure_reasons ?? [];
 
   // `workflow_events` feeds per-case history; the mappers expect ascending order.
   (wfEvents as Row[]).sort((a, b) => String(a.occurred_at).localeCompare(String(b.occurred_at)));
