@@ -681,7 +681,11 @@ async function rpc(fn: string, args: RpcArgs) {
   for (let attempt = 0; attempt <= LOCK_RETRIES; attempt += 1) {
     try {
       const result = await callOpsRpc({ data: { fn, args } });
-      await refreshOps();
+      // Only the tiers a workflow write can touch are reloaded. Pulling the
+      // secondary tier (CSAT, incidents, agent geography) after every status
+      // change wasted a third of the writer's pool budget on unchanged data;
+      // realtime still refreshes it when those tables actually change.
+      await Promise.all([refreshOpsCore(), refreshOpsActivity()]);
       return result;
     } catch (err) {
       lastError = err;
