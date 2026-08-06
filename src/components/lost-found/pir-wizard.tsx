@@ -210,7 +210,8 @@ export function PirWizard({
       form.bagTags.length > 0 &&
       form.bagTags.every((t) => t.trim()) &&
       form.flightNumber.trim() &&
-      form.mobile.trim() &&
+      isEgMobile(form.mobile) &&
+      (!form.mobile2.trim() || isEgMobile(form.mobile2)) &&
       form.airline.trim() &&
       // Airport Pickup has no delivery address, region, agent or route.
       (form.method === "Airport Pickup" || form.fullAddress.trim()),
@@ -221,7 +222,12 @@ export function PirWizard({
     if (i === 0) {
       if (!form.firstName.trim() || !form.lastName.trim())
         return "First and last name are required.";
-      if (!form.mobile.trim()) return "Mobile number is required.";
+      const m1 = egMobileError(form.mobile, "Mobile Number 1");
+      if (m1) return m1;
+      if (form.mobile2.trim()) {
+        const m2 = egMobileError(form.mobile2, "Mobile Number 2");
+        if (m2) return m2;
+      }
     }
     if (i === 1) {
       if (!form.airline.trim()) return "Airline is required.";
