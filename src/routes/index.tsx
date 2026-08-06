@@ -27,6 +27,7 @@ import { DateRangeFilter } from "@/components/filters/date-range-filter";
 import { KpiSkeletonGrid, ChartSkeleton, ListSkeleton } from "@/components/ops-skeleton";
 import { supabase } from "@/integrations/supabase/client";
 import { loadExecutiveDashboard } from "@/lib/dashboard.functions";
+import { subscribeRealtime } from "@/lib/realtime";
 import type { ExecutiveDashboard, KpiValue } from "@/lib/dashboard.server";
 import { PageHeader, ErrorState } from "@/components/layout";
 import {
