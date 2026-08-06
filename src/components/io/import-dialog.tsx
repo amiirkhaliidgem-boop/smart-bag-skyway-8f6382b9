@@ -80,6 +80,7 @@ export function ImportDialog({
       setProgress(p);
     }
     const text = await f.text();
+    await schema.prepare?.();
     const rep = buildValidationReport(schema, f.name, text);
     setProgress(100);
     setReport(rep);
