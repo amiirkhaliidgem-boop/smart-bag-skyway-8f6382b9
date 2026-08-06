@@ -38,7 +38,9 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { UserCheck, Search, Repeat, X, Printer, RotateCcw, XCircle } from "lucide-react";
+import { UserCheck, Search, Repeat, X, Printer, RotateCcw, XCircle, Download } from "lucide-react";
+import { exportDeliveriesToXlsx } from "@/lib/delivery/export-xlsx";
+import { useSystemSettings } from "@/lib/settings/use-settings";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { PodPrintHost, podPrintBus } from "@/components/delivery/pod-print-host";
@@ -64,6 +66,8 @@ export const Route = createFileRoute("/delivery/")({
 
 function DispatchCenter() {
   const deliveries = useStore((s) => s.deliveries);
+  const cases = useStore((s) => s.cases);
+  const { settings } = useSystemSettings();
   const loading = useOpsLoading();
   const navigate = useNavigate();
 
@@ -314,6 +318,21 @@ function DispatchCenter() {
               icon: Printer,
               variant: "outline",
               onClick: () => podPrintBus.print(Array.from(selected)),
+            },
+            {
+              key: "export",
+              label: "Export Selected",
+              icon: Download,
+              variant: "outline",
+              onClick: () => {
+                const rows = filtered.filter((d) => selected.has(d.deliveryId));
+                try {
+                  const n = exportDeliveriesToXlsx(rows, cases, settings.regions);
+                  toast.success(`${n} delivery${n === 1 ? "" : "s"} exported to Excel`);
+                } catch (e) {
+                  toast.error(`Export failed: ${(e as Error).message}`);
+                }
+              },
             },
           ]}
         />
