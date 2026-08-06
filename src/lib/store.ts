@@ -25,6 +25,7 @@ import type { TimelineEntry } from "./ops.mapping";
 export type { TimelineEntry };
 import { saveStation, logDataIoEvent } from "./settings.functions";
 import { supabase } from "@/integrations/supabase/client";
+import { subscribeRealtime } from "./realtime";
 
 export type CaseStatus =
   | "Missing"
