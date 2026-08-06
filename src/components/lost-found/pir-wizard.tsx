@@ -6,6 +6,7 @@ import {
   type Priority,
   type DeliveryMethod,
 } from "@/lib/store";
+import { egMobileError, isEgMobile, EG_MOBILE_HINT } from "@/lib/phone/egypt";
 import { DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -210,7 +211,8 @@ export function PirWizard({
       form.bagTags.length > 0 &&
       form.bagTags.every((t) => t.trim()) &&
       form.flightNumber.trim() &&
-      form.mobile.trim() &&
+      isEgMobile(form.mobile) &&
+      (!form.mobile2.trim() || isEgMobile(form.mobile2)) &&
       form.airline.trim() &&
       // Airport Pickup has no delivery address, region, agent or route.
       (form.method === "Airport Pickup" || form.fullAddress.trim()),
@@ -221,7 +223,12 @@ export function PirWizard({
     if (i === 0) {
       if (!form.firstName.trim() || !form.lastName.trim())
         return "First and last name are required.";
-      if (!form.mobile.trim()) return "Mobile number is required.";
+      const m1 = egMobileError(form.mobile, "Mobile Number 1");
+      if (m1) return m1;
+      if (form.mobile2.trim()) {
+        const m2 = egMobileError(form.mobile2, "Mobile Number 2");
+        if (m2) return m2;
+      }
     }
     if (i === 1) {
       if (!form.airline.trim()) return "Airline is required.";
@@ -458,10 +465,21 @@ export function PirWizard({
               <Input value={form.pnr} onChange={(e) => set("pnr", e.target.value)} />
             </Fld>
             <Fld label="Mobile Number 1" required>
-              <Input value={form.mobile} onChange={(e) => set("mobile", e.target.value)} />
+              <Input
+                value={form.mobile}
+                inputMode="numeric"
+                placeholder="01012345678"
+                onChange={(e) => set("mobile", e.target.value)}
+              />
+              <p className="text-[11px] text-muted-foreground mt-1">{EG_MOBILE_HINT}</p>
             </Fld>
             <Fld label="Mobile Number 2">
-              <Input value={form.mobile2} onChange={(e) => set("mobile2", e.target.value)} />
+              <Input
+                value={form.mobile2}
+                inputMode="numeric"
+                placeholder="01019982210"
+                onChange={(e) => set("mobile2", e.target.value)}
+              />
             </Fld>
             <Fld label="Email">
               <Input
