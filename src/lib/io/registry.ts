@@ -56,7 +56,21 @@ const lostFoundFields: FieldDef[] = [
   { key: "bagType", label: "Bag Type", type: "string", example: "Hardshell" },
   { key: "deliveryMethod", label: "Delivery Method", type: "enum", enumValues: DELIVERY_METHOD_VALUES, example: "Home Delivery" },
   { key: "deliveryAddress", label: "Delivery Address", type: "string", example: "14 Road 9, Maadi, Cairo" },
-  { key: "region", label: "Region", type: "string", example: "Cairo" },
+  {
+    key: "region",
+    label: "Region",
+    type: "string",
+    example: "Cairo",
+    // Unknown regions never reject a row — the case is created and flagged
+    // "Incomplete" so the Lost & Found agent completes it. The preview still
+    // surfaces the mismatch as a warning.
+    warn: (value) => {
+      const v = String(value ?? "").trim();
+      if (!v || resolveRegion(v)) return null;
+      const known = regionNames();
+      return `Region "${v}" is not a configured SLA Region${known.length ? ` (${known.join(", ")})` : ""} — the case will be flagged for completion.`;
+    },
+  },
   { key: "priority", label: "Priority", type: "enum", enumValues: PRIORITY_VALUES, example: "Normal" },
   { key: "notes", label: "Notes", type: "string", example: "Silver Delsey cabin trolley" },
 ];

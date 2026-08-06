@@ -30,6 +30,8 @@ export interface FieldDef {
   example?: string;
   /** Optional custom validator returning an error message or null. */
   validate?: (value: unknown, row: Record<string, unknown>) => string | null;
+  /** Optional soft validator returning a warning message or null. */
+  warn?: (value: unknown, row: Record<string, unknown>) => string | null;
   /** Optional value transformer applied after parsing. */
   transform?: (value: string) => unknown;
   /** Marks a field that must be unique across imported data + existing store. */
