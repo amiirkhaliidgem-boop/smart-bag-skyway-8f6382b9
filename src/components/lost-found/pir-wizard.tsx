@@ -6,6 +6,7 @@ import {
   type Priority,
   type DeliveryMethod,
 } from "@/lib/store";
+import { egMobileError, isEgMobile, EG_MOBILE_HINT } from "@/lib/phone/egypt";
 import { DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
