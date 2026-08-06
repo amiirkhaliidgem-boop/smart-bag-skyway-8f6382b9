@@ -160,5 +160,9 @@ export function validateField(
     const msg = field.validate(value, row);
     if (msg) issues.push({ field: field.key, level: "error", message: msg });
   }
+  if (field.warn) {
+    const msg = field.warn(value, row);
+    if (msg) issues.push({ field: field.key, level: "warning", message: msg });
+  }
   return { value, issues };
 }

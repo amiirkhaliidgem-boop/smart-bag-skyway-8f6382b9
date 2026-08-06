@@ -7,8 +7,7 @@
 
 import type { NotificationChannelAdapter, OutboundEvent, SendResult } from "../channels";
 import type { NotificationChannel } from "../templates";
-
-const PHONE_RE = /^\+?[0-9 ()-]{6,20}$/;
+import { toE164Eg } from "@/lib/phone/egypt";
 
 function credentials() {
   const sid = process.env.TWILIO_ACCOUNT_SID;
@@ -26,10 +25,10 @@ function fromNumber(channel: NotificationChannel): string | undefined {
 }
 
 function address(channel: NotificationChannel, value: string): string {
-  const trimmed = value.trim();
-  return channel === "whatsapp" && !trimmed.startsWith("whatsapp:")
-    ? `whatsapp:${trimmed}`
-    : trimmed;
+  // Numbers are stored in the local Egyptian format; the provider requires
+  // E.164, so normalisation happens here and nowhere else.
+  const e164 = toE164Eg(value) ?? value.trim();
+  return channel === "whatsapp" && !e164.startsWith("whatsapp:") ? `whatsapp:${e164}` : e164;
 }
 
 /** Twilio 4xx are permanent (bad number, template rejected); 429/5xx retry. */
@@ -43,9 +42,9 @@ function makeTwilioAdapter(channel: NotificationChannel): NotificationChannelAda
     name: "twilio",
     simulated: false,
     validateRecipient(to: string) {
-      return PHONE_RE.test((to ?? "").trim())
+      return toE164Eg(to) !== null
         ? { ok: true }
-        : { ok: false, error: "Invalid mobile number" };
+        : { ok: false, error: "Invalid Egyptian mobile number (expected 11 digits starting 010/011/012/015)" };
     },
     async send(event: OutboundEvent): Promise<SendResult> {
       const creds = credentials();
@@ -53,8 +52,12 @@ function makeTwilioAdapter(channel: NotificationChannel): NotificationChannelAda
       if (!creds || !from) {
         return { ok: false, error: "Twilio is not configured", retryable: false };
       }
-      if (!PHONE_RE.test((event.to ?? "").trim())) {
-        return { ok: false, error: "Invalid mobile number", retryable: false };
+      if (toE164Eg(event.to) === null) {
+        return {
+          ok: false,
+          error: "Invalid Egyptian mobile number (expected 11 digits starting 010/011/012/015)",
+          retryable: false,
+        };
       }
 
       const body = new URLSearchParams({
