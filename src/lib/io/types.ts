@@ -12,6 +12,7 @@ export type FieldType =
   | "datetime"
   | "email"
   | "phone"
+  | "egMobile"
   | "enum"
   | "airportCode"
   | "airlineCode";
@@ -33,6 +34,12 @@ export interface FieldDef {
   transform?: (value: string) => unknown;
   /** Marks a field that must be unique across imported data + existing store. */
   unique?: boolean;
+  /**
+   * When set, the cell holds several values separated by this character
+   * (e.g. multiple bag tags in one cell). Uniqueness is then checked per
+   * value rather than on the whole cell.
+   */
+  multiValueSeparator?: string;
 }
 
 export interface DatasetSchema {
@@ -48,6 +55,8 @@ export interface DatasetSchema {
   fields: FieldDef[];
   /** Reads current records from the store (for export + duplicate detection). */
   read: () => Record<string, unknown>[];
+  /** Optional async warm-up executed before validation (reference data). */
+  prepare?: () => Promise<void>;
   /** Applies validated rows to the store. MUST route through workflow/audit
    *  when the module has workflow semantics. */
   apply: (rows: Record<string, unknown>[], ctx: ApplyContext) => ApplyResult | Promise<ApplyResult>;
