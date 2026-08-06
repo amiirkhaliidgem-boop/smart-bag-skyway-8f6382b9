@@ -175,23 +175,20 @@ function Index() {
   // The Workflow Engine writes to these tables on every transition; any change
   // invalidates the aggregate so the dashboard reflects the new state with no
   // manual refresh logic anywhere in the UI.
-  useEffect(() => {
-    const invalidate = () => queryClient.invalidateQueries({ queryKey: ["executive-dashboard"] });
-    const channel = supabase.channel("executive_dashboard_sync");
-    for (const table of [
-      "baggage_cases",
-      "deliveries",
-      "workflow_events",
-      "quality_incidents",
-      "passenger_feedback",
-    ]) {
-      channel.on("postgres_changes", { event: "*", schema: "public", table }, invalidate);
-    }
-    channel.subscribe();
-    return () => {
-      void supabase.removeChannel(channel);
-    };
-  }, [queryClient]);
+  useEffect(
+    () =>
+      subscribeRealtime(
+        [
+          "baggage_cases",
+          "deliveries",
+          "workflow_events",
+          "quality_incidents",
+          "passenger_feedback",
+        ],
+        () => queryClient.invalidateQueries({ queryKey: ["executive-dashboard"] }),
+      ),
+    [queryClient],
+  );
 
   const k = data?.kpis;
   // Registry-driven KPI cards: descriptors are merged with the keys the
