@@ -465,10 +465,21 @@ export function PirWizard({
               <Input value={form.pnr} onChange={(e) => set("pnr", e.target.value)} />
             </Fld>
             <Fld label="Mobile Number 1" required>
-              <Input value={form.mobile} onChange={(e) => set("mobile", e.target.value)} />
+              <Input
+                value={form.mobile}
+                inputMode="numeric"
+                placeholder="01012345678"
+                onChange={(e) => set("mobile", e.target.value)}
+              />
+              <p className="text-[11px] text-muted-foreground mt-1">{EG_MOBILE_HINT}</p>
             </Fld>
             <Fld label="Mobile Number 2">
-              <Input value={form.mobile2} onChange={(e) => set("mobile2", e.target.value)} />
+              <Input
+                value={form.mobile2}
+                inputMode="numeric"
+                placeholder="01019982210"
+                onChange={(e) => set("mobile2", e.target.value)}
+              />
             </Fld>
             <Fld label="Email">
               <Input
