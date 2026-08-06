@@ -36,9 +36,7 @@ function norm(v: string) {
 export function resolveRegion(value: unknown): RegionRef | null {
   const v = norm(String(value ?? ""));
   if (!v) return null;
-  return (
-    cache.find((r) => norm(r.name) === v || norm(r.name_ar ?? "") === v) ?? null
-  );
+  return cache.find((r) => norm(r.name) === v || norm(r.name_ar ?? "") === v) ?? null;
 }
 
 export function regionNames(): string[] {

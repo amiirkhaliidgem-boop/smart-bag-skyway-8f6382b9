@@ -44,7 +44,10 @@ function makeTwilioAdapter(channel: NotificationChannel): NotificationChannelAda
     validateRecipient(to: string) {
       return toE164Eg(to) !== null
         ? { ok: true }
-        : { ok: false, error: "Invalid Egyptian mobile number (expected 11 digits starting 010/011/012/015)" };
+        : {
+            ok: false,
+            error: "Invalid Egyptian mobile number (expected 11 digits starting 010/011/012/015)",
+          };
     },
     async send(event: OutboundEvent): Promise<SendResult> {
       const creds = credentials();

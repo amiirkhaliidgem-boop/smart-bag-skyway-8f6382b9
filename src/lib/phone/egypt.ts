@@ -29,8 +29,10 @@ export function egMobileError(value: unknown, label = "Mobile"): string | null {
   if (!raw.trim()) return `${label} is required.`;
   if (isEgMobile(raw)) return null;
   if (/[A-Za-z]/.test(raw)) return `${label} must contain digits only. ${EG_MOBILE_HINT}`;
-  if (/[\s()\-.+]/.test(raw)) return `${label} must not contain +, spaces or dashes. ${EG_MOBILE_HINT}`;
-  if (/^(?:0020|\+?20)/.test(raw)) return `${label} must be the local format, not a country code. ${EG_MOBILE_HINT}`;
+  if (/[\s()\-.+]/.test(raw))
+    return `${label} must not contain +, spaces or dashes. ${EG_MOBILE_HINT}`;
+  if (/^(?:0020|\+?20)/.test(raw))
+    return `${label} must be the local format, not a country code. ${EG_MOBILE_HINT}`;
   const digits = raw.replace(/\D/g, "");
   if (digits.length !== 11) return `${label} must be exactly 11 digits. ${EG_MOBILE_HINT}`;
   return `${label} must start with 010, 011, 012 or 015. ${EG_MOBILE_HINT}`;
