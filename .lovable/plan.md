@@ -20,6 +20,10 @@ Field sources (all already in the store, projected from the database):
 - Region resolves the case's region id to its display name from SLA regions in System Settings; blank when unset.
 - "Date" is the delivery's operational date (created date, date-only). Timestamps format as `dd/MM/yyyy HH:mm`; stages not yet reached export as blank.
 
+## Bag Tag handling
+
+If a case has multiple bag tags, all tags go in a single Excel cell, comma-separated (e.g. `CAI12345678, CAI12345679, CAI12345680`). Never split a delivery across rows — one delivery = one Excel row.
+
 ## Technical notes
 
 - New `src/lib/delivery/export-xlsx.ts` mirroring `src/lib/lost-found/export-xlsx.ts`: SheetJS `aoa_to_sheet`, bold header row, auto-sized columns, `XLSX.writeFile`. SheetJS writes UTF-8 xlsx, so Arabic passenger names and addresses render correctly in Excel (no CSV encoding pitfall).
