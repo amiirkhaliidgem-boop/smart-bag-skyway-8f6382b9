@@ -1,4 +1,5 @@
 import type { FieldDef, RowIssue } from "./types";
+import { egMobileError } from "@/lib/phone/egypt";
 
 // Airport / airline code reference sets. Extendable via reference tables
 // once the ERP integration is in place.
@@ -118,6 +119,11 @@ export function validateField(
           message: `${field.label} format looks unusual.`,
         });
       }
+      break;
+    }
+    case "egMobile": {
+      const err = egMobileError(trimmed, field.label);
+      if (err) issues.push({ field: field.key, level: "error", message: err });
       break;
     }
     case "enum":
