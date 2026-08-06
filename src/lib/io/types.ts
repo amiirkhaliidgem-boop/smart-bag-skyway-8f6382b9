@@ -40,6 +40,12 @@ export interface FieldDef {
    * value rather than on the whole cell.
    */
   multiValueSeparator?: string;
+  /**
+   * Extracts the values this field occupies on an EXISTING stored record,
+   * used for duplicate detection when the store shape differs from the
+   * import key (e.g. bag tags live under `baggage.bagTags`).
+   */
+  existingValues?: (record: Record<string, unknown>) => string[];
 }
 
 export interface DatasetSchema {
