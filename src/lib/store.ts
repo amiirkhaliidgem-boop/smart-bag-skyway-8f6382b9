@@ -25,6 +25,7 @@ import type { TimelineEntry } from "./ops.mapping";
 export type { TimelineEntry };
 import { saveStation, logDataIoEvent } from "./settings.functions";
 import { supabase } from "@/integrations/supabase/client";
+import { subscribeRealtime } from "./realtime";
 
 export type CaseStatus =
   | "Missing"
@@ -628,21 +629,13 @@ function boot() {
       notify();
     }
   });
-  const channel = supabase
-    .channel("ops_sync")
-    .on("postgres_changes", { event: "*", schema: "public", table: "deliveries" }, () =>
-      scheduleRefresh("core"),
-    )
-    .on("postgres_changes", { event: "*", schema: "public", table: "baggage_cases" }, () =>
-      scheduleRefresh("core"),
-    )
-    .on("postgres_changes", { event: "*", schema: "public", table: "notification_events" }, () =>
-      scheduleRefresh("activity"),
-    )
-    .subscribe();
-  window.addEventListener("beforeunload", () => {
-    void supabase.removeChannel(channel);
-  });
+  // Operational tiers ride the shared realtime hub. Dispatch is per-table, so
+  // a settings or dashboard-only event never triggers an operational refresh.
+  const unsubscribe = subscribeRealtime(
+    ["deliveries", "baggage_cases", "notification_events"],
+    (table) => scheduleRefresh(table === "notification_events" ? "activity" : "core"),
+  );
+  window.addEventListener("beforeunload", unsubscribe);
 
   // A tab that was hidden while changes arrived catches up once, on return,
   // instead of every tab refetching in lockstep the moment the write lands.
