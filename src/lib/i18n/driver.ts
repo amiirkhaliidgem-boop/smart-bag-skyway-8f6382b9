@@ -43,6 +43,10 @@ export interface DriverStrings {
   noCompleted: string;
   // Delivery card
   currentStop: string;
+  slaDue: string;
+  slaOverdue: string;
+  slaLeft: string;
+  region: string;
   navigateToStop: string;
   accept: string;
   collectBag: string;
@@ -96,6 +100,10 @@ const en: DriverStrings = {
   noStops: "No stops assigned. New deliveries will appear here automatically.",
   noCompleted: "No deliveries completed yet.",
   currentStop: "Current stop",
+  slaDue: "Due",
+  slaOverdue: "overdue",
+  slaLeft: "left",
+  region: "Region",
   navigateToStop: "Navigate to Stop",
   accept: "Accept",
   collectBag: "Collect Bag",
@@ -154,6 +162,10 @@ const ar: DriverStrings = {
   noStops: "لا توجد محطات مُسندة. ستظهر عمليات التوصيل الجديدة هنا تلقائياً.",
   noCompleted: "لم يتم إكمال أي عملية توصيل بعد.",
   currentStop: "المحطة الحالية",
+  slaDue: "الموعد النهائي",
+  slaOverdue: "متأخر",
+  slaLeft: "متبقٍ",
+  region: "المنطقة",
   navigateToStop: "التوجيه إلى المحطة",
   accept: "قبول",
   collectBag: "استلام الحقيبة",

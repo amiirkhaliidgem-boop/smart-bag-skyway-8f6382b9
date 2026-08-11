@@ -7,7 +7,7 @@
 
 import type { NotificationChannelAdapter, OutboundEvent, SendResult } from "../channels";
 import type { NotificationChannel } from "../templates";
-import { toE164Eg } from "@/lib/phone/egypt";
+import { toE164 } from "@/lib/phone/intl";
 
 function credentials() {
   const sid = process.env.TWILIO_ACCOUNT_SID;
@@ -25,9 +25,9 @@ function fromNumber(channel: NotificationChannel): string | undefined {
 }
 
 function address(channel: NotificationChannel, value: string): string {
-  // Numbers are stored in the local Egyptian format; the provider requires
-  // E.164, so normalisation happens here and nowhere else.
-  const e164 = toE164Eg(value) ?? value.trim();
+  // Numbers are stored canonically as E.164; legacy local numbers are
+  // normalised here. No country-specific assumption is made.
+  const e164 = toE164(value) ?? value.trim();
   return channel === "whatsapp" && !e164.startsWith("whatsapp:") ? `whatsapp:${e164}` : e164;
 }
 
@@ -42,11 +42,11 @@ function makeTwilioAdapter(channel: NotificationChannel): NotificationChannelAda
     name: "twilio",
     simulated: false,
     validateRecipient(to: string) {
-      return toE164Eg(to) !== null
+      return toE164(to) !== null
         ? { ok: true }
         : {
             ok: false,
-            error: "Invalid Egyptian mobile number (expected 11 digits starting 010/011/012/015)",
+            error: "Invalid recipient number (expected a valid international number)",
           };
     },
     async send(event: OutboundEvent): Promise<SendResult> {
@@ -55,10 +55,10 @@ function makeTwilioAdapter(channel: NotificationChannel): NotificationChannelAda
       if (!creds || !from) {
         return { ok: false, error: "Twilio is not configured", retryable: false };
       }
-      if (toE164Eg(event.to) === null) {
+      if (toE164(event.to) === null) {
         return {
           ok: false,
-          error: "Invalid Egyptian mobile number (expected 11 digits starting 010/011/012/015)",
+          error: "Invalid recipient number (expected a valid international number)",
           retryable: false,
         };
       }

@@ -4,8 +4,7 @@
 // then to the simulated adapter, exactly as before.
 import type { NotificationChannelAdapter, OutboundEvent, SendResult } from "../channels";
 import type { NotificationChannel } from "../templates";
-
-const PHONE_RE = /^\+?[0-9 ()-]{6,20}$/;
+import { toE164, e164Digits } from "@/lib/phone/intl";
 
 interface LiveConfig {
   provider: string;
@@ -49,7 +48,11 @@ async function sendSms(live: LiveConfig, event: OutboundEvent): Promise<SendResu
           Authorization: `Basic ${auth}`,
           "Content-Type": "application/x-www-form-urlencoded",
         },
-        body: new URLSearchParams({ To: event.to, From: sender, Body: event.message.body }),
+      body: new URLSearchParams({
+        To: toE164(event.to) ?? event.to,
+        From: sender,
+        Body: event.message.body,
+      }),
       },
     );
     const body = await res.text();
@@ -72,7 +75,15 @@ async function sendSms(live: LiveConfig, event: OutboundEvent): Promise<SendResu
         Accept: "application/json",
       },
       body: JSON.stringify({
-        messages: [{ from: sender, destinations: [{ to: event.to }], text: event.message.body }],
+        messages: [
+          {
+            from: sender,
+            // Infobip accepts E.164 with or without the leading +; digits are
+            // the documented canonical form.
+            destinations: [{ to: e164Digits(event.to) ?? event.to }],
+            text: event.message.body,
+          },
+        ],
       }),
     });
     const body = await res.text();
@@ -87,7 +98,11 @@ async function sendSms(live: LiveConfig, event: OutboundEvent): Promise<SendResu
       Authorization: `Bearer ${live.secrets.api_key}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ to: event.to, from: sender, message: event.message.body }),
+    body: JSON.stringify({
+      to: toE164(event.to) ?? event.to,
+      from: sender,
+      message: event.message.body,
+    }),
   });
   const body = await res.text();
   if (!res.ok) return { ok: false, error: `HTTP ${res.status}: ${body.slice(0, 300)}`, retryable: retryable(res.status) };
@@ -104,7 +119,8 @@ async function sendWhatsApp(live: LiveConfig, event: OutboundEvent): Promise<Sen
     },
     body: JSON.stringify({
       messaging_product: "whatsapp",
-      to: event.to.replace(/[^0-9+]/g, ""),
+      // WhatsApp Cloud API expects E.164 digits without the leading "+".
+      to: e164Digits(event.to) ?? event.to.replace(/[^0-9]/g, ""),
       type: "text",
       text: { body: event.message.body },
     }),
@@ -134,12 +150,10 @@ export async function configuredAdapter(
     name: live.provider || key,
     simulated: false,
     validateRecipient(to: string) {
-      return PHONE_RE.test((to ?? "").trim())
-        ? { ok: true }
-        : { ok: false, error: "Invalid mobile number" };
+      return toE164(to) !== null ? { ok: true } : { ok: false, error: "Invalid mobile number" };
     },
     async send(event: OutboundEvent): Promise<SendResult> {
-      if (!PHONE_RE.test((event.to ?? "").trim())) {
+      if (toE164(event.to) === null) {
         return { ok: false, error: "Invalid mobile number", retryable: false };
       }
       try {

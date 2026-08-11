@@ -50,6 +50,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import { useStaffOfficers, type StaffOfficer } from "@/lib/admin/officers";
 import {
   ArrowLeft,
   ChevronRight,
@@ -530,15 +531,24 @@ function CaseDetailsPage() {
       {/* Assign officer dialog */}
       <Dialog open={assignOfficerOpen} onOpenChange={setAssignOfficerOpen}>
         <AssignOfficerDialog
-          current={c.internal?.assignedOfficer ?? ""}
+          currentId={c.internal?.assignedOfficerId ?? ""}
           onConfirm={(officer) => {
             editCase(
               c.bagId,
-              { internal: { ...(c.internal ?? {}), assignedOfficer: officer } },
-              { actor: "Ops Console", note: `Officer assigned: ${officer || "Unassigned"}` },
+              {
+                internal: {
+                  ...(c.internal ?? {}),
+                  assignedOfficerId: officer?.id,
+                  assignedOfficer: officer?.full_name,
+                },
+              } as never,
+              {
+                actor: "Ops Console",
+                note: `Officer assigned: ${officer?.full_name ?? "Unassigned"}`,
+              },
             );
             setAssignOfficerOpen(false);
-            toast.success(officer ? `Assigned to ${officer}` : "Officer cleared");
+            toast.success(officer ? `Assigned to ${officer.full_name}` : "Officer cleared");
           }}
           onClose={() => setAssignOfficerOpen(false)}
         />
@@ -622,35 +632,57 @@ function ChangeStatusDialog({
 }
 
 // ---------- Assign Officer dialog ----------
+// Same authoritative source as the bulk action: the live Administration
+// staff directory. Free-text officer names are no longer accepted.
 function AssignOfficerDialog({
-  current,
+  currentId,
   onConfirm,
   onClose,
 }: {
-  current: string;
-  onConfirm: (officer: string) => void;
+  currentId: string;
+  onConfirm: (officer: StaffOfficer | null) => void;
   onClose: () => void;
 }) {
-  const [name, setName] = useState(current);
+  const officers = useStaffOfficers();
+  const [officerId, setOfficerId] = useState(currentId);
   return (
     <DialogContent className="max-w-sm">
       <DialogHeader>
         <DialogTitle>Assign Officer</DialogTitle>
       </DialogHeader>
       <div className="space-y-2">
-        <Label className="text-xs">Officer name</Label>
-        <Input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="e.g. A. Hassan"
-          autoFocus
-        />
+        <Label className="text-xs">Officer</Label>
+        <Select value={officerId} onValueChange={setOfficerId}>
+          <SelectTrigger className="h-9">
+            <SelectValue placeholder="Pick an officer" />
+          </SelectTrigger>
+          <SelectContent>
+            {officers.map((o) => (
+              <SelectItem key={o.id} value={o.id}>
+                {o.full_name} · {o.employee_id}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {officers.length === 0 && (
+          <p className="text-xs text-muted-foreground">
+            No active staff found in Administration.
+          </p>
+        )}
       </div>
       <DialogFooter>
+        <Button variant="ghost" onClick={() => onConfirm(null)}>
+          Clear
+        </Button>
         <Button variant="outline" onClick={onClose}>
           Cancel
         </Button>
-        <Button onClick={() => onConfirm(name.trim())}>Save</Button>
+        <Button
+          disabled={!officerId}
+          onClick={() => onConfirm(officers.find((o) => o.id === officerId) ?? null)}
+        >
+          Save
+        </Button>
       </DialogFooter>
     </DialogContent>
   );

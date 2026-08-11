@@ -1,5 +1,6 @@
 import type { FieldDef, RowIssue } from "./types";
-import { egMobileError } from "@/lib/phone/egypt";
+import { phoneError, toE164 } from "@/lib/phone/intl";
+import { icaoAirlineError, normalizeIcaoAirline } from "@/lib/airline/icao";
 
 // Airport / airline code reference sets. Extendable via reference tables
 // once the ERP integration is in place.
@@ -9,27 +10,7 @@ export const KNOWN_AIRPORTS = new Set([
   "AUH", "MCT", "KWI", "BAH", "MUC", "ZRH", "MAD", "BCN", "FCO", "MXP", "ATH",
 ]);
 
-export const KNOWN_AIRLINES = new Set([
-  // Full-service carriers
-  "MS", "TK", "EK", "QR", "EY", "SV", "LH", "BA", "AF", "KL", "LX", "IB",
-  "AZ", "RJ", "ME", "PC", "OS", "TP", "AY", "SN", "SK", "AC", "UA", "AA",
-  "DL", "VS", "IR", "GF", "KU", "OM", "WY", "UL", "AI", "EI", "TG", "SQ",
-  "CX", "JL", "NH", "OZ", "KE", "CA", "MU", "CZ", "ET", "KQ", "MK", "SA",
-  // Low-cost & regional (incl. Air Arabia G9, flydubai FZ, Wizz W6, etc.)
-  "G9", "FZ", "W6", "XY", "NP", "3O", "AH", "HR", "J9", "IX", "6E", "SG",
-  "FR", "U2", "VY", "PC", "XQ", "TO", "HV", "DY", "D8", "BT",
-]);
-
 const RX_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const RX_PHONE = /^\+?[0-9][0-9 ()-]{6,20}$/;
-// Egyptian mobile numbers as operators actually type them:
-// 01xxxxxxxxx, 0020..., +2010..., with spaces/dashes tolerated.
-const RX_EG_MOBILE = /^(?:\+?20|00?20)?0?1[0-25]\d{8}$/;
-
-/** Digits-only view used for local-format checks. */
-function phoneDigits(v: string): string {
-  return v.replace(/[\s()\-.]/g, "");
-}
 const RX_DATETIME = /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(:\d{2})?(Z|[+-]\d{2}:?\d{2})?$/;
 
 // Flexible date parser. Real-world CSVs from Excel/Numbers arrive in many
@@ -110,20 +91,23 @@ export function validateField(
     case "email":
       if (!RX_EMAIL.test(trimmed)) issues.push({ field: field.key, level: "error", message: `${field.label} is not a valid email.` });
       break;
-    case "phone": {
-      const digits = phoneDigits(trimmed);
-      if (!RX_EG_MOBILE.test(digits) && !RX_PHONE.test(trimmed)) {
+    // Passenger phone numbers are international. A bare local number is read
+    // as Egyptian (the station default); anything starting with + is parsed
+    // as given. Storage is always canonical E.164.
+    case "phone":
+    case "egMobile": {
+      const e164 = toE164(trimmed);
+      if (!e164) {
         issues.push({
           field: field.key,
-          level: "warning",
-          message: `${field.label} format looks unusual.`,
+          level: "error",
+          message:
+            phoneError(trimmed, field.label) ??
+            `${field.label} is not a valid international number.`,
         });
+      } else {
+        value = e164;
       }
-      break;
-    }
-    case "egMobile": {
-      const err = egMobileError(trimmed, field.label);
-      if (err) issues.push({ field: field.key, level: "error", message: err });
       break;
     }
     case "enum":
@@ -144,12 +128,11 @@ export function validateField(
       value = trimmed.toUpperCase();
       break;
     case "airlineCode":
-      if (!/^[A-Z0-9]{2,3}$/.test(trimmed.toUpperCase())) {
-        issues.push({ field: field.key, level: "error", message: `${field.label} must be a 2–3 char IATA code.` });
-      } else if (!KNOWN_AIRLINES.has(trimmed.toUpperCase())) {
-        issues.push({ field: field.key, level: "warning", message: `${field.label} "${trimmed}" is unknown.` });
+      {
+        const err = icaoAirlineError(trimmed, field.label);
+        if (err) issues.push({ field: field.key, level: "error", message: err });
       }
-      value = trimmed.toUpperCase();
+      value = normalizeIcaoAirline(trimmed);
       break;
   }
 

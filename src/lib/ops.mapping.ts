@@ -235,6 +235,10 @@ export function mapDelivery(
     acceptedAt: d.accepted_at ?? undefined,
     collectedAt: d.collected_at ?? undefined,
     deliveredAt: d.delivered_at ?? undefined,
+    regionName: (d.region_name as string | null) ?? undefined,
+    slaHours: (d.sla_hours as number | null) ?? undefined,
+    slaStartedAt: (d.sla_started_at as string | null) ?? undefined,
+    slaDueAt: (d.sla_due_at as string | null) ?? undefined,
     notes: notes
       .filter((n) => n.delivery_id === d.id)
       .map((n) => ({

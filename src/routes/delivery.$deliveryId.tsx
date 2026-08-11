@@ -49,6 +49,7 @@ import {
 import { toast } from "sonner";
 import { DataTable, type DataColumn } from "@/components/layout";
 import { cn } from "@/lib/utils";
+import { slaView, SLA_BADGE_CLASS, SLA_STATE_LABEL } from "@/lib/delivery/sla";
 import { PodPrintHost, podPrintBus } from "@/components/delivery/pod-print-host";
 import { ReturnToAirportDialog } from "@/components/delivery/return-to-airport-dialog";
 
@@ -236,6 +237,16 @@ function DeliveryDetails() {
               value={delivery.driver && delivery.driver !== "—" ? delivery.driver : "Unassigned"}
             />
             <Field label="Priority" value={delivery.priority} />
+            <Field label="Region" value={slaView(delivery).regionName} />
+            <Field
+              label="SLA"
+              value={(() => {
+                const s = slaView(delivery);
+                return s.state === "none"
+                  ? "—"
+                  : `${SLA_STATE_LABEL[s.state]} · ${s.hours}h · ${s.remainingLabel}`;
+              })()}
+            />
             <Field label="Last Updated" value={fmt(delivery.lastUpdatedAt ?? "")} />
             <Field label="OTP Status" value={delivery.otpStatus} />
           </div>
@@ -355,6 +366,30 @@ function OverviewTab({ d, kase }: { d: Delivery; kase?: BaggageCase }) {
           <Row label="Passenger" value={d.passengerName} />
           <Row label="Address" value={<span className="text-xs">{d.address}</span>} />
           <Row label="Priority" value={d.priority} />
+          <Row label="Region" value={slaView(d).regionName} />
+          {(() => {
+            const s = slaView(d);
+            if (s.state === "none") return null;
+            return (
+              <>
+                <Row label="SLA Duration" value={`${s.hours} hours`} />
+                <Row label="SLA Due" value={fmt(s.dueAt ?? "")} />
+                <Row
+                  label="SLA Status"
+                  value={
+                    <span
+                      className={cn(
+                        "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium",
+                        SLA_BADGE_CLASS[s.state],
+                      )}
+                    >
+                      {SLA_STATE_LABEL[s.state]} · {s.remainingLabel}
+                    </span>
+                  }
+                />
+              </>
+            );
+          })()}
           <Row
             label="Delivery Agent"
             value={d.driver && d.driver !== "—" ? d.driver : "Unassigned"}
