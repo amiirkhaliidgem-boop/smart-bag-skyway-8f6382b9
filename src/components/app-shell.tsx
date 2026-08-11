@@ -156,17 +156,29 @@ function AppHeader() {
     // The header shares the sidebar's surface, border, typography and motion
     // tokens so the two read as one continuous navigation shell.
     <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-2 border-b border-sidebar-border bg-sidebar px-2 text-sidebar-foreground transition-[background-color,border-color] duration-200 sm:px-4">
-      {/* Desktop toggling happens on the sidebar logo; this trigger is the
-          mobile/tablet way back to the navigation drawer. */}
-      <span className="flex items-center gap-1.5 lg:hidden">
-        <span className="grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-lg bg-card shadow ring-1 ring-sidebar-border">
-          <img src={iabLogo.url} alt="IAB" className="h-7 w-7 object-contain" />
+      {/* Desktop toggling happens on the sidebar logo; on mobile the logo tile
+          itself is the trigger back into the navigation drawer. */}
+      <span className="flex min-w-0 items-center gap-2 lg:hidden">
+        <SidebarTrigger
+          asChild
+          aria-label="Open navigation"
+          className="h-11 w-11 shrink-0 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+        >
+          <button type="button" className="grid h-11 w-11 shrink-0 place-items-center rounded-lg">
+            <span className="grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-lg bg-card shadow ring-1 ring-sidebar-border">
+              <img src={iabLogo.url} alt="IAB" className="h-7 w-7 object-contain" />
+            </span>
+          </button>
+        </SidebarTrigger>
+        <span className="min-w-0 truncate text-xs font-semibold leading-tight tracking-tight text-sidebar-foreground sm:text-sm">
+          IAB Smart Baggage Ecosystem
         </span>
-        <SidebarTrigger className="min-h-10 min-w-10 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground" />
       </span>
-      <UserIdentity />
+      <span className="hidden min-w-0 lg:flex">
+        <UserIdentity />
+      </span>
       <span className="pointer-events-none absolute inset-x-0 flex justify-center px-24">
-        <span className="hidden truncate text-sm font-semibold tracking-tight text-sidebar-foreground sm:inline">
+        <span className="hidden truncate text-sm font-semibold tracking-tight text-sidebar-foreground lg:inline">
           IAB Smart Baggage Center
         </span>
       </span>
