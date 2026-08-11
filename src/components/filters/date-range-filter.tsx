@@ -136,7 +136,7 @@ export function DateRangeFilter({
           {showClear ? (
             <Button
               type="button"
-              variant="ghost"
+              variant="outline"
               size="sm"
               className="h-9 w-full px-1 text-xs sm:w-auto sm:px-3 sm:text-sm"
               onClick={() => {
