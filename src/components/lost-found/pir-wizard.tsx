@@ -460,7 +460,7 @@ export function PirWizard({
       </div>
 
       {/* Body */}
-      <div className="flex-1 overflow-y-auto px-6 py-5">
+      <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
         {step === 0 && (
           <Grid>
             <Fld label="First Name" required>
