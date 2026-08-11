@@ -40,6 +40,7 @@ import {
 import { toast } from "sonner";
 import { DriverLanguageProvider, useDriverLang } from "@/lib/i18n/driver-language";
 import { DriverShell } from "@/components/driver-shell";
+import { slaView, SLA_BADGE_CLASS } from "@/lib/delivery/sla";
 
 export const Route = createFileRoute("/driver-portal")({
   head: () => ({ meta: [{ title: "Delivery Agent Portal — Smart Baggage Ecosystem" }] }),
@@ -420,6 +421,24 @@ function DeliveryCard({
           <span dir="ltr">{d.mobile}</span>
         </p>
       </div>
+      {(() => {
+        const s = slaView(d);
+        if (s.state === "none") return null;
+        return (
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+            <span className="text-muted-foreground">
+              {t.region}: {s.regionName}
+            </span>
+            <span
+              className={`rounded-full px-2 py-0.5 font-medium ${SLA_BADGE_CLASS[s.state]}`}
+              dir="ltr"
+            >
+              {t.slaDue} {new Date(s.dueAt!).toLocaleString("en-GB", { hour12: false })} ·{" "}
+              {s.remainingLabel}
+            </span>
+          </div>
+        );
+      })()}
       <div className="flex flex-wrap gap-2 mt-3">
         {legOrigin && (
           <Button asChild size="sm" variant="outline" className="gap-1.5">
