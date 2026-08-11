@@ -439,7 +439,7 @@ function DeliveryCard({
           </div>
         );
       })()}
-      <div className="flex flex-wrap gap-2 mt-3">
+      <div className="mt-3 flex flex-wrap gap-2 [&>a]:flex-1 [&>button]:flex-1 sm:[&>a]:flex-none sm:[&>button]:flex-none">
         {legOrigin && (
           <Button asChild size="sm" variant="outline" className="gap-1.5">
             <a href={stopNavigationHref(legOrigin, d)} target="_blank" rel="noreferrer">
