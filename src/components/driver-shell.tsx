@@ -30,8 +30,8 @@ export function DriverShell({
             className="h-8 w-8 shrink-0 rounded-lg bg-card object-contain p-0.5 shadow ring-1 ring-sidebar-border"
           />
           <div className="min-w-0">
-            <p className="truncate text-xs font-semibold leading-tight sm:text-sm">
-              Smart Baggage Ecosystem
+            <p className="truncate text-xs font-semibold leading-tight tracking-tight sm:text-sm">
+              IAB Smart Baggage Ecosystem
             </p>
             <p className="truncate text-[11px] leading-tight text-sidebar-foreground/70">
               {t.portalTitle}
