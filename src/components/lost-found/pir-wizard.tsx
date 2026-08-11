@@ -402,7 +402,7 @@ export function PirWizard({
 
   return (
     <DialogContent className="max-w-5xl max-h-[92vh] overflow-hidden p-0 flex flex-col">
-      <DialogHeader className="px-6 pt-5 pb-3 border-b">
+      <DialogHeader className="border-b px-4 pb-3 pt-5 text-left sm:px-6">
         <DialogTitle>
           {mode === "edit" ? `Edit Case · ${caseData?.pirNumber}` : "Register New PIR / AHL Case"}
         </DialogTitle>
@@ -414,7 +414,7 @@ export function PirWizard({
       </DialogHeader>
 
       {/* Stepper */}
-      <div className="flex items-center gap-1 px-6 py-3 border-b overflow-x-auto">
+      <div className="flex items-center gap-1 overflow-x-auto border-b px-4 py-3 sm:px-6">
         {STEPS.map((s, i) => {
           const Icon = s.icon;
           const done = i < step;
@@ -718,7 +718,7 @@ export function PirWizard({
         )}
       </div>
 
-      <DialogFooter className="px-6 py-3 border-t flex-row justify-between gap-2">
+      <DialogFooter className="flex-row flex-wrap justify-between gap-2 border-t px-4 py-3 sm:px-6">
         <Button variant="outline" onClick={onClose}>
           Cancel
         </Button>
