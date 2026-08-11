@@ -208,7 +208,7 @@ function Index() {
   const funnelMax = Math.max(1, ...funnel.map((f) => f.count));
 
   return (
-    <div className="space-y-6">
+    <div className="min-w-0 space-y-6">
       <PageHeader
         title="Executive Dashboard"
         actions={
@@ -258,12 +258,12 @@ function Index() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid min-w-0 grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-3">
         <Card className="lg:col-span-2">
-          <CardHeader>
+          <CardHeader className="px-3 pb-2 sm:px-6 sm:pb-4">
             <CardTitle className="text-base">Baggage Status Distribution</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-3 sm:px-6">
             {isLoading ? (
               <ChartSkeleton />
             ) : (
@@ -294,10 +294,10 @@ function Index() {
         </Card>
 
         <Card>
-          <CardHeader>
+          <CardHeader className="px-3 pb-2 sm:px-6 sm:pb-4">
             <CardTitle className="text-base">Status Breakdown</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-3 sm:px-6">
             {isLoading ? (
               <ChartSkeleton />
             ) : (
@@ -327,10 +327,10 @@ function Index() {
       </div>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="px-3 pb-2 sm:px-6 sm:pb-4">
           <CardTitle className="text-base">Cases by Carrier</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-3 sm:px-6">
           {isLoading ? (
             <ChartSkeleton height="h-64" />
           ) : (
@@ -349,12 +349,12 @@ function Index() {
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid min-w-0 grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2">
         <Card>
-          <CardHeader>
+          <CardHeader className="px-3 pb-2 sm:px-6 sm:pb-4">
             <CardTitle className="text-base">Cases Opened vs Completed Journeys</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-3 sm:px-6">
             {isLoading ? (
               <ChartSkeleton height="h-64" />
             ) : (
@@ -400,10 +400,10 @@ function Index() {
         </Card>
 
         <Card>
-          <CardHeader>
+          <CardHeader className="px-3 pb-2 sm:px-6 sm:pb-4">
             <CardTitle className="text-base">Delivery Success & Quality Incidents</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-3 sm:px-6">
             {isLoading ? (
               <ChartSkeleton height="h-64" />
             ) : (
@@ -445,12 +445,12 @@ function Index() {
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid min-w-0 grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2">
         <Card>
-          <CardHeader>
+          <CardHeader className="px-3 pb-2 sm:px-6 sm:pb-4">
             <CardTitle className="text-base">CSAT Trend</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-3 sm:px-6">
             {isLoading ? (
               <ChartSkeleton height="h-64" />
             ) : (
@@ -477,17 +477,17 @@ function Index() {
         </Card>
 
         <Card>
-          <CardHeader>
+          <CardHeader className="px-3 pb-2 sm:px-6 sm:pb-4">
             <CardTitle className="text-base">Unified Operational Pipeline</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-3 sm:px-6">
             {isLoading ? (
               <ListSkeleton rows={6} />
             ) : (
               <div className="space-y-2">
                 {funnel.map((f) => (
                   <div key={f.status} className="flex items-center gap-3">
-                    <div className="w-40 text-xs text-muted-foreground truncate">{f.label}</div>
+                    <div className="w-24 shrink-0 truncate text-xs text-muted-foreground sm:w-40">{f.label}</div>
                     <div className="flex-1 h-3 rounded-full bg-muted overflow-hidden">
                       <div
                         className="h-full bg-primary rounded-full transition-all"
