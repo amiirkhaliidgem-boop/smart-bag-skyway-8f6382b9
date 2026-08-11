@@ -212,7 +212,7 @@ function Index() {
       <PageHeader
         title="Executive Dashboard"
         actions={
-          <>
+          <div className="flex w-full min-w-0 flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
             <DateRangeFilter
               from={from}
               to={to}
@@ -224,13 +224,13 @@ function Index() {
             <Button
               variant="outline"
               size="sm"
-              className="h-9"
+              className="h-9 w-full sm:w-auto"
               aria-label="Refresh dashboard"
               onClick={() => queryClient.invalidateQueries({ queryKey: ["executive-dashboard"] })}
             >
               <RefreshCw className={`h-3.5 w-3.5 ${isFetching ? "animate-spin" : ""}`} />
             </Button>
-          </>
+          </div>
         }
       />
 
