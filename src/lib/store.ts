@@ -284,6 +284,11 @@ export interface Delivery {
   acceptedAt?: string;
   collectedAt?: string;
   deliveredAt?: string;
+  /** SLA overlay, authoritative from the database projection. */
+  regionName?: string;
+  slaHours?: number;
+  slaStartedAt?: string;
+  slaDueAt?: string;
   notes?: { id: string; at: string; actor: string; text: string }[];
 }
 
