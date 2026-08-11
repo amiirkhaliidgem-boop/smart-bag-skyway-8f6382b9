@@ -137,9 +137,9 @@ export function AppShell() {
   return (
     <SidebarProvider open={open} onOpenChange={handleOpenChange}>
       <AppSidebar />
-      <SidebarInset className="min-w-0 bg-background text-foreground">
+      <SidebarInset className="min-w-0 overflow-x-hidden bg-background text-foreground">
         <AppHeader />
-        <main className="mx-auto w-full max-w-[1600px] flex-1 p-4 sm:p-6 lg:p-8">
+        <main className="mx-auto w-full min-w-0 max-w-[1600px] flex-1 p-3 sm:p-6 lg:p-8">
           <Outlet />
         </main>
       </SidebarInset>
@@ -158,7 +158,12 @@ function AppHeader() {
     <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-2 border-b border-sidebar-border bg-sidebar px-2 text-sidebar-foreground transition-[background-color,border-color] duration-200 sm:px-4">
       {/* Desktop toggling happens on the sidebar logo; this trigger is the
           mobile/tablet way back to the navigation drawer. */}
-      <SidebarTrigger className="min-h-10 min-w-10 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground lg:hidden" />
+      <span className="flex items-center gap-1.5 lg:hidden">
+        <span className="grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-lg bg-card shadow ring-1 ring-sidebar-border">
+          <img src={iabLogo.url} alt="IAB" className="h-7 w-7 object-contain" />
+        </span>
+        <SidebarTrigger className="min-h-10 min-w-10 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground" />
+      </span>
       <UserIdentity />
       <span className="pointer-events-none absolute inset-x-0 flex justify-center px-24">
         <span className="hidden truncate text-sm font-semibold tracking-tight text-sidebar-foreground sm:inline">
