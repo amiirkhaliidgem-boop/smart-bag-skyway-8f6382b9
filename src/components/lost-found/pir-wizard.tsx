@@ -6,7 +6,9 @@ import {
   type Priority,
   type DeliveryMethod,
 } from "@/lib/store";
-import { egMobileError, isEgMobile, EG_MOBILE_HINT } from "@/lib/phone/egypt";
+import { phoneError, isValidPhone, countryOf, DEFAULT_COUNTRY } from "@/lib/phone/intl";
+import { PhoneField } from "@/components/phone-field";
+import { icaoAirlineError } from "@/lib/airline/icao";
 import { DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -211,9 +213,10 @@ export function PirWizard({
       form.bagTags.length > 0 &&
       form.bagTags.every((t) => t.trim()) &&
       form.flightNumber.trim() &&
-      isEgMobile(form.mobile) &&
-      (!form.mobile2.trim() || isEgMobile(form.mobile2)) &&
-      form.airline.trim() &&
+      isValidPhone(form.mobile, countryOf(form.mobile) ?? DEFAULT_COUNTRY) &&
+      (!form.mobile2.trim() ||
+        isValidPhone(form.mobile2, countryOf(form.mobile2) ?? DEFAULT_COUNTRY)) &&
+      !icaoAirlineError(form.airline) &&
       // Airport Pickup has no delivery address, region, agent or route.
       (form.method === "Airport Pickup" || form.fullAddress.trim()),
     [form],
@@ -223,15 +226,20 @@ export function PirWizard({
     if (i === 0) {
       if (!form.firstName.trim() || !form.lastName.trim())
         return "First and last name are required.";
-      const m1 = egMobileError(form.mobile, "Mobile Number 1");
+      const m1 = phoneError(form.mobile, "Mobile Number 1", countryOf(form.mobile) ?? DEFAULT_COUNTRY);
       if (m1) return m1;
       if (form.mobile2.trim()) {
-        const m2 = egMobileError(form.mobile2, "Mobile Number 2");
+        const m2 = phoneError(
+          form.mobile2,
+          "Mobile Number 2",
+          countryOf(form.mobile2) ?? DEFAULT_COUNTRY,
+        );
         if (m2) return m2;
       }
     }
     if (i === 1) {
-      if (!form.airline.trim()) return "Airline is required.";
+      const air = icaoAirlineError(form.airline);
+      if (air) return air;
       if (!form.flightNumber.trim()) return "Flight number is required.";
       if (!form.flightDate) return "Flight date is required.";
     }
@@ -465,21 +473,14 @@ export function PirWizard({
               <Input value={form.pnr} onChange={(e) => set("pnr", e.target.value)} />
             </Fld>
             <Fld label="Mobile Number 1" required>
-              <Input
-                value={form.mobile}
-                inputMode="numeric"
-                placeholder="01012345678"
-                onChange={(e) => set("mobile", e.target.value)}
-              />
-              <p className="text-[11px] text-muted-foreground mt-1">{EG_MOBILE_HINT}</p>
+              <PhoneField value={form.mobile} onChange={(v) => set("mobile", v)} />
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Pick the passenger&apos;s country and enter the local number. It is stored in
+                international format (e.g. +201012345678).
+              </p>
             </Fld>
             <Fld label="Mobile Number 2">
-              <Input
-                value={form.mobile2}
-                inputMode="numeric"
-                placeholder="01019982210"
-                onChange={(e) => set("mobile2", e.target.value)}
-              />
+              <PhoneField value={form.mobile2} onChange={(v) => set("mobile2", v)} />
             </Fld>
             <Fld label="Email">
               <Input
@@ -496,9 +497,15 @@ export function PirWizard({
             <Fld label="Airline" required>
               <Input
                 value={form.airline}
-                onChange={(e) => set("airline", e.target.value)}
-                placeholder="e.g. MS"
+                maxLength={3}
+                onChange={(e) =>
+                  set("airline", e.target.value.toUpperCase().replace(/[^A-Z]/g, "").slice(0, 3))
+                }
+                placeholder="ICAO, e.g. ABY"
               />
+              <p className="text-[11px] text-muted-foreground mt-1">
+                3-letter ICAO airline designator (ABY, ADY, RBG).
+              </p>
             </Fld>
             <Fld label="Flight Number" required>
               <Input
