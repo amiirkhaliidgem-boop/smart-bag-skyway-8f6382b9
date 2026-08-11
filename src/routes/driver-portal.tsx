@@ -203,7 +203,7 @@ function DriverDashboard({ driver }: { driver: string }) {
         </div>
       </header>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
         <Kpi label={t.stopsToday} value={route.length} icon={<Package />} tone="indigo" />
         <Kpi
           label={t.outForDelivery}
@@ -211,7 +211,13 @@ function DriverDashboard({ driver }: { driver: string }) {
           icon={<Truck />}
           tone="primary"
         />
-        <Kpi label={t.completed} value={completed.length} icon={<CheckCircle2 />} tone="emerald" />
+        <Kpi
+          label={t.completed}
+          value={completed.length}
+          icon={<CheckCircle2 />}
+          tone="emerald"
+          className="col-span-2 sm:col-span-1"
+        />
       </div>
 
       <RouteSection
@@ -230,11 +236,13 @@ function Kpi({
   value,
   icon,
   tone,
+  className,
 }: {
   label: string;
   value: number;
   icon: React.ReactNode;
   tone: "primary" | "indigo" | "emerald";
+  className?: string;
 }) {
   const tones: Record<string, string> = {
     primary: "bg-primary/10 text-primary",
@@ -242,8 +250,8 @@ function Kpi({
     emerald: "bg-emerald-100 text-emerald-700",
   };
   return (
-    <Card className="rounded-xl">
-      <CardContent className="p-4 flex items-center gap-3">
+    <Card className={`rounded-xl ${className ?? ""}`}>
+      <CardContent className="flex items-center gap-3 p-3 sm:p-4">
         <div className={`h-10 w-10 shrink-0 rounded-lg grid place-items-center ${tones[tone]}`}>
           <div className="h-5 w-5">{icon}</div>
         </div>
@@ -439,7 +447,7 @@ function DeliveryCard({
           </div>
         );
       })()}
-      <div className="flex flex-wrap gap-2 mt-3">
+      <div className="mt-3 flex flex-wrap gap-2 [&>a]:flex-1 [&>button]:flex-1 sm:[&>a]:flex-none sm:[&>button]:flex-none">
         {legOrigin && (
           <Button asChild size="sm" variant="outline" className="gap-1.5">
             <a href={stopNavigationHref(legOrigin, d)} target="_blank" rel="noreferrer">

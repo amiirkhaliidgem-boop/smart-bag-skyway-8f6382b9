@@ -76,7 +76,7 @@ export const KpiCard = memo(function KpiCard({
     <Comp
       {...(onClick ? { type: "button" as const, onClick } : {})}
       className={cn(
-        "flex min-w-0 flex-col gap-2 rounded-xl border border-border bg-card p-4 text-left shadow-sm transition-colors",
+        "flex min-w-0 flex-col gap-1.5 rounded-xl border border-border bg-card p-3 text-left shadow-sm transition-colors sm:gap-2 sm:p-4",
         onClick && "hover:border-primary/40 hover:bg-muted/40",
         className,
       )}
@@ -85,21 +85,21 @@ export const KpiCard = memo(function KpiCard({
         {icon ? (
           <span
             className={cn(
-              "grid h-8 w-8 shrink-0 place-items-center rounded-lg [&_svg]:h-4 [&_svg]:w-4",
+              "grid h-7 w-7 shrink-0 place-items-center rounded-lg sm:h-8 sm:w-8 [&_svg]:h-4 [&_svg]:w-4",
               TONE_RING[tone],
             )}
           >
             {icon}
           </span>
         ) : null}
-        <span className="min-w-0 truncate text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        <span className="min-w-0 truncate text-[11px] font-medium uppercase tracking-wide text-muted-foreground sm:text-xs">
           {label}
         </span>
       </div>
       {loading ? (
         <Skeleton className="h-7 w-20" />
       ) : (
-        <span className="text-2xl font-semibold tabular-nums leading-none tracking-tight">
+        <span className="text-xl font-semibold tabular-nums leading-none tracking-tight sm:text-2xl">
           {value}
         </span>
       )}
@@ -113,7 +113,7 @@ export function KpiGrid({ children, className }: { children: ReactNode; classNam
   return (
     <div
       className={cn(
-        "grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6",
+        "grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-4 xl:grid-cols-6",
         className,
       )}
     >

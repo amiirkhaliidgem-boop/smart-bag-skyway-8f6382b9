@@ -57,13 +57,13 @@ export function LanguageToggle({ className = "" }: { className?: string }) {
     "px-2.5 h-7 text-xs font-medium rounded-md transition-colors active:scale-[0.99]";
   return (
     <div
-      className={`inline-flex items-center gap-1 rounded-lg border border-border bg-muted/40 p-1 ${className}`}
+      className={`inline-flex items-center gap-1 rounded-lg border border-sidebar-border bg-sidebar-accent/30 p-1 ${className}`}
     >
       <button
         type="button"
         onClick={() => setLang("en")}
         aria-pressed={lang === "en"}
-        className={`${base} ${lang === "en" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+        className={`${base} ${lang === "en" ? "bg-background text-foreground shadow-sm" : "text-sidebar-foreground/70 hover:text-sidebar-foreground"}`}
       >
         English
       </button>
@@ -71,7 +71,7 @@ export function LanguageToggle({ className = "" }: { className?: string }) {
         type="button"
         onClick={() => setLang("ar")}
         aria-pressed={lang === "ar"}
-        className={`${base} ${lang === "ar" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+        className={`${base} ${lang === "ar" ? "bg-background text-foreground shadow-sm" : "text-sidebar-foreground/70 hover:text-sidebar-foreground"}`}
       >
         العربية
       </button>
