@@ -221,6 +221,39 @@ function DispatchCenter() {
         cell: (d) => <span className="text-xs">{d.priority}</span>,
       },
       {
+        id: "region",
+        header: "Region",
+        hideBelow: "lg",
+        sortValue: (d) => d.regionName ?? "",
+        cell: (d) => <span className="text-xs">{slaView(d).regionName}</span>,
+      },
+      {
+        id: "sla",
+        header: "SLA",
+        minWidth: "10rem",
+        hideBelow: "lg",
+        sortValue: (d) => d.slaDueAt ?? "",
+        cell: (d) => {
+          const s = slaView(d);
+          if (s.state === "none") return <span className="text-xs text-muted-foreground">—</span>;
+          return (
+            <div className="flex flex-col gap-0.5">
+              <span
+                className={cn(
+                  "inline-flex w-fit items-center rounded-full px-2 py-0.5 text-[11px] font-medium",
+                  SLA_BADGE_CLASS[s.state],
+                )}
+              >
+                {SLA_STATE_LABEL[s.state]} · {s.hours}h
+              </span>
+              <span className="whitespace-nowrap text-[11px] text-muted-foreground">
+                Due {fmt(s.dueAt ?? "")} · {s.remainingLabel}
+              </span>
+            </div>
+          );
+        },
+      },
+      {
         id: "created",
         header: "Created",
         hideBelow: "xl",
