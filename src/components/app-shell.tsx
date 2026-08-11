@@ -178,7 +178,7 @@ function AppHeader() {
         <UserIdentity />
       </span>
       <span className="pointer-events-none absolute inset-x-0 flex justify-center px-24">
-        <span className="hidden truncate text-sm font-semibold tracking-tight text-sidebar-foreground sm:inline">
+        <span className="hidden truncate text-sm font-semibold tracking-tight text-sidebar-foreground lg:inline">
           IAB Smart Baggage Center
         </span>
       </span>
