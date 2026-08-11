@@ -159,17 +159,7 @@ function AppHeader() {
       {/* Desktop toggling happens on the sidebar logo; on mobile the logo tile
           itself is the trigger back into the navigation drawer. */}
       <span className="flex min-w-0 items-center gap-2 lg:hidden">
-        <SidebarTrigger
-          asChild
-          aria-label="Open navigation"
-          className="h-11 w-11 shrink-0 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-        >
-          <button type="button" className="grid h-11 w-11 shrink-0 place-items-center rounded-lg">
-            <span className="grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-lg bg-card shadow ring-1 ring-sidebar-border">
-              <img src={iabLogo.url} alt="IAB" className="h-7 w-7 object-contain" />
-            </span>
-          </button>
-        </SidebarTrigger>
+        <MobileNavLogoTrigger />
         <span className="min-w-0 truncate text-xs font-semibold leading-tight tracking-tight text-sidebar-foreground sm:text-sm">
           IAB Smart Baggage Ecosystem
         </span>
