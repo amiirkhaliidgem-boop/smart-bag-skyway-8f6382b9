@@ -180,6 +180,26 @@ function AppHeader() {
 }
 
 function AppSidebar() {
+  return <AppSidebarInner />;
+}
+
+function MobileNavLogoTrigger() {
+  const { toggleSidebar } = useSidebar();
+  return (
+    <button
+      type="button"
+      aria-label="Open navigation"
+      onClick={toggleSidebar}
+      className="grid h-11 w-11 shrink-0 place-items-center rounded-lg text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+    >
+      <span className="grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-lg bg-card shadow ring-1 ring-sidebar-border">
+        <img src={iabLogo.url} alt="IAB" className="h-7 w-7 object-contain" />
+      </span>
+    </button>
+  );
+}
+
+function AppSidebarInner() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const currentSection = useRouterState({
     select: (s) => (s.location.search as { section?: string })?.section,
