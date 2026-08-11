@@ -50,6 +50,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import { useStaffOfficers, type StaffOfficer } from "@/lib/admin/officers";
 import {
   ArrowLeft,
   ChevronRight,
