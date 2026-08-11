@@ -98,14 +98,19 @@ export function DateRangeFilter({
   }
 
   return (
-    <div className={cn("flex min-w-0 max-w-full flex-wrap items-center gap-2", className)}>
+    <div
+      className={cn(
+        "flex min-w-0 max-w-full flex-wrap items-center gap-1.5 sm:gap-2",
+        className,
+      )}
+    >
       {showPresets ? (
-        <div className="flex items-center gap-2">
+        <div className="grid w-full grid-cols-4 gap-1.5 sm:flex sm:w-auto sm:items-center sm:gap-2">
           <Button
             type="button"
             variant="outline"
             size="sm"
-            className="h-9"
+            className="h-9 w-full px-1 text-xs sm:w-auto sm:px-3 sm:text-sm"
             onClick={() => preset(1)}
           >
             Today
@@ -114,7 +119,7 @@ export function DateRangeFilter({
             type="button"
             variant="outline"
             size="sm"
-            className="h-9"
+            className="h-9 w-full px-1 text-xs sm:w-auto sm:px-3 sm:text-sm"
             onClick={() => preset(7)}
           >
             7 days
@@ -123,7 +128,7 @@ export function DateRangeFilter({
             type="button"
             variant="outline"
             size="sm"
-            className="h-9"
+            className="h-9 w-full px-1 text-xs sm:w-auto sm:px-3 sm:text-sm"
             onClick={() => preset(30)}
           >
             30 days
@@ -133,7 +138,7 @@ export function DateRangeFilter({
               type="button"
               variant="ghost"
               size="sm"
-              className="h-9"
+              className="h-9 w-full px-1 text-xs sm:w-auto sm:px-3 sm:text-sm"
               onClick={() => {
                 onFromChange("");
                 onToChange("");
@@ -145,22 +150,22 @@ export function DateRangeFilter({
         </div>
       ) : null}
 
-      <div className="flex min-w-0 flex-1 basis-full items-center gap-1.5 sm:flex-none sm:basis-auto">
-        <Label className="shrink-0 text-xs text-muted-foreground">From</Label>
+      <div className="flex min-w-0 flex-1 basis-full items-center gap-1 sm:gap-1.5 sm:flex-none sm:basis-auto">
+        <Label className="shrink-0 text-[11px] text-muted-foreground sm:text-xs">From</Label>
         <Input
           type="date"
           value={from}
           onChange={(e) => onFromChange(e.target.value)}
           aria-label="From date"
-          className="h-9 min-w-0 flex-1 sm:w-[145px] sm:flex-none"
+          className="h-9 min-w-0 flex-1 px-2 text-xs sm:w-[145px] sm:flex-none sm:px-3 sm:text-sm"
         />
-        <Label className="shrink-0 text-xs text-muted-foreground">To</Label>
+        <Label className="shrink-0 text-[11px] text-muted-foreground sm:text-xs">To</Label>
         <Input
           type="date"
           value={to}
           onChange={(e) => onToChange(e.target.value)}
           aria-label="To date"
-          className="h-9 min-w-0 flex-1 sm:w-[145px] sm:flex-none"
+          className="h-9 min-w-0 flex-1 px-2 text-xs sm:w-[145px] sm:flex-none sm:px-3 sm:text-sm"
         />
       </div>
 
@@ -168,7 +173,7 @@ export function DateRangeFilter({
 
       {withGrain ? (
         <Select value={grain ?? "day"} onValueChange={(v) => onGrainChange?.(v as DateGrain)}>
-          <SelectTrigger className="h-9 w-[120px]">
+          <SelectTrigger className="h-9 w-full text-xs sm:w-[120px] sm:text-sm">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -180,7 +185,7 @@ export function DateRangeFilter({
       ) : null}
 
       {showSelectedRange ? (
-        <span className="inline-flex h-9 shrink-0 items-center rounded-md border border-border bg-muted/60 px-2.5 text-xs font-medium text-muted-foreground">
+        <span className="inline-flex h-8 shrink-0 items-center rounded-md border border-border bg-muted/60 px-2 text-[11px] font-medium text-muted-foreground sm:h-9 sm:px-2.5 sm:text-xs">
           {selectedRangeLabel(from, to)}
         </span>
       ) : null}
