@@ -57,7 +57,7 @@ export function LanguageToggle({ className = "" }: { className?: string }) {
     "px-2.5 h-7 text-xs font-medium rounded-md transition-colors active:scale-[0.99]";
   return (
     <div
-      className={`inline-flex items-center gap-1 rounded-lg border border-border bg-muted/40 p-1 ${className}`}
+      className={`inline-flex items-center gap-1 rounded-lg border border-sidebar-border bg-sidebar-accent/30 p-1 ${className}`}
     >
       <button
         type="button"
