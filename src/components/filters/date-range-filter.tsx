@@ -54,6 +54,27 @@ export function selectedRangeLabel(from: string, to: string) {
 }
 
 /**
+ * Converts the filter state into the ISO bounds the analytics server
+ * functions expect. An empty value means "unbounded" (the `All dates`
+ * preset): the lower bound opens at the epoch, the upper bound closes at the
+ * end of today. A filled value keeps exactly the bounds it produced before —
+ * `from` at 00:00 UTC and `to` exclusive at the end of that day.
+ */
+export function rangeToIsoBounds(from: string, to: string): { from: string; to: string } {
+  const startOfDay = (v: string) => {
+    const d = new Date(`${v}T00:00:00.000Z`);
+    return Number.isNaN(d.getTime()) ? null : d;
+  };
+  const lower = from ? startOfDay(from) : null;
+  const upper = to ? startOfDay(to) : null;
+  const todayStart = new Date(`${iso(new Date())}T00:00:00.000Z`);
+  return {
+    from: (lower ?? new Date(0)).toISOString(),
+    to: new Date((upper ?? todayStart).getTime() + 86_400_000).toISOString(),
+  };
+}
+
+/**
  * The single system-wide date range filter.
  *
  * Presets and the grain selector are configurable through props while the

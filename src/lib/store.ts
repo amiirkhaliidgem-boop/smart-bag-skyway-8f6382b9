@@ -1018,7 +1018,9 @@ export async function assignDriver(
   opts: { actor?: string; role?: Role; note?: string } = {},
 ) {
   const id = deliveryUuid(deliveryId);
-  const agent = agentUuid(driver);
+  // The snapshot directory can be narrower than the assignable agent list for
+  // non-admin roles, so fall back to the authoritative Delivery Agent RPC.
+  const agent = agentUuid(driver) ?? (await resolveAgentUuid(driver));
   if (!id || !agent) {
     reportError(new Error(`No active Delivery Agent record for "${driver}"`));
     return;
