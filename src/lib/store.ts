@@ -709,6 +709,24 @@ function agentUuid(name: string) {
   return agentIds[name];
 }
 
+/**
+ * Authoritative Delivery Agent lookup used when the projected snapshot
+ * directory does not contain the agent (row-level visibility differs per
+ * role). Uses the same `list_delivery_agents` source as the assignment picker.
+ */
+async function resolveAgentUuid(name: string): Promise<string | undefined> {
+  try {
+    const { data } = await supabase.rpc("list_delivery_agents");
+    const match = (data as { id: string; full_name: string }[] | null)?.find(
+      (a) => a.full_name === name,
+    );
+    if (match) agentIds[name] = match.id;
+    return match?.id;
+  } catch {
+    return undefined;
+  }
+}
+
 function reportError(err: unknown) {
   const message = err instanceof Error ? err.message : String(err);
   console.warn("[ops]", message);
@@ -1018,7 +1036,9 @@ export async function assignDriver(
   opts: { actor?: string; role?: Role; note?: string } = {},
 ) {
   const id = deliveryUuid(deliveryId);
-  const agent = agentUuid(driver);
+  // The snapshot directory can be narrower than the assignable agent list for
+  // non-admin roles, so fall back to the authoritative Delivery Agent RPC.
+  const agent = agentUuid(driver) ?? (await resolveAgentUuid(driver));
   if (!id || !agent) {
     reportError(new Error(`No active Delivery Agent record for "${driver}"`));
     return;

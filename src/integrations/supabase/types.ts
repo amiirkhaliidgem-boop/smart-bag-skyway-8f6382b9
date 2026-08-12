@@ -2478,6 +2478,16 @@ export type Database = {
       sla_delivery_hours: { Args: { p_case: string }; Returns: number }
       sla_region_delete: { Args: { p_id: string }; Returns: undefined }
       sla_region_upsert: { Args: { p_payload: Json }; Returns: string }
+      staff_directory: {
+        Args: never
+        Returns: {
+          employee_id: string
+          full_name: string
+          id: string
+          status: string
+          user_type: string
+        }[]
+      }
       system_db_facts: { Args: never; Returns: Json }
       wf_actor: {
         Args: never

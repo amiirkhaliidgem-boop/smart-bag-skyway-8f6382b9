@@ -49,7 +49,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { DateRangeFilter } from "@/components/filters/date-range-filter";
+import { DateRangeFilter, rangeToIsoBounds } from "@/components/filters/date-range-filter";
 import { PageLoading } from "@/components/ops-skeleton";
 import { DataTable, type DataColumn } from "@/components/layout";
 import { useStaffOfficers } from "@/lib/admin/officers";
@@ -215,9 +215,7 @@ function ReportsPage() {
     queryFn: () =>
       fetchReport({
         data: {
-          from: new Date(`${from}T00:00:00.000Z`).toISOString(),
-          // exclusive upper bound: include the whole "to" day
-          to: new Date(new Date(`${to}T00:00:00.000Z`).getTime() + 86_400_000).toISOString(),
+          ...rangeToIsoBounds(from, to),
           grain,
           journey,
         },
