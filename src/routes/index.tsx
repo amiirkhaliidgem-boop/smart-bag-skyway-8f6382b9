@@ -23,7 +23,7 @@ import {
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { DateRangeFilter } from "@/components/filters/date-range-filter";
+import { DateRangeFilter, rangeToIsoBounds } from "@/components/filters/date-range-filter";
 import { KpiSkeletonGrid, ChartSkeleton, ListSkeleton } from "@/components/ops-skeleton";
 import { supabase } from "@/integrations/supabase/client";
 import { loadExecutiveDashboard } from "@/lib/dashboard.functions";
@@ -163,9 +163,7 @@ function Index() {
     queryFn: () =>
       fetchDashboard({
         data: {
-          from: new Date(`${from}T00:00:00.000Z`).toISOString(),
-          // exclusive upper bound: include the whole "to" day
-          to: new Date(new Date(`${to}T00:00:00.000Z`).getTime() + 86_400_000).toISOString(),
+          ...rangeToIsoBounds(from, to),
           grain,
         },
       }) as Promise<ExecutiveDashboard>,
